@@ -1,0 +1,41 @@
+flowchart TB
+    subgraph Client
+        Browser["Browser (internal user)"]
+    end
+
+    subgraph Frontend["Next.js Web App"]
+        UI["Dashboard UI"]
+    end
+
+    subgraph Backend["FastAPI Modular Monolith"]
+        API["REST API + OpenAPI"]
+        AuthSvc["auth / users / roles / permissions"]
+        CompanySvc["company / brand"]
+        AuditSvc["audit"]
+        UsageSvc["usage"]
+    end
+
+    subgraph Workers["Python Workers"]
+        Worker["RabbitMQ consumers (health-check only in Sprint 1)"]
+    end
+
+    subgraph Data["Data Layer"]
+        PG[(PostgreSQL)]
+        Redis[(Redis)]
+        MQ[(RabbitMQ)]
+    end
+
+    Browser -->|HTTPS| UI
+    UI -->|HTTPS/JSON, HttpOnly cookies| API
+    API --> AuthSvc
+    API --> CompanySvc
+    API --> AuditSvc
+    API --> UsageSvc
+    AuthSvc --> PG
+    AuthSvc --> Redis
+    CompanySvc --> PG
+    AuditSvc --> PG
+    UsageSvc --> PG
+    API -.publishes.-> MQ
+    Worker -.consumes.-> MQ
+    Worker --> PG

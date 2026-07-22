@@ -167,5 +167,50 @@ Decision statuses: `PROPOSED`, `UNDER_REVIEW`, `APPROVED`, `REJECTED`, `SUPERSED
 
 ---
 
-*Decisions DEC-GRX-014 onward will be logged as they are made — e.g., resolutions to
-OQ-001 through OQ-011 in [OPEN_QUESTIONS.md](OPEN_QUESTIONS.md).*
+## DEC-GRX-014: Application-managed authentication in FastAPI (resolves OQ-001)
+
+- Status: APPROVED
+- Date: 2026-07-22
+- Context: Slice 1 (Foundation) cannot start until the authentication approach is fixed —
+  it determines the user/session data model, the auth module's API surface, and how RBAC
+  hooks into every other module. [OQ-001](OPEN_QUESTIONS.md) asked whether to build
+  application-managed auth or adopt an external provider (e.g. Keycloak, Auth0, Clerk).
+- Options considered:
+  1. Third-party hosted auth provider (Auth0/Clerk) — fastest to stand up, but adds an
+     external dependency, recurring cost, and a data-residency question for a single-tenant
+     internal tool that doesn't need social-login breadth.
+  2. Self-hosted Keycloak — full OIDC/SSO capability now, but heavy operational surface
+     (its own database, admin console, upgrade cadence) for an MVP with no SSO requirement yet.
+  3. Application-managed authentication inside FastAPI, PostgreSQL-backed, with an adapter
+     boundary that allows OIDC/enterprise SSO to be added later without a rewrite.
+- Decision: Option 3.
+- Rationale: No documented implementation constraint forces a third-party or Keycloak
+  dependency for a single-tenant MVP with only internal users. Application-managed auth
+  keeps the operational footprint minimal (no extra service to run/patch) while the adapter
+  boundary preserves the ability to add OIDC/SSO in a future release without rearchitecting
+  the user/session model. Full requirements:
+  - PostgreSQL-backed users
+  - Argon2id password hashing
+  - Short-lived access tokens
+  - Rotating refresh tokens
+  - HttpOnly, Secure, SameSite cookies for the browser application
+  - Hashed password-reset tokens
+  - Hashed user-invitation tokens
+  - Session revocation
+  - Login rate limiting
+  - Account disable and logout-all-sessions support
+  - Audit events for: login, logout, failed login, password reset, invitation acceptance,
+    role changes, session revocation
+  - Centralized authentication and authorization services (not scattered per-endpoint checks)
+  - An adapter boundary so external OIDC or enterprise SSO can be added later
+- Consequences: Detailed in [`docs/08-security/AUTHENTICATION.md`](../08-security/AUTHENTICATION.md).
+  Keycloak or any third-party auth provider must not be introduced in the MVP unless a
+  documented implementation constraint makes it necessary — that would itself require a new
+  logged decision superseding this one, not a silent substitution.
+- Related tasks: Slice 1 (Foundation) — GRX-AUTH-* tasks in `MASTER_TASK_TRACKER.md`.
+- Supersedes: none.
+
+---
+
+*Decisions DEC-GRX-015 onward will be logged as they are made — e.g., resolutions to
+OQ-002 through OQ-011 in [OPEN_QUESTIONS.md](OPEN_QUESTIONS.md).*

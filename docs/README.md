@@ -53,14 +53,14 @@ means the document does not exist yet, not that it was skipped.
 
 | Phase | Scope | Status |
 |---|---|---|
-| Phase 0 | Repository & documentation foundation | MOSTLY DONE (tracker/matrix/risks/blockers/changelog remain) |
+| Phase 0 | Repository & documentation foundation | MOSTLY DONE (tracker done; matrix/risks/blockers/changelog remain) |
 | Phase 1 | Product definition | DONE |
-| Phase 2 | Feature specifications | STARTED (catalog stub only) |
+| Phase 2 | Feature specifications | STARTED (catalog stub only; per-feature docs written as each task is picked up) |
 | Phase 3 | UX/UI | NOT_STARTED |
-| Phase 4 | Architecture | NOT_STARTED |
-| Phase 5 | Data and APIs | NOT_STARTED |
-| Phase 6 | Security and AI | NOT_STARTED |
-| Phase 7 | Testing and DevOps | NOT_STARTED |
-| Phase 8 | Development plan | NOT_STARTED |
+| Phase 4 | Architecture | DONE for Slice 1 scope (system, module boundaries, background jobs) |
+| Phase 5 | Data and APIs | DATA MODEL DONE for Slice 1; API catalog (`06-api/`) NOT_STARTED |
+| Phase 6 | Security and AI | SECURITY DONE for Slice 1; AI safety (`07-ai/`) NOT_STARTED (not needed until Slice 6) |
+| Phase 7 | Testing and DevOps | NOT_STARTED (test requirements exist per-task in the tracker) |
+| Phase 8 | Development plan | Sprint 1 plan DONE; remaining sprints NOT_STARTED |
 
 See [`PROJECT_STATUS.md`](00-project-control/PROJECT_STATUS.md) for the authoritative, up-to-date state.
