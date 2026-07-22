@@ -60,7 +60,7 @@ means the document does not exist yet, not that it was skipped.
 | Phase 4 | Architecture | DONE for Slice 1 scope (system, module boundaries, background jobs) |
 | Phase 5 | Data and APIs | DATA MODEL DONE for Slice 1; API catalog (`06-api/`) NOT_STARTED |
 | Phase 6 | Security and AI | SECURITY DONE for Slice 1; AI safety (`07-ai/`) NOT_STARTED (not needed until Slice 6) |
-| Phase 7 | Testing and DevOps | NOT_STARTED (test requirements exist per-task in the tracker) |
+| Phase 7 | Testing and DevOps | TEST_STRATEGY.md and LOCAL_DEVELOPMENT.md DONE; remaining `10-testing/`/`11-devops/` docs written alongside their owning tasks |
 | Phase 8 | Development plan | Sprint 1 plan DONE; remaining sprints NOT_STARTED |
 
 See [`PROJECT_STATUS.md`](00-project-control/PROJECT_STATUS.md) for the authoritative, up-to-date state.

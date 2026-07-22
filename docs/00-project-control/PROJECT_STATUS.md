@@ -2,7 +2,7 @@
 
 - Document ID: DOC-PROJECT-STATUS
 - Status: ACTIVE
-- Version: 1.3
+- Version: 1.4
 - Last updated: 2026-07-22
 - Owner: Coding agent (on behalf of product owner)
 - Related documents: [MASTER_TASK_TRACKER](MASTER_TASK_TRACKER.md), [DECISIONS](DECISIONS.md), [DEVELOPMENT_READINESS](DEVELOPMENT_READINESS.md)
@@ -34,10 +34,10 @@ releases. See [DEC-GRX-001](DECISIONS.md) for the full scope-correction decision
 Phase 4 (architecture), Phase 5 (data), and Phase 6 (security, Sprint-1-relevant subset) —
 done for Slice 1 scope.**
 
-**Development Readiness Gate for Slice 1 (Sprint 1: Foundation): PASS.** See
-[DEVELOPMENT_READINESS.md](DEVELOPMENT_READINESS.md). `GRX-FOUND-001` is `READY` in
-[MASTER_TASK_TRACKER.md](MASTER_TASK_TRACKER.md). No product code has been written yet —
-that starts only when explicitly instructed.
+**Development Readiness Gate for Slice 1 (Sprint 1: Foundation): PASS — every mandatory
+item is a standalone document, no distributed-only gaps remain.** See
+[DEVELOPMENT_READINESS.md](DEVELOPMENT_READINESS.md). Sprint 1 is authorized to begin at
+`GRX-FOUND-001`.
 
 ## Documents created so far
 
@@ -65,25 +65,21 @@ that starts only when explicitly instructed.
 | `docs/14-sprints/SPRINT_01_FOUNDATION.md` | DONE |
 | `docs/diagrams/container-architecture.mmd`, `er-diagram.mmd` | DONE |
 | `docs/archive/source-prd-seo-aeo-geo-website-intelligence/` | DONE (relabeled from "legacy/superseded" to "future source material") |
-| `docs/00-project-control/FEATURE_STATUS_MATRIX.md`, `RISKS.md`, `BLOCKERS.md`, `CHANGELOG.md` | NOT_STARTED |
-| `docs/10-testing/TEST_STRATEGY.md`, `docs/11-devops/LOCAL_DEVELOPMENT.md` | NOT_STARTED (content exists in distributed form — see [DEVELOPMENT_READINESS.md](DEVELOPMENT_READINESS.md)) |
+| `docs/10-testing/TEST_STRATEGY.md` | DONE |
+| `docs/11-devops/LOCAL_DEVELOPMENT.md` | DONE |
+| `docs/00-project-control/CHANGELOG.md` | DONE |
+| `docs/00-project-control/FEATURE_STATUS_MATRIX.md`, `RISKS.md`, `BLOCKERS.md`, `AGENT_HANDOFF.md` | NOT_STARTED (created as Sprint 1 tasks land) |
 | Full per-feature specs under `02-features/`, all of `03-ux-ui/`, `06-api/`, `07-ai/`, `09-integrations/`, `13-business/` | NOT_STARTED |
 
 ## Immediate next steps
 
-1. Begin Sprint 1 implementation starting at `GRX-FOUND-001` (repository and development
-   tooling) per [MASTER_TASK_TRACKER.md](MASTER_TASK_TRACKER.md) — only once explicitly instructed to write code.
-2. Create `FEATURE_STATUS_MATRIX.md`, `RISKS.md`, `BLOCKERS.md`, `CHANGELOG.md` to close out remaining Phase 0 project-control scaffolding (can happen alongside Sprint 1, not blocking it).
+1. Implement `GRX-FOUND-001` (repository and development tooling) per
+   [MASTER_TASK_TRACKER.md](MASTER_TASK_TRACKER.md) — authorized and starting now.
+2. Create `FEATURE_STATUS_MATRIX.md`, `RISKS.md`, `BLOCKERS.md`, `AGENT_HANDOFF.md` alongside Sprint 1 tasks as they land, not all upfront.
 3. Write full feature specs in `02-features/` for Slice 1 features as each task is picked up, not all upfront.
 4. Do not begin any V1.5+/SEO-AEO-GEO work until Slices 1–6 (MVP) are stable in production.
 5. Do not resolve OQ-002/003/004/006/007/012 early — they don't block Slice 1 (explicit instruction).
 
-## Changelog (summary — see CHANGELOG.md once created for full detail)
+## Changelog
 
-- 2026-07-22: Repository initialized. Original SEO/AEO/GEO discovery PRD relabeled as future-release
-  source material (not archived-as-unrelated). Phase 0/1 core product-definition documents
-  created, reflecting Growixa's full positioning with MVP scope reduced to email/social
-  marketing (DEC-GRX-001).
-- 2026-07-22: OQ-001 resolved via DEC-GRX-014 (application-managed FastAPI authentication).
-  Architecture, data model, and security baseline documents created for Slice 1. Master task
-  tracker and Sprint 1 plan created. Development Readiness Gate for Slice 1 now PASS.
+See [`CHANGELOG.md`](CHANGELOG.md) for the full reverse-chronological history.
