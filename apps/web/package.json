@@ -1,0 +1,32 @@
+{
+  "name": "growixa-web",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Growixa frontend — Next.js dashboard",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3.1.0",
+    "@types/node": "^22.9.0",
+    "@types/react": "^19.0.1",
+    "@types/react-dom": "^19.0.1",
+    "eslint": "^9.15.0",
+    "eslint-config-next": "^15.0.3",
+    "next": "^15.0.3",
+    "prettier": "^3.3.3",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "typescript": "^5.6.3"
+  },
+  "overrides": {
+    "postcss": "^8.5.10",
+    "sharp": "^0.35.0"
+  }
+}

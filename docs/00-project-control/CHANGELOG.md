@@ -10,6 +10,22 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
+## 2026-07-23 — GRX-FOUND-001: repository and development tooling
+
+- First Sprint 1 implementation task. Added `apps/api/` (FastAPI/Python tooling: `ruff`,
+  `mypy`, `pytest`, `.venv`, `.env.example`) and `apps/web/` (Next.js/TypeScript tooling:
+  ESLint 9 flat config, Prettier, `tsc`, `.env.example`) — tooling and config only, no
+  application code yet.
+- Added `.pre-commit-config.yaml` wiring lint/format/type-check for both apps plus standard
+  hygiene hooks; installed the git hook.
+- Fixed 3 `npm audit` findings (moderate `postcss` XSS, high `sharp`/`libvips` CVEs, both
+  pinned internally by Next.js on every current release) via a `package.json` `overrides`
+  block. Verified 0 vulnerabilities after.
+- All required checks verified passing: `ruff check`, `ruff format --check`, `mypy`,
+  `eslint`, `prettier --check`, `tsc --noEmit`, `pre-commit run --all-files`.
+- `GRX-FOUND-001` marked `DONE`; `GRX-FOUND-002` (Docker Compose) now `READY`.
+- Commit: see [`AGENT_HANDOFF.md`](AGENT_HANDOFF.md) / `git log`.
+
 ## 2026-07-22 — Documentation gate closed; Sprint 1 authorized
 
 - Added standalone [`docs/10-testing/TEST_STRATEGY.md`](../10-testing/TEST_STRATEGY.md) and
