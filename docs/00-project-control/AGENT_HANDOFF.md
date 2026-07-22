@@ -116,4 +116,4 @@ cat docs/00-project-control/MASTER_TASK_TRACKER.md   # find next READY task
 
 ## Latest commit
 
-Recorded below after this handoff is committed alongside the `GRX-FOUND-001` change set.
+`42f8b37` — feat(found): scaffold backend/frontend dev tooling (GRX-FOUND-001)

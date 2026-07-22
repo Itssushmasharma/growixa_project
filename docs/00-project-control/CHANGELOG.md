@@ -24,7 +24,7 @@ from Sprint 1 onward, code). Each entry names what changed and the commit(s) it 
 - All required checks verified passing: `ruff check`, `ruff format --check`, `mypy`,
   `eslint`, `prettier --check`, `tsc --noEmit`, `pre-commit run --all-files`.
 - `GRX-FOUND-001` marked `DONE`; `GRX-FOUND-002` (Docker Compose) now `READY`.
-- Commit: see [`AGENT_HANDOFF.md`](AGENT_HANDOFF.md) / `git log`.
+- Commit: `42f8b37`.
 
 ## 2026-07-22 — Documentation gate closed; Sprint 1 authorized
 
