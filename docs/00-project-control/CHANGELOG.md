@@ -37,7 +37,7 @@ from Sprint 1 onward, code). Each entry names what changed and the commit(s) it 
   `.env.example` can collide with a natively-running Postgres on the host; `.env` is
   gitignored so this is a per-machine `.env` adjustment, not a schema/compose change.
 - `GRX-FOUND-002` marked `DONE`; `GRX-FOUND-003` (FastAPI application foundation) now `READY`.
-- Commit: `<see below>`.
+- Commit: `76354d2`.
 
 ## 2026-07-23 — GRX-FOUND-001: repository and development tooling
 

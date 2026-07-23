@@ -157,4 +157,4 @@ podman compose up -d                                  # bring the stack back up
 
 ## Latest commit
 
-Recorded below after this handoff is committed alongside the `GRX-FOUND-002` change set.
+`76354d2` — feat(found): Docker Compose local environment (GRX-FOUND-002)
