@@ -10,6 +10,35 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
+## 2026-07-23 — GRX-FOUND-002: Docker Compose local environment
+
+- Added `compose.yaml` defining `postgres` (16-alpine), `redis` (7-alpine), `rabbitmq`
+  (3-management-alpine), `api`, and `web` services on a shared bridge network, with
+  healthchecks and `depends_on: condition: service_healthy` gating startup order.
+- Added `apps/api/Dockerfile` (python:3.13-slim, editable install, `uvicorn --reload`) and
+  `apps/web/Dockerfile` (node:22-alpine, `npm run dev`) — local-development images, not
+  production-optimized (no multi-stage/distroless build or non-root hardening yet).
+- Added a minimal `growixa_api` app (`main.py`, `config.py`) with a real `GET /health`
+  endpoint that checks Postgres/Redis/RabbitMQ connectivity, so the compose stack has
+  something functional to validate against ahead of `GRX-FOUND-003`.
+- Added a minimal Next.js `apps/web/src/app/` (App Router `layout.tsx`/`page.tsx`) and
+  `next.config.mjs` so `apps/web` builds/serves, ahead of `GRX-FOUND-004`.
+- Added root `.env.example` documenting all Compose-level variables (DB/MQ credentials,
+  host port mappings, JWT signing settings per [DEC-GRX-014](DECISIONS.md)).
+- Validated end-to-end: `podman compose up -d` brings up all 5 services `healthy`;
+  `GET /health` returns `{"status":"ok","checks":{"postgres":"ok","redis":"ok","rabbitmq":"ok"}}`;
+  the web root returns HTTP 200.
+- Fixed a podman-compose bug encountered during validation: a multi-word `CMD`-array
+  healthcheck test (`api` service's `python -c "..."` health check) was being incorrectly
+  re-split into separate argv tokens by podman-compose, breaking the check even though the
+  app itself was healthy. Switched to `CMD-SHELL` form in `compose.yaml`, which
+  podman-compose preserves as a single string correctly.
+- Local-environment note (not a repo change): the default `POSTGRES_PORT=5432` in
+  `.env.example` can collide with a natively-running Postgres on the host; `.env` is
+  gitignored so this is a per-machine `.env` adjustment, not a schema/compose change.
+- `GRX-FOUND-002` marked `DONE`; `GRX-FOUND-003` (FastAPI application foundation) now `READY`.
+- Commit: `<see below>`.
+
 ## 2026-07-23 — GRX-FOUND-001: repository and development tooling
 
 - First Sprint 1 implementation task. Added `apps/api/` (FastAPI/Python tooling: `ruff`,

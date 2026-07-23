@@ -1,0 +1,129 @@
+name: growixa
+
+networks:
+  growixa-net:
+    driver: bridge
+
+volumes:
+  pgdata:
+  rabbitmq-data:
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-growixa}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env — see .env.example}
+      POSTGRES_DB: ${POSTGRES_DB:-growixa}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    # Exposed on loopback only, for local GUI/CLI DB tools (documented in
+    # docs/11-devops/LOCAL_DEVELOPMENT.md #database-access) — not reachable from the network.
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    networks:
+      - growixa-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-growixa} -d ${POSTGRES_DB:-growixa}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    # No host port mapping — inspection is via `docker compose exec redis redis-cli`
+    # (see docs/11-devops/LOCAL_DEVELOPMENT.md #redis-inspection). Not required to be
+    # reachable from outside the compose network.
+    networks:
+      - growixa-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD in .env — see .env.example}
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    # Management UI only, on loopback — local development use per task instructions.
+    # AMQP (5672) is not published to the host; the api service reaches it over
+    # growixa-net by service name.
+    ports:
+      - "127.0.0.1:${RABBITMQ_MGMT_PORT:-15672}:15672"
+    networks:
+      - growixa-net
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 20s
+
+  api:
+    build:
+      context: ./apps/api
+    restart: unless-stopped
+    environment:
+      ENVIRONMENT: local
+      LOG_LEVEL: info
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-growixa}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-growixa}
+      REDIS_URL: redis://redis:6379/0
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-guest}:${RABBITMQ_PASSWORD}@rabbitmq:5672/
+      JWT_SIGNING_KEY: ${JWT_SIGNING_KEY:-CHANGE_ME_LOCAL_DEV_ONLY}
+      ACCESS_TOKEN_TTL_MINUTES: ${ACCESS_TOKEN_TTL_MINUTES:-15}
+      REFRESH_TOKEN_TTL_DAYS: ${REFRESH_TOKEN_TTL_DAYS:-30}
+    volumes:
+      - ./apps/api/src:/app/src
+    ports:
+      - "${API_PORT:-8000}:8000"
+    networks:
+      - growixa-net
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)\"",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  web:
+    build:
+      context: ./apps/web
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+    volumes:
+      - ./apps/web:/app
+      - /app/node_modules
+      - /app/.next
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+    networks:
+      - growixa-net
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:3000 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s

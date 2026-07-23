@@ -2,7 +2,7 @@
 
 - Document ID: DOC-PROJECT-STATUS
 - Status: ACTIVE
-- Version: 1.5
+- Version: 1.6
 - Last updated: 2026-07-23
 - Owner: Coding agent (on behalf of product owner)
 - Related documents: [MASTER_TASK_TRACKER](MASTER_TASK_TRACKER.md), [DECISIONS](DECISIONS.md), [DEVELOPMENT_READINESS](DEVELOPMENT_READINESS.md)
@@ -37,8 +37,9 @@ done for Slice 1 scope.**
 **Development Readiness Gate for Slice 1 (Sprint 1: Foundation): PASS — every mandatory
 item is a standalone document, no distributed-only gaps remain.** See
 [DEVELOPMENT_READINESS.md](DEVELOPMENT_READINESS.md). **Sprint 1 implementation has begun.**
-`GRX-FOUND-001` (repository and development tooling) is `DONE`. `GRX-FOUND-002` (Docker
-Compose) is `READY`. See [AGENT_HANDOFF.md](AGENT_HANDOFF.md) for session-by-session detail.
+`GRX-FOUND-001` (repository and development tooling) and `GRX-FOUND-002` (Docker Compose
+local environment) are `DONE`. `GRX-FOUND-003` (FastAPI application foundation) is `READY`.
+See [AGENT_HANDOFF.md](AGENT_HANDOFF.md) for session-by-session detail.
 
 ## Documents created so far
 
@@ -73,12 +74,13 @@ Compose) is `READY`. See [AGENT_HANDOFF.md](AGENT_HANDOFF.md) for session-by-ses
 | `apps/api/` tooling (pyproject.toml, ruff/mypy config, .env.example) | DONE (`GRX-FOUND-001`) |
 | `apps/web/` tooling (package.json, eslint/prettier/tsconfig, .env.example) | DONE (`GRX-FOUND-001`) |
 | `.pre-commit-config.yaml` | DONE (`GRX-FOUND-001`) |
+| `compose.yaml`, `apps/api/Dockerfile`, `apps/web/Dockerfile`, root `.env.example` | DONE (`GRX-FOUND-002`) |
 | `docs/00-project-control/FEATURE_STATUS_MATRIX.md`, `RISKS.md`, `BLOCKERS.md` | NOT_STARTED (created as Sprint 1 tasks land) |
 | Full per-feature specs under `02-features/`, all of `03-ux-ui/`, `06-api/`, `07-ai/`, `09-integrations/`, `13-business/` | NOT_STARTED |
 
 ## Immediate next steps
 
-1. Implement `GRX-FOUND-002` (Docker Compose local environment) per
+1. Implement `GRX-FOUND-003` (FastAPI application foundation) per
    [MASTER_TASK_TRACKER.md](MASTER_TASK_TRACKER.md) — dependency-ready.
 2. Create `FEATURE_STATUS_MATRIX.md`, `RISKS.md`, `BLOCKERS.md` alongside Sprint 1 tasks as they land, not all upfront.
 3. Write full feature specs in `02-features/` for Slice 1 features as each task is picked up, not all upfront.
