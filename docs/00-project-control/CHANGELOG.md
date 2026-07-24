@@ -53,7 +53,7 @@ from Sprint 1 onward, code). Each entry names what changed and the commit(s) it 
   running Compose Postgres.
 - `GRX-FOUND-005` marked `DONE`. `GRX-AUDIT-001`, `GRX-AUTH-001`, and `GRX-TEST-001` (all
   depend only on `GRX-FOUND-005`) are now `READY`, alongside the still-open `GRX-FOUND-004`.
-- Commit: `<see below>`.
+- Commit: `0cff500`.
 
 ## 2026-07-23 — GRX-FOUND-003: FastAPI application foundation
 

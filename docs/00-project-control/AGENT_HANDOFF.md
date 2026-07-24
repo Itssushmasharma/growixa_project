@@ -169,4 +169,4 @@ podman compose up -d                                  # bring the stack back up
 
 ## Latest commit
 
-Recorded below after this handoff is committed alongside the `GRX-FOUND-005` change set.
+`0cff500` — feat(found): PostgreSQL connectivity + Alembic foundation (GRX-FOUND-005)
