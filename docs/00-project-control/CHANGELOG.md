@@ -10,6 +10,38 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
+## 2026-07-24 — GRX-FOUND-004: Next.js application foundation
+
+- Added `apps/web/src/lib/api-client.ts`: a small typed `fetch` wrapper (`apiFetch<T>`) that
+  prepends `getApiUrl()`, sends `credentials: "include"` (auth is HttpOnly-cookie-based per
+  [DEC-GRX-014](DECISIONS.md), not bearer tokens), and throws a typed `ApiError` on any
+  non-2xx response instead of leaving every caller to check `response.ok`. Not yet consumed
+  by any UI — nothing calls the API from the frontend until `GRX-AUTH-002`/`GRX-USER-002` —
+  but this is genuine, working infrastructure (foundation work, explicitly allowed to stand
+  alone per [DEFINITION_OF_DONE.md §No placeholder completion](DEFINITION_OF_DONE.md#no-placeholder-completion)),
+  not a stub.
+- Added `apps/web/src/app/not-found.tsx` as the routing-baseline piece: Next.js App Router's
+  convention for a real custom 404, verified to actually return 404 (not just exist).
+- Reworded `apps/web/src/app/page.tsx`'s placeholder copy — it referenced `GRX-FOUND-002`
+  ("Placeholder page for local Docker Compose validation"), which was accurate when it was
+  added as a stopgap for that task's stack validation, but this task is what actually
+  establishes the app shell, so the copy no longer references a specific task.
+- No changes to `.env.example`/env config — `NEXT_PUBLIC_API_URL` and `getApiUrl()` were
+  already established in `GRX-FOUND-001`/`GRX-FOUND-002` and remain the single env surface.
+- Verified: `npm run lint`, `format:check`, `typecheck`, and `build` all pass. Local smoke
+  test (`next start`): `/` → 200 (renders "Growixa"), an unknown route → 404. Rebuilt the
+  `web` Docker image and re-verified through the full Compose stack: all 5 services healthy,
+  `GET /` → 200, unknown route → 404, `api`'s `/health` unaffected.
+- No automated test harness was added — `GRX-TEST-002` (test runner config, component test
+  harness, one e2e smoke test) is a separate, already-tracked task that owns building that
+  infrastructure; this task's "smoke test loads root route" requirement was satisfied via
+  the manual/scripted verification above, consistent with how `GRX-FOUND-002`'s smoke-test
+  requirement was satisfied before any test runner existed.
+- `GRX-FOUND-004` marked `DONE`. `GRX-AUDIT-001`, `GRX-AUTH-001`, `GRX-TEST-001` (already
+  `READY` from `GRX-FOUND-005`), and `GRX-TEST-002` (newly `READY` — its only dependency was
+  this task) are all now `READY`.
+- Commit: `<see below>`.
+
 ## 2026-07-24 — GRX-FOUND-005: PostgreSQL connectivity + Alembic foundation
 
 - Added `apps/api/src/growixa_api/db.py`: SQLAlchemy 2.0 `DeclarativeBase` (`Base`), a

@@ -2,7 +2,7 @@
 
 - Document ID: DOC-PROJECT-STATUS
 - Status: ACTIVE
-- Version: 1.8
+- Version: 1.9
 - Last updated: 2026-07-24
 - Owner: Coding agent (on behalf of product owner)
 - Related documents: [MASTER_TASK_TRACKER](MASTER_TASK_TRACKER.md), [DECISIONS](DECISIONS.md), [DEVELOPMENT_READINESS](DEVELOPMENT_READINESS.md)
@@ -38,12 +38,13 @@ done for Slice 1 scope.**
 item is a standalone document, no distributed-only gaps remain.** See
 [DEVELOPMENT_READINESS.md](DEVELOPMENT_READINESS.md). **Sprint 1 implementation has begun.**
 `GRX-FOUND-001` (repository and development tooling), `GRX-FOUND-002` (Docker Compose local
-environment), `GRX-FOUND-003` (FastAPI application foundation), and `GRX-FOUND-005`
-(PostgreSQL connectivity + Alembic foundation) are `DONE`. `GRX-FOUND-004` (Next.js
-application foundation), `GRX-AUDIT-001` (audit log module), `GRX-AUTH-001` (users/roles/
-permissions schema + seed), and `GRX-TEST-001` (backend test foundation) are all now
-`READY`; per [AGENT_EXECUTION_RULES.md](../12-development/AGENT_EXECUTION_RULES.md), only
-one is worked on at a time. See [AGENT_HANDOFF.md](AGENT_HANDOFF.md) for session-by-session
+environment), `GRX-FOUND-003` (FastAPI application foundation), `GRX-FOUND-004` (Next.js
+application foundation), and `GRX-FOUND-005` (PostgreSQL connectivity + Alembic foundation)
+are `DONE`. `GRX-AUDIT-001` (audit log module), `GRX-AUTH-001` (users/roles/permissions
+schema + seed), `GRX-TEST-001` (backend test foundation), and `GRX-TEST-002` (frontend test
+foundation) are all now `READY`; per
+[AGENT_EXECUTION_RULES.md](../12-development/AGENT_EXECUTION_RULES.md), only one is worked
+on at a time. See [AGENT_HANDOFF.md](AGENT_HANDOFF.md) for session-by-session
 detail.
 
 ## Documents created so far
@@ -82,15 +83,16 @@ detail.
 | `compose.yaml`, `apps/api/Dockerfile`, `apps/web/Dockerfile`, root `.env.example` | DONE (`GRX-FOUND-002`) |
 | `apps/api/src/growixa_api/{app,health,main}.py`, `apps/api/tests/test_health.py` | DONE (`GRX-FOUND-003`) |
 | `apps/api/src/growixa_api/db.py`, `apps/api/alembic.ini`, `apps/api/migrations/`, `apps/api/tests/test_migrations.py` | DONE (`GRX-FOUND-005`) |
+| `apps/web/src/app/{page,not-found}.tsx`, `apps/web/src/lib/{env,api-client}.ts` | DONE (`GRX-FOUND-004`) |
 | `docs/00-project-control/FEATURE_STATUS_MATRIX.md`, `RISKS.md`, `BLOCKERS.md` | NOT_STARTED (created as Sprint 1 tasks land) |
 | Full per-feature specs under `02-features/`, all of `03-ux-ui/`, `06-api/`, `07-ai/`, `09-integrations/`, `13-business/` | NOT_STARTED |
 
 ## Immediate next steps
 
-1. Implement one of `GRX-FOUND-004` (Next.js application foundation), `GRX-AUDIT-001`
-   (audit log module), `GRX-AUTH-001` (users/roles/permissions schema + seed), or
-   `GRX-TEST-001` (backend test foundation) per
-   [MASTER_TASK_TRACKER.md](MASTER_TASK_TRACKER.md) — all four are dependency-ready, pick one.
+1. Implement one of `GRX-AUDIT-001` (audit log module), `GRX-AUTH-001` (users/roles/
+   permissions schema + seed), `GRX-TEST-001` (backend test foundation), or `GRX-TEST-002`
+   (frontend test foundation) per [MASTER_TASK_TRACKER.md](MASTER_TASK_TRACKER.md) — all
+   four are dependency-ready, pick one.
 2. Create `FEATURE_STATUS_MATRIX.md`, `RISKS.md`, `BLOCKERS.md` alongside Sprint 1 tasks as they land, not all upfront.
 3. Write full feature specs in `02-features/` for Slice 1 features as each task is picked up, not all upfront.
 4. Do not begin any V1.5+/SEO-AEO-GEO work until Slices 1–6 (MVP) are stable in production.
