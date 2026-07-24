@@ -9,6 +9,12 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 from growixa_api.config import get_settings
 from growixa_api.db import Base
 
+# Imported for their side effect of registering tables on Base.metadata (required for
+# --autogenerate); the modules themselves are otherwise unused here.
+from growixa_api.permissions import models as permissions_models  # noqa: F401
+from growixa_api.roles import models as roles_models  # noqa: F401
+from growixa_api.users import models as users_models  # noqa: F401
+
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config

@@ -1,0 +1,79 @@
+"""Seed-data migration test (GRX-AUTH-001).
+
+Integration-tier test per TEST_STRATEGY.md §Database migration tests — requires a real
+reachable PostgreSQL instance. A plain sync test for the same reason as test_migrations.py:
+Alembic's async env.py drives its own event loop internally via asyncio.run(...).
+"""
+
+from pathlib import Path
+
+from alembic import command
+from alembic.config import Config
+from sqlalchemy import create_engine, text
+
+from growixa_api.config import get_settings
+
+ALEMBIC_INI = Path(__file__).resolve().parent.parent / "alembic.ini"
+
+EXPECTED_ROLES = {
+    "Super Admin",
+    "Admin",
+    "Marketing Manager",
+    "Content Creator",
+    "Analyst",
+    "Viewer",
+}
+
+EXPECTED_PERMISSIONS = {
+    "users.manage",
+    "roles.manage",
+    "company.settings.edit",
+    "company.settings.view",
+    "audit.view",
+    "admin.access",
+}
+
+# permission code -> set of role names granted that permission, per RBAC.md's Sprint 1
+# role -> permission matrix.
+EXPECTED_MATRIX: dict[str, set[str]] = {
+    "users.manage": {"Super Admin", "Admin"},
+    "roles.manage": {"Super Admin", "Admin"},
+    "company.settings.edit": {"Super Admin", "Admin"},
+    "company.settings.view": EXPECTED_ROLES,
+    "audit.view": {"Super Admin", "Admin"},
+    "admin.access": {"Super Admin", "Admin"},
+}
+
+
+def _sync_database_url() -> str:
+    return get_settings().database_url.replace("+asyncpg", "+psycopg")
+
+
+def test_migration_seeds_sprint_1_roles_permissions_and_matrix() -> None:
+    config = Config(str(ALEMBIC_INI))
+    command.upgrade(config, "head")
+
+    engine = create_engine(_sync_database_url())
+    try:
+        with engine.connect() as conn:
+            role_names = {row[0] for row in conn.execute(text("SELECT name FROM roles"))}
+            permission_codes = {
+                row[0] for row in conn.execute(text("SELECT code FROM permissions"))
+            }
+            matrix_rows = conn.execute(
+                text(
+                    "SELECT p.code, r.name FROM role_permissions rp "
+                    "JOIN roles r ON r.id = rp.role_id "
+                    "JOIN permissions p ON p.id = rp.permission_id"
+                )
+            ).all()
+    finally:
+        engine.dispose()
+
+    assert role_names == EXPECTED_ROLES
+    assert permission_codes == EXPECTED_PERMISSIONS
+
+    actual_matrix: dict[str, set[str]] = {}
+    for code, role_name in matrix_rows:
+        actual_matrix.setdefault(code, set()).add(role_name)
+    assert actual_matrix == EXPECTED_MATRIX
