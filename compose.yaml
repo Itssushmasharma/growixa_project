@@ -81,6 +81,8 @@ services:
       REFRESH_TOKEN_TTL_DAYS: ${REFRESH_TOKEN_TTL_DAYS:-30}
     volumes:
       - ./apps/api/src:/app/src
+      - ./apps/api/migrations:/app/migrations
+      - ./apps/api/alembic.ini:/app/alembic.ini
     ports:
       - "${API_PORT:-8000}:8000"
     networks:

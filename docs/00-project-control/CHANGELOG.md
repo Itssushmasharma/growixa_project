@@ -10,6 +10,51 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
+## 2026-07-24 — GRX-FOUND-005: PostgreSQL connectivity + Alembic foundation
+
+- Added `apps/api/src/growixa_api/db.py`: SQLAlchemy 2.0 `DeclarativeBase` (`Base`), a
+  module-level async engine (`pool_pre_ping=True`) built from `Settings.database_url`, an
+  `async_sessionmaker`, and a `get_session()` FastAPI dependency (async generator) for
+  future modules (`GRX-AUDIT-001`, `GRX-AUTH-001`, etc.) to depend-inject.
+- Initialized Alembic with the async template (`alembic init -t async migrations`):
+  `apps/api/alembic.ini` and `apps/api/migrations/{env.py,script.py.mako,versions/}`.
+  `migrations/env.py` is wired to read `DATABASE_URL` from `growixa_api.config.get_settings()`
+  (overriding `alembic.ini`'s placeholder URL at runtime, so there is one source of truth for
+  the connection string) and sets `target_metadata = Base.metadata` for future autogeneration.
+  Customized `script.py.mako` to match this project's ruff config (`collections.abc.Sequence`,
+  `X | Y` union syntax) so every future generated migration passes lint without manual edits.
+- Added the first migration (`migrations/versions/9ca09405a2b3_initial_empty_migration.py`):
+  genuinely empty `upgrade`/`downgrade` (`pass`) — establishes the `alembic_version`
+  tracking table baseline only; no application tables exist yet (those are `GRX-AUDIT-001`/
+  `GRX-AUTH-001`/`GRX-COMPANY-001`, per [DATABASE_SCHEMA.md](../05-data/DATABASE_SCHEMA.md)).
+- Added `apps/api/tests/test_migrations.py`: an integration-tier smoke test (real Postgres
+  required, per [TEST_STRATEGY.md §Database migration tests](../10-testing/TEST_STRATEGY.md#database-migration-tests))
+  that runs `alembic upgrade head` → asserts the head revision is recorded → `alembic
+  downgrade base` → asserts no revision is recorded → `upgrade head` again, using Alembic's
+  Python API directly (a plain sync test, since Alembic's async `env.py` calls
+  `asyncio.run(...)` internally and cannot be nested inside pytest-asyncio's event loop).
+- **Bug found and fixed**: `greenlet` — required by SQLAlchemy's async engine — was missing
+  from `apps/api/pyproject.toml`. It happened to resolve as a transitive dependency inside
+  the Docker image's `pip install`, masking the gap, but was absent from the local `uv`-
+  managed dev venv, so any async engine use (including the `/health` checks added in
+  `GRX-FOUND-002`) would have failed outside Docker. Added `greenlet>=3.1` as an explicit
+  dependency.
+- **Bug found and fixed**: `apps/api/Dockerfile` only ever `COPY`'d `pyproject.toml`,
+  `README.md`, and `src/` — `alembic.ini` and `migrations/` were never in the image or the
+  `compose.yaml` bind mounts, so `docker compose exec api alembic upgrade head` (this task's
+  literal acceptance criterion, and the command documented in
+  [LOCAL_DEVELOPMENT.md](../11-devops/LOCAL_DEVELOPMENT.md)) would have failed. Added them to
+  the Dockerfile `COPY` steps and added matching bind mounts in `compose.yaml` (consistent
+  with the existing `src` mount) so migrations stay live-editable like application code.
+- Verified: `ruff check` 0 errors, `ruff format --check` pass, `mypy` 0 issues (11 source
+  files), `pytest` 3 passed (2 health + 1 migration round-trip against real Compose
+  Postgres). `alembic upgrade head` / `alembic current` succeed both from the host (via
+  `localhost:5433`) and via `podman compose exec api alembic upgrade head` against the
+  running Compose Postgres.
+- `GRX-FOUND-005` marked `DONE`. `GRX-AUDIT-001`, `GRX-AUTH-001`, and `GRX-TEST-001` (all
+  depend only on `GRX-FOUND-005`) are now `READY`, alongside the still-open `GRX-FOUND-004`.
+- Commit: `<see below>`.
+
 ## 2026-07-23 — GRX-FOUND-003: FastAPI application foundation
 
 - Refactored the ad hoc FastAPI app added during `GRX-FOUND-002` validation into a proper
