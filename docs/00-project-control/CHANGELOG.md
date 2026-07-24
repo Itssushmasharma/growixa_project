@@ -40,7 +40,7 @@ from Sprint 1 onward, code). Each entry names what changed and the commit(s) it 
 - `GRX-FOUND-004` marked `DONE`. `GRX-AUDIT-001`, `GRX-AUTH-001`, `GRX-TEST-001` (already
   `READY` from `GRX-FOUND-005`), and `GRX-TEST-002` (newly `READY` — its only dependency was
   this task) are all now `READY`.
-- Commit: `<see below>`.
+- Commit: `8269436`.
 
 ## 2026-07-24 — GRX-FOUND-005: PostgreSQL connectivity + Alembic foundation
 
