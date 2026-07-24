@@ -131,4 +131,4 @@ podman compose up -d                                  # bring the stack back up
 
 ## Latest commit
 
-Recorded below after this handoff is committed alongside the `GRX-FOUND-003` change set.
+`c69eb10` — feat(found): FastAPI application foundation (GRX-FOUND-003)

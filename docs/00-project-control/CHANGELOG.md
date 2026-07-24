@@ -39,7 +39,7 @@ from Sprint 1 onward, code). Each entry names what changed and the commit(s) it 
 - `GRX-FOUND-003` marked `DONE`. `GRX-FOUND-004` (Next.js application foundation) and
   `GRX-FOUND-005` (PostgreSQL connectivity + Alembic foundation) are both now `READY`
   (only one to be worked at a time per [AGENT_EXECUTION_RULES.md](../12-development/AGENT_EXECUTION_RULES.md)).
-- Commit: `<see below>`.
+- Commit: `c69eb10`.
 
 ## 2026-07-23 — GRX-FOUND-002: Docker Compose local environment
 
