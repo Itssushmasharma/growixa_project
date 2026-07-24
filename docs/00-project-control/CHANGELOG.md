@@ -10,6 +10,37 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
+## 2026-07-23 — GRX-FOUND-003: FastAPI application foundation
+
+- Refactored the ad hoc FastAPI app added during `GRX-FOUND-002` validation into a proper
+  app-factory structure: `growixa_api/app.py` (`create_app()`, sets title/version, mounts
+  the health router), `growixa_api/health.py` (`GET /health` route plus three isolated,
+  independently-testable `_check_postgres`/`_check_redis`/`_check_rabbitmq` functions),
+  `growixa_api/main.py` (thin `app = create_app()` uvicorn entrypoint — unchanged Docker
+  CMD reference).
+- OpenAPI docs (`/docs`, `/redoc`, `/openapi.json`) are enabled — this is FastAPI's default
+  when nothing disables it; verified reachable (200) rather than left as an unverified
+  assumption.
+- Added `apps/api/tests/test_health.py`: two tests (all-dependencies-ok, one-dependency-
+  degraded) that assert full response-body shape, not just status code, per
+  [TEST_STRATEGY.md §Rules preventing shallow tests](../10-testing/TEST_STRATEGY.md#rules-preventing-tasks-from-being-marked-done-with-shallow-tests).
+  Tests monkeypatch the three check functions directly (no real DB/Redis/MQ connection) and
+  set required `Settings` env vars via `monkeypatch.setenv` + `get_settings.cache_clear()`,
+  so the unit suite runs without any backing service, per
+  [TEST_STRATEGY.md §Backend unit-test approach](../10-testing/TEST_STRATEGY.md#backend-unit-test-approach).
+- Fixed a stale `pyproject.toml` mypy override (`growixa_api.tests.*`, a module path that
+  never matched the actual `apps/api/tests/` layout) to `tests.*`, and added
+  `apps/api/tests/__init__.py`.
+- Verified: `ruff check` 0 errors, `ruff format --check` pass, `mypy` 0 issues (7 source
+  files), `pytest` 2 passed. Rebuilt the `api` Docker image and re-validated the full
+  Compose stack: all 5 services healthy, `GET /health` → 200
+  `{"status":"ok","checks":{"postgres":"ok","redis":"ok","rabbitmq":"ok"}}`,
+  `GET /docs` and `GET /openapi.json` → 200.
+- `GRX-FOUND-003` marked `DONE`. `GRX-FOUND-004` (Next.js application foundation) and
+  `GRX-FOUND-005` (PostgreSQL connectivity + Alembic foundation) are both now `READY`
+  (only one to be worked at a time per [AGENT_EXECUTION_RULES.md](../12-development/AGENT_EXECUTION_RULES.md)).
+- Commit: `<see below>`.
+
 ## 2026-07-23 — GRX-FOUND-002: Docker Compose local environment
 
 - Added `compose.yaml` defining `postgres` (16-alpine), `redis` (7-alpine), `rabbitmq`

@@ -52,7 +52,7 @@ warn_unused_ignores = true
 disallow_untyped_defs = true
 
 [[tool.mypy.overrides]]
-module = "growixa_api.tests.*"
+module = "tests.*"
 disallow_untyped_defs = false
 
 [tool.pytest.ini_options]
