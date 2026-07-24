@@ -160,4 +160,4 @@ podman compose up -d                                  # bring the stack back up
 
 ## Latest commit
 
-Recorded below after this handoff is committed alongside the `GRX-AUTH-001` change set.
+`daf9bc7` — feat(auth): users, roles, permissions schema + seed (GRX-AUTH-001)

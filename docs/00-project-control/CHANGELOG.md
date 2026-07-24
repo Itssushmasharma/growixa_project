@@ -59,7 +59,7 @@ from Sprint 1 onward, code). Each entry names what changed and the commit(s) it 
   than silently expanding this task's scope into another module's territory.
 - `GRX-AUTH-001` marked `DONE`. `GRX-RBAC-001` (its only dependency was this task) is newly
   `READY`, alongside the already-`READY` `GRX-AUDIT-001`, `GRX-TEST-001`, `GRX-TEST-002`.
-- Commit: `<see below>`.
+- Commit: `daf9bc7`.
 
 ## 2026-07-24 — GRX-FOUND-004: Next.js application foundation
 
