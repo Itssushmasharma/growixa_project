@@ -135,4 +135,4 @@ podman compose up -d                                  # bring the stack back up
 
 ## Latest commit
 
-Recorded below after this handoff is committed alongside the `GRX-TEST-001` change set.
+`de55382` — test(api): backend test foundation - fixtures, coverage, markers (GRX-TEST-001)

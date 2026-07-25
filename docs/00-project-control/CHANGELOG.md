@@ -46,7 +46,7 @@ from Sprint 1 onward, code). Each entry names what changed and the commit(s) it 
 - `GRX-TEST-001` marked `DONE`. No task became newly `READY` from this alone (only
   `GRX-DEVOPS-001` depends on it, and that also needs `GRX-TEST-002`, not done). Per
   explicit user direction, `GRX-COMPANY-001` is next.
-- Commit: `<see below>`.
+- Commit: `de55382`.
 
 ## 2026-07-25 — GRX-AUDIT-001: Audit log module
 
