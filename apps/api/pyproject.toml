@@ -44,6 +44,11 @@ src = ["src", "tests"]
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
 
+# FastAPI's Depends()/Query()/etc. in argument defaults is the framework's own required
+# dependency-injection pattern, not the mutable-default-argument bug B008 exists to catch.
+[tool.ruff.lint.flake8-bugbear]
+extend-immutable-calls = ["fastapi.Depends", "fastapi.Query", "fastapi.Path", "fastapi.Body"]
+
 [tool.mypy]
 python_version = "3.12"
 mypy_path = "src"
@@ -59,4 +64,9 @@ disallow_untyped_defs = false
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+# growixa_api.db's async engine/connection pool is a module-level singleton shared across
+# the whole test process; a session-scoped loop keeps every test on the same event loop so
+# pooled asyncpg connections aren't handed to a different loop than the one that opened them.
+asyncio_default_fixture_loop_scope = "session"
+asyncio_default_test_loop_scope = "session"
 pythonpath = ["src"]

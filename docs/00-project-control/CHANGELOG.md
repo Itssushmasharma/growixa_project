@@ -10,6 +10,68 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
+## 2026-07-24 — GRX-RBAC-001: Centralized permission-check dependency
+
+- **Scope decision, made explicit up front**: `require_permission()` cannot function
+  without some way to resolve "who is making this request," but token issuance/validation
+  is conceptually `auth`-module territory per
+  [AUTHENTICATION.md §Centralized authorization](../08-security/AUTHENTICATION.md#centralized-authorization)
+  and the `AuthProvider` adapter-boundary language — and `apps/api/auth/` doesn't exist yet
+  (`GRX-AUTH-002`). Resolved by adding a narrowly-scoped `get_current_user_id()` to the
+  `permissions` module: it only *verifies* an already-issued JWT cookie and extracts the
+  user id — genuine, working code (hand-craft a validly-signed JWT with the same
+  `jwt_signing_key` and it correctly authenticates), not a stub — but it issues nothing.
+  `GRX-AUTH-002`'s login endpoint is what will actually mint that cookie. This mirrors how
+  `GRX-FOUND-004`'s `apiFetch` was real code nothing called yet.
+- Added `apps/api/src/growixa_api/permissions/repositories.py`:
+  `user_has_permission(session, user_id, code) -> bool`, an ORM query joining
+  `Permission`/`RolePermission`/`UserRole` — the only place in this module that talks to
+  the database directly, per [MODULE_BOUNDARIES.md](../04-architecture/MODULE_BOUNDARIES.md).
+  Note: `permissions`'s dependency table only lists `roles`, but this query necessarily also
+  reads `users.models.UserRole` (owned by `users`) since a permission check inherently spans
+  both — a read-only cross-module dependency, not a boundary violation (comparable to how
+  `analytics` is documented to read across all modules).
+- Added `apps/api/src/growixa_api/permissions/dependencies.py`:
+  - `get_current_user_id(request) -> uuid.UUID` — decodes the `access_token` cookie via
+    PyJWT (`HS256`, `Settings.jwt_signing_key`), 401s on missing/invalid/expired.
+  - `RequirePermission` — a callable class (not a closure) so a route-protection audit can
+    `isinstance()`-check a route's dependency tree; depends on `get_current_user_id` and
+    `get_session`, 403s if `user_has_permission` is false, otherwise returns the user id.
+  - `require_permission(code)` — the public factory matching the exact name used in
+    [AUTHENTICATION.md](../08-security/AUTHENTICATION.md).
+- Added `apps/api/tests/test_require_permission.py`: allowed / 403 / 401-missing-token /
+  401-invalid-token cases, using the **real** Viewer role seeded by `GRX-AUTH-001`'s
+  migration (Viewer has `company.settings.view`, not `users.manage`, per RBAC.md) — no
+  fixture-only fake roles, the actual Sprint 1 seed data.
+- Added `apps/api/tests/test_protected_routes_audit.py`, per
+  [TEST_STRATEGY.md §RBAC authorization tests](../10-testing/TEST_STRATEGY.md#rbac-authorization-tests):
+  walks every `APIRoute` in `create_app()` and asserts each one not explicitly allowlisted
+  as public is guarded by a `RequirePermission` dependency somewhere in its dependency tree.
+  Trivially true today (only `/health`, allowlisted) but becomes a real regression trap the
+  moment the first protected route ships.
+- **Bug found and fixed (test infra, not app code)**: `growixa_api.db`'s async engine/pool
+  is a module-level singleton shared for the whole test process; pytest-asyncio's default
+  function-scoped event loop meant a second async DB-touching test could be handed a pooled
+  asyncpg connection opened under a *different* (already-closed) loop, raising
+  `RuntimeError: ... attached to a different loop`. Fixed by setting
+  `asyncio_default_fixture_loop_scope`/`asyncio_default_test_loop_scope = "session"` in
+  `pyproject.toml` so the whole test session shares one loop.
+- **Bug found and fixed (test infra)**: the route-protection audit initially found zero
+  `APIRoute`s at all — this FastAPI version (`0.139.2`) doesn't flatten
+  `include_router()`'s routes directly into `app.routes` the way older versions did; it
+  wraps them in an internal `_IncludedRouter` object exposing the real routes via
+  `.original_router.routes`. Fixed by recursing through that wrapper (via `getattr`, not by
+  importing the private class) rather than assuming a flat route list.
+- Also added `extend-immutable-calls = ["fastapi.Depends", ...]` to ruff's `flake8-bugbear`
+  config — B008 otherwise flags FastAPI's own required `Depends(...)`-in-defaults pattern as
+  a mutable-default-argument bug, which it isn't.
+- Verified: `ruff`/`format --check`/`mypy` clean across 23 source files; `pytest` 9 passed
+  (4 pre-existing + 1 seed-data + 4 new); rebuilt the `api` image, `/health` unaffected.
+- `GRX-RBAC-001` marked `DONE`. `GRX-COMPANY-001` (depended on this and `GRX-FOUND-005`,
+  both now done) is newly `READY`, alongside the already-`READY` `GRX-AUDIT-001`,
+  `GRX-TEST-001`, `GRX-TEST-002`.
+- Commit: `<see below>`.
+
 ## 2026-07-24 — GRX-AUTH-001: Users, roles, permissions schema + seed
 
 - **Task-ordering note**: picked this task ahead of the other three tasks that became
