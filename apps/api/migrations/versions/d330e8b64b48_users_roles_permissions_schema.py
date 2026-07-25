@@ -241,4 +241,10 @@ def downgrade() -> None:
     op.drop_table("permissions")
     # ### end Alembic commands ###
 
-    op.execute("DROP EXTENSION IF EXISTS citext")
+    # Deliberately NOT dropping the citext extension here. Dropping and recreating it (as a
+    # later upgrade would, via CREATE EXTENSION IF NOT EXISTS) gives Postgres a new internal
+    # type OID for citext; any already-open pooled asyncpg connection that cached the old
+    # OID then fails with "cache lookup failed for type ..." the next time it touches a
+    # citext column. Leaving the extension installed after downgrade is the standard,
+    # low-risk exception to "migrations downgrade cleanly" (table-level state is still fully
+    # reversible) and avoids that class of failure entirely.

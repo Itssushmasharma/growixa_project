@@ -3,146 +3,125 @@
 - Document ID: DOC-AGENT-HANDOFF
 - Status: ACTIVE (updated at the end of every work session)
 - Version: 1.0
-- Last updated: 2026-07-24
+- Last updated: 2026-07-25
 - Owner: Coding agent
 - Related documents: [MASTER_TASK_TRACKER](MASTER_TASK_TRACKER.md), [PROJECT_STATUS](PROJECT_STATUS.md), [CHANGELOG](CHANGELOG.md)
 
 ## Task worked on
 
-`GRX-RBAC-001` — Centralized permission-check dependency.
-
-## Scope decision made before writing code (flagged to the user, then proceeded)
-
-`require_permission()` cannot work without resolving "who is calling," but token
-issuance/validation is `auth`-module territory per
-[AUTHENTICATION.md](../08-security/AUTHENTICATION.md), and `apps/api/auth/` doesn't exist
-yet (`GRX-AUTH-002`, not started). Resolved by giving `permissions` a narrowly-scoped
-`get_current_user_id()` that only *verifies* an already-issued JWT cookie — real, working
-code (a hand-crafted valid JWT authenticates correctly in tests), just nothing issues that
-cookie yet. `GRX-AUTH-002`'s login endpoint will be what mints it. Same pattern as
-`GRX-FOUND-004`'s `apiFetch` — real code, no caller yet.
+`GRX-AUDIT-001` — Audit log module. (This was the deferred half of the ordering issue
+flagged during `GRX-AUTH-001` — proceeded now that `GRX-AUTH-001` is done.)
 
 ## Work completed
 
-- **`apps/api/src/growixa_api/permissions/repositories.py`** (new):
-  `user_has_permission(session, user_id, code) -> bool` — the only place in this module
-  touching the DB directly, joining `Permission`/`RolePermission`/`UserRole`. Note: this
-  reads `growixa_api.users.models.UserRole` (owned by `users`), which
-  [MODULE_BOUNDARIES.md](../04-architecture/MODULE_BOUNDARIES.md)'s dependency table doesn't
-  explicitly list for `permissions` (only `roles` is listed) — a permission check inherently
-  needs both tables, so this is a deliberate, read-only cross-module dependency, not an
-  oversight.
-- **`apps/api/src/growixa_api/permissions/dependencies.py`** (new):
-  - `get_current_user_id(request) -> uuid.UUID` — decodes the `access_token` cookie
-    (PyJWT, HS256, `Settings.jwt_signing_key`), 401s on anything missing/invalid/expired.
-  - `RequirePermission` — a callable **class** (not a closure) specifically so the audit
-    test below can `isinstance()`-check a route's dependency tree for it. Depends on
-    `get_current_user_id` + `get_session`; 403s via `user_has_permission`; returns the
-    user id on success.
-  - `require_permission(code)` — public factory, matches the exact name
-    [AUTHENTICATION.md](../08-security/AUTHENTICATION.md) uses.
-- **`apps/api/tests/test_require_permission.py`** (new): allowed / 403 / 401-missing /
-  401-invalid cases, using the **real** seeded Viewer role from `GRX-AUTH-001`'s migration
-  (has `company.settings.view`, lacks `users.manage`, per RBAC.md) — not a fixture-only fake
-  role, the actual Sprint 1 seed data.
-- **`apps/api/tests/test_protected_routes_audit.py`** (new): per
-  [TEST_STRATEGY.md's RBAC section](../10-testing/TEST_STRATEGY.md#rbac-authorization-tests),
-  walks every `APIRoute` in `create_app()` and asserts each one not in an explicit
-  public-route allowlist is guarded by `RequirePermission`. Trivially true today (only
-  `/health`, allowlisted) — starts catching real regressions the moment the first protected
-  route ships.
+- **`apps/api/src/growixa_api/audit/models.py`** (new): `AuditLog` matching
+  [DATABASE_SCHEMA.md](../05-data/DATABASE_SCHEMA.md) exactly. DB column `metadata` is
+  mapped to Python attribute `event_metadata` (SQLAlchemy's `DeclarativeBase` reserves
+  `.metadata` for the ORM's own `MetaData`). Indexes on `(entity_type, entity_id)`,
+  `actor_user_id`, `created_at`.
+- **Migration `6575d09949f9`**: clean autogenerate creating `audit_logs`.
+- **`apps/api/src/growixa_api/audit/repositories.py`**: `create_audit_log`,
+  `list_audit_logs` — raw persistence only, no business logic.
+- **`apps/api/src/growixa_api/audit/services.py`**: `record_event` (redacts known-sensitive
+  metadata keys — `password`, `password_hash`, `token`, `token_hash`, `refresh_token`,
+  `access_token`, `secret` — to `"[REDACTED]"` before persisting; this is the
+  "structured-log redaction" part of the task description and defense-in-depth for
+  [THREAT_MODEL.md](../08-security/THREAT_MODEL.md) T7), `list_events` (thin wrapper). No
+  `update`/`delete` function exists anywhere — insert-only by omission.
+- **`apps/api/tests/test_audit_log.py`** (new): write→list round-trip, a system-actor event
+  (`actor_user_id=None`), and a redaction test.
+- **`apps/api/tests/test_audit_insert_only.py`** (new): introspects both modules via
+  `inspect.getmembers`, asserts no public function name contains
+  update/delete/modify/edit — the tracker's "negative test for missing update/delete
+  routes," adapted since there's no HTTP layer in this module yet.
 
-## Two bugs found and fixed while validating this task (both test infra, not app code)
+## Two real bugs found and fixed while validating this task
 
-1. **Cross-event-loop asyncpg connection reuse.** `growixa_api.db`'s async engine/pool is a
-   module-level singleton for the whole test process. pytest-asyncio's default
-   function-scoped event loop meant the second async DB-touching test in a run could be
-   handed a pooled connection opened under a different (already-closed) loop:
-   `RuntimeError: ... attached to a different loop`. Fixed by setting
-   `asyncio_default_fixture_loop_scope`/`asyncio_default_test_loop_scope = "session"` in
-   `pyproject.toml`.
-2. **Route-audit found zero routes.** This FastAPI version (`0.139.2`) doesn't flatten
-   `include_router()`'s routes directly into `app.routes`; it wraps them in an internal
-   `_IncludedRouter`, with the real routes at `.original_router.routes`. Fixed the audit
-   test to recurse through that wrapper via `getattr` (not by importing the private class),
-   so it isn't hard-pinned to this specific internal shape.
+1. **Test fixture FK violation.** The write/list test's teardown deleted its throwaway test
+   user while an audit row still referenced it as `actor_user_id` — which correctly has no
+   `ON DELETE CASCADE` (an audit trail must survive the actor being removed). Fixed the
+   fixture to delete its audit rows before the user.
+2. **asyncpg type-cache poisoning (more interesting one).** `test_require_permission.py`
+   started intermittently failing with `cache lookup failed for type ...` when run
+   alongside `test_migrations.py`. Root cause: `test_migrations.py`'s downgrade→upgrade
+   round trip was dropping and recreating the `citext` extension (in `GRX-AUTH-001`'s
+   migration downgrade), and each `CREATE EXTENSION` gives the type a new Postgres OID —
+   poisoning asyncpg's per-connection type cache for any already-pooled connection (recall
+   `growixa_api.db`'s engine/pool is a session-wide singleton, per the `GRX-RBAC-001`
+   session-loop fix) that later touches a `citext` column. Fixed by no longer dropping
+   `citext` in that migration's `downgrade()` — table-level state is still fully reversible;
+   leaving an installed extension behind after downgrade is standard, low-risk practice, and
+   it eliminates the whole failure class rather than patching one symptom.
 
 ## Files changed
 
-- `apps/api/src/growixa_api/permissions/repositories.py` (new)
-- `apps/api/src/growixa_api/permissions/dependencies.py` (new)
-- `apps/api/tests/test_require_permission.py` (new)
-- `apps/api/tests/test_protected_routes_audit.py` (new)
-- `apps/api/pyproject.toml` (session-scoped asyncio loop for tests; ruff B008 FastAPI exemption)
-- `docs/00-project-control/MASTER_TASK_TRACKER.md` (GRX-RBAC-001 → DONE, evidence recorded)
+- `apps/api/src/growixa_api/audit/__init__.py`, `models.py`, `repositories.py`,
+  `services.py` (new)
+- `apps/api/migrations/env.py` (imports the new audit models module)
+- `apps/api/migrations/versions/6575d09949f9_audit_logs_table.py` (new)
+- `apps/api/migrations/versions/d330e8b64b48_users_roles_permissions_schema.py` (downgrade
+  no longer drops the `citext` extension — see bug #2 above)
+- `apps/api/tests/test_audit_log.py`, `test_audit_insert_only.py` (new)
+- `docs/00-project-control/MASTER_TASK_TRACKER.md` (GRX-AUDIT-001 → DONE, evidence recorded)
 - `docs/00-project-control/PROJECT_STATUS.md`, `docs/00-project-control/CHANGELOG.md` (this update)
 
 ## Commands executed
 
 ```bash
 cd apps/api
+# models written, wired into migrations/env.py
+source ../../.env && export DATABASE_URL=... REDIS_URL=... RABBITMQ_URL=...
+.venv/bin/alembic revision --autogenerate -m "audit logs table"
 .venv/bin/ruff check --fix . && .venv/bin/ruff format .
-.venv/bin/ruff check . && .venv/bin/ruff format --check . && .venv/bin/mypy .   # all clean
+.venv/bin/alembic upgrade head   # succeeds against Compose Postgres
 
-set -a; source ../../.env; set +a
-export DATABASE_URL=... REDIS_URL=... RABBITMQ_URL=...
-.venv/bin/pytest -v   # 9 passed
+.venv/bin/pytest -v   # 14 passed (after both bugfixes above)
 
 cd ../..
-podman compose up -d --build api   # rebuild picks up the new permissions modules
-curl http://localhost:8000/health  # unaffected, still ok
+podman compose up -d --build api
+podman compose exec api alembic current   # 6575d09949f9 (head)
+curl http://localhost:8000/health         # unaffected, still ok
 ```
 
 ## Test results
 
-`pytest` → 9 passed: the 5 pre-existing tests (health x2, migration round-trip, auth-schema
-seed) plus 4 new (allowed, 403, 401-missing-token, 401-invalid-token) plus the route audit
-(counted within the 9). `ruff`/`mypy` clean across 23 source files.
+`pytest` → 14 passed: 10 pre-existing + 4 new (write/list round-trip, system-actor event,
+redaction, insert-only audit). `ruff`/`mypy` clean across 30 source files.
 
 ## Migrations
 
-None — no schema change, this task only adds an authorization dependency.
+`6575d09949f9` — creates `audit_logs`. Depends on `d330e8b64b48` (also touched this
+session: its `downgrade()` no longer drops the `citext` extension — see bug #2). Verified
+upgrade/downgrade/upgrade round-trip against real Compose Postgres.
 
 ## Decisions
 
-None new — implements the mechanism already specified in
-[AUTHENTICATION.md §Centralized authorization](../08-security/AUTHENTICATION.md#centralized-authorization).
-The `get_current_user_id` scope call above is a task-sequencing/module-placement judgment
-call, not a `DECISIONS.md`-level architecture decision — flagged to the user before
-implementing, not silently guessed.
+None new — implements the schema already specified in
+[DATABASE_SCHEMA.md](../05-data/DATABASE_SCHEMA.md).
 
 ## Blockers
 
 None.
 
-## Known issues / gaps flagged, not fixed here
+## Known issues
 
-- `get_current_user_id`'s JWT verification will need to be reconciled with whatever
-  `GRX-AUTH-002` builds for issuance — at minimum, confirm the claim shape (`sub`) and
-  cookie name (`access_token`) match what login actually sets. If `GRX-AUTH-002` needs a
-  different shape, update `get_current_user_id` to match rather than maintaining two
-  incompatible token formats.
-- The `seed_first_admin` CLI gap flagged in `GRX-AUTH-001`'s handoff is still open.
+None new. The `seed_first_admin` CLI gap (flagged in `GRX-AUTH-001`'s handoff) is still
+open — relevant again now that `GRX-AUTH-002` is unblocked.
 
 ## Current state
 
-`require_permission()` exists, is fully tested (including a real seeded role and a
-route-protection audit), and is ready for every future protected route to depend on. No
-route currently uses it in the real app yet — `/health` is the only route and is
-(correctly) public. The first real consumer will be whichever of `GRX-AUTH-002`,
-`GRX-COMPANY-001`, etc. is picked up next.
+Audit logging foundation (schema, insert-only repository/service, redaction) is done and
+tested. Nothing calls `record_event` yet — no feature that should emit an audit event
+(login, role change, etc.) is built yet. That starts with whichever of `GRX-AUTH-002`/
+`GRX-USER-001` is picked up.
 
 ## Exact next task
 
-Four tasks are now `READY`:
-
-- `GRX-AUDIT-001` — Audit log module.
-- `GRX-TEST-001` — Backend test foundation.
-- `GRX-TEST-002` — Frontend test foundation.
-- `GRX-COMPANY-001` — Company profile + brand settings (newly unblocked by this task).
-
-Per [AGENT_EXECUTION_RULES.md](../12-development/AGENT_EXECUTION_RULES.md), only one Sprint
-1 task is worked on at a time.
+Per explicit user direction: `GRX-TEST-001` (backend test foundation), then
+`GRX-COMPANY-001` (company profile + brand settings). Also `READY` in the meantime:
+`GRX-TEST-002` (frontend test foundation), `GRX-AUTH-002` (password hashing +
+login/logout, newly unblocked), `GRX-USER-001` (internal user invitation + acceptance,
+newly unblocked).
 
 ## Resume commands
 
@@ -155,4 +134,4 @@ podman compose up -d                                  # bring the stack back up
 
 ## Latest commit
 
-`7e77444` — feat(rbac): centralized require_permission() dependency (GRX-RBAC-001)
+Recorded below after this handoff is committed alongside the `GRX-AUDIT-001` change set.

@@ -10,6 +10,64 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
+## 2026-07-25 — GRX-AUDIT-001: Audit log module
+
+- **Task-ordering note**: this was the deferred half of the `GRX-AUDIT-001`/`GRX-AUTH-001`
+  ordering issue flagged during `GRX-AUTH-001` — `audit_logs.actor_user_id` FKs to
+  `users.id`, so this task genuinely needed `GRX-AUTH-001` done first. It was, so this
+  proceeded cleanly.
+- Added `apps/api/src/growixa_api/audit/models.py`: `AuditLog` matching
+  [DATABASE_SCHEMA.md](../05-data/DATABASE_SCHEMA.md) exactly — indexes on
+  `(entity_type, entity_id)`, `actor_user_id`, and `created_at`; the DB column `metadata` is
+  mapped to a Python attribute named `event_metadata` since SQLAlchemy's `DeclarativeBase`
+  already reserves `.metadata` for the ORM's own `MetaData` object.
+- Added migration `6575d09949f9` (clean autogenerate, no hand-editing needed beyond
+  ruff-driven line wrapping) creating `audit_logs`.
+- Added `apps/api/src/growixa_api/audit/repositories.py` (`create_audit_log`,
+  `list_audit_logs` — raw persistence only) and `services.py` (`record_event`,
+  `list_events`). `record_event` redacts known-sensitive metadata keys (`password`,
+  `password_hash`, `token`, `token_hash`, `refresh_token`, `access_token`, `secret`) to
+  `"[REDACTED]"` before the row is ever written — the "structured-log redaction" half of
+  this task's description, and defense-in-depth for
+  [THREAT_MODEL.md](../08-security/THREAT_MODEL.md) T7 (secret leakage in logs). No
+  `update`/`delete` function exists anywhere in either module — the "insert-only" property
+  is enforced by omission, not a runtime guard.
+- Added `apps/api/tests/test_audit_log.py`: write→list round-trip (real Postgres), a
+  system-actor event (`actor_user_id=None`, explicitly allowed per the schema doc), and a
+  redaction test asserting sensitive keys are stripped while unrelated keys survive intact.
+- Added `apps/api/tests/test_audit_insert_only.py`: introspects `audit.repositories` and
+  `audit.services` via `inspect.getmembers` and asserts no public function name contains
+  "update"/"delete"/"modify"/"edit" — the tracker's required "negative test for missing
+  update/delete routes," adapted to code-path auditing since no HTTP API layer exists yet
+  in this module (matches the broader wording in
+  [TEST_STRATEGY.md §Audit-log tests](../10-testing/TEST_STRATEGY.md#audit-log-tests): "no
+  application code path... updates or deletes").
+- **Real bug found and fixed while validating this task**: the write/list test's fixture
+  teardown (deleting its throwaway test user) initially failed with a Postgres FK violation
+  — `actor_user_id` correctly has no `ON DELETE CASCADE` (an audit trail must survive the
+  actor being removed), so the test's own audit row was still referencing that user. Fixed
+  by having the fixture delete its audit rows before the user.
+- **Second, more interesting bug found and fixed**: `test_require_permission.py` started
+  intermittently failing with `asyncpg.exceptions.InternalServerError: cache lookup failed
+  for type ...` when run in the same session as `test_migrations.py`. Root cause:
+  `test_migrations.py`'s downgrade-then-upgrade round trip was dropping and recreating the
+  `citext` Postgres extension (added in `GRX-AUTH-001`'s migration, downgrade path) — each
+  `CREATE EXTENSION` assigns the type a new internal OID, which poisons asyncpg's
+  per-connection type cache for any already-pooled connection (recall `growixa_api.db`'s
+  engine/pool is a session-wide singleton) that later touches a `citext` column. Fixed by no
+  longer dropping the `citext` extension in that migration's `downgrade()` — a common,
+  low-risk exception to full reversibility (table-level state is still fully reversible;
+  leaving an installed extension behind is standard practice) that eliminates the whole
+  class of failure rather than papering over one symptom of it.
+- Verified: `ruff`/`format --check`/`mypy` clean across 30 source files; `pytest` 14 passed
+  (10 pre-existing + 4 new); rebuilt the `api` image, `podman compose exec api alembic
+  current` → new head, `/health` unaffected.
+- `GRX-AUDIT-001` marked `DONE`. `GRX-AUTH-002` and `GRX-USER-001` (both depended on this
+  and `GRX-AUTH-001`, both now done) are newly `READY`, alongside the already-`READY`
+  `GRX-TEST-001`, `GRX-TEST-002`, `GRX-COMPANY-001`. Per explicit user direction, the next
+  two tasks to pick up are `GRX-TEST-001` then `GRX-COMPANY-001`.
+- Commit: `<see below>`.
+
 ## 2026-07-25 — Design reference intake (not a tracker task)
 
 - Product owner supplied brand assets (`apps/web/src/assets/`: primary, stacked, icon,
