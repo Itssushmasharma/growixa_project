@@ -89,7 +89,8 @@ detail.
 | `apps/api/src/growixa_api/{roles,permissions,users}/models.py`, migration `d330e8b64b48`, `apps/api/tests/test_auth_schema_seed.py` | DONE (`GRX-AUTH-001`) |
 | `apps/api/src/growixa_api/permissions/{repositories,dependencies}.py`, `apps/api/tests/{test_require_permission,test_protected_routes_audit}.py` | DONE (`GRX-RBAC-001`) |
 | `docs/00-project-control/FEATURE_STATUS_MATRIX.md`, `RISKS.md`, `BLOCKERS.md` | NOT_STARTED (created as Sprint 1 tasks land) |
-| Full per-feature specs under `02-features/`, all of `03-ux-ui/`, `06-api/`, `07-ai/`, `09-integrations/`, `13-business/` | NOT_STARTED |
+| `docs/03-ux-ui/DESIGN_REFERENCES.md` | DONE (reference material only — see its own scope caveat; not a Sprint 1 spec) |
+| Full per-feature specs under `02-features/`, all of `06-api/`, `07-ai/`, `09-integrations/`, `13-business/` | NOT_STARTED |
 
 ## Immediate next steps
 

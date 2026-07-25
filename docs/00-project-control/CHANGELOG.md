@@ -10,6 +10,28 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
+## 2026-07-25 — Design reference intake (not a tracker task)
+
+- Product owner supplied brand assets (`apps/web/src/assets/`: primary, stacked, icon,
+  wordmark, monochrome logo variants) and a self-contained HTML mockup covering the login
+  screen and a full dashboard concept, plus a written design brief.
+- Saved as [`docs/03-ux-ui/DESIGN_REFERENCES.md`](../03-ux-ui/DESIGN_REFERENCES.md) +
+  [`docs/03-ux-ui/mockups/growixa-login-and-dashboard-mockup.html`](../03-ux-ui/mockups/growixa-login-and-dashboard-mockup.html)
+  so this context survives outside chat history for whichever future session builds
+  `GRX-AUTH-002`'s login UI or `GRX-FOUND-008`'s dashboard shell.
+- **Explicit scope caveat recorded in that doc**: the brief describes the full eventual
+  product (Contacts, Campaigns, Social, AI Assistant, Billing, ...), almost all of which is
+  out of Sprint 1 per [SPRINT_01_FOUNDATION.md](../14-sprints/SPRINT_01_FOUNDATION.md) — this
+  is reference material, not an approved implementation spec for any current task. No UI was
+  built from it in this session.
+- Added a `check-added-large-files` exclusion in `.pre-commit-config.yaml` for
+  `apps/web/src/assets/` and `docs/03-ux-ui/mockups/` (several logo PNGs and the mockup HTML
+  legitimately exceed the repo's default 1MB cap).
+- Three additional files the brief references (`Growixa Dashboard v2.dc.html`,
+  `Growixa Onboarding.dc.html`, `Growixa Style Options.dc.html`) were not available locally —
+  noted as missing in the reference doc in case they're added later.
+- Not tied to a `GRX-*` tracker row — this is reference intake, not an implementation task.
+
 ## 2026-07-24 — GRX-RBAC-001: Centralized permission-check dependency
 
 - **Scope decision, made explicit up front**: `require_permission()` cannot function

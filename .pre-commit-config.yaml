@@ -51,4 +51,5 @@ repos:
       - id: trailing-whitespace
       - id: check-added-large-files
         args: ["--maxkb=1000"]
+        exclude: ^(apps/web/src/assets/|docs/03-ux-ui/mockups/)
       - id: detect-private-key
