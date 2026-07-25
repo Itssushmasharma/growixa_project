@@ -134,4 +134,4 @@ podman compose up -d                                  # bring the stack back up
 
 ## Latest commit
 
-Recorded below after this handoff is committed alongside the `GRX-AUDIT-001` change set.
+`2b1dd7e` — feat(audit): insert-only audit log module (GRX-AUDIT-001)

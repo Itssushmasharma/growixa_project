@@ -66,7 +66,7 @@ from Sprint 1 onward, code). Each entry names what changed and the commit(s) it 
   and `GRX-AUTH-001`, both now done) are newly `READY`, alongside the already-`READY`
   `GRX-TEST-001`, `GRX-TEST-002`, `GRX-COMPANY-001`. Per explicit user direction, the next
   two tasks to pick up are `GRX-TEST-001` then `GRX-COMPANY-001`.
-- Commit: `<see below>`.
+- Commit: `2b1dd7e`.
 
 ## 2026-07-25 — Design reference intake (not a tracker task)
 
