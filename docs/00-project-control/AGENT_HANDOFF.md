@@ -139,4 +139,4 @@ podman compose up -d                                  # bring the stack back up
 
 ## Latest commit
 
-Recorded below after this handoff is committed alongside the `GRX-COMPANY-001` change set.
+`e40f6f8` — feat(company): company profile + brand settings, RBAC-gated (GRX-COMPANY-001)

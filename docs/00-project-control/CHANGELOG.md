@@ -50,7 +50,7 @@ from Sprint 1 onward, code). Each entry names what changed and the commit(s) it 
   newly `READY`, alongside the already-`READY` `GRX-TEST-002`, `GRX-AUTH-002`,
   `GRX-USER-001`. This completes the user-specified sequence
   (`GRX-AUDIT-001` → `GRX-TEST-001` → `GRX-COMPANY-001`).
-- Commit: `<see below>`.
+- Commit: `e40f6f8`.
 
 ## 2026-07-25 — GRX-TEST-001: Backend test foundation
 
