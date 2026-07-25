@@ -9,94 +9,98 @@
 
 ## Task worked on
 
-`GRX-TEST-001` — Backend test foundation (test runner config, DB test fixtures/factories,
-coverage baseline). Picked per explicit user-specified order: `GRX-AUDIT-001` →
-`GRX-TEST-001` → `GRX-COMPANY-001`.
+`GRX-COMPANY-001` — Company profile + brand settings. Last task in the user-specified
+sequence: `GRX-AUDIT-001` → `GRX-TEST-001` → `GRX-COMPANY-001`.
 
 ## Work completed
 
-- **`apps/api/tests/conftest.py`** (new): `user_factory` — an async fixture returning a
-  factory function that creates a real user (optionally assigned an existing seeded role
-  via `role_name=`), tracks every user it created, and deletes them all at teardown.
-  Deliberately kept simple: plain commit-and-cleanup per creation, not a
-  transactional-rollback session bound into the app's own `get_session` dependency. The
-  heavier pattern (SQLAlchemy's documented "join session into external transaction," with
-  `app.dependency_overrides[get_session]` pointed at the same test-bound session) would give
-  perfect isolation and no manual cleanup, but requires overriding `get_session` per test app
-  and was judged disproportionate for the current test count — noted as a natural next step
-  if test suite growth or flakiness ever makes manual cleanup painful.
-- **Refactored `test_require_permission.py` and `test_audit_log.py`** to use `user_factory`
-  instead of their own near-identical fixtures (`viewer_user_id`, `actor_user_id`) — this
-  *is* the point of the task, not incidental cleanup. `test_audit_log.py`'s tests now
-  explicitly delete their own `audit_logs` rows before returning, since `actor_user_id` has
-  no `ON DELETE CASCADE` and `user_factory`'s teardown would otherwise hit the same
-  FK-violation class of bug fixed in `GRX-AUDIT-001`.
-- **Coverage baseline**: added `pytest-cov` (dev dependency) and `[tool.coverage.run]`
-  (`source = ["growixa_api"]`, tests excluded from the measured set). `addopts` now runs
-  coverage by default. Current baseline: **87%** total line coverage. No enforced minimum
-  yet — recording the baseline is this task's job; a specific gate is `GRX-DEVOPS-001`'s
-  call once there's more code and CI exists to enforce it.
-- **`integration` marker**: registered in `pyproject.toml` (`markers = [...]`, avoids
-  "unknown marker" warnings) and applied to every test that touches a real backing service
-  — all of `test_audit_log.py`, `test_auth_schema_seed.py`, `test_migrations.py`, and 2 of
-  `test_require_permission.py`'s 4 tests.
+First task this session to ship real, RBAC-gated HTTP endpoints — everything before this
+was schema/dependency foundations with no routes besides `/health`.
 
-## A genuinely useful thing verified, not just asserted
+- **`apps/api/src/growixa_api/company/`** and **`brand/`** (new): both follow the full
+  layered structure from [MODULE_BOUNDARIES.md](../04-architecture/MODULE_BOUNDARIES.md)
+  for the first time — `models.py` → `repositories.py` (raw persistence) →
+  `services.py` (business logic) → `api.py` (FastAPI router), plus `schemas.py` for
+  Pydantic request/response shapes.
+- **Singleton handling**: `company_profile`/`brand_profiles` are true singletons per
+  [DATABASE_SCHEMA.md](../05-data/DATABASE_SCHEMA.md) ("exactly one row, enforced in the
+  service, not a DB constraint"). Implemented as get-then-upsert in both services, with an
+  explicit docstring noting it's **not race-safe** against two concurrent first-time saves
+  — acceptable for Sprint 1's single-admin-at-a-time usage; flagged rather than silently
+  assumed safe.
+- **`brand` → `company` dependency**: `brand.services` calls
+  `company.repositories.get_company_profile` directly (the documented same-request
+  cross-module call pattern), raising `CompanyProfileRequiredError` (translated to 400 at
+  the API layer) if no company profile exists yet. No new permission codes invented — RBAC's
+  existing `company.settings.view`/`edit` cover brand too, matching how RBAC.md frames brand
+  as part of company settings.
+- **Migration `1abf62872712`**: clean autogenerate, `company_profile` then
+  `brand_profiles` in correct FK order.
+- **`apps/api/tests/test_company_settings.py`** (new): admin edit+view, viewer view-only
+  (403 on edit) for both tables, unauthenticated 401, and the brand-requires-company-first
+  400 case. Both tables are shared singletons across the whole test run, so every test
+  clears both via an autouse fixture before and after itself — order-independent by
+  construction.
 
-I reasoned that `test_require_permission.py`'s missing-token/invalid-token tests never
-touch the database, because `RequirePermission.__call__`'s first parameter
-(`Depends(get_current_user_id)`) raises before FastAPI ever resolves the second
-(`Depends(get_session)`) — dependencies resolve in declared parameter order and stop at the
-first exception. Rather than leave that as an assumption, I ran
-`pytest -m "not integration"` with `DATABASE_URL`/`REDIS_URL`/`RABBITMQ_URL` all pointed at
-unreachable hosts. All 7 unit-tier tests passed — confirms the reasoning was right and the
-unit/integration split is real, not just a label.
+## Verification beyond the automated suite
+
+Rebuilt the `api` image, confirmed `alembic current` reports the new head inside the
+container, then ran a real end-to-end flow against the live Compose stack: minted a real
+Admin JWT inside the running container (using the actual seeded Admin role), then
+`PUT`/`GET /company/profile` and `PUT /brand/profile` via plain curl — a genuine HTTP
+round-trip through uvicorn, not just the test suite's in-process ASGI transport. Cleaned up
+the smoke-test data (company/brand rows, the throwaway user) afterward.
 
 ## Files changed
 
-- `apps/api/tests/conftest.py` (new)
-- `apps/api/tests/test_require_permission.py` (refactored to use `user_factory`; 2 of 4
-  tests marked `integration`)
-- `apps/api/tests/test_audit_log.py` (refactored to use `user_factory`; all 3 tests marked
-  `integration`; each test now cleans up its own audit rows before returning)
-- `apps/api/tests/test_auth_schema_seed.py`, `test_migrations.py` (marked `integration`)
-- `apps/api/pyproject.toml` (`pytest-cov` dependency, `addopts`, `markers`,
-  `[tool.coverage.run]`)
-- `docs/00-project-control/MASTER_TASK_TRACKER.md` (GRX-TEST-001 → DONE, evidence recorded)
+- `apps/api/src/growixa_api/company/__init__.py`, `models.py`, `schemas.py`,
+  `repositories.py`, `services.py`, `api.py` (new)
+- `apps/api/src/growixa_api/brand/__init__.py`, `models.py`, `schemas.py`,
+  `repositories.py`, `services.py`, `api.py` (new)
+- `apps/api/src/growixa_api/app.py` (mounts both new routers)
+- `apps/api/migrations/env.py` (imports the two new model modules)
+- `apps/api/migrations/versions/1abf62872712_company_profile_and_brand_profiles_.py` (new)
+- `apps/api/tests/test_company_settings.py` (new)
+- `docs/00-project-control/MASTER_TASK_TRACKER.md` (GRX-COMPANY-001 → DONE, evidence recorded)
 - `docs/00-project-control/PROJECT_STATUS.md`, `docs/00-project-control/CHANGELOG.md` (this update)
 
 ## Commands executed
 
 ```bash
 cd apps/api
-uv pip install -e ".[dev]" --python .venv/bin/python   # picks up pytest-cov
-.venv/bin/ruff check --fix . && .venv/bin/ruff format .
-.venv/bin/ruff check . && .venv/bin/ruff format --check . && .venv/bin/mypy .   # all clean
-
+# models written, wired into migrations/env.py
 source ../../.env && export DATABASE_URL=... REDIS_URL=... RABBITMQ_URL=...
-.venv/bin/pytest -v        # 14 passed, coverage report printed, 87% total
+.venv/bin/alembic revision --autogenerate -m "company profile and brand profiles tables"
+.venv/bin/ruff check --fix . && .venv/bin/ruff format .
+.venv/bin/alembic upgrade head
 
-# unreachable DB/Redis/MQ on purpose — proves the unit/integration split holds
-DATABASE_URL="postgresql+asyncpg://nope:nope@localhost:1/nope" \
-REDIS_URL="redis://localhost:1/0" RABBITMQ_URL="amqp://x@localhost:1/" \
-.venv/bin/pytest -v -m "not integration"   # 7 passed, 7 deselected
+.venv/bin/pytest -v   # 19 passed, 86% coverage
 
-curl http://localhost:8000/health   # unaffected — no runtime app code changed this task
+cd ../..
+podman compose up -d --build api
+podman compose exec api alembic current   # 1abf62872712 (head)
+# minted a real Admin JWT inside the container, then:
+curl -X PUT http://localhost:8000/company/profile -H "Cookie: access_token=$TOKEN" -d '...'
+curl http://localhost:8000/company/profile -H "Cookie: access_token=$TOKEN"
+curl -X PUT http://localhost:8000/brand/profile -H "Cookie: access_token=$TOKEN" -d '...'
+# cleaned up the smoke-test rows afterward
 ```
 
 ## Test results
 
-`pytest` → 14 passed (same 14 tests as before this task; this task changed test
-*infrastructure*, not test *count*). `pytest -m "not integration"` → 7 passed with zero
-backing services reachable. `ruff`/`mypy` clean across 31 source files.
+`pytest` → 19 passed (14 pre-existing + 5 new). 86% coverage. `ruff`/`mypy` clean across 45
+source files.
 
 ## Migrations
 
-None — this task only touches test infrastructure.
+`1abf62872712` — creates `company_profile`, `brand_profiles`. Depends on `6575d09949f9`.
 
 ## Decisions
 
-None new.
+None new — implements the schema and permission model already specified in
+[DATABASE_SCHEMA.md](../05-data/DATABASE_SCHEMA.md) and [RBAC.md](../08-security/RBAC.md).
+The get-then-upsert race-safety tradeoff is a documented judgment call, not a
+`DECISIONS.md`-level architecture decision.
 
 ## Blockers
 
@@ -104,25 +108,25 @@ None.
 
 ## Known issues
 
-- No CI pipeline exists yet — `GRX-DEVOPS-001` (depends on this task and `GRX-TEST-002`,
-  neither/one done) owns wiring `pytest` into an actual CI run. This task's acceptance
-  criterion ("pytest runs green ... in CI") is satisfied by the local foundation being
-  ready for that, matching how earlier foundation tasks satisfied similar forward-looking
-  criteria.
-- The `seed_first_admin` CLI gap (flagged in `GRX-AUTH-001`) and CORS-for-frontend gap
-  (flagged in `GRX-FOUND-004`) are both still open, relevant once `GRX-AUTH-002` is picked
-  up.
+- Get-then-upsert singleton pattern is not race-safe against two concurrent first-time
+  saves — see the docstring in `company/services.py`. Not a problem for Sprint 1's
+  single-admin usage; revisit if concurrent admin writes ever become a real scenario.
+- Still-open gaps from earlier sessions (unrelated to this task): `seed_first_admin` CLI
+  (`GRX-AUTH-001`), CORS for frontend calls (`GRX-FOUND-004`).
 
 ## Current state
 
-Backend test suite has a real shared fixture/factory foundation, coverage reporting, and a
-verified unit/integration split. 14 tests, 87% coverage baseline, all green.
+This completes the user-specified sequence for this session:
+`GRX-AUDIT-001` → `GRX-TEST-001` → `GRX-COMPANY-001`, all `DONE`. Company/brand settings
+have real, tested, RBAC-gated endpoints. No frontend UI consumes them yet
+(`GRX-COMPANY-002`).
 
 ## Exact next task
 
-Per explicit user direction: `GRX-COMPANY-001` (company profile + brand settings). Also
-`READY`: `GRX-TEST-002` (frontend test foundation), `GRX-AUTH-002` (password hashing +
-login/logout), `GRX-USER-001` (internal user invitation + acceptance).
+No explicit user direction beyond this point. `READY`: `GRX-TEST-002` (frontend test
+foundation), `GRX-AUTH-002` (password hashing + login/logout), `GRX-USER-001` (internal
+user invitation + acceptance), `GRX-COMPANY-002` (company settings screen, frontend, newly
+unblocked).
 
 ## Resume commands
 
@@ -135,4 +139,4 @@ podman compose up -d                                  # bring the stack back up
 
 ## Latest commit
 
-`de55382` — test(api): backend test foundation - fixtures, coverage, markers (GRX-TEST-001)
+Recorded below after this handoff is committed alongside the `GRX-COMPANY-001` change set.

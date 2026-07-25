@@ -2,7 +2,7 @@
 
 - Document ID: DOC-PROJECT-STATUS
 - Status: ACTIVE
-- Version: 1.13
+- Version: 1.14
 - Last updated: 2026-07-25
 - Owner: Coding agent (on behalf of product owner)
 - Related documents: [MASTER_TASK_TRACKER](MASTER_TASK_TRACKER.md), [DECISIONS](DECISIONS.md), [DEVELOPMENT_READINESS](DEVELOPMENT_READINESS.md)
@@ -41,11 +41,11 @@ item is a standalone document, no distributed-only gaps remain.** See
 environment), `GRX-FOUND-003` (FastAPI application foundation), `GRX-FOUND-004` (Next.js
 application foundation), `GRX-FOUND-005` (PostgreSQL connectivity + Alembic foundation),
 `GRX-AUTH-001` (users/roles/permissions schema + seed), `GRX-RBAC-001` (centralized
-permission-check dependency), `GRX-AUDIT-001` (audit log module), and `GRX-TEST-001`
-(backend test foundation) are `DONE`. `GRX-TEST-002` (frontend test foundation),
-`GRX-COMPANY-001` (company profile + brand settings), `GRX-AUTH-002` (password hashing +
-login/logout), and `GRX-USER-001` (internal user invitation + acceptance) are all `READY`.
-Per explicit user direction, `GRX-COMPANY-001` is next; per
+permission-check dependency), `GRX-AUDIT-001` (audit log module), `GRX-TEST-001` (backend
+test foundation), and `GRX-COMPANY-001` (company profile + brand settings) are `DONE`.
+`GRX-TEST-002` (frontend test foundation), `GRX-AUTH-002` (password hashing + login/logout),
+`GRX-USER-001` (internal user invitation + acceptance), and `GRX-COMPANY-002` (company
+settings screen, newly unblocked) are all `READY`. Per
 [AGENT_EXECUTION_RULES.md](../12-development/AGENT_EXECUTION_RULES.md), only one is worked
 on at a time. See [AGENT_HANDOFF.md](AGENT_HANDOFF.md) for session-by-session
 detail.
@@ -91,15 +91,18 @@ detail.
 | `apps/api/src/growixa_api/permissions/{repositories,dependencies}.py`, `apps/api/tests/{test_require_permission,test_protected_routes_audit}.py` | DONE (`GRX-RBAC-001`) |
 | `apps/api/src/growixa_api/audit/{models,repositories,services}.py`, migration `6575d09949f9`, `apps/api/tests/{test_audit_log,test_audit_insert_only}.py` | DONE (`GRX-AUDIT-001`) |
 | `apps/api/tests/conftest.py` (`user_factory`), pytest-cov + `integration` marker in `apps/api/pyproject.toml` | DONE (`GRX-TEST-001`) |
+| `apps/api/src/growixa_api/{company,brand}/{models,schemas,repositories,services,api}.py`, migration `1abf62872712`, `apps/api/tests/test_company_settings.py` | DONE (`GRX-COMPANY-001`) |
 | `docs/00-project-control/FEATURE_STATUS_MATRIX.md`, `RISKS.md`, `BLOCKERS.md` | NOT_STARTED (created as Sprint 1 tasks land) |
 | `docs/03-ux-ui/DESIGN_REFERENCES.md` | DONE (reference material only — see its own scope caveat; not a Sprint 1 spec) |
 | Full per-feature specs under `02-features/`, all of `06-api/`, `07-ai/`, `09-integrations/`, `13-business/` | NOT_STARTED |
 
 ## Immediate next steps
 
-1. Per explicit user direction, `GRX-COMPANY-001` (company profile + brand settings) is
-   next. `GRX-TEST-002`, `GRX-AUTH-002`, and `GRX-USER-001` are also dependency-ready in
-   the meantime — see [MASTER_TASK_TRACKER.md](MASTER_TASK_TRACKER.md).
+1. The user-specified sequence (`GRX-AUDIT-001` → `GRX-TEST-001` → `GRX-COMPANY-001`) is
+   complete. Pick one of `GRX-TEST-002` (frontend test foundation), `GRX-AUTH-002`
+   (password hashing + login/logout), `GRX-USER-001` (internal user invitation +
+   acceptance), or `GRX-COMPANY-002` (company settings screen, frontend) next — see
+   [MASTER_TASK_TRACKER.md](MASTER_TASK_TRACKER.md).
 2. Create `FEATURE_STATUS_MATRIX.md`, `RISKS.md`, `BLOCKERS.md` alongside Sprint 1 tasks as they land, not all upfront.
 3. Write full feature specs in `02-features/` for Slice 1 features as each task is picked up, not all upfront.
 4. Do not begin any V1.5+/SEO-AEO-GEO work until Slices 1–6 (MVP) are stable in production.

@@ -10,6 +10,48 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
+## 2026-07-25 — GRX-COMPANY-001: Company profile + brand settings
+
+- First task this session to ship real, RBAC-gated HTTP endpoints (previous tasks were
+  schema/dependency foundations with no routes of their own besides `/health`).
+- Added `apps/api/src/growixa_api/company/{models,schemas,repositories,services,api}.py`
+  and the equivalent `brand/` module, following the full layered structure from
+  [MODULE_BOUNDARIES.md](../04-architecture/MODULE_BOUNDARIES.md) for the first time
+  (`models` → `repositories` → `services` → `api`, plus `schemas` for the Pydantic
+  request/response shapes) since this is the first task that actually needs every layer.
+- `company_profile`/`brand_profiles` are true singletons per
+  [DATABASE_SCHEMA.md](../05-data/DATABASE_SCHEMA.md) — "exactly one row, enforced in the
+  service, not a DB constraint." Implemented as get-then-upsert in `company/services.py`
+  and `brand/services.py`, explicitly documented as **not race-safe** against two
+  concurrent first-time saves (acceptable for Sprint 1's single-admin-at-a-time usage; a
+  unique constraint or advisory lock would close that gap if it ever matters).
+- `brand` depends on `company` per module boundaries — `brand.services` calls
+  `company.repositories.get_company_profile` directly (the documented same-request
+  cross-module call pattern) and raises a small domain error
+  (`CompanyProfileRequiredError`) if no company profile exists yet, translated to a 400 at
+  the API layer. No new permission codes were invented for brand — RBAC.md's existing
+  `company.settings.view`/`company.settings.edit` cover both, matching RBAC.md's own
+  framing of brand as part of company settings.
+- Added migration `1abf62872712` (clean autogenerate: `company_profile` then
+  `brand_profiles`, correct FK order).
+- Added `apps/api/tests/test_company_settings.py`: admin edit+view, viewer view-only (403
+  on edit) for *both* company and brand, unauthenticated 401, and the
+  brand-requires-company-first 400 case. Since both tables are true singletons shared
+  across the whole test run, every test clears both tables before and after itself via an
+  autouse fixture — order-independent by construction, not by accident.
+- Verified beyond the automated suite: rebuilt the `api` image, confirmed
+  `alembic current` reports the new head inside the container, and ran a live end-to-end
+  curl flow against the running Compose stack (mint a real Admin JWT inside the container,
+  `PUT`/`GET /company/profile`, `PUT /brand/profile`) — real HTTP round-trip, not just the
+  test suite's ASGI transport.
+- Verified: `ruff`/`format --check`/`mypy` clean across 45 source files; `pytest` 19 passed
+  (14 pre-existing + 5 new), 86% coverage.
+- `GRX-COMPANY-001` marked `DONE`. `GRX-COMPANY-002` (company settings screen, frontend) is
+  newly `READY`, alongside the already-`READY` `GRX-TEST-002`, `GRX-AUTH-002`,
+  `GRX-USER-001`. This completes the user-specified sequence
+  (`GRX-AUDIT-001` → `GRX-TEST-001` → `GRX-COMPANY-001`).
+- Commit: `<see below>`.
+
 ## 2026-07-25 — GRX-TEST-001: Backend test foundation
 
 - Added `apps/api/tests/conftest.py`: a `user_factory` fixture (async, factory-function
