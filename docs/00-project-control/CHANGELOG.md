@@ -70,7 +70,7 @@ from Sprint 1 onward, code). Each entry names what changed and the commit(s) it 
 - `GRX-RBAC-001` marked `DONE`. `GRX-COMPANY-001` (depended on this and `GRX-FOUND-005`,
   both now done) is newly `READY`, alongside the already-`READY` `GRX-AUDIT-001`,
   `GRX-TEST-001`, `GRX-TEST-002`.
-- Commit: `<see below>`.
+- Commit: `7e77444`.
 
 ## 2026-07-24 — GRX-AUTH-001: Users, roles, permissions schema + seed
 

@@ -155,4 +155,4 @@ podman compose up -d                                  # bring the stack back up
 
 ## Latest commit
 
-Recorded below after this handoff is committed alongside the `GRX-RBAC-001` change set.
+`7e77444` — feat(rbac): centralized require_permission() dependency (GRX-RBAC-001)
