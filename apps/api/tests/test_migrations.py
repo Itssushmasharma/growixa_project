@@ -8,6 +8,7 @@ internally, which cannot be nested inside an already-running (pytest-asyncio) ev
 
 from pathlib import Path
 
+import pytest
 from alembic import command
 from alembic.config import Config
 from alembic.script import ScriptDirectory
@@ -34,6 +35,7 @@ def _current_revisions() -> set[str]:
         engine.dispose()
 
 
+@pytest.mark.integration
 def test_alembic_upgrade_head_then_downgrade_base_round_trips_cleanly() -> None:
     config = Config(str(ALEMBIC_INI))
     expected_head = ScriptDirectory.from_config(config).get_current_head()

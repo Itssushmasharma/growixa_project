@@ -6,19 +6,15 @@ login flow will use to issue real access-token cookies later.
 """
 
 import uuid
-from collections.abc import AsyncGenerator
+from collections.abc import Awaitable, Callable
 
 import jwt
 import pytest
 from fastapi import Depends, FastAPI
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy import delete, select
 
 from growixa_api.config import get_settings
-from growixa_api.db import async_session_factory
 from growixa_api.permissions.dependencies import require_permission
-from growixa_api.roles.models import Role
-from growixa_api.users.models import User, UserRole
 
 
 def _make_protected_app(permission_code: str) -> FastAPI:
@@ -37,30 +33,13 @@ def _access_token_cookie(user_id: uuid.UUID) -> dict[str, str]:
     return {"access_token": token}
 
 
-@pytest.fixture
-async def viewer_user_id() -> AsyncGenerator[uuid.UUID, None]:
-    """A real user seeded with the real (GRX-AUTH-001-seeded) Viewer role."""
-    async with async_session_factory() as session:
-        viewer_role = (
-            await session.execute(select(Role).where(Role.name == "Viewer"))
-        ).scalar_one()
-        user = User(email=f"{uuid.uuid4()}@example.com", password_hash="x", full_name="Test Viewer")
-        session.add(user)
-        await session.flush()
-        session.add(UserRole(user_id=user.id, role_id=viewer_role.id))
-        await session.commit()
-        user_id = user.id
-
-    yield user_id
-
-    async with async_session_factory() as session:
-        await session.execute(delete(User).where(User.id == user_id))
-        await session.commit()
-
-
 @pytest.mark.asyncio
-async def test_user_with_permission_is_allowed(viewer_user_id: uuid.UUID) -> None:
+@pytest.mark.integration
+async def test_user_with_permission_is_allowed(
+    user_factory: Callable[..., Awaitable[uuid.UUID]],
+) -> None:
     # Viewer has company.settings.view per RBAC.md's Sprint 1 matrix.
+    viewer_user_id = await user_factory(full_name="Test Viewer", role_name="Viewer")
     transport = ASGITransport(app=_make_protected_app("company.settings.view"))
     cookies = _access_token_cookie(viewer_user_id)
     async with AsyncClient(transport=transport, base_url="http://test", cookies=cookies) as client:
@@ -71,8 +50,12 @@ async def test_user_with_permission_is_allowed(viewer_user_id: uuid.UUID) -> Non
 
 
 @pytest.mark.asyncio
-async def test_user_without_permission_is_forbidden(viewer_user_id: uuid.UUID) -> None:
+@pytest.mark.integration
+async def test_user_without_permission_is_forbidden(
+    user_factory: Callable[..., Awaitable[uuid.UUID]],
+) -> None:
     # Viewer does NOT have users.manage per RBAC.md's Sprint 1 matrix.
+    viewer_user_id = await user_factory(full_name="Test Viewer", role_name="Viewer")
     transport = ASGITransport(app=_make_protected_app("users.manage"))
     cookies = _access_token_cookie(viewer_user_id)
     async with AsyncClient(transport=transport, base_url="http://test", cookies=cookies) as client:

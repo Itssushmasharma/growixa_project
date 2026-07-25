@@ -9,95 +9,94 @@
 
 ## Task worked on
 
-`GRX-AUDIT-001` — Audit log module. (This was the deferred half of the ordering issue
-flagged during `GRX-AUTH-001` — proceeded now that `GRX-AUTH-001` is done.)
+`GRX-TEST-001` — Backend test foundation (test runner config, DB test fixtures/factories,
+coverage baseline). Picked per explicit user-specified order: `GRX-AUDIT-001` →
+`GRX-TEST-001` → `GRX-COMPANY-001`.
 
 ## Work completed
 
-- **`apps/api/src/growixa_api/audit/models.py`** (new): `AuditLog` matching
-  [DATABASE_SCHEMA.md](../05-data/DATABASE_SCHEMA.md) exactly. DB column `metadata` is
-  mapped to Python attribute `event_metadata` (SQLAlchemy's `DeclarativeBase` reserves
-  `.metadata` for the ORM's own `MetaData`). Indexes on `(entity_type, entity_id)`,
-  `actor_user_id`, `created_at`.
-- **Migration `6575d09949f9`**: clean autogenerate creating `audit_logs`.
-- **`apps/api/src/growixa_api/audit/repositories.py`**: `create_audit_log`,
-  `list_audit_logs` — raw persistence only, no business logic.
-- **`apps/api/src/growixa_api/audit/services.py`**: `record_event` (redacts known-sensitive
-  metadata keys — `password`, `password_hash`, `token`, `token_hash`, `refresh_token`,
-  `access_token`, `secret` — to `"[REDACTED]"` before persisting; this is the
-  "structured-log redaction" part of the task description and defense-in-depth for
-  [THREAT_MODEL.md](../08-security/THREAT_MODEL.md) T7), `list_events` (thin wrapper). No
-  `update`/`delete` function exists anywhere — insert-only by omission.
-- **`apps/api/tests/test_audit_log.py`** (new): write→list round-trip, a system-actor event
-  (`actor_user_id=None`), and a redaction test.
-- **`apps/api/tests/test_audit_insert_only.py`** (new): introspects both modules via
-  `inspect.getmembers`, asserts no public function name contains
-  update/delete/modify/edit — the tracker's "negative test for missing update/delete
-  routes," adapted since there's no HTTP layer in this module yet.
+- **`apps/api/tests/conftest.py`** (new): `user_factory` — an async fixture returning a
+  factory function that creates a real user (optionally assigned an existing seeded role
+  via `role_name=`), tracks every user it created, and deletes them all at teardown.
+  Deliberately kept simple: plain commit-and-cleanup per creation, not a
+  transactional-rollback session bound into the app's own `get_session` dependency. The
+  heavier pattern (SQLAlchemy's documented "join session into external transaction," with
+  `app.dependency_overrides[get_session]` pointed at the same test-bound session) would give
+  perfect isolation and no manual cleanup, but requires overriding `get_session` per test app
+  and was judged disproportionate for the current test count — noted as a natural next step
+  if test suite growth or flakiness ever makes manual cleanup painful.
+- **Refactored `test_require_permission.py` and `test_audit_log.py`** to use `user_factory`
+  instead of their own near-identical fixtures (`viewer_user_id`, `actor_user_id`) — this
+  *is* the point of the task, not incidental cleanup. `test_audit_log.py`'s tests now
+  explicitly delete their own `audit_logs` rows before returning, since `actor_user_id` has
+  no `ON DELETE CASCADE` and `user_factory`'s teardown would otherwise hit the same
+  FK-violation class of bug fixed in `GRX-AUDIT-001`.
+- **Coverage baseline**: added `pytest-cov` (dev dependency) and `[tool.coverage.run]`
+  (`source = ["growixa_api"]`, tests excluded from the measured set). `addopts` now runs
+  coverage by default. Current baseline: **87%** total line coverage. No enforced minimum
+  yet — recording the baseline is this task's job; a specific gate is `GRX-DEVOPS-001`'s
+  call once there's more code and CI exists to enforce it.
+- **`integration` marker**: registered in `pyproject.toml` (`markers = [...]`, avoids
+  "unknown marker" warnings) and applied to every test that touches a real backing service
+  — all of `test_audit_log.py`, `test_auth_schema_seed.py`, `test_migrations.py`, and 2 of
+  `test_require_permission.py`'s 4 tests.
 
-## Two real bugs found and fixed while validating this task
+## A genuinely useful thing verified, not just asserted
 
-1. **Test fixture FK violation.** The write/list test's teardown deleted its throwaway test
-   user while an audit row still referenced it as `actor_user_id` — which correctly has no
-   `ON DELETE CASCADE` (an audit trail must survive the actor being removed). Fixed the
-   fixture to delete its audit rows before the user.
-2. **asyncpg type-cache poisoning (more interesting one).** `test_require_permission.py`
-   started intermittently failing with `cache lookup failed for type ...` when run
-   alongside `test_migrations.py`. Root cause: `test_migrations.py`'s downgrade→upgrade
-   round trip was dropping and recreating the `citext` extension (in `GRX-AUTH-001`'s
-   migration downgrade), and each `CREATE EXTENSION` gives the type a new Postgres OID —
-   poisoning asyncpg's per-connection type cache for any already-pooled connection (recall
-   `growixa_api.db`'s engine/pool is a session-wide singleton, per the `GRX-RBAC-001`
-   session-loop fix) that later touches a `citext` column. Fixed by no longer dropping
-   `citext` in that migration's `downgrade()` — table-level state is still fully reversible;
-   leaving an installed extension behind after downgrade is standard, low-risk practice, and
-   it eliminates the whole failure class rather than patching one symptom.
+I reasoned that `test_require_permission.py`'s missing-token/invalid-token tests never
+touch the database, because `RequirePermission.__call__`'s first parameter
+(`Depends(get_current_user_id)`) raises before FastAPI ever resolves the second
+(`Depends(get_session)`) — dependencies resolve in declared parameter order and stop at the
+first exception. Rather than leave that as an assumption, I ran
+`pytest -m "not integration"` with `DATABASE_URL`/`REDIS_URL`/`RABBITMQ_URL` all pointed at
+unreachable hosts. All 7 unit-tier tests passed — confirms the reasoning was right and the
+unit/integration split is real, not just a label.
 
 ## Files changed
 
-- `apps/api/src/growixa_api/audit/__init__.py`, `models.py`, `repositories.py`,
-  `services.py` (new)
-- `apps/api/migrations/env.py` (imports the new audit models module)
-- `apps/api/migrations/versions/6575d09949f9_audit_logs_table.py` (new)
-- `apps/api/migrations/versions/d330e8b64b48_users_roles_permissions_schema.py` (downgrade
-  no longer drops the `citext` extension — see bug #2 above)
-- `apps/api/tests/test_audit_log.py`, `test_audit_insert_only.py` (new)
-- `docs/00-project-control/MASTER_TASK_TRACKER.md` (GRX-AUDIT-001 → DONE, evidence recorded)
+- `apps/api/tests/conftest.py` (new)
+- `apps/api/tests/test_require_permission.py` (refactored to use `user_factory`; 2 of 4
+  tests marked `integration`)
+- `apps/api/tests/test_audit_log.py` (refactored to use `user_factory`; all 3 tests marked
+  `integration`; each test now cleans up its own audit rows before returning)
+- `apps/api/tests/test_auth_schema_seed.py`, `test_migrations.py` (marked `integration`)
+- `apps/api/pyproject.toml` (`pytest-cov` dependency, `addopts`, `markers`,
+  `[tool.coverage.run]`)
+- `docs/00-project-control/MASTER_TASK_TRACKER.md` (GRX-TEST-001 → DONE, evidence recorded)
 - `docs/00-project-control/PROJECT_STATUS.md`, `docs/00-project-control/CHANGELOG.md` (this update)
 
 ## Commands executed
 
 ```bash
 cd apps/api
-# models written, wired into migrations/env.py
-source ../../.env && export DATABASE_URL=... REDIS_URL=... RABBITMQ_URL=...
-.venv/bin/alembic revision --autogenerate -m "audit logs table"
+uv pip install -e ".[dev]" --python .venv/bin/python   # picks up pytest-cov
 .venv/bin/ruff check --fix . && .venv/bin/ruff format .
-.venv/bin/alembic upgrade head   # succeeds against Compose Postgres
+.venv/bin/ruff check . && .venv/bin/ruff format --check . && .venv/bin/mypy .   # all clean
 
-.venv/bin/pytest -v   # 14 passed (after both bugfixes above)
+source ../../.env && export DATABASE_URL=... REDIS_URL=... RABBITMQ_URL=...
+.venv/bin/pytest -v        # 14 passed, coverage report printed, 87% total
 
-cd ../..
-podman compose up -d --build api
-podman compose exec api alembic current   # 6575d09949f9 (head)
-curl http://localhost:8000/health         # unaffected, still ok
+# unreachable DB/Redis/MQ on purpose — proves the unit/integration split holds
+DATABASE_URL="postgresql+asyncpg://nope:nope@localhost:1/nope" \
+REDIS_URL="redis://localhost:1/0" RABBITMQ_URL="amqp://x@localhost:1/" \
+.venv/bin/pytest -v -m "not integration"   # 7 passed, 7 deselected
+
+curl http://localhost:8000/health   # unaffected — no runtime app code changed this task
 ```
 
 ## Test results
 
-`pytest` → 14 passed: 10 pre-existing + 4 new (write/list round-trip, system-actor event,
-redaction, insert-only audit). `ruff`/`mypy` clean across 30 source files.
+`pytest` → 14 passed (same 14 tests as before this task; this task changed test
+*infrastructure*, not test *count*). `pytest -m "not integration"` → 7 passed with zero
+backing services reachable. `ruff`/`mypy` clean across 31 source files.
 
 ## Migrations
 
-`6575d09949f9` — creates `audit_logs`. Depends on `d330e8b64b48` (also touched this
-session: its `downgrade()` no longer drops the `citext` extension — see bug #2). Verified
-upgrade/downgrade/upgrade round-trip against real Compose Postgres.
+None — this task only touches test infrastructure.
 
 ## Decisions
 
-None new — implements the schema already specified in
-[DATABASE_SCHEMA.md](../05-data/DATABASE_SCHEMA.md).
+None new.
 
 ## Blockers
 
@@ -105,23 +104,25 @@ None.
 
 ## Known issues
 
-None new. The `seed_first_admin` CLI gap (flagged in `GRX-AUTH-001`'s handoff) is still
-open — relevant again now that `GRX-AUTH-002` is unblocked.
+- No CI pipeline exists yet — `GRX-DEVOPS-001` (depends on this task and `GRX-TEST-002`,
+  neither/one done) owns wiring `pytest` into an actual CI run. This task's acceptance
+  criterion ("pytest runs green ... in CI") is satisfied by the local foundation being
+  ready for that, matching how earlier foundation tasks satisfied similar forward-looking
+  criteria.
+- The `seed_first_admin` CLI gap (flagged in `GRX-AUTH-001`) and CORS-for-frontend gap
+  (flagged in `GRX-FOUND-004`) are both still open, relevant once `GRX-AUTH-002` is picked
+  up.
 
 ## Current state
 
-Audit logging foundation (schema, insert-only repository/service, redaction) is done and
-tested. Nothing calls `record_event` yet — no feature that should emit an audit event
-(login, role change, etc.) is built yet. That starts with whichever of `GRX-AUTH-002`/
-`GRX-USER-001` is picked up.
+Backend test suite has a real shared fixture/factory foundation, coverage reporting, and a
+verified unit/integration split. 14 tests, 87% coverage baseline, all green.
 
 ## Exact next task
 
-Per explicit user direction: `GRX-TEST-001` (backend test foundation), then
-`GRX-COMPANY-001` (company profile + brand settings). Also `READY` in the meantime:
-`GRX-TEST-002` (frontend test foundation), `GRX-AUTH-002` (password hashing +
-login/logout, newly unblocked), `GRX-USER-001` (internal user invitation + acceptance,
-newly unblocked).
+Per explicit user direction: `GRX-COMPANY-001` (company profile + brand settings). Also
+`READY`: `GRX-TEST-002` (frontend test foundation), `GRX-AUTH-002` (password hashing +
+login/logout), `GRX-USER-001` (internal user invitation + acceptance).
 
 ## Resume commands
 
@@ -134,4 +135,4 @@ podman compose up -d                                  # bring the stack back up
 
 ## Latest commit
 
-`2b1dd7e` — feat(audit): insert-only audit log module (GRX-AUDIT-001)
+Recorded below after this handoff is committed alongside the `GRX-TEST-001` change set.

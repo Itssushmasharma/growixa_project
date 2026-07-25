@@ -7,6 +7,7 @@ Alembic's async env.py drives its own event loop internally via asyncio.run(...)
 
 from pathlib import Path
 
+import pytest
 from alembic import command
 from alembic.config import Config
 from sqlalchemy import create_engine, text
@@ -49,6 +50,7 @@ def _sync_database_url() -> str:
     return get_settings().database_url.replace("+asyncpg", "+psycopg")
 
 
+@pytest.mark.integration
 def test_migration_seeds_sprint_1_roles_permissions_and_matrix() -> None:
     config = Config(str(ALEMBIC_INI))
     command.upgrade(config, "head")

@@ -10,6 +10,44 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
+## 2026-07-25 — GRX-TEST-001: Backend test foundation
+
+- Added `apps/api/tests/conftest.py`: a `user_factory` fixture (async, factory-function
+  pattern) that creates a real user, optionally assigns it an existing seeded role, and
+  deletes every user it created at teardown. Kept deliberately simple — commit-and-cleanup
+  per creation, not a transactional-rollback session — see the module's own docstring and
+  [AGENT_HANDOFF.md](AGENT_HANDOFF.md) for why the heavier pattern wasn't adopted now.
+- Refactored `test_require_permission.py` (`GRX-RBAC-001`) and `test_audit_log.py`
+  (`GRX-AUDIT-001`) to use the shared `user_factory` instead of their own near-identical
+  ad hoc fixtures — the direct point of this task, not incidental cleanup.
+- Added `pytest-cov` and `[tool.coverage.run]` config (`source = ["growixa_api"]`,
+  tests excluded). Current baseline: **87%** line coverage (`pytest` with default addopts).
+  No enforced minimum threshold yet — establishing the baseline measurement is this task's
+  job; a specific enforced number is better decided once `GRX-DEVOPS-001` wires up CI and
+  there's more code to judge a rational threshold against.
+- Registered a `pytest.mark.integration` marker (in `pyproject.toml`, avoiding
+  "unknown marker" warnings) and applied it to every test that touches a real backing
+  service: `test_audit_log.py`, `test_auth_schema_seed.py`, `test_migrations.py`, and two of
+  `test_require_permission.py`'s four tests (the other two — missing/invalid token — never
+  reach `get_session` because `get_current_user_id` raises first, per FastAPI's
+  parameter-order dependency resolution, and were left unmarked *and separately verified* to
+  need no DB — see below).
+- **Verified the split is real, not just labeled**: ran
+  `pytest -m "not integration"` with `DATABASE_URL`/`REDIS_URL`/`RABBITMQ_URL` all pointed
+  at unreachable hosts — all 7 unit-tier tests still passed. This is the actual proof (not
+  an assumption) that the unit/integration boundary holds.
+- No CI pipeline exists yet (`GRX-DEVOPS-001`, which depends on this task and
+  `GRX-TEST-002`, hasn't started) — this task's own acceptance criterion
+  ("`pytest` runs green ... in CI") is satisfied by `pytest` running green locally with the
+  new foundation in place, matching how earlier foundation tasks satisfied "smoke test"
+  criteria before their own supporting infrastructure existed.
+- Verified: `ruff`/`format --check`/`mypy` clean across 31 source files; `pytest` 14 passed
+  (same 14 as before this task — this task changed test *infrastructure*, not test *count*).
+- `GRX-TEST-001` marked `DONE`. No task became newly `READY` from this alone (only
+  `GRX-DEVOPS-001` depends on it, and that also needs `GRX-TEST-002`, not done). Per
+  explicit user direction, `GRX-COMPANY-001` is next.
+- Commit: `<see below>`.
+
 ## 2026-07-25 — GRX-AUDIT-001: Audit log module
 
 - **Task-ordering note**: this was the deferred half of the `GRX-AUDIT-001`/`GRX-AUTH-001`
