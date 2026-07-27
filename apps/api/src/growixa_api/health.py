@@ -1,10 +1,10 @@
 import aio_pika
-import redis.asyncio as redis_client
 from fastapi import APIRouter
 from sqlalchemy import text
 
 from growixa_api.config import Settings, get_settings
 from growixa_api.db import engine
+from growixa_api.redis import client as redis_pool
 
 router = APIRouter()
 
@@ -18,11 +18,9 @@ async def _check_postgres(_settings: Settings) -> str:
         return f"error: {exc}"
 
 
-async def _check_redis(settings: Settings) -> str:
+async def _check_redis(_settings: Settings) -> str:
     try:
-        client = redis_client.from_url(settings.redis_url)
-        await client.ping()
-        await client.aclose()
+        await redis_pool.ping()
         return "ok"
     except Exception as exc:  # noqa: BLE001 - a health check must report, not raise
         return f"error: {exc}"
