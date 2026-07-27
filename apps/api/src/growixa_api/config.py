@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     jwt_signing_key: str = "CHANGE_ME_LOCAL_DEV_ONLY"
     access_token_ttl_minutes: int = 15
     refresh_token_ttl_days: int = 30
+    invitation_ttl_days: int = 7
 
     # Argon2id cost parameters — configurable per AUTHENTICATION.md so cost can be raised as
     # hardware improves without a schema/code change. Defaults match argon2-cffi's own

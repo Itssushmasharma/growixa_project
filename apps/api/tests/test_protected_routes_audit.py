@@ -22,8 +22,16 @@ from growixa_api.permissions.dependencies import RequirePermission
 # credential/token in the request body or cookie itself (password, refresh token), not via
 # require_permission() — there is no session yet (login) or the route's whole job is
 # managing that session directly (refresh/logout/logout-all), so a permission check on top
-# would be redundant, not an oversight.
-PUBLIC_ROUTE_PATHS = {"/health", "/auth/login", "/auth/logout", "/auth/refresh", "/auth/logout-all"}
+# would be redundant, not an oversight. /users/invitations/accept is the same shape as
+# login: the invitee has no session yet, identity comes from the invitation token itself.
+PUBLIC_ROUTE_PATHS = {
+    "/health",
+    "/auth/login",
+    "/auth/logout",
+    "/auth/refresh",
+    "/auth/logout-all",
+    "/users/invitations/accept",
+}
 
 
 def _iter_api_routes(routes: list[BaseRoute]) -> Iterator[APIRoute]:

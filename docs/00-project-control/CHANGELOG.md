@@ -10,6 +10,59 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
+## 2026-07-27 — GRX-USER-001: Internal user invitation + acceptance
+
+- Picked next per explicit user direction as "most needed": the only way to add any user
+  to the system besides the still-unbuilt `seed_first_admin` CLI (flagged since
+  `GRX-AUTH-001`) or direct DB manipulation.
+- **First cross-cutting refactor of already-`DONE` auth code this session**: generalized
+  `auth/tokens.py`'s `generate_refresh_token`/`hash_refresh_token` to
+  `generate_token`/`hash_token` — invitation tokens need the exact same "high-entropy
+  opaque token, SHA-256 hash for lookup" treatment as refresh tokens
+  (AUTHENTICATION.md's token model lists both under the same shape), and duplicating that
+  logic under an invitation-specific name would just be the same code twice. Verified only
+  `auth/services.py` called the old names before renaming, so this was a safe,
+  contained rename — updated its 2 call sites, all 28 pre-existing tests still passed
+  afterward.
+- Added `user_invitations` table (migration `f356da0136c3`) — both indexes
+  `DATABASE_SCHEMA.md` specifies: a plain one on `email`, and a partial one on
+  `email WHERE accepted_at IS NULL` for "does this email already have an open invite"
+  lookups.
+- Added `roles/repositories.py` (`get_role_by_name`) — `roles`'s first repository file,
+  needed to resolve an invitation's `role_name` (e.g. "Viewer") to the seeded role's UUID.
+- `users/services.py`: `invite_user()` resolves the role, checks the email isn't already
+  registered (fails fast for the admin rather than only failing at acceptance),
+  generates+hashes a token, and returns `(invitation, raw_token)` — the raw token only
+  ever exists in memory, never persisted. `accept_invitation()` re-validates
+  not-yet-accepted/not-expired/email-still-free (closes a race between two acceptances or
+  the person registering some other way in between), creates the `User`, assigns the
+  `UserRole`, marks the invitation accepted, and records `invitation.accepted` (Sprint 1's
+  audit event set) with `actor_user_id` set to the **new** user (they're the one taking
+  the accepting action, even though an admin initiated the invite).
+- **Explicit, flagged scope decision — not a silent shortcut**: `POST /users/invitations`
+  returns the raw invitation token directly in its JSON response. Sprint 1 has no
+  email-delivery channel at all (no task for it exists in the tracker), so there is
+  currently no other way for the invitee to receive it. This is the correct interim
+  behavior given the constraint, not the intended end state — revisit the moment a
+  notifications/email-delivery task exists, at which point the token should be sent
+  out-of-band and dropped from the API response entirely.
+- Added `apps/api/tests/test_users_invitations.py`: full invite → accept round-trip (role
+  assigned, audit event recorded with the right actor), non-admin invite attempt (403,
+  via the real `users.manage` permission check — no test-only bypass), unknown role (400),
+  inviting an already-registered email (409), accepting with an invalid token (400), and
+  accepting an already-accepted token (400, replay protection).
+- Verified beyond the automated suite: rebuilt the `api` image, then ran a real
+  login → invite → accept flow via curl against the live Compose stack, confirming via
+  direct `psql` queries that the new user got the correct role and the
+  `invitation.accepted` audit row was recorded.
+- Verified: `ruff`/`format --check`/`mypy` clean across 63 source files; `pytest` 34
+  passed, 94% coverage.
+- `GRX-USER-001` marked `DONE`. `GRX-USER-002` (user management screens, frontend) is
+  newly `READY`, alongside the already-`READY` `GRX-AUTH-005`, `GRX-TEST-002`,
+  `GRX-COMPANY-002`, `GRX-FOUND-008`. This completes the third step of the user-directed
+  "most needed" sequence this session (`GRX-AUTH-002` → `GRX-AUTH-003` → `GRX-USER-001`).
+- Commit: `<see below>`.
+
 ## 2026-07-27 — GRX-AUTH-003: Refresh-token rotation + session revocation
 
 - Picked next per explicit user direction as "most needed first": closes a real security

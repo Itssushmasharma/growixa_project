@@ -23,12 +23,14 @@ def create_access_token(user_id: uuid.UUID) -> str:
     )
 
 
-def generate_refresh_token() -> str:
+def generate_token() -> str:
+    """A high-entropy opaque token — used for refresh tokens, invitation tokens, and (once
+    GRX-AUTH-005 lands) password-reset tokens alike; see AUTHENTICATION.md's token model."""
     return secrets.token_urlsafe(32)
 
 
-def hash_refresh_token(raw_token: str) -> str:
-    # Refresh tokens are high-entropy already (T6) — a fast, deterministic hash is fine for
+def hash_token(raw_token: str) -> str:
+    # These tokens are high-entropy already (T6) — a fast, deterministic hash is fine for
     # lookup-by-hash; unlike passwords, there is no brute-forceable low-entropy input here.
     return hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
 

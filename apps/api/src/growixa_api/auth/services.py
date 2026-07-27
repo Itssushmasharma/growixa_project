@@ -12,8 +12,8 @@ from growixa_api.auth.repositories import (
 from growixa_api.auth.security import verify_password
 from growixa_api.auth.tokens import (
     create_access_token,
-    generate_refresh_token,
-    hash_refresh_token,
+    generate_token,
+    hash_token,
     refresh_token_expiry,
 )
 from growixa_api.users.models import User
@@ -71,11 +71,11 @@ async def login(
     user.last_login_at = datetime.now(UTC)
 
     access_token = create_access_token(user.id)
-    raw_refresh_token = generate_refresh_token()
+    raw_refresh_token = generate_token()
     await create_refresh_token(
         session,
         user_id=user.id,
-        token_hash=hash_refresh_token(raw_refresh_token),
+        token_hash=hash_token(raw_refresh_token),
         expires_at=refresh_token_expiry(),
         user_agent=user_agent,
         ip_address=ip_address,
@@ -100,7 +100,7 @@ async def logout(session: AsyncSession, *, raw_refresh_token: str | None) -> Non
     if raw_refresh_token is None:
         return
 
-    token = await get_refresh_token_by_hash(session, hash_refresh_token(raw_refresh_token))
+    token = await get_refresh_token_by_hash(session, hash_token(raw_refresh_token))
     if token is None or token.revoked_at is not None:
         return
 
@@ -163,7 +163,7 @@ async def refresh(
     if raw_refresh_token is None:
         raise InvalidRefreshTokenError
 
-    token = await get_refresh_token_by_hash(session, hash_refresh_token(raw_refresh_token))
+    token = await get_refresh_token_by_hash(session, hash_token(raw_refresh_token))
     if token is None:
         raise InvalidRefreshTokenError
 
@@ -182,11 +182,11 @@ async def refresh(
         raise InvalidRefreshTokenError
 
     new_access_token = create_access_token(user.id)
-    raw_new_refresh_token = generate_refresh_token()
+    raw_new_refresh_token = generate_token()
     new_token = await create_refresh_token(
         session,
         user_id=user.id,
-        token_hash=hash_refresh_token(raw_new_refresh_token),
+        token_hash=hash_token(raw_new_refresh_token),
         expires_at=refresh_token_expiry(),
         user_agent=user_agent,
         ip_address=ip_address,
@@ -208,7 +208,7 @@ async def logout_all(session: AsyncSession, *, raw_refresh_token: str | None) ->
     if raw_refresh_token is None:
         return
 
-    token = await get_refresh_token_by_hash(session, hash_refresh_token(raw_refresh_token))
+    token = await get_refresh_token_by_hash(session, hash_token(raw_refresh_token))
     if token is None:
         return
 
