@@ -1,0 +1,19 @@
+.emptyState {
+  background: #fff;
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
+  padding: 48px 32px;
+  text-align: center;
+}
+
+.heading {
+  margin: 0 0 8px;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.body {
+  margin: 0;
+  color: var(--color-slate);
+  font-size: 14px;
+}

@@ -1,3 +1,5 @@
+import uuid
+
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -23,7 +25,9 @@ from growixa_api.auth.services import refresh as refresh_service
 from growixa_api.auth.services import request_password_reset as request_password_reset_service
 from growixa_api.config import get_settings
 from growixa_api.db import get_session
+from growixa_api.permissions.dependencies import get_current_user_id
 from growixa_api.redis import get_redis
+from growixa_api.users.models import User
 
 _RATE_LIMIT_MESSAGE = "Too many attempts. Please try again later."
 
@@ -132,6 +136,20 @@ async def logout_all_route(
     await logout_all_service(session, raw_refresh_token=raw_refresh_token)
     response.delete_cookie(_ACCESS_TOKEN_COOKIE)
     response.delete_cookie(_REFRESH_TOKEN_COOKIE)
+
+
+@router.get("/me", response_model=LoginOut)
+async def me_route(
+    user_id: uuid.UUID = Depends(get_current_user_id),
+    session: AsyncSession = Depends(get_session),
+) -> LoginOut:
+    """Identifies the current session, the same way /refresh and /logout-all do — via the
+    access-token cookie itself, not require_permission(). Any authenticated user may know
+    who they are; there is no separate permission for it."""
+    user = await session.get(User, user_id)
+    if user is None:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Not authenticated")
+    return LoginOut.model_validate(user)
 
 
 _PASSWORD_RESET_REQUESTED_MESSAGE = (

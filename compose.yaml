@@ -112,6 +112,9 @@ services:
     environment:
       NODE_ENV: development
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+      # Server-side (Node) fetches run inside this container, where "localhost" is itself,
+      # not the api container — reach it by its Compose service name instead.
+      API_INTERNAL_URL: http://api:8000
     volumes:
       - ./apps/web:/app
       - /app/node_modules

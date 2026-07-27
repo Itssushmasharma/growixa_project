@@ -24,12 +24,16 @@ from growixa_api.permissions.dependencies import RequirePermission
 # managing that session directly (refresh/logout/logout-all), so a permission check on top
 # would be redundant, not an oversight. /users/invitations/accept is the same shape as
 # login: the invitee has no session yet, identity comes from the invitation token itself.
+# /auth/me is the same shape as /refresh: identity comes from the access-token cookie
+# itself via get_current_user_id(), and any authenticated user may know who they are —
+# there's no separate permission to check.
 PUBLIC_ROUTE_PATHS = {
     "/health",
     "/auth/login",
     "/auth/logout",
     "/auth/refresh",
     "/auth/logout-all",
+    "/auth/me",
     "/auth/password-reset/request",
     "/auth/password-reset/complete",
     "/users/invitations/accept",

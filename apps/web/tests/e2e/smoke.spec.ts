@@ -1,7 +1,8 @@
 import { expect, test } from "@playwright/test";
 
-test("root route responds and renders the app", async ({ page }) => {
+test("an anonymous visitor to the root route is redirected to login", async ({ page }) => {
   const response = await page.goto("/");
   expect(response?.status()).toBe(200);
-  await expect(page.getByRole("heading", { name: "Growixa" })).toBeVisible();
+  await expect(page).toHaveURL(/\/login$/);
+  await expect(page.getByRole("button", { name: "Sign in" })).toBeVisible();
 });

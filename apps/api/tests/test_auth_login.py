@@ -159,8 +159,10 @@ async def test_logout_revokes_refresh_token_and_clears_cookies(
     assert any('access_token=""' in h or "access_token=" in h for h in clear_headers)
 
     async with async_session_factory() as session:
-        result = await session.execute(select(RefreshToken).where(RefreshToken.user_id == user_id))
-        tokens = result.scalars().all()
+        token_result = await session.execute(
+            select(RefreshToken).where(RefreshToken.user_id == user_id)
+        )
+        tokens = token_result.scalars().all()
     assert len(tokens) == 1
     assert tokens[0].revoked_at is not None
 
@@ -177,3 +179,39 @@ async def test_logout_revokes_refresh_token_and_clears_cookies(
     async with async_session_factory() as session:
         await session.execute(delete(RefreshToken).where(RefreshToken.user_id == user_id))
         await session.commit()
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_me_returns_the_logged_in_user(
+    user_factory: Callable[..., Awaitable[uuid.UUID]],
+) -> None:
+    user_id = await user_factory(full_name="Me Route User")
+    email = await _get_email(user_id)
+
+    transport = ASGITransport(app=create_app())
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        login_response = await client.post(
+            "/auth/login", json={"email": email, "password": DEFAULT_TEST_PASSWORD}
+        )
+        assert login_response.status_code == 200
+
+        me_response = await client.get("/auth/me")
+
+    assert me_response.status_code == 200
+    assert me_response.json() == {"id": str(user_id), "email": email, "full_name": "Me Route User"}
+
+    await _cleanup_audit_for(user_id)
+    async with async_session_factory() as session:
+        await session.execute(delete(RefreshToken).where(RefreshToken.user_id == user_id))
+        await session.commit()
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_me_without_a_session_is_unauthorized() -> None:
+    transport = ASGITransport(app=create_app())
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.get("/auth/me")
+
+    assert response.status_code == 401

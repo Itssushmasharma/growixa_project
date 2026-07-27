@@ -1,0 +1,48 @@
+.sidebar {
+  width: 240px;
+  flex-shrink: 0;
+  min-height: 100vh;
+  background: var(--gradient-sidebar);
+  padding: 24px 16px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 8px 24px;
+}
+
+.brandName {
+  font-size: 16px;
+  font-weight: 800;
+  color: #fff;
+  line-height: 1.1;
+}
+
+.brandCaption {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--color-nav-inactive);
+}
+
+.sectionLabel {
+  display: block;
+  padding: 0 8px;
+  margin-bottom: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--color-nav-inactive);
+}
+
+.navItemActive {
+  display: block;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(18, 184, 176, 0.16);
+  color: var(--color-mint);
+  font-size: 14px;
+  font-weight: 600;
+}

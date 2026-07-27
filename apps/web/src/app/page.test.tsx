@@ -1,11 +1,16 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { render } from "@testing-library/react";
+import { redirect } from "next/navigation";
+import { describe, expect, it, vi } from "vitest";
 
 import HomePage from "./page";
 
+vi.mock("next/navigation", () => ({
+  redirect: vi.fn(),
+}));
+
 describe("HomePage", () => {
-  it("renders the Growixa heading", () => {
+  it("redirects to the dashboard", () => {
     render(<HomePage />);
-    expect(screen.getByRole("heading", { name: "Growixa" })).toBeInTheDocument();
+    expect(redirect).toHaveBeenCalledWith("/dashboard");
   });
 });

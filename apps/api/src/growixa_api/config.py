@@ -13,6 +13,13 @@ class Settings(BaseSettings):
     redis_url: str
     rabbitmq_url: str
 
+    # Origins the Next.js frontend runs on locally — needed so browser-based fetches from
+    # apps/web can complete the cross-origin, credentialed (cookie-based) requests auth
+    # relies on. 3000 is the Compose `web` container; 3100 is Playwright's e2e webServer
+    # (apps/web/playwright.config.ts), deliberately a different port so e2e runs never
+    # collide with a developer's already-running Compose stack.
+    cors_allowed_origins: list[str] = ["http://localhost:3000", "http://localhost:3100"]
+
     jwt_signing_key: str = "CHANGE_ME_LOCAL_DEV_ONLY"
     access_token_ttl_minutes: int = 15
     refresh_token_ttl_days: int = 30

@@ -4,6 +4,8 @@ export default defineConfig({
   testDir: "./tests/e2e",
   fullyParallel: true,
   reporter: "list",
+  globalSetup: "./tests/e2e/global-setup.ts",
+  globalTeardown: "./tests/e2e/global-teardown.ts",
   use: {
     baseURL: "http://localhost:3100",
   },
