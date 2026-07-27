@@ -19,6 +19,12 @@ class Settings(BaseSettings):
     invitation_ttl_days: int = 7
     password_reset_ttl_minutes: int = 30
 
+    # Redis-backed fixed-window rate limit shared by /auth/login and
+    # /auth/password-reset/request (THREAT_MODEL.md T1/T12) — a conservative default per
+    # AUTHENTICATION.md's "low single-digit attempts per short window" guidance.
+    rate_limit_max_attempts: int = 5
+    rate_limit_window_seconds: int = 60
+
     # Argon2id cost parameters — configurable per AUTHENTICATION.md so cost can be raised as
     # hardware improves without a schema/code change. Defaults match argon2-cffi's own
     # OWASP-baseline PasswordHasher defaults.

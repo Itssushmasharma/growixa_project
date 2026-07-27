@@ -1,6 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from growixa_api.auth.rate_limit import RateLimitExceededError, enforce_rate_limit
 from growixa_api.auth.schemas import (
     LoginIn,
     LoginOut,
@@ -21,6 +23,9 @@ from growixa_api.auth.services import refresh as refresh_service
 from growixa_api.auth.services import request_password_reset as request_password_reset_service
 from growixa_api.config import get_settings
 from growixa_api.db import get_session
+from growixa_api.redis import get_redis
+
+_RATE_LIMIT_MESSAGE = "Too many attempts. Please try again later."
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -57,7 +62,16 @@ async def login_route(
     request: Request,
     response: Response,
     session: AsyncSession = Depends(get_session),
+    redis_client: Redis = Depends(get_redis),
 ) -> LoginOut:
+    rate_limit_ip = request.client.host if request.client else "unknown"
+    try:
+        await enforce_rate_limit(
+            redis_client, bucket="login", identifier=f"{payload.email}:{rate_limit_ip}"
+        )
+    except RateLimitExceededError as exc:
+        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, _RATE_LIMIT_MESSAGE) from exc
+
     try:
         result = await login_service(
             session,
@@ -128,8 +142,20 @@ _PASSWORD_RESET_REQUESTED_MESSAGE = (
 @router.post("/password-reset/request", response_model=PasswordResetRequestOut)
 async def password_reset_request_route(
     payload: PasswordResetRequestIn,
+    request: Request,
     session: AsyncSession = Depends(get_session),
+    redis_client: Redis = Depends(get_redis),
 ) -> PasswordResetRequestOut:
+    rate_limit_ip = request.client.host if request.client else "unknown"
+    try:
+        await enforce_rate_limit(
+            redis_client,
+            bucket="password_reset_request",
+            identifier=f"{payload.email}:{rate_limit_ip}",
+        )
+    except RateLimitExceededError as exc:
+        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, _RATE_LIMIT_MESSAGE) from exc
+
     raw_token = await request_password_reset_service(session, email=payload.email)
 
     # Response is identical for a known vs. unknown email — per THREAT_MODEL.md T11 — with
