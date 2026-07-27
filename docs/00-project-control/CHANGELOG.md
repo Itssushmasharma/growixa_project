@@ -10,6 +10,28 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
+## 2026-07-27 — GRX-COMPANY-002: Company settings screen
+
+- Built the company profile + brand voice form at `/dashboard/company-settings`. Extended
+  `GET /auth/me` to also return the caller's permission codes (new `permissions/repositories.py`
+  helper, new `MeOut` schema) so the UI can render editable vs. read-only correctly — only
+  Admin/Super Admin hold `company.settings.edit` per RBAC.md, everyone else sees the same
+  data with every field disabled and a view-only note, rather than a form that would only
+  fail on submit.
+- Saves company then brand profile in sequence on one "Save changes" click (brand requires
+  company to exist first, per `GRX-COMPANY-001`'s existing 400 behavior).
+- Sidebar gained a real `SETTINGS` section (`Company`); the topbar title is now
+  route-driven instead of hardcoded to "Dashboard".
+- Found and fixed a real Vitest/RTL bug while writing the component test: without
+  `test.globals: true`, `@testing-library/react`'s automatic `afterEach(cleanup)` never
+  registers, so DOM from one test leaks into the next in the same file. Fixed with an
+  explicit `afterEach(cleanup)` in `vitest.setup.ts`.
+- `ruff`/`mypy` clean, `pytest` 45 passed/2 skipped; frontend lint/format/typecheck/build
+  clean, Vitest 5 passed (4 new, mocked `apiFetch`), Playwright 3 passed (unaffected).
+  Live-verified against rebuilt Compose containers as both an Admin (edits, saves,
+  survives reload) and a Viewer (same data, fully disabled, no Save button). Commit
+  `9989373`.
+
 ## 2026-07-27 — GRX-DEVOPS-001: CI pipeline (IN_REVIEW)
 
 - Picked immediately after `GRX-FOUND-008` — both dependencies (`GRX-TEST-001`,

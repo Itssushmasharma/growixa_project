@@ -2,7 +2,7 @@
 
 - Document ID: DOC-PROJECT-STATUS
 - Status: ACTIVE
-- Version: 1.23
+- Version: 1.24
 - Last updated: 2026-07-27
 - Owner: Coding agent (on behalf of product owner)
 - Related documents: [MASTER_TASK_TRACKER](MASTER_TASK_TRACKER.md), [DECISIONS](DECISIONS.md), [DEVELOPMENT_READINESS](DEVELOPMENT_READINESS.md)
@@ -46,13 +46,13 @@ test foundation), `GRX-COMPANY-001` (company profile + brand settings), `GRX-AUT
 (password hashing + login/logout), `GRX-AUTH-003` (refresh-token rotation + session
 revocation), `GRX-USER-001` (internal user invitation + acceptance), `GRX-AUTH-005`
 (password reset flow), `GRX-FOUND-006` (Redis connectivity), `GRX-AUTH-004` (login rate
-limiting), `GRX-TEST-002` (frontend test foundation), and `GRX-FOUND-008` (dashboard
-shell) are `DONE`. `GRX-DEVOPS-001` (CI pipeline) is `IN_REVIEW` — fully built and
-locally verified, but not moved to `DONE` because a real green run on GitHub Actions
-hasn't been observed; that requires pushing, a permission-gated action awaiting the
-user's go-ahead.
-`GRX-COMPANY-002` (company settings screen) and `GRX-USER-002` (user management screens,
-frontend) are `READY`. Per
+limiting), `GRX-TEST-002` (frontend test foundation), `GRX-FOUND-008` (dashboard
+shell), and `GRX-COMPANY-002` (company settings screen) are `DONE`. `GRX-DEVOPS-001` (CI
+pipeline) is `IN_REVIEW` — fully built and locally verified, but not moved to `DONE`
+because a real green run on GitHub Actions hasn't been observed; that requires pushing, a
+permission-gated action awaiting the user's go-ahead.
+`GRX-USER-002` (user management screens, frontend) is `READY` — the last Sprint 1 task.
+Per
 [AGENT_EXECUTION_RULES.md](../12-development/AGENT_EXECUTION_RULES.md), only one is worked
 on at a time. See [AGENT_HANDOFF.md](AGENT_HANDOFF.md) for session-by-session
 detail.
@@ -109,38 +109,19 @@ detail.
 | `apps/web/vitest.config.ts`, `apps/web/vitest.setup.ts`, `apps/web/playwright.config.ts`, `apps/web/src/app/page.test.tsx`, `apps/web/tests/e2e/smoke.spec.ts` | DONE (`GRX-TEST-002`) |
 | `apps/web/src/app/{login,dashboard}/`, `apps/web/src/lib/auth.ts`, `apps/api/src/growixa_api/{app,config}.py` (CORS), `apps/api/src/growixa_api/auth/api.py` (`GET /auth/me`), `apps/web/tests/e2e/dashboard.spec.ts` | DONE (`GRX-FOUND-008`) |
 | `.github/workflows/ci.yml` | IN_REVIEW (`GRX-DEVOPS-001` — built and locally verified, awaiting a live GitHub Actions run) |
+| `apps/web/src/app/dashboard/company-settings/` | DONE (`GRX-COMPANY-002`) |
 | `docs/00-project-control/FEATURE_STATUS_MATRIX.md`, `RISKS.md`, `BLOCKERS.md` | NOT_STARTED (created as Sprint 1 tasks land) |
 | `docs/03-ux-ui/DESIGN_REFERENCES.md` | DONE (reference material only — see its own scope caveat; not a Sprint 1 spec) |
 | Full per-feature specs under `02-features/`, all of `06-api/`, `07-ai/`, `09-integrations/`, `13-business/` | NOT_STARTED |
 
 ## Immediate next steps
 
-1. `GRX-AUTH-002` → `GRX-AUTH-003` → `GRX-USER-001` → `GRX-AUTH-005` → `GRX-FOUND-006` →
-   `GRX-AUTH-004` chosen per explicit user direction / "most needed" backend-continuity
-   picks at each step — rotation/reuse-detection closed a gap `GRX-AUTH-002` left open;
-   invitation was the only real way to add any user besides the still-unbuilt
-   `seed_first_admin` CLI; password reset closed the last P0 backend auth gap (account
-   recovery); Redis connectivity was picked because its only dependency was already `DONE`
-   (a stale `BACKLOG` status corrected to reflect that) and it unblocked rate limiting;
-   rate limiting closes the brute-force/DoS gaps (THREAT_MODEL.md T1/T12) on the exact
-   endpoints built in the two sessions before it. All six now `DONE` — every P0 Sprint 1
-   backend auth task is complete. The user then directed frontend/UI work, pointing to the
-   already-captured design reference; `GRX-TEST-002` (frontend test foundation) was picked
-   first because `GRX-FOUND-008`'s own "Required Tests" (a frontend e2e smoke test) has no
-   harness to run in without it — same reasoning as `GRX-TEST-001` preceding backend
-   feature work. `GRX-FOUND-008` (dashboard shell) followed immediately, using the design
-   reference for the login screen and sidebar shell; required two small backend additions
-   (CORS, `GET /auth/me`) and surfaced a real Docker-networking bug (server-side fetches
-   from inside the `web` container can't reach `api` via `localhost`) that only a genuine
-   Compose rebuild-and-browse check caught, not the host-run e2e suite. Both now `DONE`.
-   `GRX-DEVOPS-001` (CI pipeline) followed — both its dependencies (`GRX-TEST-001`,
-   `GRX-TEST-002`) were already `DONE` (a stale `BACKLOG` status corrected, same pattern
-   as `GRX-FOUND-006` and `GRX-AUTH-004` earlier), and it locks in every testing
-   investment made this session so future regressions are caught automatically.
-   `IN_REVIEW`, not `DONE` — a live green run needs a push, which this session won't do
-   without the user's go-ahead. Pick one of `GRX-COMPANY-002` (company settings screen) or
-   `GRX-USER-002` (user management screens, frontend) next — see
-   [MASTER_TASK_TRACKER.md](MASTER_TASK_TRACKER.md).
+1. Session sequence so far, each picked as "most needed" given dependencies/priority (full
+   rationale per task in [CHANGELOG.md](CHANGELOG.md)): `GRX-AUTH-002` → `GRX-AUTH-003` →
+   `GRX-USER-001` → `GRX-AUTH-005` → `GRX-FOUND-006` → `GRX-AUTH-004` → `GRX-TEST-002` →
+   `GRX-FOUND-008` → `GRX-DEVOPS-001` (`IN_REVIEW`, needs a push to confirm green — see
+   AGENT_HANDOFF.md) → `GRX-COMPANY-002`. Only `GRX-USER-002` (user management screens)
+   remains to close out Sprint 1's tracked tasks.
 2. Create `FEATURE_STATUS_MATRIX.md`, `RISKS.md`, `BLOCKERS.md` alongside Sprint 1 tasks as they land, not all upfront.
 3. Write full feature specs in `02-features/` for Slice 1 features as each task is picked up, not all upfront.
 4. Do not begin any V1.5+/SEO-AEO-GEO work until Slices 1–6 (MVP) are stable in production.
