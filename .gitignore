@@ -23,6 +23,10 @@ dist/
 build/
 .turbo/
 *.tsbuildinfo
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
 
 # Logs
 *.log
