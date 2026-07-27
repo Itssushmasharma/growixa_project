@@ -2,7 +2,7 @@
 
 - Document ID: DOC-PROJECT-STATUS
 - Status: ACTIVE
-- Version: 1.15
+- Version: 1.16
 - Last updated: 2026-07-27
 - Owner: Coding agent (on behalf of product owner)
 - Related documents: [MASTER_TASK_TRACKER](MASTER_TASK_TRACKER.md), [DECISIONS](DECISIONS.md), [DEVELOPMENT_READINESS](DEVELOPMENT_READINESS.md)
@@ -42,13 +42,13 @@ environment), `GRX-FOUND-003` (FastAPI application foundation), `GRX-FOUND-004` 
 application foundation), `GRX-FOUND-005` (PostgreSQL connectivity + Alembic foundation),
 `GRX-AUTH-001` (users/roles/permissions schema + seed), `GRX-RBAC-001` (centralized
 permission-check dependency), `GRX-AUDIT-001` (audit log module), `GRX-TEST-001` (backend
-test foundation), `GRX-COMPANY-001` (company profile + brand settings), and `GRX-AUTH-002`
-(password hashing + login/logout) are `DONE`. `GRX-TEST-002` (frontend test foundation),
-`GRX-USER-001` (internal user invitation + acceptance), `GRX-COMPANY-002` (company settings
-screen), `GRX-AUTH-003` (refresh-token rotation + session revocation, newly unblocked),
-`GRX-AUTH-005` (password reset flow, newly unblocked), and `GRX-FOUND-008` (dashboard shell,
-newly unblocked) are all `READY`. `GRX-AUTH-004` (login rate limiting) still needs
-`GRX-FOUND-006` (Redis connectivity), not yet started. Per
+test foundation), `GRX-COMPANY-001` (company profile + brand settings), `GRX-AUTH-002`
+(password hashing + login/logout), and `GRX-AUTH-003` (refresh-token rotation + session
+revocation) are `DONE`. `GRX-TEST-002` (frontend test foundation), `GRX-USER-001` (internal
+user invitation + acceptance), `GRX-COMPANY-002` (company settings screen),
+`GRX-AUTH-005` (password reset flow), and `GRX-FOUND-008` (dashboard shell) are all `READY`.
+`GRX-AUTH-004` (login rate limiting) still needs `GRX-FOUND-006` (Redis connectivity), not
+yet started. Per
 [AGENT_EXECUTION_RULES.md](../12-development/AGENT_EXECUTION_RULES.md), only one is worked
 on at a time. See [AGENT_HANDOFF.md](AGENT_HANDOFF.md) for session-by-session
 detail.
@@ -96,18 +96,20 @@ detail.
 | `apps/api/tests/conftest.py` (`user_factory`), pytest-cov + `integration` marker in `apps/api/pyproject.toml` | DONE (`GRX-TEST-001`) |
 | `apps/api/src/growixa_api/{company,brand}/{models,schemas,repositories,services,api}.py`, migration `1abf62872712`, `apps/api/tests/test_company_settings.py` | DONE (`GRX-COMPANY-001`) |
 | `apps/api/src/growixa_api/auth/{models,security,tokens,repositories,services,schemas,api}.py`, migration `ea25a5343142`, `apps/api/src/growixa_api/users/repositories.py`, `apps/api/tests/test_auth_login.py` | DONE (`GRX-AUTH-002`) |
+| `apps/api/src/growixa_api/auth/{repositories,services,api}.py` (rotation/reuse/logout-all extensions), `apps/api/tests/test_auth_refresh.py` | DONE (`GRX-AUTH-003`) |
 | `docs/00-project-control/FEATURE_STATUS_MATRIX.md`, `RISKS.md`, `BLOCKERS.md` | NOT_STARTED (created as Sprint 1 tasks land) |
 | `docs/03-ux-ui/DESIGN_REFERENCES.md` | DONE (reference material only — see its own scope caveat; not a Sprint 1 spec) |
 | Full per-feature specs under `02-features/`, all of `06-api/`, `07-ai/`, `09-integrations/`, `13-business/` | NOT_STARTED |
 
 ## Immediate next steps
 
-1. `GRX-AUTH-002` chosen next per explicit user direction (P0, backend, kept the session's
-   backend continuity rather than branching into frontend work). Now `DONE`. Pick one of
-   `GRX-AUTH-003` (refresh-token rotation + session revocation), `GRX-AUTH-005` (password
-   reset flow), `GRX-USER-001` (internal user invitation + acceptance), `GRX-TEST-002`
-   (frontend test foundation), `GRX-COMPANY-002`, or `GRX-FOUND-008` (dashboard shell) next
-   — see [MASTER_TASK_TRACKER.md](MASTER_TASK_TRACKER.md).
+1. `GRX-AUTH-002` then `GRX-AUTH-003` chosen per explicit user direction (P0, backend,
+   kept the session's backend continuity — `GRX-AUTH-003` specifically closed a real
+   security gap left open by `GRX-AUTH-002`: refresh tokens with no rotation/reuse
+   detection). Both now `DONE`. Pick one of `GRX-AUTH-005` (password reset flow),
+   `GRX-USER-001` (internal user invitation + acceptance), `GRX-TEST-002` (frontend test
+   foundation), `GRX-COMPANY-002`, or `GRX-FOUND-008` (dashboard shell) next — see
+   [MASTER_TASK_TRACKER.md](MASTER_TASK_TRACKER.md).
 2. Create `FEATURE_STATUS_MATRIX.md`, `RISKS.md`, `BLOCKERS.md` alongside Sprint 1 tasks as they land, not all upfront.
 3. Write full feature specs in `02-features/` for Slice 1 features as each task is picked up, not all upfront.
 4. Do not begin any V1.5+/SEO-AEO-GEO work until Slices 1–6 (MVP) are stable in production.

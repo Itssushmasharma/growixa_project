@@ -2,9 +2,11 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from growixa_api.auth.schemas import LoginIn, LoginOut
-from growixa_api.auth.services import InvalidCredentialsError
+from growixa_api.auth.services import InvalidCredentialsError, InvalidRefreshTokenError
 from growixa_api.auth.services import login as login_service
 from growixa_api.auth.services import logout as logout_service
+from growixa_api.auth.services import logout_all as logout_all_service
+from growixa_api.auth.services import refresh as refresh_service
 from growixa_api.config import get_settings
 from growixa_api.db import get_session
 
@@ -67,5 +69,40 @@ async def logout_route(
 ) -> None:
     raw_refresh_token = request.cookies.get(_REFRESH_TOKEN_COOKIE)
     await logout_service(session, raw_refresh_token=raw_refresh_token)
+    response.delete_cookie(_ACCESS_TOKEN_COOKIE)
+    response.delete_cookie(_REFRESH_TOKEN_COOKIE)
+
+
+@router.post("/refresh", response_model=LoginOut)
+async def refresh_route(
+    request: Request,
+    response: Response,
+    session: AsyncSession = Depends(get_session),
+) -> LoginOut:
+    raw_refresh_token = request.cookies.get(_REFRESH_TOKEN_COOKIE)
+    try:
+        result = await refresh_service(
+            session,
+            raw_refresh_token=raw_refresh_token,
+            user_agent=request.headers.get("user-agent"),
+            ip_address=request.client.host if request.client else None,
+        )
+    except InvalidRefreshTokenError as exc:
+        raise HTTPException(
+            status.HTTP_401_UNAUTHORIZED, "Invalid or expired refresh token"
+        ) from exc
+
+    _set_auth_cookies(response, result.access_token, result.refresh_token)
+    return LoginOut.model_validate(result.user)
+
+
+@router.post("/logout-all", status_code=status.HTTP_204_NO_CONTENT)
+async def logout_all_route(
+    request: Request,
+    response: Response,
+    session: AsyncSession = Depends(get_session),
+) -> None:
+    raw_refresh_token = request.cookies.get(_REFRESH_TOKEN_COOKIE)
+    await logout_all_service(session, raw_refresh_token=raw_refresh_token)
     response.delete_cookie(_ACCESS_TOKEN_COOKIE)
     response.delete_cookie(_REFRESH_TOKEN_COOKIE)

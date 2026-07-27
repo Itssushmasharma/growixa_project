@@ -18,9 +18,12 @@ from growixa_api.permissions.dependencies import RequirePermission
 # FastAPI's own /docs, /redoc, /openapi.json routes are plain Starlette Routes, not
 # APIRoute, so they're already excluded by the isinstance check below and don't need to be
 # listed here. Only application-defined routes that are intentionally public go here.
-# /auth/login and /auth/logout are the entry points before a session exists — they cannot
-# require a permission check on themselves.
-PUBLIC_ROUTE_PATHS = {"/health", "/auth/login", "/auth/logout"}
+# /auth/login, /auth/refresh, /auth/logout, /auth/logout-all identify their actor via the
+# credential/token in the request body or cookie itself (password, refresh token), not via
+# require_permission() — there is no session yet (login) or the route's whole job is
+# managing that session directly (refresh/logout/logout-all), so a permission check on top
+# would be redundant, not an oversight.
+PUBLIC_ROUTE_PATHS = {"/health", "/auth/login", "/auth/logout", "/auth/refresh", "/auth/logout-all"}
 
 
 def _iter_api_routes(routes: list[BaseRoute]) -> Iterator[APIRoute]:

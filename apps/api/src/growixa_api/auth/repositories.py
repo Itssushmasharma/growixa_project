@@ -1,4 +1,5 @@
 import uuid
+from collections.abc import Sequence
 from datetime import datetime
 
 from sqlalchemy import select
@@ -33,3 +34,14 @@ async def get_refresh_token_by_hash(session: AsyncSession, token_hash: str) -> R
         select(RefreshToken).where(RefreshToken.token_hash == token_hash)
     )
     return result.scalar_one_or_none()
+
+
+async def list_active_refresh_tokens_for_user(
+    session: AsyncSession, user_id: uuid.UUID
+) -> Sequence[RefreshToken]:
+    result = await session.execute(
+        select(RefreshToken).where(
+            RefreshToken.user_id == user_id, RefreshToken.revoked_at.is_(None)
+        )
+    )
+    return result.scalars().all()

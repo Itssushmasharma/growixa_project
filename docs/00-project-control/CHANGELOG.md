@@ -10,6 +10,51 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
+## 2026-07-27 — GRX-AUTH-003: Refresh-token rotation + session revocation
+
+- Picked next per explicit user direction as "most needed first": closes a real security
+  gap `GRX-AUTH-002` left open by design (refresh tokens issued, but no rotation, no reuse
+  detection — a stolen refresh token could otherwise be replayed indefinitely).
+- Added `POST /auth/refresh` and `POST /auth/logout-all` — both public routes (added to
+  the route-protection audit's allowlist) that identify the acting user via the refresh
+  token itself, consistent with the existing `/auth/logout`, rather than via
+  `get_current_user_id`/`require_permission`.
+- `auth/services.refresh()`: looks up the presented token; if already revoked by a
+  *previous rotation* (not by logout), treats this as a reuse/compromise signal and calls
+  the new `revoke_all_active_sessions()` to kill every session for that user — not just
+  reject the one request — before raising. Otherwise rotates: issues a new access +
+  refresh token, marks the presented one `revoked_at` + `replaced_by_token_id` pointing at
+  the new one (the `refresh_tokens` column that existed since `GRX-AUTH-002`'s migration
+  but stayed unused until now), and re-validates `user.status == "ACTIVE"` on every
+  refresh (defense in depth beyond relying solely on disable always successfully revoking
+  sessions elsewhere).
+- Added `auth/services.revoke_all_active_sessions(session, user_id, *, reason)` —
+  deliberately public (not `_`-prefixed) and does not commit itself, so a future
+  disable-user action (no such endpoint exists yet; out of `apps/api/auth/`'s own scope)
+  can call it as one step in a larger transaction. Records a `session.revoked` audit event
+  (Sprint 1's audit event set) with the reason and count, only when it actually revoked
+  something.
+- `auth/services.logout_all()` reuses the same revoke function, keyed off the presented
+  refresh token — logging out "everywhere" from any one of your own sessions.
+- Added `apps/api/tests/test_auth_refresh.py`: rotation (new cookies issued, old token
+  revoked with the correct `replaced_by_token_id`), reuse detection (replaying the
+  pre-rotation token 401s *and* revokes the entire chain including the token it had
+  already rotated to), `logout-all` across two simulated devices (two separate
+  `AsyncClient`s, since one client's cookie jar would silently overwrite the first
+  session's refresh cookie on a second login), disable-revokes-sessions (proves the
+  `revoke_all_active_sessions()` building block works, since no disable-user endpoint
+  exists to exercise end-to-end yet), and expired-token rejection.
+- Verified beyond the automated suite: rebuilt the `api` image, then ran a real
+  login → refresh → replay-old-token flow via curl against the live Compose stack,
+  confirming via direct `psql` queries that *both* refresh tokens ended up revoked and the
+  `session.revoked` audit row was recorded with `reason: "refresh_token_reuse_detected"`.
+  Cleaned up the smoke-test user/rows afterward.
+- Verified: `ruff`/`format --check`/`mypy` clean across 57 source files; `pytest` 28
+  passed, 94% coverage.
+- `GRX-AUTH-003` marked `DONE`. No task became newly `READY` from this alone — nothing
+  else in the tracker lists it as a dependency yet.
+- Commit: `<see below>`.
+
 ## 2026-07-27 — GRX-AUTH-002: Password hashing + login/logout
 
 - Picked next per explicit user direction: P0, backend-only, continuing the session's
