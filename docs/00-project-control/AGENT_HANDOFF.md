@@ -9,109 +9,116 @@
 
 ## Task worked on
 
-`GRX-USER-001` — Internal user invitation + acceptance. Picked per explicit user direction
-as "most needed": the only real way to add any user to the system besides the
-still-unbuilt `seed_first_admin` CLI (flagged since `GRX-AUTH-001`) or direct DB
-manipulation.
+`GRX-AUTH-005` — Password reset flow. Picked as the last P0 backend auth task remaining
+(everything else `READY` at that point was frontend work); closes the final
+account-recovery gap in the auth system.
 
 ## Work completed
 
-- **Generalized `auth/tokens.py`** (`generate_refresh_token`/`hash_refresh_token` →
-  `generate_token`/`hash_token`): invitation tokens need the exact same "high-entropy
-  opaque token, SHA-256 hash for lookup" treatment as refresh tokens per
-  AUTHENTICATION.md's token model. Verified only `auth/services.py` used the old names
-  before renaming (grepped first) — a safe, contained rename, not a speculative one.
-  Updated its 2 call sites; all 28 pre-existing tests still passed afterward.
-- **`user_invitations` table** (migration `f356da0136c3`): both indexes
-  DATABASE_SCHEMA.md specifies — a plain one on `email`, and a partial one on
-  `email WHERE accepted_at IS NULL`.
-- **`roles/repositories.py`** (new, `get_role_by_name`): `roles`'s first repository file —
-  needed to resolve an invitation's `role_name` (e.g. "Viewer") to the seeded role's UUID.
-- **`users/services.py`** (new):
-  - `invite_user()`: resolves the role, checks the email isn't already registered (fails
-    fast for the admin rather than only at acceptance), generates+hashes a token, returns
-    `(invitation, raw_token)` — the raw token only ever exists in memory, never persisted.
-  - `accept_invitation()`: re-validates not-yet-accepted / not-expired / email-still-free
-    (closes a race between two acceptances, or the person registering some other way in
-    between), creates the `User`, assigns the `UserRole`, marks the invitation accepted,
-    records `invitation.accepted` with `actor_user_id` set to the **new** user (they're
-    the one taking the accepting action, even though an admin initiated the invite).
-- **`users/api.py`** (new): `POST /users/invitations` (permission-gated, `users.manage`),
-  `POST /users/invitations/accept` (public — the invitee has no session yet, added to the
-  route-protection audit's allowlist).
+- **`password_reset_ttl_minutes` setting** (`config.py`, default 30) and **`PasswordResetToken`
+  model** (`auth/models.py`) matching `DATABASE_SCHEMA.md`'s `password_reset_tokens` table:
+  `id`, `user_id` (FK `ON DELETE CASCADE`, indexed), unique `token_hash`, `expires_at`,
+  `used_at`. Migration `bb25de08ba84`.
+- **`auth/repositories.py`**: added `create_password_reset_token()` and
+  `get_password_reset_token_by_hash()`, following the exact shape of the existing
+  refresh-token repository functions.
+- **`auth/services.py`**:
+  - `InvalidPasswordResetTokenError` — missing/unknown/expired/already-used token.
+  - `request_password_reset(session, *, email)`: looks up the user, **always** records a
+    `user.password_reset_requested` audit event (mirrors `user.login_failed`'s
+    always-record-regardless-of-outcome pattern for security-monitoring symmetry), and only
+    creates+returns a raw token when the account exists; returns `None` otherwise.
+  - `complete_password_reset(session, *, raw_token, new_password)`: validates the token,
+    sets the new Argon2 hash, marks the token used, calls the existing (GRX-AUTH-003)
+    `revoke_all_active_sessions(..., reason="password_reset")` to kill every session, and
+    records `user.password_reset_completed`.
+- **`auth/schemas.py`**: `PasswordResetRequestIn`, `PasswordResetRequestOut` (with an
+  optional `token` field), `PasswordResetCompleteIn`.
+- **`auth/api.py`**: `POST /auth/password-reset/request` and
+  `POST /auth/password-reset/complete`, both public (added to the route-protection audit's
+  allowlist in `tests/test_protected_routes_audit.py`).
 
 ## An explicit, flagged scope decision — not a silent shortcut
 
-`POST /users/invitations` returns the raw invitation token directly in its JSON response.
-Sprint 1 has no email-delivery channel at all — no task for it exists anywhere in the
-tracker — so there is currently no other way for the invitee to receive it. This is the
-correct interim behavior given that constraint, not the intended end state. **Revisit the
-moment a notifications/email-delivery task exists**: the token should be sent out-of-band
-at that point and dropped from the API response entirely.
+`POST /auth/password-reset/request`'s response always returns an identical generic message
+regardless of whether the email is registered (THREAT_MODEL.md T11). It additionally
+includes a `token` field that is populated with the raw reset token **only** when
+`settings.environment == "local"` — there is still no email-delivery channel in Sprint 1
+(same constraint flagged in `GRX-USER-001`'s invitation-token handoff). In any non-local
+environment `token` is always `null` for both known and unknown emails, so T11 holds there
+unconditionally; in local dev it necessarily leaks account existence via the token's
+presence, which is acceptable only because local dev has no other way to retrieve the
+token for manual testing. **Revisit the moment a notifications/email-delivery task
+exists**: send the token out-of-band and drop it from the API response entirely, in every
+environment.
 
 ## Files changed
 
-- `apps/api/src/growixa_api/auth/tokens.py` (renamed `generate_refresh_token`/
-  `hash_refresh_token` → `generate_token`/`hash_token`)
-- `apps/api/src/growixa_api/auth/services.py` (updated call sites for the rename)
-- `apps/api/src/growixa_api/users/models.py` (added `UserInvitation`)
-- `apps/api/src/growixa_api/users/repositories.py` (added `create_user`,
-  `create_invitation`, `get_invitation_by_token_hash`)
-- `apps/api/src/growixa_api/users/services.py`, `schemas.py`, `api.py` (new)
-- `apps/api/src/growixa_api/roles/repositories.py` (new)
-- `apps/api/src/growixa_api/config.py` (`invitation_ttl_days` setting)
-- `apps/api/src/growixa_api/app.py` (mounts the new users router)
-- `apps/api/migrations/env.py` (no new import needed — `UserInvitation` lives in the
-  already-imported `users.models`)
-- `apps/api/migrations/versions/f356da0136c3_user_invitations_table.py` (new)
-- `apps/api/tests/test_protected_routes_audit.py` (added `/users/invitations/accept` to
-  the public allowlist)
-- `apps/api/tests/test_users_invitations.py` (new)
-- `docs/00-project-control/MASTER_TASK_TRACKER.md` (GRX-USER-001 → DONE, evidence recorded)
-- `docs/00-project-control/PROJECT_STATUS.md`, `docs/00-project-control/CHANGELOG.md` (this update)
+- `apps/api/src/growixa_api/config.py` (`password_reset_ttl_minutes` setting)
+- `apps/api/src/growixa_api/auth/models.py` (added `PasswordResetToken`)
+- `apps/api/src/growixa_api/auth/repositories.py` (added `create_password_reset_token`,
+  `get_password_reset_token_by_hash`)
+- `apps/api/src/growixa_api/auth/services.py` (added `InvalidPasswordResetTokenError`,
+  `request_password_reset`, `complete_password_reset`)
+- `apps/api/src/growixa_api/auth/schemas.py` (added `PasswordResetRequestIn`,
+  `PasswordResetRequestOut`, `PasswordResetCompleteIn`)
+- `apps/api/src/growixa_api/auth/api.py` (added both new routes)
+- `apps/api/migrations/versions/bb25de08ba84_password_reset_tokens_table.py` (new)
+- `apps/api/tests/test_protected_routes_audit.py` (added both new paths to the public
+  allowlist)
+- `apps/api/tests/test_auth_password_reset.py` (new)
+- `docs/00-project-control/MASTER_TASK_TRACKER.md` (GRX-AUTH-005 → DONE, evidence recorded)
+- `docs/00-project-control/PROJECT_STATUS.md`, `docs/00-project-control/CHANGELOG.md` (this
+  update)
 
 ## Commands executed
 
 ```bash
 cd apps/api
-# renamed auth/tokens.py functions, updated auth/services.py call sites
-.venv/bin/pytest -v   # confirmed all 28 pre-existing tests still pass after the rename
-
-# models written, wired into migrations/env.py (no new import — same users.models module)
 source ../../.env && export DATABASE_URL=... REDIS_URL=... RABBITMQ_URL=...
-.venv/bin/alembic revision --autogenerate -m "user invitations table"
-.venv/bin/ruff check --fix . && .venv/bin/ruff format .
+.venv/bin/alembic upgrade head    # sync to current head first
+.venv/bin/alembic revision --autogenerate -m "password reset tokens table"
+.venv/bin/ruff format migrations/versions/bb25de08ba84_password_reset_tokens_table.py
 .venv/bin/alembic upgrade head
 
-.venv/bin/pytest -v   # 34 passed, 94% coverage
+# models/repositories/services/schemas/api written, tests written
+.venv/bin/ruff check --fix . && .venv/bin/ruff format . && .venv/bin/mypy .
+.venv/bin/pytest -v   # 38 passed, 95% coverage
 
 cd ../..
 podman compose up -d --build api
-podman compose exec api alembic current   # f356da0136c3 (head)
-# created a smoke-test Admin inside the container, then:
-curl -c cookies.txt -X POST http://localhost:8000/auth/login -d '...'
-curl -b cookies.txt -X POST http://localhost:8000/users/invitations -d '{"email":...,"role_name":"Viewer"}'
-curl -X POST http://localhost:8000/users/invitations/accept -d '{"token":...,"password":...,"full_name":...}'
-podman compose exec postgres psql -U growixa -d growixa -c "SELECT r.name FROM user_roles ur JOIN roles r ON r.id=ur.role_id WHERE ur.user_id = '...';"
-podman compose exec postgres psql -U growixa -d growixa -c "SELECT action FROM audit_logs WHERE actor_user_id = '...';"
+podman compose exec api alembic current   # bb25de08ba84 (head)
+curl -s http://localhost:8000/health
+
+# created a smoke-test user directly via the ORM inside the container (no self-registration
+# endpoint exists), then:
+curl -X POST http://localhost:8000/auth/login -d '{"email":...,"password":"Old-Password-123!"}'
+curl -X POST http://localhost:8000/auth/password-reset/request -d '{"email":...}'
+curl -X POST http://localhost:8000/auth/password-reset/complete -d '{"token":...,"new_password":"New-Password-789!"}'
+curl -X POST http://localhost:8000/auth/login -d '{"email":...,"password":"Old-Password-123!"}'   # 401
+curl -X POST http://localhost:8000/auth/login -d '{"email":...,"password":"New-Password-789!"}'   # 200
+podman compose exec postgres psql -U growixa -d growixa -c "SELECT action, actor_user_id, entity_id, metadata FROM audit_logs WHERE ...;"
+podman compose exec postgres psql -U growixa -d growixa -c "SELECT id, revoked_at IS NOT NULL FROM refresh_tokens WHERE user_id = '...';"
+podman compose exec postgres psql -U growixa -d growixa -c "SELECT used_at IS NOT NULL FROM password_reset_tokens WHERE user_id = '...';"
 # cleaned up the smoke-test rows afterward
 ```
 
 ## Test results
 
-`pytest` → 34 passed (28 pre-existing + 6 new). 94% coverage. `ruff`/`mypy` clean across
-63 source files.
+`pytest` → 38 passed (34 pre-existing + 4 new). 95% coverage. `ruff`/`mypy` clean across 65
+source files.
 
 ## Migrations
 
-`f356da0136c3` — creates `user_invitations`. Depends on `ea25a5343142`.
+`bb25de08ba84` — creates `password_reset_tokens`. Depends on `f356da0136c3`.
 
 ## Decisions
 
 None new — implements the flow already specified in
-[AUTHENTICATION.md](../08-security/AUTHENTICATION.md). The raw-token-in-response
-interim behavior is a documented, flagged scope call (see above), not a `DECISIONS.md`-
-level architecture decision.
+[AUTHENTICATION.md](../08-security/AUTHENTICATION.md) and
+[THREAT_MODEL.md](../08-security/THREAT_MODEL.md) T11. The local-dev-only token exposure is
+a documented, flagged scope call (see above), not a `DECISIONS.md`-level architecture
+decision — it's the same interim call already made once in `GRX-USER-001`.
 
 ## Blockers
 
@@ -119,29 +126,29 @@ None.
 
 ## Known issues
 
-- Raw invitation token is exposed in the `POST /users/invitations` response body — see the
-  flagged scope decision above. Revisit when email delivery exists.
-- No "list pending invitations" or "revoke invitation" endpoint — out of this task's
-  literal acceptance criteria (create + accept only); a natural addition for
-  `GRX-USER-002`'s admin UI or its own small backend task if the UI needs it.
+- Raw password-reset token is exposed in the `POST /auth/password-reset/request` response
+  body, but only when `settings.environment == "local"` — see the flagged scope decision
+  above. Revisit when email delivery exists.
 - Still-open from earlier sessions: `seed_first_admin` CLI (`GRX-AUTH-001`); CORS for
   frontend calls (`GRX-FOUND-004`); `GRX-AUTH-004` (rate limiting) blocked on
-  `GRX-FOUND-006`.
+  `GRX-FOUND-006`; no "list pending invitations"/"revoke invitation" endpoints
+  (`GRX-USER-001`).
 
 ## Current state
 
-Full invite → accept lifecycle works and is tested end-to-end (automated suite + live
-curl against Compose). An Admin can now provision new internal users without touching the
-database directly. This completes the third step of this session's user-directed "most
-needed" sequence: `GRX-AUTH-002` → `GRX-AUTH-003` → `GRX-USER-001`.
+Full password-reset request→complete lifecycle works and is tested end-to-end (automated
+suite + live curl against Compose). This completes the fourth step of this session's
+user-directed backend-continuity sequence: `GRX-AUTH-002` → `GRX-AUTH-003` →
+`GRX-USER-001` → `GRX-AUTH-005`. Every P0 backend auth task in Sprint 1 that isn't blocked
+on `GRX-FOUND-006` (Redis) is now `DONE`.
 
 ## Exact next task
 
-No explicit user direction beyond this point. `READY`: `GRX-AUTH-005` (password reset
-flow), `GRX-TEST-002` (frontend test foundation), `GRX-COMPANY-002` (company settings
-screen, frontend), `GRX-FOUND-008` (dashboard shell, frontend), `GRX-USER-002` (user
-management screens, frontend, newly unblocked). `GRX-AUTH-004` (rate limiting) still needs
-`GRX-FOUND-006`.
+No explicit user direction beyond this point. `READY`: `GRX-TEST-002` (frontend test
+foundation), `GRX-COMPANY-002` (company settings screen, frontend), `GRX-FOUND-008`
+(dashboard shell, frontend), `GRX-USER-002` (user management screens, frontend). All
+remaining `READY` Sprint 1 backend work is exhausted — everything left either needs
+`GRX-FOUND-006` (Redis, for `GRX-AUTH-004`) or is frontend work.
 
 ## Resume commands
 
@@ -154,4 +161,4 @@ podman compose up -d                                  # bring the stack back up
 
 ## Latest commit
 
-`87d2110` — feat(users): internal user invitation + acceptance (GRX-USER-001)
+`730519b` — feat(auth): password reset flow (GRX-AUTH-005)

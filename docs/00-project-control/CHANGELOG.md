@@ -10,6 +10,37 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
+## 2026-07-27 — GRX-AUTH-005: Password reset flow
+
+- Picked as the last P0 backend auth task remaining (everything else `READY` at that point
+  was frontend work) — closes the final account-recovery gap in the auth system.
+- Added `password_reset_tokens` table (migration `bb25de08ba84`), matching
+  `DATABASE_SCHEMA.md`'s spec exactly: `user_id` FK `ON DELETE CASCADE`, unique `token_hash`,
+  `expires_at`, `used_at`. Reused the already-generalized `generate_token()`/`hash_token()`
+  from `auth/tokens.py` (no new token machinery needed).
+- `auth/services.py`: `request_password_reset()` always records a
+  `user.password_reset_requested` audit event and always runs the same code shape regardless
+  of whether the account exists — only the returned raw token differs (a string vs. `None`).
+  `complete_password_reset()` validates the token (exists, unused, unexpired), sets the new
+  password hash, marks the token used, calls the existing `revoke_all_active_sessions()`
+  (built in `GRX-AUTH-003`) to kill every active session, and records
+  `user.password_reset_completed`.
+- **Enumeration-safety design (THREAT_MODEL.md T11)**: `POST /auth/password-reset/request`
+  always returns the same generic message regardless of whether the email is registered.
+  The raw token is additionally echoed back in the response, but **only** when
+  `settings.environment == "local"` — mirroring the existing `Secure`-cookie
+  environment-conditional pattern and GRX-USER-001's invitation-token interim behavior.
+  Verified via a monkeypatched-`ENVIRONMENT=production` test that the token is `null` for
+  both known and unknown emails outside local dev.
+- Both new endpoints (`/auth/password-reset/request`, `/auth/password-reset/complete`) are
+  public (no session yet) and added to the route-protection audit's allowlist.
+- `ruff`/`mypy` clean; `pytest` 38 passed (95% coverage) incl. full request→complete
+  round-trip (old password rejected, new password works, sessions revoked, all three audit
+  events emitted), identical response for known/unknown email, and invalid/reused-token
+  rejection. Rebuilt the `api` image, confirmed `alembic current` → head, and ran a live curl
+  request→complete flow against Compose with direct `psql` verification of audit events,
+  refresh-token revocation, and the reset token's `used_at`. Commit `730519b`.
+
 ## 2026-07-27 — GRX-USER-001: Internal user invitation + acceptance
 
 - Picked next per explicit user direction as "most needed": the only way to add any user
