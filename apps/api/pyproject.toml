@@ -79,3 +79,8 @@ markers = [
 [tool.coverage.run]
 source = ["growixa_api"]
 omit = ["*/tests/*"]
+# SQLAlchemy's async engine bridges into the sync DBAPI driver via greenlet_spawn; without
+# this, coverage.py's tracer doesn't follow into that greenlet context and under-reports
+# lines that demonstrably executed (found while validating GRX-AUTH-002 — auth/services.py
+# showed 50% coverage despite every line being exercised by passing, assertion-heavy tests).
+concurrency = ["greenlet"]

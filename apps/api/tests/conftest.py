@@ -13,13 +13,29 @@ import pytest
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from growixa_api.auth.security import hash_password
 from growixa_api.db import async_session_factory
 from growixa_api.roles.models import Role
 from growixa_api.users.models import User, UserRole
 
+# Known plaintext for any user_factory-created user whose password wasn't overridden —
+# tests that need to log in as that user (GRX-AUTH-002) use this constant directly.
+DEFAULT_TEST_PASSWORD = "Test-Password-123!"
 
-async def _create_user(session: AsyncSession, *, full_name: str, role_name: str | None) -> User:
-    user = User(email=f"{uuid.uuid4()}@example.com", password_hash="x", full_name=full_name)
+
+async def _create_user(
+    session: AsyncSession,
+    *,
+    full_name: str,
+    role_name: str | None,
+    password: str,
+    email: str | None,
+) -> User:
+    user = User(
+        email=email or f"{uuid.uuid4()}@example.com",
+        password_hash=hash_password(password),
+        full_name=full_name,
+    )
     session.add(user)
     await session.flush()
     if role_name is not None:
@@ -30,8 +46,9 @@ async def _create_user(session: AsyncSession, *, full_name: str, role_name: str 
 
 @pytest.fixture
 async def user_factory() -> AsyncGenerator[Callable[..., Awaitable[uuid.UUID]], None]:
-    """Creates a real user (optionally assigned an existing seeded role); deletes every
-    user it created when the test ends.
+    """Creates a real user (optionally assigned an existing seeded role, with a real Argon2
+    hash of DEFAULT_TEST_PASSWORD unless overridden); deletes every user it created when the
+    test ends.
 
     If a test creates rows in another table that reference this user without an
     ON DELETE CASCADE (e.g. `audit_logs.actor_user_id`, by design — see GRX-AUDIT-001), the
@@ -40,9 +57,17 @@ async def user_factory() -> AsyncGenerator[Callable[..., Awaitable[uuid.UUID]], 
     """
     created_ids: list[uuid.UUID] = []
 
-    async def factory(*, full_name: str = "Test User", role_name: str | None = None) -> uuid.UUID:
+    async def factory(
+        *,
+        full_name: str = "Test User",
+        role_name: str | None = None,
+        password: str = DEFAULT_TEST_PASSWORD,
+        email: str | None = None,
+    ) -> uuid.UUID:
         async with async_session_factory() as session:
-            user = await _create_user(session, full_name=full_name, role_name=role_name)
+            user = await _create_user(
+                session, full_name=full_name, role_name=role_name, password=password, email=email
+            )
             await session.commit()
             created_ids.append(user.id)
             return user.id

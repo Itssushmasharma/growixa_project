@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 # Imported for their side effect of registering tables on Base.metadata (required for
 # --autogenerate); the modules themselves are otherwise unused here.
 from growixa_api.audit import models as audit_models  # noqa: F401
+from growixa_api.auth import models as auth_models  # noqa: F401
 from growixa_api.brand import models as brand_models  # noqa: F401
 from growixa_api.company import models as company_models  # noqa: F401
 from growixa_api.config import get_settings

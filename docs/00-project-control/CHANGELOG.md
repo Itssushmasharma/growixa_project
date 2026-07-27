@@ -10,6 +10,79 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
+## 2026-07-27 — GRX-AUTH-002: Password hashing + login/logout
+
+- Picked next per explicit user direction: P0, backend-only, continuing the session's
+  backend momentum rather than branching into frontend work (`GRX-TEST-002`) or a P1 task
+  (`GRX-COMPANY-002`).
+- Added `apps/api/src/growixa_api/auth/security.py`: Argon2id `hash_password`/
+  `verify_password`, cost parameters (`argon2_time_cost`/`memory_cost`/`parallelism`) added
+  to `Settings` as configuration per
+  [AUTHENTICATION.md](../08-security/AUTHENTICATION.md) ("tuned parameters set as
+  configuration... so cost can be raised as hardware improves"), defaulting to
+  argon2-cffi's own OWASP-baseline `PasswordHasher` defaults.
+- Added `apps/api/src/growixa_api/auth/tokens.py`: `create_access_token` — the **issuing**
+  half of the JWT that `permissions.dependencies.get_current_user_id` (`GRX-RBAC-001`) has
+  been verifying since that task, same signing key/algorithm, closing the gap flagged at
+  the time. Also refresh-token generation (`secrets.token_urlsafe`) and hashing
+  (SHA-256 — fast/deterministic is correct here since, unlike a password, a refresh token
+  is already high-entropy, not a low-entropy brute-forceable input).
+- Added the `refresh_tokens` table (migration `ea25a5343142`) — deferred from
+  `GRX-AUTH-001` since that task's own scope was schema for users/roles/permissions only;
+  needed now because issuing a refresh token requires persisting its hash. Includes
+  `replaced_by_token_id`, populated only once `GRX-AUTH-003` (rotation) lands, but present
+  now as part of the fixed schema in DATABASE_SCHEMA.md.
+- Added `apps/api/src/growixa_api/users/repositories.py` (`get_user_by_email`) — the
+  `users` module's first repository file; `auth` depends on `users` for identity lookup per
+  [MODULE_BOUNDARIES.md](../04-architecture/MODULE_BOUNDARIES.md), so this lookup belongs
+  there, not duplicated inside `auth`.
+- `auth/services.py`: `login()` raises a single `InvalidCredentialsError` for unknown
+  email, wrong password, *and* disabled accounts alike — deliberately indistinguishable
+  per [THREAT_MODEL.md](../08-security/THREAT_MODEL.md) T11, each still recording a
+  `user.login_failed` audit event (with `entity_id` set only when a user was actually
+  found, so the audit trail itself still distinguishes them for legitimate incident
+  response — that distinction just never reaches the HTTP response). Successful login
+  updates `last_login_at`, issues both tokens, and records `user.login`. `logout()`
+  revokes the presented refresh token and records `user.logout`.
+- `auth/api.py`: `POST /auth/login` and `POST /auth/logout`, added to the
+  route-protection audit's public allowlist (they are the entry points before a session
+  exists). Cookies are `HttpOnly` + `SameSite=Lax` unconditionally; `Secure` is
+  conditional on `settings.environment != "local"` — local dev runs over plain HTTP, and a
+  browser will not resend a `Secure` cookie without HTTPS.
+- Added `apps/api/tests/test_auth_login.py`: valid login (cookies present, **no token
+  values in the JSON body** — verified directly per T2, not assumed), identical generic
+  error for wrong-password vs. unknown-email (compared byte-for-byte, not just both-401),
+  disabled-account rejection, and logout (revokes the token row, clears both cookies,
+  records the audit event). Extended the shared `user_factory` (`GRX-TEST-001`) to hash a
+  real, known password (`DEFAULT_TEST_PASSWORD`) and accept an explicit `email` override,
+  rather than duplicating user-creation logic for this task's tests.
+- **Real bug found and fixed — this one affects every coverage number recorded so far this
+  session.** `auth/services.py` showed 50% coverage despite all 4 new tests passing with
+  assertions that only make sense if the "uncovered" lines ran (audit rows created,
+  `last_login_at` set, tokens revoked). Root cause: SQLAlchemy's async engine bridges into
+  the sync DBAPI driver via `greenlet_spawn`, and coverage.py's default tracer does not
+  follow into that greenlet context, silently under-reporting any code that runs on the
+  other side of an `await session.execute(...)`/`commit()` call. Fixed by adding
+  `concurrency = ["greenlet"]` to `[tool.coverage.run]`. Total coverage jumped from 85% to
+  **94%** on rerun — the true baseline was always higher; this was purely a measurement
+  bug, not new code appearing. `GRX-TEST-001`'s previously-recorded 87% baseline is now
+  known to have been an undercount for the same reason; not retroactively rewritten there
+  (historical evidence is point-in-time), but flagged here since this is where it was found.
+- Verified beyond the automated suite: rebuilt the `api` image, confirmed `alembic current`
+  reports the new head inside the container, then ran a real login → wrong-password →
+  logout flow via curl against the live Compose stack — inspected the actual `Set-Cookie`
+  headers (`HttpOnly`, `SameSite=lax`, correct `Max-Age` matching config, no `Secure` in
+  local) and confirmed logout's `Set-Cookie` headers clear both cookies (`Max-Age=0`).
+  Cleaned up the smoke-test user/rows afterward.
+- Verified: `ruff`/`format --check`/`mypy` clean across 56 source files; `pytest` 23 passed,
+  94% coverage (corrected).
+- `GRX-AUTH-002` marked `DONE`. `GRX-AUTH-003` (refresh-token rotation + session
+  revocation), `GRX-AUTH-005` (password reset flow), and `GRX-FOUND-008` (dashboard shell,
+  frontend) are newly `READY`, alongside the already-`READY` `GRX-TEST-002`,
+  `GRX-USER-001`, `GRX-COMPANY-002`. `GRX-AUTH-004` (rate limiting) still needs
+  `GRX-FOUND-006` (Redis connectivity), not yet started.
+- Commit: `<see below>`.
+
 ## 2026-07-25 — GRX-COMPANY-001: Company profile + brand settings
 
 - First task this session to ship real, RBAC-gated HTTP endpoints (previous tasks were
