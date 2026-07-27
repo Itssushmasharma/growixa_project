@@ -154,4 +154,4 @@ podman compose up -d                                  # bring the stack back up
 
 ## Latest commit
 
-Recorded below after this handoff is committed alongside the `GRX-USER-001` change set.
+`87d2110` — feat(users): internal user invitation + acceptance (GRX-USER-001)

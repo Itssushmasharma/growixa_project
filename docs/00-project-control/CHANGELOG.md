@@ -61,7 +61,7 @@ from Sprint 1 onward, code). Each entry names what changed and the commit(s) it 
   newly `READY`, alongside the already-`READY` `GRX-AUTH-005`, `GRX-TEST-002`,
   `GRX-COMPANY-002`, `GRX-FOUND-008`. This completes the third step of the user-directed
   "most needed" sequence this session (`GRX-AUTH-002` → `GRX-AUTH-003` → `GRX-USER-001`).
-- Commit: `<see below>`.
+- Commit: `87d2110`.
 
 ## 2026-07-27 — GRX-AUTH-003: Refresh-token rotation + session revocation
 
