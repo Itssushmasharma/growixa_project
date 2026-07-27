@@ -10,6 +10,58 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
+## 2026-07-27 — GRX-FOUND-008: Dashboard shell
+
+- Picked immediately after `GRX-TEST-002` gave the frontend a real test harness. The user
+  directed this UI work explicitly, pointing to the previously captured design reference
+  (`DESIGN_REFERENCES.md` + `mockups/growixa-login-and-dashboard-mockup.html`) and a fresh
+  screenshot of the same dashboard mockup for visual grounding.
+- **Two small, necessary backend additions**, discovered while scoping this frontend task
+  (not originally listed in its Files/Modules column): CORS middleware
+  (`cors_allowed_origins` setting, defaulting to `localhost:3000` and `localhost:3100`) so
+  a browser can complete the cross-origin, credentialed fetches auth relies on; and
+  `GET /auth/me` (identifies the session via the access-token cookie itself, the same
+  shape as `/refresh`/`/logout-all` — no separate permission needed, added to the
+  route-protection audit's allowlist alongside them). Without `/auth/me` there is no way
+  for a Server Component to determine "is this user logged in," since the access token is
+  HttpOnly and unreadable by client-side JS.
+- Frontend: `globals.css` design tokens (colors, gradients, card/pill styles) taken
+  directly from the design brief; a real email+password `/login` page (dark navy
+  gradient, glass card) — not the mockup's demo "Sign in as Super Admin/Team Member"
+  buttons, since the real backend needs actual credentials; an authenticated
+  `/dashboard` route whose layout calls `getCurrentUser()` server-side and redirects to
+  `/login` on failure, rendering a sidebar + top bar shell around an empty-state landing
+  page. Root `/` now redirects to `/dashboard`, which is the actual auth gate.
+- Per `DESIGN_REFERENCES.md`'s scope caveat, the sidebar wires up only the "Dashboard" nav
+  item for real — Contacts/Campaigns/Team/Settings/etc. have no page behind them yet in
+  Sprint 1, so they're not rendered at all (not even as inert placeholders), rather than
+  shipping dead links.
+- `ruff`/`mypy` clean; `pytest` 45 passed, 2 skipped (unchanged skip count/reason from
+  `GRX-AUTH-004`). Frontend `eslint`/`prettier --check`/`tsc --noEmit`/Vitest all clean.
+  Added a Playwright global setup/teardown that creates and deletes a fixed e2e test user
+  directly via the ORM inside the `api` container (no public "create user" endpoint
+  exists). 3 e2e tests passed against real Compose Postgres/Redis: an anonymous visit to
+  `/dashboard` (and separately to `/`) redirects to `/login`; a full login shows the
+  dashboard shell (sidebar, top bar, correct user name, empty-state card) and logging out
+  clears the session for real, confirmed by re-visiting `/dashboard` afterward and landing
+  back on `/login`.
+- **A real bug found and fixed during Compose verification, not caught by the host-run
+  Playwright suite**: server-side fetches issued from inside the `web` container used
+  `NEXT_PUBLIC_API_URL=http://localhost:8000`, but `localhost` inside that container
+  resolves to the container itself, not the `api` container — every dashboard visit 500'd
+  in the real Dockerized stack even though it worked perfectly via `next build && next
+  start` on the host (where both processes genuinely do share one `localhost`). Fixed by
+  adding a server-only `API_INTERNAL_URL` (falls back to `NEXT_PUBLIC_API_URL` when unset,
+  so running outside Docker needs no change) and setting it to `http://api:8000` — the
+  Compose service DNS name — in `compose.yaml`. This is exactly the kind of gap Playwright
+  running against a host-built app can't catch, which is why this task's verification
+  included rebuilding both containers and driving the actual login → dashboard → logout
+  flow in a real browser against them, not just trusting the e2e suite's green result.
+- Cosmetic, non-blocking: the icon-mark PNG asset has an opaque light backdrop baked in,
+  which shows as a small white square against the dark login card rather than blending in
+  — a future visual-polish pass could swap in the monochrome/white logo variant instead;
+  not worth blocking this task over. Commit `886329a`.
+
 ## 2026-07-27 — GRX-FEAT-SMS-001: SMS Marketing & Twilio Integration documentation
 
 - Added feature specification `docs/02-features/FEATURE_SMS_MARKETING.md` detailing Admin Twilio provider credential setup, E.164 phone formatting, SMS consent management (`OPTED_IN`/`OPTED_OUT`), SMS campaign composer with 160-char / GSM-7 segment calculator, and Twilio DLR / `STOP` opt-out webhooks.

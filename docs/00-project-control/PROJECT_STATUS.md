@@ -2,7 +2,7 @@
 
 - Document ID: DOC-PROJECT-STATUS
 - Status: ACTIVE
-- Version: 1.21
+- Version: 1.22
 - Last updated: 2026-07-27
 - Owner: Coding agent (on behalf of product owner)
 - Related documents: [MASTER_TASK_TRACKER](MASTER_TASK_TRACKER.md), [DECISIONS](DECISIONS.md), [DEVELOPMENT_READINESS](DEVELOPMENT_READINESS.md)
@@ -46,9 +46,10 @@ test foundation), `GRX-COMPANY-001` (company profile + brand settings), `GRX-AUT
 (password hashing + login/logout), `GRX-AUTH-003` (refresh-token rotation + session
 revocation), `GRX-USER-001` (internal user invitation + acceptance), `GRX-AUTH-005`
 (password reset flow), `GRX-FOUND-006` (Redis connectivity), `GRX-AUTH-004` (login rate
-limiting), and `GRX-TEST-002` (frontend test foundation) are `DONE`.
-`GRX-COMPANY-002` (company settings screen), `GRX-FOUND-008` (dashboard shell), and
-`GRX-USER-002` (user management screens, frontend) are all `READY`. Per
+limiting), `GRX-TEST-002` (frontend test foundation), and `GRX-FOUND-008` (dashboard
+shell) are `DONE`.
+`GRX-COMPANY-002` (company settings screen) and `GRX-USER-002` (user management screens,
+frontend) are `READY`. Per
 [AGENT_EXECUTION_RULES.md](../12-development/AGENT_EXECUTION_RULES.md), only one is worked
 on at a time. See [AGENT_HANDOFF.md](AGENT_HANDOFF.md) for session-by-session
 detail.
@@ -103,6 +104,7 @@ detail.
 | `apps/api/src/growixa_api/redis.py` (new), `apps/api/src/growixa_api/health.py` (pooled-client reuse), `apps/api/tests/test_redis.py` | DONE (`GRX-FOUND-006`) |
 | `apps/api/src/growixa_api/auth/rate_limit.py` (new), `apps/api/src/growixa_api/auth/api.py` (login/password-reset-request extensions), `apps/api/tests/test_auth_rate_limit.py` | DONE (`GRX-AUTH-004`) |
 | `apps/web/vitest.config.ts`, `apps/web/vitest.setup.ts`, `apps/web/playwright.config.ts`, `apps/web/src/app/page.test.tsx`, `apps/web/tests/e2e/smoke.spec.ts` | DONE (`GRX-TEST-002`) |
+| `apps/web/src/app/{login,dashboard}/`, `apps/web/src/lib/auth.ts`, `apps/api/src/growixa_api/{app,config}.py` (CORS), `apps/api/src/growixa_api/auth/api.py` (`GET /auth/me`), `apps/web/tests/e2e/dashboard.spec.ts` | DONE (`GRX-FOUND-008`) |
 | `docs/00-project-control/FEATURE_STATUS_MATRIX.md`, `RISKS.md`, `BLOCKERS.md` | NOT_STARTED (created as Sprint 1 tasks land) |
 | `docs/03-ux-ui/DESIGN_REFERENCES.md` | DONE (reference material only — see its own scope caveat; not a Sprint 1 spec) |
 | Full per-feature specs under `02-features/`, all of `06-api/`, `07-ai/`, `09-integrations/`, `13-business/` | NOT_STARTED |
@@ -122,8 +124,13 @@ detail.
    already-captured design reference; `GRX-TEST-002` (frontend test foundation) was picked
    first because `GRX-FOUND-008`'s own "Required Tests" (a frontend e2e smoke test) has no
    harness to run in without it — same reasoning as `GRX-TEST-001` preceding backend
-   feature work. Now `DONE`; `GRX-FOUND-008` (dashboard shell) is next, in progress. See
-   [MASTER_TASK_TRACKER.md](MASTER_TASK_TRACKER.md).
+   feature work. `GRX-FOUND-008` (dashboard shell) followed immediately, using the design
+   reference for the login screen and sidebar shell; required two small backend additions
+   (CORS, `GET /auth/me`) and surfaced a real Docker-networking bug (server-side fetches
+   from inside the `web` container can't reach `api` via `localhost`) that only a genuine
+   Compose rebuild-and-browse check caught, not the host-run e2e suite. Both now `DONE`.
+   Pick one of `GRX-COMPANY-002` (company settings screen) or `GRX-USER-002` (user
+   management screens, frontend) next — see [MASTER_TASK_TRACKER.md](MASTER_TASK_TRACKER.md).
 2. Create `FEATURE_STATUS_MATRIX.md`, `RISKS.md`, `BLOCKERS.md` alongside Sprint 1 tasks as they land, not all upfront.
 3. Write full feature specs in `02-features/` for Slice 1 features as each task is picked up, not all upfront.
 4. Do not begin any V1.5+/SEO-AEO-GEO work until Slices 1–6 (MVP) are stable in production.
