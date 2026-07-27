@@ -9,65 +9,52 @@
 
 ## Task worked on
 
-`GRX-AUTH-005` — Password reset flow. Picked as the last P0 backend auth task remaining
-(everything else `READY` at that point was frontend work); closes the final
-account-recovery gap in the auth system.
+`GRX-FOUND-006` — Redis connectivity. Picked because its only dependency
+(`GRX-FOUND-003`) was already `DONE` — the tracker still had it marked `BACKLOG`, a stale
+status corrected as part of picking this up — and because it directly unblocks
+`GRX-AUTH-004` (login rate limiting), a P0 security task covering the exact
+login/password-reset-request endpoints built in the two sessions before this one.
 
 ## Work completed
 
-- **`password_reset_ttl_minutes` setting** (`config.py`, default 30) and **`PasswordResetToken`
-  model** (`auth/models.py`) matching `DATABASE_SCHEMA.md`'s `password_reset_tokens` table:
-  `id`, `user_id` (FK `ON DELETE CASCADE`, indexed), unique `token_hash`, `expires_at`,
-  `used_at`. Migration `bb25de08ba84`.
-- **`auth/repositories.py`**: added `create_password_reset_token()` and
-  `get_password_reset_token_by_hash()`, following the exact shape of the existing
-  refresh-token repository functions.
-- **`auth/services.py`**:
-  - `InvalidPasswordResetTokenError` — missing/unknown/expired/already-used token.
-  - `request_password_reset(session, *, email)`: looks up the user, **always** records a
-    `user.password_reset_requested` audit event (mirrors `user.login_failed`'s
-    always-record-regardless-of-outcome pattern for security-monitoring symmetry), and only
-    creates+returns a raw token when the account exists; returns `None` otherwise.
-  - `complete_password_reset(session, *, raw_token, new_password)`: validates the token,
-    sets the new Argon2 hash, marks the token used, calls the existing (GRX-AUTH-003)
-    `revoke_all_active_sessions(..., reason="password_reset")` to kill every session, and
-    records `user.password_reset_completed`.
-- **`auth/schemas.py`**: `PasswordResetRequestIn`, `PasswordResetRequestOut` (with an
-  optional `token` field), `PasswordResetCompleteIn`.
-- **`auth/api.py`**: `POST /auth/password-reset/request` and
-  `POST /auth/password-reset/complete`, both public (added to the route-protection audit's
-  allowlist in `tests/test_protected_routes_audit.py`).
+- **`growixa_api/redis.py`** (new): a module-level pooled `redis.asyncio` client built
+  from `settings.redis_url`, plus a `get_redis()` FastAPI dependency generator — the same
+  shape as `db.py`'s `engine`/`get_session()`. This is the reusable client `GRX-AUTH-004`'s
+  rate limiter (and later locks/idempotency keys, per `SYSTEM_ARCHITECTURE.md`) will
+  import.
+- **`health.py`**: the Redis check previously opened a brand-new client, pinged it, and
+  closed it on every single `/health` request; now reuses the shared pooled client
+  (matching the Postgres engine-reuse fix already landed alongside `GRX-AUTH-005`).
+- **`tests/test_redis.py`** (new): a real set/get/delete round-trip against the shared
+  client.
 
-## An explicit, flagged scope decision — not a silent shortcut
+## An explicit, flagged environment finding — not a silent workaround
 
-`POST /auth/password-reset/request`'s response always returns an identical generic message
-regardless of whether the email is registered (THREAT_MODEL.md T11). It additionally
-includes a `token` field that is populated with the raw reset token **only** when
-`settings.environment == "local"` — there is still no email-delivery channel in Sprint 1
-(same constraint flagged in `GRX-USER-001`'s invitation-token handoff). In any non-local
-environment `token` is always `null` for both known and unknown emails, so T11 holds there
-unconditionally; in local dev it necessarily leaks account existence via the token's
-presence, which is acceptable only because local dev has no other way to retrieve the
-token for manual testing. **Revisit the moment a notifications/email-delivery task
-exists**: send the token out-of-band and drop it from the API response entirely, in every
-environment.
+Compose's `redis` service has **no host port mapping**, by design (see the comment in
+`compose.yaml` and `LOCAL_DEVELOPMENT.md`'s Redis inspection section: "not required to be
+reachable from outside the compose network"). Postgres and RabbitMQ both are host-mapped
+(the whole reason every earlier task's `pytest` run could hit real Postgres from the host
+venv), but Redis deliberately is not. A host-run pytest process therefore cannot open a
+real TCP connection to it.
+
+`tests/test_redis.py` accounts for this: it attempts a real `SET`, and if that raises a
+`redis.exceptions.RedisError` (connection refused, as it will under host-run pytest against
+this Compose setup), it calls `pytest.skip()` with the reason, rather than silently
+"passing" against nothing or failing the whole suite for an environment fact that isn't a
+code defect. The actual set/get/delete round-trip was verified for real by executing it
+live inside the running `api` container (see Commands executed below), where
+`REDIS_URL=redis://redis:6379/0` resolves over the compose network. **If a CI runner is
+ever added** (`GRX-DEVOPS-001`) with a reachable Redis service, this same test will start
+actually exercising the connection instead of skipping — no test rewrite needed.
 
 ## Files changed
 
-- `apps/api/src/growixa_api/config.py` (`password_reset_ttl_minutes` setting)
-- `apps/api/src/growixa_api/auth/models.py` (added `PasswordResetToken`)
-- `apps/api/src/growixa_api/auth/repositories.py` (added `create_password_reset_token`,
-  `get_password_reset_token_by_hash`)
-- `apps/api/src/growixa_api/auth/services.py` (added `InvalidPasswordResetTokenError`,
-  `request_password_reset`, `complete_password_reset`)
-- `apps/api/src/growixa_api/auth/schemas.py` (added `PasswordResetRequestIn`,
-  `PasswordResetRequestOut`, `PasswordResetCompleteIn`)
-- `apps/api/src/growixa_api/auth/api.py` (added both new routes)
-- `apps/api/migrations/versions/bb25de08ba84_password_reset_tokens_table.py` (new)
-- `apps/api/tests/test_protected_routes_audit.py` (added both new paths to the public
-  allowlist)
-- `apps/api/tests/test_auth_password_reset.py` (new)
-- `docs/00-project-control/MASTER_TASK_TRACKER.md` (GRX-AUTH-005 → DONE, evidence recorded)
+- `apps/api/src/growixa_api/redis.py` (new)
+- `apps/api/src/growixa_api/health.py` (Redis check reuses the pooled client)
+- `apps/api/tests/test_redis.py` (new)
+- `docs/00-project-control/MASTER_TASK_TRACKER.md` (`GRX-FOUND-006` → `DONE`, evidence
+  recorded; `GRX-AUTH-004` flipped `BACKLOG` → `READY` now that both its dependencies are
+  `DONE`)
 - `docs/00-project-control/PROJECT_STATUS.md`, `docs/00-project-control/CHANGELOG.md` (this
   update)
 
@@ -75,50 +62,48 @@ environment.
 
 ```bash
 cd apps/api
-source ../../.env && export DATABASE_URL=... REDIS_URL=... RABBITMQ_URL=...
-.venv/bin/alembic upgrade head    # sync to current head first
-.venv/bin/alembic revision --autogenerate -m "password reset tokens table"
-.venv/bin/ruff format migrations/versions/bb25de08ba84_password_reset_tokens_table.py
-.venv/bin/alembic upgrade head
-
-# models/repositories/services/schemas/api written, tests written
+# growixa_api/redis.py written; health.py updated to reuse it; tests/test_redis.py written
 .venv/bin/ruff check --fix . && .venv/bin/ruff format . && .venv/bin/mypy .
-.venv/bin/pytest -v   # 38 passed, 95% coverage
+
+source ../../.env && export DATABASE_URL=... REDIS_URL="redis://localhost:6379/0" RABBITMQ_URL=...
+.venv/bin/pytest -v   # 38 passed, 1 skipped (test_redis.py skips: Redis unreachable from host)
 
 cd ../..
 podman compose up -d --build api
-podman compose exec api alembic current   # bb25de08ba84 (head)
-curl -s http://localhost:8000/health
+curl -s http://localhost:8000/health   # {"status":"ok","checks":{"postgres":"ok","redis":"ok","rabbitmq":"ok"}}
 
-# created a smoke-test user directly via the ORM inside the container (no self-registration
-# endpoint exists), then:
-curl -X POST http://localhost:8000/auth/login -d '{"email":...,"password":"Old-Password-123!"}'
-curl -X POST http://localhost:8000/auth/password-reset/request -d '{"email":...}'
-curl -X POST http://localhost:8000/auth/password-reset/complete -d '{"token":...,"new_password":"New-Password-789!"}'
-curl -X POST http://localhost:8000/auth/login -d '{"email":...,"password":"Old-Password-123!"}'   # 401
-curl -X POST http://localhost:8000/auth/login -d '{"email":...,"password":"New-Password-789!"}'   # 200
-podman compose exec postgres psql -U growixa -d growixa -c "SELECT action, actor_user_id, entity_id, metadata FROM audit_logs WHERE ...;"
-podman compose exec postgres psql -U growixa -d growixa -c "SELECT id, revoked_at IS NOT NULL FROM refresh_tokens WHERE user_id = '...';"
-podman compose exec postgres psql -U growixa -d growixa -c "SELECT used_at IS NOT NULL FROM password_reset_tokens WHERE user_id = '...';"
-# cleaned up the smoke-test rows afterward
+# live verification of the actual pooled client, executed inside the container where
+# REDIS_URL correctly resolves over the compose network:
+podman compose exec api python3 -c "
+import asyncio
+from growixa_api.redis import client
+async def main():
+    await client.set('grx:smoke:test', 'hello-redis', ex=10)
+    print('GET ->', await client.get('grx:smoke:test'))
+    await client.delete('grx:smoke:test')
+    print('after delete ->', await client.get('grx:smoke:test'))
+asyncio.run(main())
+"
+# GET -> hello-redis
+# after delete -> None
 ```
 
 ## Test results
 
-`pytest` → 38 passed (34 pre-existing + 4 new). 95% coverage. `ruff`/`mypy` clean across 65
-source files.
+`pytest` → 38 passed, 1 skipped (34 pre-existing from before `GRX-AUTH-005` + 4 from
+`GRX-AUTH-005` + 1 new skip). 95% coverage, unchanged (a skip contributes no missed lines).
+`ruff`/`mypy` clean across 67 source files.
 
 ## Migrations
 
-`bb25de08ba84` — creates `password_reset_tokens`. Depends on `f356da0136c3`.
+None — this task added no database schema.
 
 ## Decisions
 
-None new — implements the flow already specified in
-[AUTHENTICATION.md](../08-security/AUTHENTICATION.md) and
-[THREAT_MODEL.md](../08-security/THREAT_MODEL.md) T11. The local-dev-only token exposure is
-a documented, flagged scope call (see above), not a `DECISIONS.md`-level architecture
-decision — it's the same interim call already made once in `GRX-USER-001`.
+None new. The host/container Redis-reachability split is an existing, already-documented
+architecture choice (`compose.yaml`, `LOCAL_DEVELOPMENT.md`), not a new decision — this
+task's contribution was noticing the tracker's dependency/status was stale and building the
+reusable client, not changing how Redis is exposed.
 
 ## Blockers
 
@@ -126,29 +111,31 @@ None.
 
 ## Known issues
 
-- Raw password-reset token is exposed in the `POST /auth/password-reset/request` response
-  body, but only when `settings.environment == "local"` — see the flagged scope decision
-  above. Revisit when email delivery exists.
+- `tests/test_redis.py` skips under the standard host-run `pytest` workflow used by every
+  task in this session, because Redis has no host port mapping. This is expected and
+  documented, not a gap to "fix" by adding a host mapping (that would contradict the
+  existing, deliberate compose.yaml decision) — revisit only if `GRX-DEVOPS-001` (CI
+  pipeline) needs it addressed for a hosted runner.
 - Still-open from earlier sessions: `seed_first_admin` CLI (`GRX-AUTH-001`); CORS for
-  frontend calls (`GRX-FOUND-004`); `GRX-AUTH-004` (rate limiting) blocked on
-  `GRX-FOUND-006`; no "list pending invitations"/"revoke invitation" endpoints
-  (`GRX-USER-001`).
+  frontend calls (`GRX-FOUND-004`); no "list pending invitations"/"revoke invitation"
+  endpoints (`GRX-USER-001`); raw password-reset token exposed in local dev only
+  (`GRX-AUTH-005`).
 
 ## Current state
 
-Full password-reset request→complete lifecycle works and is tested end-to-end (automated
-suite + live curl against Compose). This completes the fourth step of this session's
-user-directed backend-continuity sequence: `GRX-AUTH-002` → `GRX-AUTH-003` →
-`GRX-USER-001` → `GRX-AUTH-005`. Every P0 backend auth task in Sprint 1 that isn't blocked
-on `GRX-FOUND-006` (Redis) is now `DONE`.
+A reusable, pooled Redis client now exists for the rest of the backend to build on.
+`GRX-AUTH-004` (login rate limiting) is now fully unblocked — both of its dependencies
+(`GRX-AUTH-002`, `GRX-FOUND-006`) are `DONE`. This completes the fifth step of this
+session's user-directed backend-continuity sequence: `GRX-AUTH-002` → `GRX-AUTH-003` →
+`GRX-USER-001` → `GRX-AUTH-005` → `GRX-FOUND-006`.
 
 ## Exact next task
 
-No explicit user direction beyond this point. `READY`: `GRX-TEST-002` (frontend test
-foundation), `GRX-COMPANY-002` (company settings screen, frontend), `GRX-FOUND-008`
-(dashboard shell, frontend), `GRX-USER-002` (user management screens, frontend). All
-remaining `READY` Sprint 1 backend work is exhausted — everything left either needs
-`GRX-FOUND-006` (Redis, for `GRX-AUTH-004`) or is frontend work.
+No explicit user direction beyond this point. `READY`: `GRX-AUTH-004` (login rate
+limiting, P0, backend — the highest-priority pick given this session's established
+backend-continuity preference), `GRX-TEST-002` (frontend test foundation), `GRX-COMPANY-002`
+(company settings screen, frontend), `GRX-FOUND-008` (dashboard shell, frontend),
+`GRX-USER-002` (user management screens, frontend).
 
 ## Resume commands
 
@@ -161,4 +148,4 @@ podman compose up -d                                  # bring the stack back up
 
 ## Latest commit
 
-`730519b` — feat(auth): password reset flow (GRX-AUTH-005)
+`32aacdf` — feat(api): Redis connectivity (GRX-FOUND-006)

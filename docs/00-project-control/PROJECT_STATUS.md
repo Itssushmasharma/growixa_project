@@ -2,7 +2,7 @@
 
 - Document ID: DOC-PROJECT-STATUS
 - Status: ACTIVE
-- Version: 1.18
+- Version: 1.19
 - Last updated: 2026-07-27
 - Owner: Coding agent (on behalf of product owner)
 - Related documents: [MASTER_TASK_TRACKER](MASTER_TASK_TRACKER.md), [DECISIONS](DECISIONS.md), [DEVELOPMENT_READINESS](DEVELOPMENT_READINESS.md)
@@ -44,12 +44,11 @@ application foundation), `GRX-FOUND-005` (PostgreSQL connectivity + Alembic foun
 permission-check dependency), `GRX-AUDIT-001` (audit log module), `GRX-TEST-001` (backend
 test foundation), `GRX-COMPANY-001` (company profile + brand settings), `GRX-AUTH-002`
 (password hashing + login/logout), `GRX-AUTH-003` (refresh-token rotation + session
-revocation), `GRX-USER-001` (internal user invitation + acceptance), and `GRX-AUTH-005`
-(password reset flow) are `DONE`.
-`GRX-TEST-002` (frontend test foundation), `GRX-COMPANY-002` (company settings screen),
-`GRX-FOUND-008` (dashboard shell), and `GRX-USER-002`
-(user management screens, frontend, newly unblocked) are all `READY`. `GRX-AUTH-004` (login
-rate limiting) still needs `GRX-FOUND-006` (Redis connectivity), not yet started. Per
+revocation), `GRX-USER-001` (internal user invitation + acceptance), `GRX-AUTH-005`
+(password reset flow), and `GRX-FOUND-006` (Redis connectivity) are `DONE`.
+`GRX-AUTH-004` (login rate limiting, newly unblocked), `GRX-TEST-002` (frontend test
+foundation), `GRX-COMPANY-002` (company settings screen), `GRX-FOUND-008` (dashboard
+shell), and `GRX-USER-002` (user management screens, frontend) are all `READY`. Per
 [AGENT_EXECUTION_RULES.md](../12-development/AGENT_EXECUTION_RULES.md), only one is worked
 on at a time. See [AGENT_HANDOFF.md](AGENT_HANDOFF.md) for session-by-session
 detail.
@@ -100,20 +99,24 @@ detail.
 | `apps/api/src/growixa_api/auth/{repositories,services,api}.py` (rotation/reuse/logout-all extensions), `apps/api/tests/test_auth_refresh.py` | DONE (`GRX-AUTH-003`) |
 | `apps/api/src/growixa_api/users/{models,repositories,services,schemas,api}.py`, `apps/api/src/growixa_api/roles/repositories.py`, migration `f356da0136c3`, `apps/api/tests/test_users_invitations.py` | DONE (`GRX-USER-001`) |
 | `apps/api/src/growixa_api/auth/{models,repositories,services,schemas,api}.py` (password reset extensions), migration `bb25de08ba84`, `apps/api/tests/test_auth_password_reset.py` | DONE (`GRX-AUTH-005`) |
+| `apps/api/src/growixa_api/redis.py` (new), `apps/api/src/growixa_api/health.py` (pooled-client reuse), `apps/api/tests/test_redis.py` | DONE (`GRX-FOUND-006`) |
 | `docs/00-project-control/FEATURE_STATUS_MATRIX.md`, `RISKS.md`, `BLOCKERS.md` | NOT_STARTED (created as Sprint 1 tasks land) |
 | `docs/03-ux-ui/DESIGN_REFERENCES.md` | DONE (reference material only — see its own scope caveat; not a Sprint 1 spec) |
 | Full per-feature specs under `02-features/`, all of `06-api/`, `07-ai/`, `09-integrations/`, `13-business/` | NOT_STARTED |
 
 ## Immediate next steps
 
-1. `GRX-AUTH-002` → `GRX-AUTH-003` → `GRX-USER-001` → `GRX-AUTH-005` chosen per explicit
-   user direction / "most needed" backend-continuity picks at each step —
-   rotation/reuse-detection closed a gap `GRX-AUTH-002` left open; invitation was the only
-   real way to add any user besides the still-unbuilt `seed_first_admin` CLI; password
-   reset closed the last P0 backend auth gap (account recovery). All four now `DONE`. Pick
-   one of `GRX-TEST-002` (frontend test foundation), `GRX-COMPANY-002`,
-   `GRX-FOUND-008` (dashboard shell), or `GRX-USER-002` (user management screens, frontend)
-   next — see [MASTER_TASK_TRACKER.md](MASTER_TASK_TRACKER.md).
+1. `GRX-AUTH-002` → `GRX-AUTH-003` → `GRX-USER-001` → `GRX-AUTH-005` → `GRX-FOUND-006`
+   chosen per explicit user direction / "most needed" backend-continuity picks at each
+   step — rotation/reuse-detection closed a gap `GRX-AUTH-002` left open; invitation was
+   the only real way to add any user besides the still-unbuilt `seed_first_admin` CLI;
+   password reset closed the last P0 backend auth gap (account recovery); Redis
+   connectivity was picked because its only dependency was already `DONE` (a stale
+   `BACKLOG` status corrected to reflect that) and it unblocks `GRX-AUTH-004`. All five now
+   `DONE`. Pick one of `GRX-AUTH-004` (login rate limiting, newly unblocked), `GRX-TEST-002`
+   (frontend test foundation), `GRX-COMPANY-002`, `GRX-FOUND-008` (dashboard shell), or
+   `GRX-USER-002` (user management screens, frontend) next — see
+   [MASTER_TASK_TRACKER.md](MASTER_TASK_TRACKER.md).
 2. Create `FEATURE_STATUS_MATRIX.md`, `RISKS.md`, `BLOCKERS.md` alongside Sprint 1 tasks as they land, not all upfront.
 3. Write full feature specs in `02-features/` for Slice 1 features as each task is picked up, not all upfront.
 4. Do not begin any V1.5+/SEO-AEO-GEO work until Slices 1–6 (MVP) are stable in production.

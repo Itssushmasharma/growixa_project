@@ -10,6 +10,37 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
+## 2026-07-27 — GRX-FOUND-006: Redis connectivity
+
+- Picked because its only listed dependency (`GRX-FOUND-003`, FastAPI application
+  foundation) was already `DONE` — the tracker still marked it `BACKLOG`, a stale status
+  corrected as part of this pick — and because it directly unblocks `GRX-AUTH-004` (login
+  rate limiting), a P0 security task (T1/T12 in THREAT_MODEL.md) covering the exact
+  login/password-reset-request endpoints built in the last two sessions.
+- Added `growixa_api/redis.py`: a module-level pooled `redis.asyncio` client built from
+  `settings.redis_url`, plus a `get_redis()` FastAPI dependency generator — the same shape
+  as `db.py`'s `engine`/`get_session()`. This is the reusable client `GRX-AUTH-004`'s rate
+  limiter (and later locks/idempotency keys) will import, rather than each future feature
+  opening its own throwaway connection.
+- `health.py`'s Redis check previously opened a new client, pinged it, and closed it on
+  every single `/health` request; it now reuses the shared pooled client, matching the
+  Postgres engine-reuse fix already landed alongside `GRX-AUTH-005`.
+- **Environment-constraint finding**: Compose's `redis` service has no host port mapping
+  by design (`compose.yaml`'s comment, confirmed in `LOCAL_DEVELOPMENT.md`'s Redis
+  inspection section: "not required to be reachable from outside the compose network").
+  Only Postgres/RabbitMQ are host-mapped, so a host-run pytest process cannot open a real
+  TCP connection to Redis. The new connectivity smoke test (`tests/test_redis.py`) skips
+  with an explicit reason under this documented constraint rather than being written to
+  silently pass or made to fail the whole suite; real set/get/delete round-trip
+  correctness was instead verified live via the shared client executed inside the running
+  `api` container.
+- `ruff`/`mypy` clean; `pytest` 38 passed, 1 skipped (95% coverage, unchanged from before —
+  the skip contributes no missed lines). Rebuilt the `api` image; `GET /health` still
+  returns `{"status":"ok",...}` using the new pooled client; a live
+  set → get → delete → get(None) sequence run inside the `api` container via
+  `growixa_api.redis.client` confirmed correct round-trip behavior against the real
+  Compose Redis instance. Commit `32aacdf`.
+
 ## 2026-07-27 — GRX-AUTH-005: Password reset flow
 
 - Picked as the last P0 backend auth task remaining (everything else `READY` at that point
