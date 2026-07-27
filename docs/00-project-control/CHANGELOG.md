@@ -81,7 +81,7 @@ from Sprint 1 onward, code). Each entry names what changed and the commit(s) it 
   frontend) are newly `READY`, alongside the already-`READY` `GRX-TEST-002`,
   `GRX-USER-001`, `GRX-COMPANY-002`. `GRX-AUTH-004` (rate limiting) still needs
   `GRX-FOUND-006` (Redis connectivity), not yet started.
-- Commit: `<see below>`.
+- Commit: `b7cf4d8`.
 
 ## 2026-07-25 — GRX-COMPANY-001: Company profile + brand settings
 

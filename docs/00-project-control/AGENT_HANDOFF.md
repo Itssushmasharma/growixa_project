@@ -175,4 +175,4 @@ podman compose up -d                                  # bring the stack back up
 
 ## Latest commit
 
-Recorded below after this handoff is committed alongside the `GRX-AUTH-002` change set.
+`b7cf4d8` — feat(auth): password hashing + login/logout (GRX-AUTH-002)
