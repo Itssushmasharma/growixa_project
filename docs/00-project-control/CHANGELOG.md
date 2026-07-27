@@ -10,6 +10,45 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
+## 2026-07-27 — GRX-AUTH-004: Login rate limiting
+
+- Picked immediately after `GRX-FOUND-006` (Redis connectivity) unblocked it — the highest
+  remaining P0 backend task, and it closes T1 (credential stuffing/brute force) and T12
+  (unbounded login/reset flooding) from `THREAT_MODEL.md` on the exact `/auth/login` and
+  `/auth/password-reset/request` endpoints built in the two sessions before this one.
+- Added `rate_limit_max_attempts` (default 5) and `rate_limit_window_seconds` (default 60)
+  settings, and `auth/rate_limit.py`'s `enforce_rate_limit()`: a Redis `INCR`+`EXPIRE`
+  fixed-window counter keyed `grx:ratelimit:{bucket}:{identifier}` — the exact key format
+  `LOCAL_DEVELOPMENT.md` already documented in its Redis-inspection section, ahead of this
+  task even existing. Both `/auth/login` (bucket `login`) and
+  `/auth/password-reset/request` (bucket `password_reset_request`) call it keyed by
+  `email:ip`, so the two endpoints are limited independently and the same email can't
+  exhaust the other endpoint's budget.
+- **Explicit, flagged design call: the limiter fails open on `RedisError`.** If Redis is
+  unreachable, `enforce_rate_limit()` swallows the error and allows the request through
+  rather than raising — a Redis outage must degrade *security posture*, not *availability*
+  of login/password-reset entirely (the same trade-off `/health` already makes by reporting
+  "degraded" instead of crashing). This also has a load-bearing practical consequence:
+  Compose's `redis` service has no host port mapping (`GRX-FOUND-006`'s finding), so every
+  host-run `pytest` login/password-reset test in this whole session continues to pass
+  unaffected — the limiter transparently no-ops under that specific, documented
+  environment constraint instead of breaking 40+ pre-existing tests.
+- `ruff`/`mypy` clean; `pytest` 43 passed, 2 skipped (95% coverage). Five pure unit tests
+  against a fake in-memory Redis stand-in cover the limiter logic directly (allows up to
+  max, raises past max, isolates by identifier, isolates by bucket, fails open on
+  `RedisError`) with no real Redis needed. One integration test exercises the real
+  `/auth/login` endpoint end-to-end and skips under host-run pytest for the same documented
+  reason as `GRX-FOUND-006`'s `test_redis.py`.
+- Rebuilt the `api` image and verified live against real Compose Redis: 6 wrong-password
+  attempts against one email+IP returned `401×5` then `429`; a *correct* password against
+  that same already-limited identifier also returned `429` (rate limiting is
+  identity-keyed, not correctness-keyed — the intended defense, since checking the
+  password before the limiter would let an attacker's eventual correct guess bypass
+  protection entirely); a different email+IP logged in normally (`200`), proving
+  unaffected traffic elsewhere; the same 5-then-429 pattern was confirmed independently on
+  `/auth/password-reset/request`. Verified via `redis-cli KEYS "grx:ratelimit:*"` that the
+  real keys match the documented naming exactly, then cleaned up. Commit `5c26200`.
+
 ## 2026-07-27 — GRX-FOUND-006: Redis connectivity
 
 - Picked because its only listed dependency (`GRX-FOUND-003`, FastAPI application
