@@ -4,6 +4,7 @@ import path from "node:path";
 import { E2E_USER_EMAIL } from "./fixtures";
 
 const REPO_ROOT = path.resolve(__dirname, "../../../..");
+const COMPOSE_BIN = process.env.COMPOSE_BIN ?? "podman";
 
 export default function globalTeardown(): void {
   const script = `
@@ -29,7 +30,7 @@ async def main():
 asyncio.run(main())
 `;
 
-  execFileSync("podman", ["compose", "exec", "-T", "api", "python3", "-c", script], {
+  execFileSync(COMPOSE_BIN, ["compose", "exec", "-T", "api", "python3", "-c", script], {
     cwd: REPO_ROOT,
     stdio: "inherit",
   });

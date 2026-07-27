@@ -6,6 +6,10 @@ import { E2E_USER_EMAIL, E2E_USER_PASSWORD } from "./fixtures";
 // tests/e2e -> apps/web -> apps -> repo root, where compose.yaml lives.
 const REPO_ROOT = path.resolve(__dirname, "../../../..");
 
+// "podman" locally (this project's dev environment); GitHub Actions' runners have real
+// Docker, so CI sets COMPOSE_BIN=docker instead (see .github/workflows/ci.yml).
+const COMPOSE_BIN = process.env.COMPOSE_BIN ?? "podman";
+
 /**
  * Creates a fixed test user directly via the ORM inside the running `api` container — the
  * same technique used throughout this project's manual Compose verification, since there
@@ -33,7 +37,7 @@ async def main():
 asyncio.run(main())
 `;
 
-  execFileSync("podman", ["compose", "exec", "-T", "api", "python3", "-c", script], {
+  execFileSync(COMPOSE_BIN, ["compose", "exec", "-T", "api", "python3", "-c", script], {
     cwd: REPO_ROOT,
     stdio: "inherit",
   });
