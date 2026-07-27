@@ -2,7 +2,7 @@
 
 - Document ID: DOC-PROJECT-STATUS
 - Status: ACTIVE
-- Version: 1.22
+- Version: 1.23
 - Last updated: 2026-07-27
 - Owner: Coding agent (on behalf of product owner)
 - Related documents: [MASTER_TASK_TRACKER](MASTER_TASK_TRACKER.md), [DECISIONS](DECISIONS.md), [DEVELOPMENT_READINESS](DEVELOPMENT_READINESS.md)
@@ -47,7 +47,10 @@ test foundation), `GRX-COMPANY-001` (company profile + brand settings), `GRX-AUT
 revocation), `GRX-USER-001` (internal user invitation + acceptance), `GRX-AUTH-005`
 (password reset flow), `GRX-FOUND-006` (Redis connectivity), `GRX-AUTH-004` (login rate
 limiting), `GRX-TEST-002` (frontend test foundation), and `GRX-FOUND-008` (dashboard
-shell) are `DONE`.
+shell) are `DONE`. `GRX-DEVOPS-001` (CI pipeline) is `IN_REVIEW` — fully built and
+locally verified, but not moved to `DONE` because a real green run on GitHub Actions
+hasn't been observed; that requires pushing, a permission-gated action awaiting the
+user's go-ahead.
 `GRX-COMPANY-002` (company settings screen) and `GRX-USER-002` (user management screens,
 frontend) are `READY`. Per
 [AGENT_EXECUTION_RULES.md](../12-development/AGENT_EXECUTION_RULES.md), only one is worked
@@ -105,6 +108,7 @@ detail.
 | `apps/api/src/growixa_api/auth/rate_limit.py` (new), `apps/api/src/growixa_api/auth/api.py` (login/password-reset-request extensions), `apps/api/tests/test_auth_rate_limit.py` | DONE (`GRX-AUTH-004`) |
 | `apps/web/vitest.config.ts`, `apps/web/vitest.setup.ts`, `apps/web/playwright.config.ts`, `apps/web/src/app/page.test.tsx`, `apps/web/tests/e2e/smoke.spec.ts` | DONE (`GRX-TEST-002`) |
 | `apps/web/src/app/{login,dashboard}/`, `apps/web/src/lib/auth.ts`, `apps/api/src/growixa_api/{app,config}.py` (CORS), `apps/api/src/growixa_api/auth/api.py` (`GET /auth/me`), `apps/web/tests/e2e/dashboard.spec.ts` | DONE (`GRX-FOUND-008`) |
+| `.github/workflows/ci.yml` | IN_REVIEW (`GRX-DEVOPS-001` — built and locally verified, awaiting a live GitHub Actions run) |
 | `docs/00-project-control/FEATURE_STATUS_MATRIX.md`, `RISKS.md`, `BLOCKERS.md` | NOT_STARTED (created as Sprint 1 tasks land) |
 | `docs/03-ux-ui/DESIGN_REFERENCES.md` | DONE (reference material only — see its own scope caveat; not a Sprint 1 spec) |
 | Full per-feature specs under `02-features/`, all of `06-api/`, `07-ai/`, `09-integrations/`, `13-business/` | NOT_STARTED |
@@ -129,8 +133,14 @@ detail.
    (CORS, `GET /auth/me`) and surfaced a real Docker-networking bug (server-side fetches
    from inside the `web` container can't reach `api` via `localhost`) that only a genuine
    Compose rebuild-and-browse check caught, not the host-run e2e suite. Both now `DONE`.
-   Pick one of `GRX-COMPANY-002` (company settings screen) or `GRX-USER-002` (user
-   management screens, frontend) next — see [MASTER_TASK_TRACKER.md](MASTER_TASK_TRACKER.md).
+   `GRX-DEVOPS-001` (CI pipeline) followed — both its dependencies (`GRX-TEST-001`,
+   `GRX-TEST-002`) were already `DONE` (a stale `BACKLOG` status corrected, same pattern
+   as `GRX-FOUND-006` and `GRX-AUTH-004` earlier), and it locks in every testing
+   investment made this session so future regressions are caught automatically.
+   `IN_REVIEW`, not `DONE` — a live green run needs a push, which this session won't do
+   without the user's go-ahead. Pick one of `GRX-COMPANY-002` (company settings screen) or
+   `GRX-USER-002` (user management screens, frontend) next — see
+   [MASTER_TASK_TRACKER.md](MASTER_TASK_TRACKER.md).
 2. Create `FEATURE_STATUS_MATRIX.md`, `RISKS.md`, `BLOCKERS.md` alongside Sprint 1 tasks as they land, not all upfront.
 3. Write full feature specs in `02-features/` for Slice 1 features as each task is picked up, not all upfront.
 4. Do not begin any V1.5+/SEO-AEO-GEO work until Slices 1–6 (MVP) are stable in production.

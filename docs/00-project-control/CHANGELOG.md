@@ -10,6 +10,53 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
+## 2026-07-27 — GRX-DEVOPS-001: CI pipeline (IN_REVIEW)
+
+- Picked immediately after `GRX-FOUND-008` — both dependencies (`GRX-TEST-001`,
+  `GRX-TEST-002`) were already `DONE` (the tracker still marked it `BACKLOG`, corrected as
+  part of this pick, same pattern as `GRX-FOUND-006` and `GRX-AUTH-004` earlier). This
+  locks in every testing investment made across this session so future regressions get
+  caught automatically instead of relying on an agent session remembering to re-verify.
+- Added `.github/workflows/ci.yml` implementing all 8 stages from `TEST_STRATEGY.md`
+  §CI test stages, split across 3 jobs rather than one linear pipeline — an explicit,
+  flagged refinement that preserves the documented "fail fast, in order" intent while
+  actually running faster: `backend` and `frontend` run in parallel (independent stacks,
+  stages 1–3 shared plus each side's own tests/build), and `e2e` (`needs: [backend,
+  frontend]`) only stands up the expensive full stack once the cheap checks already
+  passed.
+- `backend` job runs against real GitHub Actions service containers for Postgres, Redis,
+  and RabbitMQ — meaning **Redis is host-reachable in CI**, unlike local dev
+  (`GRX-FOUND-006`'s documented finding that Compose's `redis` has no host port mapping).
+  The tests that skip locally for that exact reason (`test_redis.py`, the rate-limit
+  integration test) will actually execute for real in CI — exactly the outcome flagged as
+  intentional when those skips were written.
+- Migration check step runs `alembic upgrade head && alembic check` — deliberately
+  distinct from `test_migrations.py`'s upgrade/downgrade round-trip (already covered by
+  the `Tests` step): `alembic check` catches a model changed without a matching
+  migration, which the round-trip test doesn't verify on its own.
+- `e2e` job runs the real Compose stack (`docker compose up postgres redis rabbitmq api`)
+  — deliberately omitting the `web` container, since Playwright already brings its own
+  Next.js instance (`playwright.config.ts`'s `webServer`); standing up both would just
+  build the frontend twice for no benefit.
+- Made `apps/web/tests/e2e/{global-setup,global-teardown}.ts` compose-binary-portable: a
+  new `COMPOSE_BIN` env var (default `podman`, this project's local dev tool; CI sets
+  `docker`, what GitHub's runners actually have) means the identical e2e suite runs
+  unmodified in both environments — no CI-specific test duplication.
+- Locally re-verified every command the workflow runs, since the workflow itself can't be
+  executed without pushing: `ruff check`/`ruff format --check`/`mypy` clean;
+  `alembic upgrade head && alembic check` → "No new upgrade operations detected";
+  `pytest` → 45 passed, 2 skipped; frontend `eslint`/`prettier --check`/`tsc --noEmit`/
+  `vitest run` all clean; `next build` → succeeds, correctly classifies `/`/`/login`
+  static and `/dashboard` dynamic; `npm run test:e2e` → 3 passed with the new
+  `COMPOSE_BIN` parameterization defaulting to `podman` (unchanged local behavior).
+  Workflow YAML syntax-validated with `python3 -c "import yaml; yaml.safe_load(...)"`.
+- **Left at `IN_REVIEW`, not `DONE`.** A real green run on GitHub Actions has not been
+  observed — confirming one requires pushing to the remote, which this session will not
+  do without the user's explicit go-ahead (pushing is a permission-gated action). Move to
+  `DONE` once the user pushes and a run is confirmed green; if it fails, the failure will
+  be in something this local re-verification couldn't reach (GHA-specific networking,
+  action version pinning, etc.) rather than in the commands themselves. Commit `7ff54dc`.
+
 ## 2026-07-27 — GRX-FOUND-008: Dashboard shell
 
 - Picked immediately after `GRX-TEST-002` gave the frontend a real test harness. The user
