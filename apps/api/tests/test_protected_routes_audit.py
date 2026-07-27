@@ -30,6 +30,8 @@ PUBLIC_ROUTE_PATHS = {
     "/auth/logout",
     "/auth/refresh",
     "/auth/logout-all",
+    "/auth/password-reset/request",
+    "/auth/password-reset/complete",
     "/users/invitations/accept",
 }
 

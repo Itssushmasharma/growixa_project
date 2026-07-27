@@ -1,9 +1,12 @@
+from functools import lru_cache
+
 from argon2 import PasswordHasher
 from argon2.exceptions import InvalidHash, VerificationError, VerifyMismatchError
 
 from growixa_api.config import get_settings
 
 
+@lru_cache
 def _hasher() -> PasswordHasher:
     settings = get_settings()
     return PasswordHasher(

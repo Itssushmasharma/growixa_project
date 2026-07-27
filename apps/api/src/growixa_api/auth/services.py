@@ -1,21 +1,24 @@
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from growixa_api.audit.services import record_event
 from growixa_api.auth.repositories import (
+    create_password_reset_token,
     create_refresh_token,
+    get_password_reset_token_by_hash,
     get_refresh_token_by_hash,
     list_active_refresh_tokens_for_user,
 )
-from growixa_api.auth.security import verify_password
+from growixa_api.auth.security import hash_password, verify_password
 from growixa_api.auth.tokens import (
     create_access_token,
     generate_token,
     hash_token,
     refresh_token_expiry,
 )
+from growixa_api.config import get_settings
 from growixa_api.users.models import User
 from growixa_api.users.repositories import get_user_by_email
 
@@ -29,6 +32,10 @@ class InvalidCredentialsError(Exception):
 class InvalidRefreshTokenError(Exception):
     """Missing, unknown, expired, already-revoked, or already-rotated (reuse detected)
     refresh token."""
+
+
+class InvalidPasswordResetTokenError(Exception):
+    """Missing, unknown, expired, or already-used password reset token."""
 
 
 class LoginResult:
@@ -213,4 +220,64 @@ async def logout_all(session: AsyncSession, *, raw_refresh_token: str | None) ->
         return
 
     await revoke_all_active_sessions(session, token.user_id, reason="logout_all")
+    await session.commit()
+
+
+async def request_password_reset(session: AsyncSession, *, email: str) -> str | None:
+    """Always records an audit event and always returns from the same code shape
+    regardless of whether the account exists, so the caller (API layer) can return an
+    identical response either way — per THREAT_MODEL.md T11. Returns the raw token only
+    when the account exists; `None` otherwise, which the caller must not leak.
+    """
+    user = await get_user_by_email(session, email)
+
+    await record_event(
+        session,
+        actor_user_id=None,
+        action="user.password_reset_requested",
+        entity_type="user",
+        entity_id=user.id if user is not None else None,
+        metadata={"email": email},
+    )
+
+    if user is None:
+        await session.commit()
+        return None
+
+    raw_token = generate_token()
+    await create_password_reset_token(
+        session,
+        user_id=user.id,
+        token_hash=hash_token(raw_token),
+        expires_at=datetime.now(UTC) + timedelta(minutes=get_settings().password_reset_ttl_minutes),
+    )
+    await session.commit()
+
+    return raw_token
+
+
+async def complete_password_reset(
+    session: AsyncSession, *, raw_token: str, new_password: str
+) -> None:
+    token = await get_password_reset_token_by_hash(session, hash_token(raw_token))
+    if token is None or token.used_at is not None or token.expires_at < datetime.now(UTC):
+        raise InvalidPasswordResetTokenError
+
+    user = await session.get(User, token.user_id)
+    if user is None:
+        raise InvalidPasswordResetTokenError
+
+    user.password_hash = hash_password(new_password)
+    token.used_at = datetime.now(UTC)
+
+    await revoke_all_active_sessions(session, user.id, reason="password_reset")
+
+    await record_event(
+        session,
+        actor_user_id=user.id,
+        action="user.password_reset_completed",
+        entity_type="user",
+        entity_id=user.id,
+        metadata={},
+    )
     await session.commit()

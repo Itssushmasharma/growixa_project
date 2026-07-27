@@ -21,10 +21,15 @@ _SENSITIVE_METADATA_KEYS = {
 
 
 def _redact_metadata(metadata: dict[str, Any]) -> dict[str, Any]:
-    return {
-        key: ("[REDACTED]" if key.lower() in _SENSITIVE_METADATA_KEYS else value)
-        for key, value in metadata.items()
-    }
+    redacted: dict[str, Any] = {}
+    for key, value in metadata.items():
+        if key.lower() in _SENSITIVE_METADATA_KEYS:
+            redacted[key] = "[REDACTED]"
+        elif isinstance(value, dict):
+            redacted[key] = _redact_metadata(value)
+        else:
+            redacted[key] = value
+    return redacted
 
 
 async def record_event(

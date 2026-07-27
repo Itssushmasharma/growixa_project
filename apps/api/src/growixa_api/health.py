@@ -2,19 +2,17 @@ import aio_pika
 import redis.asyncio as redis_client
 from fastapi import APIRouter
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import create_async_engine
 
 from growixa_api.config import Settings, get_settings
+from growixa_api.db import engine
 
 router = APIRouter()
 
 
-async def _check_postgres(settings: Settings) -> str:
+async def _check_postgres(_settings: Settings) -> str:
     try:
-        engine = create_async_engine(settings.database_url)
         async with engine.connect() as conn:
             await conn.execute(text("SELECT 1"))
-        await engine.dispose()
         return "ok"
     except Exception as exc:  # noqa: BLE001 - a health check must report, not raise
         return f"error: {exc}"

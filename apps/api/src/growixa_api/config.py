@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     access_token_ttl_minutes: int = 15
     refresh_token_ttl_days: int = 30
     invitation_ttl_days: int = 7
+    password_reset_ttl_minutes: int = 30
 
     # Argon2id cost parameters — configurable per AUTHENTICATION.md so cost can be raised as
     # hardware improves without a schema/code change. Defaults match argon2-cffi's own
