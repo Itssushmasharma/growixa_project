@@ -53,7 +53,7 @@ from Sprint 1 onward, code). Each entry names what changed and the commit(s) it 
   passed, 94% coverage.
 - `GRX-AUTH-003` marked `DONE`. No task became newly `READY` from this alone — nothing
   else in the tracker lists it as a dependency yet.
-- Commit: `<see below>`.
+- Commit: `27a22af`.
 
 ## 2026-07-27 — GRX-AUTH-002: Password hashing + login/logout
 

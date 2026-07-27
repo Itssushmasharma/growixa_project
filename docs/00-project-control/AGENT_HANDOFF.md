@@ -144,4 +144,4 @@ podman compose up -d                                  # bring the stack back up
 
 ## Latest commit
 
-Recorded below after this handoff is committed alongside the `GRX-AUTH-003` change set.
+`27a22af` — feat(auth): refresh-token rotation + session revocation (GRX-AUTH-003)
