@@ -183,10 +183,10 @@ async def test_logout_revokes_refresh_token_and_clears_cookies(
 
 @pytest.mark.asyncio
 @pytest.mark.integration
-async def test_me_returns_the_logged_in_user(
+async def test_me_returns_the_logged_in_user_and_their_permissions(
     user_factory: Callable[..., Awaitable[uuid.UUID]],
 ) -> None:
-    user_id = await user_factory(full_name="Me Route User")
+    user_id = await user_factory(full_name="Me Route User", role_name="Admin")
     email = await _get_email(user_id)
 
     transport = ASGITransport(app=create_app())
@@ -199,7 +199,11 @@ async def test_me_returns_the_logged_in_user(
         me_response = await client.get("/auth/me")
 
     assert me_response.status_code == 200
-    assert me_response.json() == {"id": str(user_id), "email": email, "full_name": "Me Route User"}
+    body = me_response.json()
+    assert body["id"] == str(user_id)
+    assert body["email"] == email
+    assert body["full_name"] == "Me Route User"
+    assert "company.settings.edit" in body["permissions"]
 
     await _cleanup_audit_for(user_id)
     async with async_session_factory() as session:

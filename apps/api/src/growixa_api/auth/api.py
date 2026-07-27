@@ -8,6 +8,7 @@ from growixa_api.auth.rate_limit import RateLimitExceededError, enforce_rate_lim
 from growixa_api.auth.schemas import (
     LoginIn,
     LoginOut,
+    MeOut,
     PasswordResetCompleteIn,
     PasswordResetRequestIn,
     PasswordResetRequestOut,
@@ -26,6 +27,7 @@ from growixa_api.auth.services import request_password_reset as request_password
 from growixa_api.config import get_settings
 from growixa_api.db import get_session
 from growixa_api.permissions.dependencies import get_current_user_id
+from growixa_api.permissions.repositories import list_permission_codes_for_user
 from growixa_api.redis import get_redis
 from growixa_api.users.models import User
 
@@ -138,18 +140,24 @@ async def logout_all_route(
     response.delete_cookie(_REFRESH_TOKEN_COOKIE)
 
 
-@router.get("/me", response_model=LoginOut)
+@router.get("/me", response_model=MeOut)
 async def me_route(
     user_id: uuid.UUID = Depends(get_current_user_id),
     session: AsyncSession = Depends(get_session),
-) -> LoginOut:
+) -> MeOut:
     """Identifies the current session, the same way /refresh and /logout-all do — via the
     access-token cookie itself, not require_permission(). Any authenticated user may know
     who they are; there is no separate permission for it."""
     user = await session.get(User, user_id)
     if user is None:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Not authenticated")
-    return LoginOut.model_validate(user)
+    permissions = await list_permission_codes_for_user(session, user_id)
+    return MeOut(
+        id=user.id,
+        email=user.email,
+        full_name=user.full_name,
+        permissions=sorted(permissions),
+    )
 
 
 _PASSWORD_RESET_REQUESTED_MESSAGE = (

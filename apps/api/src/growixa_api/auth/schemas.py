@@ -16,6 +16,16 @@ class LoginOut(BaseModel):
     full_name: str
 
 
+class MeOut(BaseModel):
+    id: uuid.UUID
+    email: str
+    full_name: str
+    # The frontend uses this to decide editable-vs-read-only UI (e.g. company settings,
+    # per RBAC.md) without guessing from a role name — the permission codes are the actual
+    # authorization source of truth, same as require_permission() uses server-side.
+    permissions: list[str]
+
+
 class PasswordResetRequestIn(BaseModel):
     email: str
 

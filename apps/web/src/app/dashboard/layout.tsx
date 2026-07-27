@@ -5,6 +5,7 @@ import { getCurrentUser } from "@/lib/auth";
 
 import layoutStyles from "./layout.module.css";
 import { LogoutButton } from "./logout-button";
+import { PageTitle } from "./page-title";
 import { Sidebar } from "./sidebar";
 import topbarStyles from "./topbar.module.css";
 
@@ -19,7 +20,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
       <Sidebar />
       <div className={layoutStyles.main}>
         <header className={topbarStyles.topbar}>
-          <h1 className={topbarStyles.title}>Dashboard</h1>
+          <PageTitle />
           <div className={topbarStyles.userArea}>
             <span className={topbarStyles.userName}>{user.full_name}</span>
             <LogoutButton />

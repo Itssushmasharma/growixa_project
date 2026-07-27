@@ -1,0 +1,15 @@
+"use client";
+
+import { usePathname } from "next/navigation";
+
+import styles from "./topbar.module.css";
+
+const PAGE_TITLES: Record<string, string> = {
+  "/dashboard": "Dashboard",
+  "/dashboard/company-settings": "Company Settings",
+};
+
+export function PageTitle() {
+  const pathname = usePathname();
+  return <h1 className={styles.title}>{PAGE_TITLES[pathname] ?? "Growixa"}</h1>;
+}
