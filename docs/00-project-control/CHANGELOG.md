@@ -10,6 +10,36 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
+## 2026-07-27 — GRX-FEAT-SMS-001: SMS Marketing & Twilio Integration documentation
+
+- Added feature specification `docs/02-features/FEATURE_SMS_MARKETING.md` detailing Admin Twilio provider credential setup, E.164 phone formatting, SMS consent management (`OPTED_IN`/`OPTED_OUT`), SMS campaign composer with 160-char / GSM-7 segment calculator, and Twilio DLR / `STOP` opt-out webhooks.
+- Updated `MVP_SCOPE.md`, `ROADMAP.md` (Release 1.2), `FEATURE_CATALOG.md`, and `PROJECT_STATUS.md` to stage SMS Marketing in Release 1.2.
+
+## 2026-07-27 — GRX-TEST-002: Frontend test foundation
+
+- Picked ahead of `GRX-FOUND-008` (dashboard shell) — the user directed frontend/UI work
+  next, pointing to the design reference already captured in `DESIGN_REFERENCES.md`, but
+  `GRX-FOUND-008`'s own "Required Tests" (a frontend e2e smoke test) has nothing to run in:
+  `apps/web` had zero test tooling. Same reasoning as why `GRX-TEST-001` (backend test
+  foundation) was done before most backend feature work this session.
+- Added Vitest + React Testing Library + jsdom for component tests
+  (`vitest.config.ts`, `vitest.setup.ts`) and Playwright for e2e (`playwright.config.ts`,
+  Chromium only for now). `npm run test` / `npm run test:e2e` scripts added.
+- One trivial component test (`src/app/page.test.tsx`) renders the existing `HomePage` and
+  asserts its heading — will be revisited once `GRX-FOUND-008` changes what the root route
+  renders. One e2e smoke test (`tests/e2e/smoke.spec.ts`) drives a real
+  `next build && next start` and confirms the root route returns 200 with the heading
+  visible.
+- Playwright's dev server runs on port 3100 (not 3000) specifically so the e2e suite never
+  collides with the Compose `web` container, which developers may have running at the same
+  time on the standard port.
+- `npm run lint`/`format:check`/`typecheck` all pass; `npm run test` → 1 passed; `npm run
+  test:e2e` → 1 passed. Rebuilt the `web` image with the new devDependencies and confirmed
+  `/` still returns 200 and an unknown route still 404s in Compose — no regression from
+  adding test tooling. No CI pipeline exists yet (`GRX-DEVOPS-001`, which depends on this
+  task); a green local test suite is this task's actual deliverable, matching
+  `GRX-TEST-001`'s equivalent backend evidence. Commit `a804186`.
+
 ## 2026-07-27 — GRX-AUTH-004: Login rate limiting
 
 - Picked immediately after `GRX-FOUND-006` (Redis connectivity) unblocked it — the highest

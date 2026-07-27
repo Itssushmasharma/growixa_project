@@ -9,54 +9,58 @@
 
 ## Task worked on
 
-`GRX-AUTH-004` — Login rate limiting. Picked immediately after `GRX-FOUND-006` unblocked
-it — the highest-priority remaining P0 backend task, closing T1 (credential
-stuffing/brute force) and T12 (unbounded login/reset flooding) from `THREAT_MODEL.md` on
-the exact `/auth/login` and `/auth/password-reset/request` endpoints built in the two
-sessions before this one.
+`GRX-TEST-002` — Frontend test foundation. Every P0 Sprint 1 backend task is now `DONE`
+(as of `GRX-AUTH-004`), and the user directed frontend/UI work next, pointing to the
+already-captured design reference (`docs/03-ux-ui/DESIGN_REFERENCES.md` +
+`mockups/growixa-login-and-dashboard-mockup.html`) for the dashboard shell
+(`GRX-FOUND-008`). Picked this task first, ahead of the shell itself, because
+`GRX-FOUND-008`'s own "Required Tests" column calls for a frontend e2e smoke test, and
+`apps/web` had no test runner at all to produce one — the same reasoning that put
+`GRX-TEST-001` before most backend feature work earlier in this session.
 
 ## Work completed
 
-- **`rate_limit_max_attempts`** (default 5) and **`rate_limit_window_seconds`** (default
-  60) settings (`config.py`) — a conservative default per `AUTHENTICATION.md`'s "low
-  single-digit attempts per short window" guidance.
-- **`auth/rate_limit.py`** (new): `enforce_rate_limit(redis_client, *, bucket, identifier)`
-  — a Redis `INCR`+`EXPIRE` fixed-window counter keyed
-  `grx:ratelimit:{bucket}:{identifier}`, matching the exact key format
-  `LOCAL_DEVELOPMENT.md` already documented. Raises `RateLimitExceededError` once the
-  identifier exceeds the configured max within the window.
-- **`auth/api.py`**: both `login_route` and `password_reset_request_route` now take a
-  `redis_client: Redis = Depends(get_redis)` and call `enforce_rate_limit()` first, keyed
-  by `f"{email}:{ip}"`, with buckets `"login"` and `"password_reset_request"` respectively
-  (independent budgets — the two endpoints can't exhaust each other's limit). A caught
-  `RateLimitExceededError` becomes `HTTPException(429, ...)`.
+- Added **Vitest** + **React Testing Library** + **jsdom** for component tests
+  (`vitest.config.ts` points at `src/**/*.test.{ts,tsx}`; `vitest.setup.ts` wires up
+  `@testing-library/jest-dom`'s matchers).
+- Added **Playwright** (Chromium only, for now) for e2e (`playwright.config.ts`); its
+  `webServer` runs a real `next build && next start` on **port 3100**, deliberately not
+  3000, so the e2e suite never collides with the Compose `web` container a developer might
+  already have running.
+- `package.json`: added `test` (`vitest run`) and `test:e2e` (`playwright test`) scripts.
+- One trivial component test (`src/app/page.test.tsx`): renders the existing `HomePage`
+  and asserts its heading is present.
+- One e2e smoke test (`tests/e2e/smoke.spec.ts`): loads `/` against the real built app,
+  asserts a 200 and the heading is visible.
+- `.gitignore`: added `test-results/`, `playwright-report/`, `blob-report/`,
+  `playwright/.cache/` (Playwright's output directories, not previously covered).
 
-## An explicit, flagged design call — not a silent shortcut
+## Note for whoever picks up `GRX-FOUND-008` next (likely this same session)
 
-**The limiter fails open on `RedisError`.** If Redis is unreachable, `enforce_rate_limit()`
-swallows the error and lets the request through rather than raising. Rationale: a Redis
-outage must degrade *security posture* (temporarily no brute-force protection), not
-*availability* of login/password-reset entirely — the same trade-off `/health` already
-makes by reporting "degraded" instead of crashing on a dependency outage.
+`src/app/page.test.tsx` tests the **current** `HomePage`, which today just renders a
+static "Growixa" placeholder. `GRX-FOUND-008` will change what the root route does
+(redirect based on auth state), which will break this test's assumptions — update or
+replace it as part of that task rather than leaving it stale.
 
-This has a load-bearing practical consequence discovered during `GRX-FOUND-006`: Compose's
-`redis` service has no host port mapping, so a host-run `pytest` process can never reach
-real Redis. Without fail-open, wiring this into `/auth/login` would have broken every one
-of the 40+ pre-existing tests across this entire session that call that endpoint (most of
-them don't even test rate limiting — they just need to log in as a setup step). With
-fail-open, those tests are silently unaffected under the documented Redis-unreachable
-constraint, while real enforcement still applies in any environment where Redis actually
-is reachable (i.e., always, outside this specific host-vs-container test-runner gap).
+## An unrelated observation, not part of this task
+
+While working, `docs/01-product/MVP_SCOPE.md`, `docs/01-product/ROADMAP.md`,
+`docs/02-features/FEATURE_CATALOG.md`, and a new `docs/02-features/FEATURE_SMS_MARKETING.md`
+changed on disk outside this session's own edits (git showed them modified/untracked with
+no corresponding action taken here). Left entirely untouched — not reverted, not
+investigated further, since they don't conflict with anything in this task. Whoever
+authored them should reconcile/commit that work separately; flagging here only so it isn't
+mistaken for something this session did.
 
 ## Files changed
 
-- `apps/api/src/growixa_api/config.py` (`rate_limit_max_attempts`,
-  `rate_limit_window_seconds`)
-- `apps/api/src/growixa_api/auth/rate_limit.py` (new)
-- `apps/api/src/growixa_api/auth/api.py` (`login_route`, `password_reset_request_route`
-  extended)
-- `apps/api/tests/test_auth_rate_limit.py` (new)
-- `docs/00-project-control/MASTER_TASK_TRACKER.md` (`GRX-AUTH-004` → `DONE`, evidence
+- `apps/web/package.json`, `apps/web/package-lock.json` (new devDependencies + scripts)
+- `apps/web/vitest.config.ts`, `apps/web/vitest.setup.ts` (new)
+- `apps/web/playwright.config.ts` (new)
+- `apps/web/src/app/page.test.tsx` (new)
+- `apps/web/tests/e2e/smoke.spec.ts` (new)
+- `.gitignore` (Playwright output directories)
+- `docs/00-project-control/MASTER_TASK_TRACKER.md` (`GRX-TEST-002` → `DONE`, evidence
   recorded)
 - `docs/00-project-control/PROJECT_STATUS.md`, `docs/00-project-control/CHANGELOG.md` (this
   update)
@@ -64,61 +68,36 @@ is reachable (i.e., always, outside this specific host-vs-container test-runner 
 ## Commands executed
 
 ```bash
-cd apps/api
-# config.py, auth/rate_limit.py, auth/api.py, tests/test_auth_rate_limit.py written
-.venv/bin/ruff check --fix . && .venv/bin/ruff format . && .venv/bin/mypy .
+cd apps/web
+npm install --save-dev vitest @testing-library/react @testing-library/jest-dom jsdom \
+  @vitejs/plugin-react @playwright/test
+npx playwright install chromium --with-deps
 
-source ../../.env && export DATABASE_URL=... REDIS_URL="redis://localhost:6379/0" RABBITMQ_URL=...
-.venv/bin/pytest -v   # 43 passed, 2 skipped (both Redis-unreachable-from-host, as expected)
+# vitest.config.ts, vitest.setup.ts, playwright.config.ts, page.test.tsx, tests/e2e/smoke.spec.ts written
+npm run lint && npm run format:check && npm run typecheck
+npm run test        # 1 passed
+npm run test:e2e    # 1 passed (chromium)
 
 cd ../..
-podman compose up -d --build api
-curl -s http://localhost:8000/health
-
-# smoke-test users created directly via the ORM inside the container, then:
-for i in 1 2 3 4 5 6; do
-  curl -s -o /dev/null -w "%{http_code}\n" -X POST http://localhost:8000/auth/login \
-    -d '{"email":"smoke-ratelimit@example.com","password":"wrong-password"}'
-done
-# 401 401 401 401 401 429
-
-# same already-limited identifier, now with the CORRECT password — still 429
-curl -X POST http://localhost:8000/auth/login -d '{"email":"smoke-ratelimit@example.com","password":"Real-Password-123!"}'
-
-# a different email+IP — unaffected, 200
-curl -X POST http://localhost:8000/auth/login -d '{"email":"smoke-ratelimit-2@example.com","password":"Real-Password-123!"}'
-
-# same 5-then-429 pattern independently on password-reset-request
-for i in 1 2 3 4 5 6; do
-  curl -s -o /dev/null -w "%{http_code}\n" -X POST http://localhost:8000/auth/password-reset/request \
-    -d '{"email":"smoke-ratelimit-2@example.com"}'
-done
-# 200 200 200 200 200 429
-
-podman compose exec redis redis-cli KEYS "grx:ratelimit:*"
-# grx:ratelimit:login:smoke-ratelimit@example.com:10.89.3.14
-# grx:ratelimit:login:smoke-ratelimit-2@example.com:10.89.3.14
-# grx:ratelimit:password_reset_request:smoke-ratelimit-2@example.com:10.89.3.14
-# cleaned up rate-limit keys, smoke users, and their audit logs afterward
+podman compose up -d --build web
+curl -s -o /dev/null -w "%{http_code}\n" http://localhost:3000/               # 200
+curl -s -o /dev/null -w "%{http_code}\n" http://localhost:3000/does-not-exist # 404
 ```
 
 ## Test results
 
-`pytest` → 43 passed, 2 skipped (38 pre-existing + 5 new unit tests + 1 new integration
-test that skips, same as `test_redis.py`). 95% coverage, unchanged (the two skips
-contribute no missed lines; the 429 branches themselves show as uncovered under host
-pytest specifically because fail-open means they're never exercised there — verified live
-instead, see above).
+Vitest: 1 passed. Playwright: 1 passed (Chromium). `eslint`/`prettier --check`/`tsc
+--noEmit` all clean.
 
 ## Migrations
 
-None — this task added no database schema.
+None — frontend-only task.
 
 ## Decisions
 
-None new — implements the mechanism already specified in `AUTHENTICATION.md`'s Rate
-limiting section and `THREAT_MODEL.md` T1/T12. The fail-open failure mode is an explicit,
-flagged engineering call (see above), not a `DECISIONS.md`-level architecture decision.
+None new. Vitest/RTL/Playwright are the conventional modern choice for a Next.js App
+Router project ("your standard stack" per the design brief's own TECH note) — not a
+`DECISIONS.md`-level architecture call.
 
 ## Blockers
 
@@ -126,32 +105,30 @@ None.
 
 ## Known issues
 
-- The 429 code paths in `auth/api.py` are not exercised by the host-run `pytest` suite
-  (fail-open under Redis-unreachable-from-host means they're never triggered there) — this
-  is expected, not a coverage gap to chase; real enforcement is verified live against
-  Compose instead (see Commands executed above) and will also be exercised automatically
-  by `test_auth_rate_limit.py`'s integration test the moment Redis is reachable from
-  wherever `pytest` runs (e.g., a future CI runner for `GRX-DEVOPS-001`).
+- `src/app/page.test.tsx` will need updating once `GRX-FOUND-008` changes root-route
+  behavior (see the note above) — expected, not a defect.
+- No CI pipeline exists yet (`GRX-DEVOPS-001`, depends on this task and `GRX-TEST-001`) —
+  the green local test suite is this task's actual deliverable, same as `GRX-TEST-001`.
 - Still-open from earlier sessions: `seed_first_admin` CLI (`GRX-AUTH-001`); CORS for
-  frontend calls (`GRX-FOUND-004`); no "list pending invitations"/"revoke invitation"
-  endpoints (`GRX-USER-001`); raw password-reset token exposed in local dev only
-  (`GRX-AUTH-005`).
+  frontend calls (`GRX-FOUND-004`) — this is about to become a hard blocker for
+  `GRX-FOUND-008`'s login flow, being fixed as part of that task next; no "list pending
+  invitations"/"revoke invitation" endpoints (`GRX-USER-001`); raw password-reset token
+  exposed in local dev only (`GRX-AUTH-005`).
 
 ## Current state
 
-`/auth/login` and `/auth/password-reset/request` are both now rate-limited, closing the
-last two open items (T1, T12) in `THREAT_MODEL.md`'s Sprint-1-relevant subset. This
-completes the sixth step of this session's user-directed backend-continuity sequence:
-`GRX-AUTH-002` → `GRX-AUTH-003` → `GRX-USER-001` → `GRX-AUTH-005` → `GRX-FOUND-006` →
-`GRX-AUTH-004`. **Every P0 Sprint 1 backend task is now `DONE`** — everything remaining in
-the tracker is frontend work.
+`apps/web` now has a real test harness (unit/component + e2e) for the first time. Next up
+in this same session: `GRX-FOUND-008` (dashboard shell), which will need to add CORS
+middleware and a `GET /auth/me` endpoint on the backend side (small, necessary additions
+discovered while scoping that task, not originally listed in its Files/Modules column) —
+without them, a browser-based login from the web origin to the API origin cannot work at
+all, and there is no way to determine "is this user logged in" server-side otherwise.
 
 ## Exact next task
 
-No explicit user direction beyond this point. `READY`: `GRX-TEST-002` (frontend test
-foundation), `GRX-COMPANY-002` (company settings screen, frontend), `GRX-FOUND-008`
-(dashboard shell, frontend), `GRX-USER-002` (user management screens, frontend). All are
-frontend work — there is no more P0 backend work left to prioritize ahead of them.
+`GRX-FOUND-008` (dashboard shell) — in progress, picked up immediately after this task in
+the same session. `READY` after that: `GRX-COMPANY-002` (company settings screen),
+`GRX-USER-002` (user management screens, frontend).
 
 ## Resume commands
 
@@ -164,4 +141,4 @@ podman compose up -d                                  # bring the stack back up
 
 ## Latest commit
 
-`5c26200` — feat(auth): login rate limiting (GRX-AUTH-004)
+`a804186` — test(web): frontend test foundation (GRX-TEST-002)
