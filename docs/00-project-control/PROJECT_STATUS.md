@@ -2,8 +2,8 @@
 
 - Document ID: DOC-PROJECT-STATUS
 - Status: ACTIVE
-- Version: 1.24
-- Last updated: 2026-07-27
+- Version: 1.25
+- Last updated: 2026-07-29
 - Owner: Coding agent (on behalf of product owner)
 - Related documents: [MASTER_TASK_TRACKER](MASTER_TASK_TRACKER.md), [DECISIONS](DECISIONS.md), [DEVELOPMENT_READINESS](DEVELOPMENT_READINESS.md)
 
@@ -47,12 +47,12 @@ test foundation), `GRX-COMPANY-001` (company profile + brand settings), `GRX-AUT
 revocation), `GRX-USER-001` (internal user invitation + acceptance), `GRX-AUTH-005`
 (password reset flow), `GRX-FOUND-006` (Redis connectivity), `GRX-AUTH-004` (login rate
 limiting), `GRX-TEST-002` (frontend test foundation), `GRX-FOUND-008` (dashboard
-shell), and `GRX-COMPANY-002` (company settings screen) are `DONE`. `GRX-DEVOPS-001` (CI
-pipeline) is `IN_REVIEW` — fully built and locally verified, but not moved to `DONE`
-because a real green run on GitHub Actions hasn't been observed; that requires pushing, a
-permission-gated action awaiting the user's go-ahead.
-`GRX-USER-002` (user management screens, frontend) is `READY` — the last Sprint 1 task.
-Per
+shell), `GRX-COMPANY-002` (company settings screen), and `GRX-USER-002` (user management
+screens) are `DONE`. `GRX-DEVOPS-001` (CI pipeline) is `IN_REVIEW` — fully built and
+locally verified, but not moved to `DONE` because a real green run on GitHub Actions
+hasn't been observed; that requires pushing, a permission-gated action awaiting the
+user's go-ahead.
+**All other tracked Sprint 1 tasks are now `DONE`.** Per
 [AGENT_EXECUTION_RULES.md](../12-development/AGENT_EXECUTION_RULES.md), only one is worked
 on at a time. See [AGENT_HANDOFF.md](AGENT_HANDOFF.md) for session-by-session
 detail.
@@ -110,6 +110,7 @@ detail.
 | `apps/web/src/app/{login,dashboard}/`, `apps/web/src/lib/auth.ts`, `apps/api/src/growixa_api/{app,config}.py` (CORS), `apps/api/src/growixa_api/auth/api.py` (`GET /auth/me`), `apps/web/tests/e2e/dashboard.spec.ts` | DONE (`GRX-FOUND-008`) |
 | `.github/workflows/ci.yml` | IN_REVIEW (`GRX-DEVOPS-001` — built and locally verified, awaiting a live GitHub Actions run) |
 | `apps/web/src/app/dashboard/company-settings/` | DONE (`GRX-COMPANY-002`) |
+| `apps/web/src/app/dashboard/team/`, `apps/api/src/growixa_api/roles/{api,schemas}.py` (new), `apps/api/src/growixa_api/users/` (extended) | DONE (`GRX-USER-002`) |
 | `docs/00-project-control/FEATURE_STATUS_MATRIX.md`, `RISKS.md`, `BLOCKERS.md` | NOT_STARTED (created as Sprint 1 tasks land) |
 | `docs/03-ux-ui/DESIGN_REFERENCES.md` | DONE (reference material only — see its own scope caveat; not a Sprint 1 spec) |
 | `docs/01-product/FUTURE_SCOPE_MULTI_BRAND.md` | DONE (idea capture only — multi-brand profiles + subscription tiers; contradicts DEC-GRX-002/013 as proposed, not scheduled into any release) |
@@ -122,8 +123,9 @@ detail.
    rationale per task in [CHANGELOG.md](CHANGELOG.md)): `GRX-AUTH-002` → `GRX-AUTH-003` →
    `GRX-USER-001` → `GRX-AUTH-005` → `GRX-FOUND-006` → `GRX-AUTH-004` → `GRX-TEST-002` →
    `GRX-FOUND-008` → `GRX-DEVOPS-001` (`IN_REVIEW`, needs a push to confirm green — see
-   AGENT_HANDOFF.md) → `GRX-COMPANY-002`. Only `GRX-USER-002` (user management screens)
-   remains to close out Sprint 1's tracked tasks.
+   AGENT_HANDOFF.md) → `GRX-COMPANY-002` → `GRX-USER-002`. All tracked Sprint 1 tasks are
+   now `DONE` except `GRX-DEVOPS-001`'s pending push confirmation; awaiting user direction
+   on what to pick up next (Sprint 2, or push/confirm CI).
 2. Create `FEATURE_STATUS_MATRIX.md`, `RISKS.md`, `BLOCKERS.md` alongside Sprint 1 tasks as they land, not all upfront.
 3. Write full feature specs in `02-features/` for Slice 1 features as each task is picked up, not all upfront.
 4. Do not begin any V1.5+/SEO-AEO-GEO work until Slices 1–6 (MVP) are stable in production.

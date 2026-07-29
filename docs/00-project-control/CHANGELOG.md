@@ -10,6 +10,25 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
+## 2026-07-29 — GRX-USER-002: User management screens (list, invite, disable, role assignment)
+
+- Backend: `GET /roles` (gated on `users.manage`, since it only backs the role-picker
+  dropdown — not exposing the full permission matrix), `GET /users` (list with roles +
+  status), `PATCH /users/{id}/status`, `PATCH /users/{id}/role`. Self-disable is blocked
+  (no `seed_first_admin` CLI yet, so a self-lockout would be unrecoverable); disabling a
+  user revokes all their active sessions; role changes emit a `role.changed` audit event
+  with old/new roles.
+- Frontend: `/dashboard/team` — lists members, invites new users (shows the raw invite
+  token directly since there's no email delivery yet), changes roles, disables/enables.
+  Sidebar's "Team" link only renders for users with `users.manage`.
+- `ruff`/`mypy` clean, `pytest` 55 passed (95% coverage, 10 new); frontend
+  lint/format/typecheck/build clean, Vitest 14 passed (5 new), Playwright 4 passed (1 new
+  e2e: invite → accept → login). Live-verified in a real browser against rebuilt Compose
+  containers: invited a user, changed their role, disabled them (session revoked, login
+  now 401), confirmed self-disable is blocked in the UI.
+- This was the last tracked Sprint 1 task; all Sprint 1 tasks are now `DONE` except
+  `GRX-DEVOPS-001`'s pending push confirmation. Commit `22ba450`.
+
 ## 2026-07-27 — GRX-COMPANY-002: Company settings screen
 
 - Built the company profile + brand voice form at `/dashboard/company-settings`. Extended
