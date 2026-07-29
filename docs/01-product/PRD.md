@@ -7,7 +7,7 @@
 - Version: 1.0
 - Last updated: 2026-07-22
 - Owner: Product owner (Ravi) via coding agent
-- Related documents: [PRODUCT_VISION](PRODUCT_VISION.md), [MVP_SCOPE](MVP_SCOPE.md), [FUTURE_SCOPE_SEO_AEO_GEO](FUTURE_SCOPE_SEO_AEO_GEO.md), [ROADMAP](ROADMAP.md), [DECISIONS](../00-project-control/DECISIONS.md), [ASSUMPTIONS](../00-project-control/ASSUMPTIONS.md), [OPEN_QUESTIONS](../00-project-control/OPEN_QUESTIONS.md), [DEFINITION_OF_DONE](../00-project-control/DEFINITION_OF_DONE.md)
+- Related documents: [PRODUCT_VISION](PRODUCT_VISION.md), [MVP_SCOPE](MVP_SCOPE.md), [FUTURE_SCOPE_SEO_AEO_GEO](FUTURE_SCOPE_SEO_AEO_GEO.md), [FUTURE_SCOPE_MULTI_BRAND](FUTURE_SCOPE_MULTI_BRAND.md), [FUTURE_SCOPE_PLATFORM_ADMIN](FUTURE_SCOPE_PLATFORM_ADMIN.md), [ROADMAP](ROADMAP.md), [DECISIONS](../00-project-control/DECISIONS.md), [ASSUMPTIONS](../00-project-control/ASSUMPTIONS.md), [OPEN_QUESTIONS](../00-project-control/OPEN_QUESTIONS.md), [DEFINITION_OF_DONE](../00-project-control/DEFINITION_OF_DONE.md)
 
 Requirement ID prefixes used throughout: `GRX-FR` (functional), `GRX-NFR` (non-functional),
 `GRX-SEC` (security), `GRX-AI` (AI-specific), `GRX-UX` (UX), `GRX-OPS` (operations/DevOps),
@@ -50,7 +50,10 @@ scattered tools cannot.
 
 Internal employees/contractors of the one company operating Growixa (see
 [DEC-GRX-002](../00-project-control/DECISIONS.md), single-tenant). Not external/customer-facing
-in the MVP.
+in the MVP. A self-service, multi-tenant, external-customer model with an IITDEVELOPER
+platform-admin control plane has been proposed and captured for later consideration — see
+[FUTURE_SCOPE_PLATFORM_ADMIN.md](FUTURE_SCOPE_PLATFORM_ADMIN.md) — but is not decided and
+is not part of the MVP.
 
 ## 7. Personas
 

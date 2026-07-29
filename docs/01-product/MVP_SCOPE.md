@@ -60,7 +60,10 @@ These are part of Growixa's long-term vision but out of MVP scope. They are stag
 future releases — see [ROADMAP.md](ROADMAP.md) and, for the SEO/AEO/GEO group specifically,
 [FUTURE_SCOPE_SEO_AEO_GEO.md](FUTURE_SCOPE_SEO_AEO_GEO.md):
 
-- Full multi-tenancy, customer-facing SaaS signup, tenant-specific billing
+- Full multi-tenancy, customer-facing SaaS signup, tenant-specific billing — a concrete
+  proposed shape for this (self-service registration, `account_id` isolation, an
+  IITDEVELOPER platform-admin control plane) is captured in
+  [FUTURE_SCOPE_PLATFORM_ADMIN.md](FUTURE_SCOPE_PLATFORM_ADMIN.md), not decided or scheduled
 - Advanced autonomous marketing agents; AI that publishes without approval
 - Full CRM, sales pipeline
 - WhatsApp marketing, SMS campaigns, push notifications
