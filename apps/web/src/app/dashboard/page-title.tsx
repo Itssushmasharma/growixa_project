@@ -7,6 +7,7 @@ import styles from "./topbar.module.css";
 const PAGE_TITLES: Record<string, string> = {
   "/dashboard": "Dashboard",
   "/dashboard/company-settings": "Company Settings",
+  "/dashboard/team": "Team",
 };
 
 export function PageTitle() {

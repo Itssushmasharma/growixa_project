@@ -20,18 +20,27 @@ const COMPOSE_BIN = process.env.COMPOSE_BIN ?? "podman";
 export default function globalSetup(): void {
   const script = `
 import asyncio
+from sqlalchemy import select
+
 from growixa_api.db import async_session_factory
 from growixa_api.auth.security import hash_password
-from growixa_api.users.models import User
+from growixa_api.roles.models import Role
+from growixa_api.users.models import User, UserRole
 
 async def main():
     async with async_session_factory() as session:
+        # Admin, not just any role: the team-management e2e test needs users.manage to
+        # invite/list/change roles, and this same fixed user is reused across every e2e
+        # spec rather than provisioning one per test file.
+        admin_role = (await session.execute(select(Role).where(Role.name == "Admin"))).scalar_one()
         user = User(
             email="${E2E_USER_EMAIL}",
             password_hash=hash_password("${E2E_USER_PASSWORD}"),
             full_name="E2E Dashboard User",
         )
         session.add(user)
+        await session.flush()
+        session.add(UserRole(user_id=user.id, role_id=admin_role.id))
         await session.commit()
 
 asyncio.run(main())

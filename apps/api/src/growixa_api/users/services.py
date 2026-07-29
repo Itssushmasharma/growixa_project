@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from growixa_api.audit.services import record_event
 from growixa_api.auth.security import hash_password
+from growixa_api.auth.services import revoke_all_active_sessions
 from growixa_api.auth.tokens import generate_token, hash_token
 from growixa_api.config import get_settings
 from growixa_api.roles.repositories import get_role_by_name
@@ -14,6 +15,11 @@ from growixa_api.users.repositories import (
     create_user,
     get_invitation_by_token_hash,
     get_user_by_email,
+    get_user_by_id,
+    list_role_names_by_user_id,
+    list_role_names_for_user,
+    list_users,
+    replace_user_role,
 )
 
 
@@ -31,6 +37,16 @@ class EmailAlreadyRegisteredError(Exception):
     """The email already has a user account — checked both when creating an invitation
     (fail fast for the admin) and when accepting one (closes a race between two
     acceptances, or the person registering some other way in between)."""
+
+
+class UserNotFoundError(Exception):
+    """The target user id doesn't match any existing user."""
+
+
+class SelfActionNotAllowedError(Exception):
+    """An admin may not disable their own account through this endpoint — with no
+    seed_first_admin CLI yet (GRX-AUTH-001), a self-disable would be an unrecoverable
+    lockout if it happened to be the only remaining admin."""
 
 
 async def invite_user(
@@ -106,3 +122,66 @@ async def accept_invitation(
     await session.commit()
 
     return user
+
+
+async def list_users_with_roles(session: AsyncSession) -> list[tuple[User, list[str]]]:
+    users = await list_users(session)
+    role_map = await list_role_names_by_user_id(session)
+    return [(user, role_map.get(user.id, [])) for user in users]
+
+
+async def update_user_status(
+    session: AsyncSession,
+    *,
+    actor_id: uuid.UUID,
+    user_id: uuid.UUID,
+    status: str,
+) -> tuple[User, list[str]]:
+    if user_id == actor_id and status == "DISABLED":
+        raise SelfActionNotAllowedError
+
+    user = await get_user_by_id(session, user_id)
+    if user is None:
+        raise UserNotFoundError
+
+    user.status = status
+    if status == "DISABLED":
+        # Per AUTHENTICATION.md's account-disable requirement — reuses the same function
+        # GRX-AUTH-003's reuse-detection and logout-all flows already call, which itself
+        # emits the session.revoked audit event.
+        await revoke_all_active_sessions(session, user.id, reason="account_disabled")
+
+    await session.commit()
+    roles = await list_role_names_for_user(session, user.id)
+    return user, roles
+
+
+async def update_user_role(
+    session: AsyncSession,
+    *,
+    actor_id: uuid.UUID,
+    user_id: uuid.UUID,
+    role_name: str,
+) -> tuple[User, list[str]]:
+    user = await get_user_by_id(session, user_id)
+    if user is None:
+        raise UserNotFoundError
+
+    role = await get_role_by_name(session, role_name)
+    if role is None:
+        raise RoleNotFoundError
+
+    old_roles = await list_role_names_for_user(session, user_id)
+    await replace_user_role(session, user_id=user_id, role_id=role.id, assigned_by_user_id=actor_id)
+
+    await record_event(
+        session,
+        actor_user_id=actor_id,
+        action="role.changed",
+        entity_type="user",
+        entity_id=user_id,
+        metadata={"old_roles": old_roles, "new_role": role_name},
+    )
+    await session.commit()
+
+    return user, [role_name]

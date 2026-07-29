@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel
 
@@ -31,3 +32,20 @@ class AcceptInvitationOut(BaseModel):
     id: uuid.UUID
     email: str
     full_name: str
+
+
+class UserListItemOut(BaseModel):
+    id: uuid.UUID
+    email: str
+    full_name: str
+    status: str
+    last_login_at: datetime | None
+    roles: list[str]
+
+
+class UpdateUserStatusIn(BaseModel):
+    status: Literal["ACTIVE", "DISABLED"]
+
+
+class UpdateUserRoleIn(BaseModel):
+    role_name: str

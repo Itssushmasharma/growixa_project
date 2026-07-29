@@ -17,7 +17,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
 
   return (
     <div className={layoutStyles.shell}>
-      <Sidebar />
+      <Sidebar permissions={user.permissions} />
       <div className={layoutStyles.main}>
         <header className={topbarStyles.topbar}>
           <PageTitle />

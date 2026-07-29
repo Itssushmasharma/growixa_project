@@ -7,6 +7,7 @@ from growixa_api.brand.api import router as brand_router
 from growixa_api.company.api import router as company_router
 from growixa_api.config import get_settings
 from growixa_api.health import router as health_router
+from growixa_api.roles.api import router as roles_router
 from growixa_api.users.api import router as users_router
 
 
@@ -24,4 +25,5 @@ def create_app() -> FastAPI:
     app.include_router(company_router)
     app.include_router(brand_router)
     app.include_router(users_router)
+    app.include_router(roles_router)
     return app
