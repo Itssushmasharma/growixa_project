@@ -64,6 +64,11 @@ future releases — see [ROADMAP.md](ROADMAP.md) and, for the SEO/AEO/GEO group 
   proposed shape for this (self-service registration, `account_id` isolation, an
   IITDEVELOPER platform-admin control plane) is captured in
   [FUTURE_SCOPE_PLATFORM_ADMIN.md](FUTURE_SCOPE_PLATFORM_ADMIN.md), not decided or scheduled
+- AI voice lead qualification, licensed third-party audience data, and LinkedIn/CSV
+  contact enrichment — outbound lead-acquisition ideas captured in
+  [FUTURE_SCOPE_LEAD_INTELLIGENCE.md](FUTURE_SCOPE_LEAD_INTELLIGENCE.md); these would
+  expand Growixa's product category beyond "automate marketing to contacts we already
+  have," so they need an explicit scope decision, not just a backlog slot
 - Advanced autonomous marketing agents; AI that publishes without approval
 - Full CRM, sales pipeline
 - WhatsApp marketing, SMS campaigns, push notifications

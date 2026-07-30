@@ -74,3 +74,7 @@ Full multi-tenancy, customer-facing SaaS signup, tenant billing, full CRM, sales
 WhatsApp/SMS/push marketing, landing-page/form builders, ad campaign automation, ecommerce
 automation, white-label platform, enterprise workflow builder, multi-region deployment. See
 [MVP_SCOPE.md §Deferred, not cancelled](../01-product/MVP_SCOPE.md#deferred-not-cancelled).
+
+AI voice lead qualification, licensed third-party audience data, and LinkedIn/CSV contact
+enrichment — idea capture only, not scheduled — see
+[FUTURE_SCOPE_LEAD_INTELLIGENCE.md](../01-product/FUTURE_SCOPE_LEAD_INTELLIGENCE.md).

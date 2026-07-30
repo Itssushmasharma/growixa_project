@@ -5,7 +5,7 @@
 - Version: 1.0
 - Last updated: 2026-07-25
 - Owner: Product owner (Ravi), captured by coding agent
-- Related documents: [MVP_SCOPE](../01-product/MVP_SCOPE.md), [ROADMAP](../01-product/ROADMAP.md), [SPRINT_01_FOUNDATION](../14-sprints/SPRINT_01_FOUNDATION.md), [MASTER_TASK_TRACKER](../00-project-control/MASTER_TASK_TRACKER.md)
+- Related documents: [MVP_SCOPE](../01-product/MVP_SCOPE.md), [ROADMAP](../01-product/ROADMAP.md), [SPRINT_01_FOUNDATION](../14-sprints/SPRINT_01_FOUNDATION.md), [MASTER_TASK_TRACKER](../00-project-control/MASTER_TASK_TRACKER.md), [DESIGN_REFERENCE_REVSPOT](DESIGN_REFERENCE_REVSPOT.md)
 
 ## What this is
 
@@ -50,6 +50,14 @@ If implementing a Sprint 1 UI task and this brief implies something beyond that 
 acceptance criteria, build only what the task asks for and leave the rest for its own future
 task — the same scope discipline already applied to the backend (see
 [AGENT_EXECUTION_RULES.md](../12-development/AGENT_EXECUTION_RULES.md)).
+
+## Related reference: token architecture (colors unchanged)
+
+[DESIGN_REFERENCE_REVSPOT.md](DESIGN_REFERENCE_REVSPOT.md) captures real extracted design
+tokens from a reference product (revspot.ai) and proposes adopting its *token
+architecture* (radius scale, spacing, motion easing, a reusable status-chip color
+formula) into `globals.css` — explicitly **not** its color palette. Growixa's approved
+brand colors (navy/blue/teal/mint, per the brief below) are unchanged.
 
 ## Reference files
 
