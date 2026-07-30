@@ -13,6 +13,7 @@ from growixa_api.auth import models as auth_models  # noqa: F401
 from growixa_api.brand import models as brand_models  # noqa: F401
 from growixa_api.company import models as company_models  # noqa: F401
 from growixa_api.config import get_settings
+from growixa_api.contacts import models as contacts_models  # noqa: F401
 from growixa_api.db import Base
 from growixa_api.permissions import models as permissions_models  # noqa: F401
 from growixa_api.roles import models as roles_models  # noqa: F401

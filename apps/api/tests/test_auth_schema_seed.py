@@ -32,10 +32,14 @@ EXPECTED_PERMISSIONS = {
     "company.settings.view",
     "audit.view",
     "admin.access",
+    # Slice 2 additions (GRX-CONTACT-001) — see RBAC.md §Slice 2 permission codes.
+    "contacts.manage",
+    "contacts.view",
 }
 
-# permission code -> set of role names granted that permission, per RBAC.md's Sprint 1
-# role -> permission matrix.
+# permission code -> set of role names granted that permission, per RBAC.md's Sprint 1 and
+# Slice 2 role -> permission matrices. This test checks the database as of `head`, so it's
+# extended (not re-pinned to one migration) each time a later migration adds permissions.
 EXPECTED_MATRIX: dict[str, set[str]] = {
     "users.manage": {"Super Admin", "Admin"},
     "roles.manage": {"Super Admin", "Admin"},
@@ -43,6 +47,8 @@ EXPECTED_MATRIX: dict[str, set[str]] = {
     "company.settings.view": EXPECTED_ROLES,
     "audit.view": {"Super Admin", "Admin"},
     "admin.access": {"Super Admin", "Admin"},
+    "contacts.manage": {"Super Admin", "Admin", "Marketing Manager"},
+    "contacts.view": {"Super Admin", "Admin", "Marketing Manager", "Analyst"},
 }
 
 
