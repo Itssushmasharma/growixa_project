@@ -52,3 +52,37 @@ class ContactOut(BaseModel):
     created_at: datetime
     updated_at: datetime
     custom_fields: dict[str, str]
+    tags: list[str] = Field(default_factory=list)
+
+
+class TagIn(BaseModel):
+    name: str
+
+
+class TagOut(BaseModel):
+    model_config = {"from_attributes": True}
+
+    id: uuid.UUID
+    name: str
+
+
+class AttachTagIn(BaseModel):
+    tag_id: uuid.UUID
+
+
+class ContactListIn(BaseModel):
+    name: str
+    description: str | None = None
+
+
+class ContactListOut(BaseModel):
+    id: uuid.UUID
+    name: str
+    description: str | None
+    member_count: int
+    created_at: datetime
+    updated_at: datetime
+
+
+class AddListMemberIn(BaseModel):
+    contact_id: uuid.UUID
