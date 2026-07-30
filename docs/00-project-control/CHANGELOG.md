@@ -10,6 +10,42 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
+## 2026-07-30 — GRX-CONTACT-001: Contacts schema + CRUD
+
+- First Slice 2 implementation task. Added `contacts`, `contact_custom_fields`,
+  `contact_field_values` tables (migration `209d29349ccf`) and
+  `contacts.manage`/`contacts.view` permission codes + role grants (Super
+  Admin/Admin/Marketing Manager manage; those three plus Analyst view; Viewer gets
+  neither, per RBAC.md's Slice 2 rationale).
+- `POST /contacts` creates or updates by email (the sole dedup key — no fuzzy matching);
+  `GET /contacts`, `GET /contacts/{id}`, `PATCH /contacts/{id}`, `PATCH
+  /contacts/{id}/status` (archive/unarchive); `GET`/`POST /contacts/custom-fields`.
+  Contact activity reuses the existing `audit_logs` table rather than a new one
+  (`contact.created`/`updated`/`archived`).
+- **Real bug found and fixed during live verification**: `Contact.updated_at`'s
+  server-side `onupdate` expires that attribute after `session.commit()`; reading it
+  synchronously afterward (as the API's response serialization does) raised
+  `sqlalchemy.exc.MissingGreenlet`. Fixed with an explicit `await
+  session.refresh(contact)` right after each mutating commit. Worth checking whether
+  `company_profile`'s equivalent `onupdate` column has the same latent bug — its existing
+  test suite only ever creates a profile once per test, never exercises a second `PUT`
+  against an already-saved row.
+- Extended `test_auth_schema_seed.py`'s exact-match permission-set assertion to include
+  the two new codes — a legitimate extension of Sprint 1's test now that Slice 2 adds
+  permissions, not a regression.
+- `ruff`/`mypy` clean; `pytest` 69 passed, 3 skipped (94% coverage, 12 new tests);
+  `alembic check` → no drift. Live-verified against rebuilt Compose containers: created a
+  contact with a custom field value, re-created with the same email (dedup confirmed —
+  same id, list count stayed at 1), archived then reactivated (audit event confirmed via
+  DB query), and confirmed Analyst gets 200 on list/403 on create while Viewer gets 403
+  on both.
+- Also recreated the `admin@growixa.local` smoke-test account, which the full pytest run's
+  migration round-trip test (`test_migrations.py`) wiped as a side effect of dropping and
+  recreating all tables against the same database Compose uses — a pre-existing test
+  characteristic, not something introduced by this task, but worth knowing before running
+  the full suite against a Compose stack with data you want to keep.
+- `GRX-CONTACT-002` (tags & lists) is now the next `READY` task. Commit `7ec6c93`.
+
 ## 2026-07-30 — Sprint 2 (Contacts) planning
 
 - All tracked Sprint 1 tasks are `DONE` except `GRX-DEVOPS-001` (push confirmation) and
