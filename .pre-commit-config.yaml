@@ -22,6 +22,27 @@ repos:
         files: ^apps/api/
         pass_filenames: false
 
+      - id: worker-ruff-check
+        name: worker - ruff check
+        entry: bash -c 'cd apps/worker && source .venv/bin/activate && ruff check .'
+        language: system
+        files: ^apps/worker/
+        pass_filenames: false
+
+      - id: worker-ruff-format
+        name: worker - ruff format --check
+        entry: bash -c 'cd apps/worker && source .venv/bin/activate && ruff format --check .'
+        language: system
+        files: ^apps/worker/
+        pass_filenames: false
+
+      - id: worker-mypy
+        name: worker - mypy
+        entry: bash -c 'cd apps/worker && source .venv/bin/activate && mypy .'
+        language: system
+        files: ^apps/worker/
+        pass_filenames: false
+
       - id: web-eslint
         name: web - eslint
         entry: bash -c 'cd apps/web && npm run lint'

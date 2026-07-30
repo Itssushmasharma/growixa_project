@@ -10,6 +10,30 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
+## 2026-07-29 — GRX-FOUND-007: RabbitMQ connectivity and worker skeleton
+
+- Added the shared `JobEnvelope` schema and a `publish_job()` producer to
+  `apps/api/src/growixa_api/jobs/`, plus an `admin.access`-gated `POST
+  /system/jobs/healthcheck` so the pipeline can be triggered and tested — Sprint 1 has no
+  real business job to trigger it otherwise.
+- New standalone `apps/worker/` app (own `pyproject.toml`, `Dockerfile`, ruff/mypy config
+  mirroring `apps/api`) connects to RabbitMQ, declares the `grx.system.healthcheck` queue,
+  and logs each job it processes. Kept as its own deployable app rather than an entrypoint
+  inside `apps/api`, per `SYSTEM_ARCHITECTURE.md`'s "independently scalable Python
+  workers" — corrected a stale `LOCAL_DEVELOPMENT.md` line that had said otherwise.
+- Wired into `compose.yaml` as a new `worker` service, into `ci.yml` as a new parallel job
+  (no service containers needed — the worker's own tests are pure-unit against a fake AMQP
+  message), and into `.pre-commit-config.yaml` (ruff/format/mypy hooks mirroring `apps/api`'s).
+- `ruff`/`mypy` clean on both apps; `apps/api` `pytest` 58 passed, 3 skipped (95%
+  coverage) — the new producer round-trip test skips locally for the same
+  host-unreachable-broker reason as `GRX-FOUND-006`'s Redis test, but runs for real in CI;
+  `apps/worker` `pytest` 2 passed. Live-verified against rebuilt Compose containers:
+  triggered a real healthcheck job as a smoke Admin via curl, confirmed
+  `docker compose logs worker` showed the exact same `job_id` being processed; confirmed a
+  Viewer gets 403; `/health`'s `rabbitmq` check still reports `ok`.
+- This was the last `BACKLOG` Sprint 1 task. Only `GRX-DEVOPS-001` (push confirmation) and
+  `GRX-DOC-003` (blocked on that same push) remain open in Sprint 1. Commit `a0a1eea`.
+
 ## 2026-07-29 — GRX-USER-002: User management screens (list, invite, disable, role assignment)
 
 - Backend: `GET /roles` (gated on `users.manage`, since it only backs the role-picker

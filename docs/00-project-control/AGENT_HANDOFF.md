@@ -9,85 +9,93 @@
 
 ## Task worked on
 
-`GRX-USER-002` — User management screens (list, invite, disable, role assignment). The last
-tracked Sprint 1 task; user explicitly said "ok dome this GRX-USER-002" after two unrelated
-future-scope docs were captured earlier in the session.
+`GRX-FOUND-007` — RabbitMQ connectivity and health check (producer/consumer + worker
+skeleton). Picked after `GRX-USER-002` per the user's "go next thst needed"; it was the
+last remaining `BACKLOG` Sprint 1 task with satisfied dependencies (`GRX-FOUND-003` DONE).
 
 ## Work completed
 
-- Backend: `GET /roles` (new `roles/api.py`, `roles/schemas.py`), gated on `users.manage`
-  rather than `roles.manage` since it exists only to populate the role-picker dropdown, not
-  to expose the permission matrix. `GET /users` (list with roles + status), `PATCH
-  /users/{id}/status`, `PATCH /users/{id}/role` in `users/api.py`, backed by new
-  `users/services.py` functions (`list_users_with_roles`, `update_user_status`,
-  `update_user_role`) and repository helpers.
-- Self-disable is blocked (`SelfActionNotAllowedError`) — with no `seed_first_admin` CLI yet,
-  an admin disabling their own account would be an unrecoverable lockout. Disabling a user
-  calls the existing `revoke_all_active_sessions` helper. Role changes emit a `role.changed`
-  audit event with `{old_roles, new_role}`.
-- Frontend: `/dashboard/team` (`team-page.tsx` + supporting files) — fetches `/auth/me`,
-  `/users`, `/roles`; lists members with avatar/status/role; invite form shows the raw
-  invite token in-page (no email delivery yet, same interim design as `GRX-USER-001`); role
-  `<select>` and Disable/Enable button per row, with the button disabled for your own active
-  account to mirror the backend guard. Sidebar's "Team" link is permission-filtered
-  (`users.manage`).
+- `apps/api/src/growixa_api/jobs/schemas.py`: `JobEnvelope` (job_id, idempotency_key,
+  job_type, payload, created_at, attempt_count, created_by_user_id) per
+  `BACKGROUND_JOB_ARCHITECTURE.md`'s shared envelope spec.
+- `apps/api/src/growixa_api/jobs/producer.py`: `publish_job(queue_name, envelope)` —
+  connects via `aio_pika.connect_robust`, declares the queue durable, publishes a
+  persistent message.
+- `apps/api/src/growixa_api/jobs/api.py`: `POST /system/jobs/healthcheck`, gated on
+  `admin.access` (Sprint 1 has no dedicated jobs permission and no real business job to
+  trigger the pipeline otherwise — this exists purely so the connectivity claim is
+  testable, not as a permanent ops surface).
+- New `apps/worker/` app — a separate deployable, not an entrypoint bolted onto
+  `apps/api`, per `SYSTEM_ARCHITECTURE.md`'s "independently scalable Python workers":
+  `pyproject.toml`/`Dockerfile` mirroring `apps/api`'s tooling, `config.py` (Settings:
+  `rabbitmq_url`), `consumer.py` (`consume_forever`, declares `grx.system.healthcheck`,
+  logs each processed job's `job_id`), `main.py` (entrypoint).
+- `compose.yaml`: new `worker` service, depends on `rabbitmq` health.
+- `.github/workflows/ci.yml`: new parallel `worker` job (lint/format/mypy/pytest — no
+  service containers needed, its tests are pure-unit against a fake AMQP message).
+- Corrected a stale line in `LOCAL_DEVELOPMENT.md` that said the worker would build from
+  `apps/api/` — that was a placeholder from before this task was implemented.
 
 ## Files changed
 
-- `apps/api/src/growixa_api/roles/{api,schemas}.py` (new), `roles/repositories.py`
-  (`list_roles`)
-- `apps/api/src/growixa_api/users/{repositories,schemas,services,api}.py` (extended)
-- `apps/api/src/growixa_api/app.py` (wired `roles_router`)
-- `apps/api/tests/test_users_management.py` (new, 10 tests)
-- `apps/web/src/app/dashboard/sidebar.tsx` (permission-filtered nav), `layout.tsx`,
-  `page-title.tsx`
-- `apps/web/src/app/dashboard/team/{types,avatar-color,team-page,team-page.module.css,
-  page,team-page.test.tsx}` (new)
-- `apps/web/tests/e2e/global-setup.ts` (e2e user now gets the Admin role), `team.spec.ts`
-  (new)
+- `apps/api/src/growixa_api/jobs/{__init__,schemas,producer,api}.py` (new)
+- `apps/api/src/growixa_api/app.py` (wired `jobs_router`)
+- `apps/api/tests/test_jobs.py` (new, 4 tests: envelope defaults, admin trigger,
+  non-admin 403, real producer→queue round trip)
+- `apps/api/.env` (new, git-ignored — needed for host-run pytest against Compose Postgres
+  at `localhost:5433`; wasn't present at the start of this session)
+- `apps/worker/` (new app): `pyproject.toml`, `README.md`, `Dockerfile`,
+  `src/growixa_worker/{__init__,config,consumer,main}.py`, `tests/test_consumer.py`
+- `compose.yaml` (new `worker` service)
+- `.github/workflows/ci.yml` (new `worker` job)
+- `docs/11-devops/LOCAL_DEVELOPMENT.md` (corrected worker build source + health-check
+  verification steps)
 - `docs/00-project-control/MASTER_TASK_TRACKER.md`, `PROJECT_STATUS.md`, `CHANGELOG.md`
   (this update)
 
 ## Commands executed
 
 ```bash
-cd apps/api
+cd apps/worker
+python3 -m venv .venv && .venv/bin/pip install -e ".[dev]"
 .venv/bin/ruff check . && .venv/bin/ruff format --check . && .venv/bin/mypy .
-.venv/bin/pytest -q   # 55 passed, 95% coverage
+.venv/bin/pytest -q   # 2 passed
 
-cd ../web
-npm run lint && npm run format:check && npm run typecheck && npm run test   # 14 passed
-NEXT_PUBLIC_API_URL=http://localhost:8000 npm run build
-npm run test:e2e   # 4 passed
+cd ../api
+.venv/bin/ruff check . && .venv/bin/ruff format --check . && .venv/bin/mypy .
+.venv/bin/pytest -q   # 58 passed, 3 skipped (95% coverage)
 
 cd ../..
-podman compose up -d --build api web
-# Live curl walkthrough: login -> GET /roles -> GET /users -> invite -> accept ->
-# GET /users -> PATCH role -> self-disable blocked (400) -> disable invitee (200, session
-# revoked, login now 401). Confirmed via audit_logs query.
-# Live browser walkthrough (real Compose stack): logged in as a Super Admin, confirmed the
-# Team page layout, self row shows a disabled Disable button; invited a user, saw the
-# success banner + token; accepted via curl (no accept-invitation UI yet); re-loaded the
-# page showing both members; changed the invitee's role to Viewer and disabled them via the
-# UI — confirmed via screenshot (badge -> "Disabled", button -> "Enable", role -> "Viewer").
-# Cleaned up all smoke-test rows afterward via psql DELETE.
+python3 -c "import yaml; yaml.safe_load(open('.github/workflows/ci.yml'))"
+podman compose up -d --build worker api
+# docker compose logs worker -> "growixa-worker listening on grx.system.healthcheck"
+# created a smoke Admin, logged in, POST /system/jobs/healthcheck -> 202 {job_id: X}
+# docker compose logs worker -> "Processed healthcheck job X" (same job_id)
+# created a smoke Viewer, same POST -> 403
+# curl /health -> rabbitmq: ok (unaffected)
+# cleaned up both smoke users via psql DELETE
 ```
 
 ## Test results
 
-Backend: `ruff`/`mypy` clean, `pytest` 55 passed, 95% coverage. Frontend:
-`eslint`/`prettier --check`/`tsc --noEmit` clean, Vitest 14 passed (5 new), Playwright 4
-passed (1 new e2e happy path), `next build` succeeds with `/dashboard/team` classified
-dynamic. Live-verified via curl and a real browser against rebuilt Compose containers.
+`apps/worker`: `ruff`/`mypy` clean, `pytest` 2 passed. `apps/api`: `ruff`/`mypy` clean,
+`pytest` 58 passed, 3 skipped (95% coverage) — the new RabbitMQ producer round-trip test
+skips locally (broker not host-reachable, same as `GRX-FOUND-006`'s Redis test) but will
+run for real in CI. Live-verified end-to-end against rebuilt Compose containers: a
+triggered job's ID appeared in the worker's log, proving the full publish→consume path
+works, not just that a connection opens.
 
 ## Migrations
 
-None — no schema changes (reused existing `User`, `UserRole`, `Role` tables).
+None — no schema changes.
 
 ## Decisions
 
-None new. The invite-accept flow stays API-only (no dedicated UI page) for this task too —
-consistent with `GRX-USER-001`'s existing interim design pending real email delivery.
+Built the worker as a genuinely separate app (`apps/worker/`) rather than an entrypoint
+inside `apps/api`, even though an early draft of `LOCAL_DEVELOPMENT.md` had assumed the
+latter — `SYSTEM_ARCHITECTURE.md`'s "independently scalable Python workers" and the
+`MASTER_TASK_TRACKER.md` Files/Modules column (`apps/api/`, `apps/worker/`) both point to
+a separate app, and that stale doc line has been corrected.
 
 ## Blockers
 
@@ -96,24 +104,26 @@ None.
 ## Known issues
 
 - `GRX-DEVOPS-001` still `IN_REVIEW` — needs a push to confirm a green Actions run.
-- No "accept invitation" UI page yet (API-only) — same gap as `GRX-USER-001`, not widened
-  by this task.
-- Still-open from earlier sessions: `seed_first_admin` CLI (`GRX-AUTH-001`); no "list
-  pending invitations"/"revoke invitation" endpoints (`GRX-USER-001`); raw password-reset
-  token exposed in local dev only (`GRX-AUTH-005`).
+- `GRX-DOC-003` (Sprint 1 documentation wrap-up) is blocked on `GRX-DEVOPS-001` moving to
+  `DONE`, since its dependency is "all Sprint 1 tasks above."
+- No dead-letter queue, retry/backoff, or job-state visibility yet — explicitly out of
+  Sprint 1 scope per `BACKGROUND_JOB_ARCHITECTURE.md`; will land with the first real
+  business job type in Slice 3+.
+- Same pre-existing gaps as before: `seed_first_admin` CLI, no
+  "list/revoke invitation" endpoints, raw password-reset token exposed in local dev only.
 
 ## Current state
 
-All tracked Sprint 1 tasks in `MASTER_TASK_TRACKER.md` are now `DONE` except
-`GRX-DEVOPS-001`, which is fully built and locally verified but waiting on a push to
-confirm a green GitHub Actions run (a permission-gated action awaiting the user's
-go-ahead). No code has been pushed to remote this session per explicit user instruction.
+`GRX-FOUND-007` was the last `BACKLOG` Sprint 1 task. Every tracked Sprint 1 task is now
+`DONE` except `GRX-DEVOPS-001` (built and locally verified, waiting on a push) and
+`GRX-DOC-003` (blocked on that same push). No code has been pushed to remote this session.
 
 ## Exact next task
 
-No explicit user direction beyond closing out `GRX-USER-002`. Sprint 1's tracked task list
-is now empty aside from the `GRX-DEVOPS-001` push. Await user direction on whether to: (a)
-push and confirm CI, (b) start Sprint 2 planning, or (c) something else.
+No explicit user direction beyond closing out `GRX-FOUND-007`. Nothing is `READY` and
+unblocked in the tracker anymore except via pushing to confirm `GRX-DEVOPS-001`. Await
+user direction on whether to: (a) push and confirm CI (unblocks `GRX-DOC-003` too), (b)
+start Sprint 2 planning, or (c) something else.
 
 ## Resume commands
 
@@ -126,4 +136,4 @@ podman compose up -d
 
 ## Latest commit
 
-`22ba450` — feat(users): user management screens (GRX-USER-002)
+`a0a1eea` — feat(worker): RabbitMQ connectivity and worker skeleton (GRX-FOUND-007)
