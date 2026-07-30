@@ -2,8 +2,8 @@
 
 - Document ID: DOC-SEC-RBAC
 - Status: ACTIVE
-- Version: 1.0
-- Last updated: 2026-07-22
+- Version: 1.1
+- Last updated: 2026-07-30
 - Owner: Coding agent
 - Related documents: [AUTHENTICATION](AUTHENTICATION.md), [DATA_MODEL](../05-data/DATA_MODEL.md), [PRD §20](../01-product/PRD.md#20-user-roles-and-permissions)
 
@@ -38,6 +38,17 @@ held. No per-user permission overrides in Sprint 1 — role membership is the on
 Additional permission codes are added per module as later slices are built (e.g.
 `contacts.manage`, `campaigns.approve`) — this table is extended, not redesigned.
 
+## Slice 2 permission codes
+
+| Code | Meaning |
+|---|---|
+| `contacts.manage` | Create/edit/archive contacts; manage tags, lists, segments, custom fields; run CSV imports; record consent; suppress addresses |
+| `contacts.view` | Read-only access to contacts, tags, lists, and segments |
+
+Kept to the same edit/view granularity as `company.settings.*` in Sprint 1, rather than
+splitting into many fine-grained codes (e.g. a separate `contacts.import`) not called for
+by `MVP_SCOPE.md §B`.
+
 ## Sprint 1 role → permission matrix
 
 | Permission | Super Admin | Admin | Marketing Manager | Content Creator | Analyst | Viewer |
@@ -49,9 +60,23 @@ Additional permission codes are added per module as later slices are built (e.g.
 | `audit.view` | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | `admin.access` | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 
-This matrix seeds `role_permissions` in the Sprint 1 migration. Future-slice permissions
-(campaigns, contacts, social, AI) extend this table when those modules are built — not
-speculatively added now.
+This matrix seeds `role_permissions` in the Sprint 1 migration.
+
+## Slice 2 role → permission matrix
+
+| Permission | Super Admin | Admin | Marketing Manager | Content Creator | Analyst | Viewer |
+|---|---|---|---|---|---|---|
+| `contacts.manage` | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| `contacts.view` | ✅ | ✅ | ✅ | ❌ | ✅ | ❌ |
+
+Marketing Manager gets full `contacts.manage` per its stated scope ("campaigns, segments,
+social, analytics"). Analyst gets `contacts.view` only, matching its stated "read-only
+analytics and reporting" scope. Content Creator and Viewer get neither in Slice 2 — no
+Slice 2 requirement calls for it, and per Sprint 1's own precedent (Viewer only received
+`company.settings.view`, not a blanket view grant across every module), access is granted
+explicitly per module, never assumed from a role's name. Extend later if a real need
+surfaces (e.g. Content Creator needing segment context for Slice 6's "audience-specific
+variations").
 
 ## Enforcement rule
 

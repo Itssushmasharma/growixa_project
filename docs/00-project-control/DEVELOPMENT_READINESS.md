@@ -2,10 +2,10 @@
 
 - Document ID: DOC-DEV-READINESS
 - Status: ACTIVE
-- Version: 3.0
-- Last updated: 2026-07-22
+- Version: 4.0
+- Last updated: 2026-07-30
 - Owner: Coding agent
-- Related documents: [DEFINITION_OF_DONE](DEFINITION_OF_DONE.md), [PROJECT_STATUS](PROJECT_STATUS.md), [MASTER_TASK_TRACKER](MASTER_TASK_TRACKER.md), [SPRINT_01_FOUNDATION](../14-sprints/SPRINT_01_FOUNDATION.md)
+- Related documents: [DEFINITION_OF_DONE](DEFINITION_OF_DONE.md), [PROJECT_STATUS](PROJECT_STATUS.md), [MASTER_TASK_TRACKER](MASTER_TASK_TRACKER.md), [SPRINT_01_FOUNDATION](../14-sprints/SPRINT_01_FOUNDATION.md), [SPRINT_02_CONTACTS](../14-sprints/SPRINT_02_CONTACTS.md)
 
 No product feature implementation may begin until every item below is `PASS` for Slice 1
 (Sprint 1 — Foundation).
@@ -55,8 +55,24 @@ remain open. None of them gate Slice 1. Each becomes a hard blocker only for the
 actually needs it (Slice 3, 5, 6, etc. respectively) — do not resolve them early just because
 this gate passed.
 
+## Readiness gate — Slice 2 (Contacts)
+
+| Readiness item | Required | Status | Evidence |
+|---|---|---|---|
+| Data model additions | Yes | PASS | [DATA_MODEL.md §Slice 2 entities](../05-data/DATA_MODEL.md#slice-2-entities-full-detail), [DATABASE_SCHEMA.md §Slice 2](../05-data/DATABASE_SCHEMA.md#slice-2-contacts-tables), [ERD.md §Slice 2 additions](../05-data/ERD.md#slice-2-contacts-additions) |
+| RBAC additions | Yes | PASS | [RBAC.md §Slice 2](../08-security/RBAC.md#slice-2-permission-codes) — `contacts.manage`, `contacts.view` |
+| Sprint 2 plan | Yes | PASS | [SPRINT_02_CONTACTS.md](../14-sprints/SPRINT_02_CONTACTS.md) |
+| Feature specs (`CONTACT_MANAGEMENT.md`, `CONTACT_IMPORT.md`, `CONTACT_TAGS.md`, `SEGMENTATION.md`, `SUPPRESSION_AND_CONSENT.md`) | No (written per-task, not upfront — same practice as Sprint 1) | DEFERRED TO EACH TASK | [FEATURE_CATALOG.md](../02-features/FEATURE_CATALOG.md) |
+| Project tracker rows | Yes | PASS | [MASTER_TASK_TRACKER.md](MASTER_TASK_TRACKER.md) — `GRX-CONTACT-*` |
+| AI safety baseline | No (no AI feature in Slice 2) | N/A FOR SLICE 2 | — |
+| Email/social/billing provider decisions | No (not needed until Slice 3/5) | N/A FOR SLICE 2 | [OPEN_QUESTIONS.md](OPEN_QUESTIONS.md) |
+
+**Overall status: READY — first task cleared: `GRX-CONTACT-001` (contacts schema + CRUD).**
+Mirrors Slice 1's gate structure rather than re-litigating documentation standards from
+scratch; only genuinely new items (data model, RBAC, sprint plan) needed a fresh pass.
+
 ## Gate for later slices
 
-Slice 2 (Contacts) onward will each need their own readiness pass (data model additions,
-feature specs, etc.) before becoming `READY` — this table will be extended per slice rather
-than re-litigated from scratch.
+Slice 3 (First Email Campaign) onward will each need their own readiness pass (data model
+additions, feature specs, etc.) before becoming `READY` — this table will be extended per
+slice rather than re-litigated from scratch.

@@ -120,15 +120,134 @@
   Slice 3+ features). This avoids retrofitting the metering table later per
   [DEC-GRX-007](../00-project-control/DECISIONS.md).
 
+## Slice 2 entities (full detail)
+
+### `contacts`
+
+- Purpose: a person a company markets to.
+- Primary key: `id` (UUID)
+- Required fields: `email` (unique, citext), `status` (`ACTIVE` | `ARCHIVED`, default `ACTIVE`)
+- Optional fields: `first_name`, `last_name`, `phone`, `source` (e.g. `manual`, `csv_import`)
+- Ownership: `created_by_user_id` (nullable — null for CSV-imported contacts not
+  attributable to a manual creator)
+- Audit fields: `created_at`, `updated_at`
+- Soft-delete: archive via `status = 'ARCHIVED'`, never a hard delete, per this doc's
+  conventions.
+- Duplicate handling: `email` is the sole dedup key. A CSV import or manual create that
+  matches an existing email **updates** that contact rather than creating a second row —
+  no fuzzy/name-based dedup in Slice 2.
+- Activity history: reuses the existing `audit_logs` table (`entity_type = 'contact'`)
+  rather than a new table — `contact.created`, `contact.updated`, `contact.archived`,
+  `contact.tagged`, `contact.list_added`, `contact.consent_changed`,
+  `contact.suppressed` extend the audit action vocabulary. No separate
+  `contact_activity` table.
+
+### `contact_custom_fields`
+
+- Purpose: company-defined extra fields on a contact (e.g. "Company size").
+- Primary key: `id` (UUID)
+- Required fields: `key` (unique, machine name), `label`, `field_type`
+  (`TEXT` | `NUMBER` | `DATE` | `BOOLEAN`)
+- Audit fields: `created_at`
+
+### `contact_field_values`
+
+- Purpose: the value of one custom field for one contact.
+- Primary key: composite (`contact_id`, `field_id`)
+- Foreign keys: `contact_id` → `contacts.id` ON DELETE CASCADE, `field_id` →
+  `contact_custom_fields.id` ON DELETE CASCADE
+- Required fields: `value` (text) — stored as text regardless of `field_type` and cast at
+  read time; avoids a polymorphic-column design for an MVP feature set this small.
+
+### `tags` / `contact_tags`
+
+- `tags`: `id` (UUID PK), `name` (unique), `created_at`.
+- `contact_tags`: composite PK (`contact_id`, `tag_id`), both FKs `ON DELETE CASCADE`.
+  Simple many-to-many, no tag hierarchy/color/scoping in Slice 2.
+
+### `contact_lists` / `contact_list_members`
+
+- `contact_lists`: purpose is a manually curated, user-named group of contacts (add/remove
+  one at a time, or in bulk from an import). `id` (UUID PK), `name`, `description`
+  (nullable), `created_by_user_id` (nullable FK → `users.id`), `created_at`, `updated_at`.
+- `contact_list_members`: composite PK (`list_id`, `contact_id`), both FKs
+  `ON DELETE CASCADE`, `added_at` (default `now()`).
+
+### `segments` / `segment_rules` / `segment_members`
+
+- Purpose: a **rule-defined** audience, distinct from a manually curated list.
+- `segments`: `id` (UUID PK), `name`, `type` (`DYNAMIC` | `SAVED`), `created_by_user_id`
+  (nullable FK → `users.id`), `created_at`, `updated_at`.
+  - `DYNAMIC`: membership is evaluated live from `segment_rules` every time the segment is
+    used (e.g. opened, or referenced by a future campaign in Slice 3+).
+  - `SAVED`: membership is evaluated once and frozen into `segment_members` at save time;
+    re-evaluating requires an explicit user action (not built as an automatic job in
+    Slice 2 — no scheduler exists yet for that).
+- `segment_rules`: `id` (UUID PK), `segment_id` (FK → `segments.id` ON DELETE CASCADE),
+  `field` (e.g. `tag`, `custom_field:<key>`, `consent_status`, `created_at`), `operator`
+  (e.g. `equals`, `contains`, `before`, `after`, `in`), `value` (text, interpreted per
+  field/operator at query time).
+  - **Simplification, stated explicitly**: all rules on a segment are AND-combined only.
+    OR logic / rule grouping is not in Slice 2 scope — revisit only if a real need
+    surfaces, per this project's stated anti-speculation practice.
+- `segment_members` (`SAVED` segments only): composite PK (`segment_id`, `contact_id`),
+  both FKs `ON DELETE CASCADE`, `captured_at` (default `now()`). Empty/unused for
+  `DYNAMIC` segments.
+
+### `contact_imports` / `contact_import_rows`
+
+- Purpose: CSV import job tracking, validation, and history (`MVP_SCOPE.md §B`'s "import
+  validation, import history" requirement).
+- `contact_imports`: `id` (UUID PK), `file_name`, `status`
+  (`PENDING` | `VALIDATING` | `IMPORTING` | `COMPLETED` | `FAILED`, default `PENDING`),
+  `total_rows` / `imported_count` / `skipped_count` / `error_count` (integers),
+  `column_mapping` (jsonb, CSV column → contact field), `created_by_user_id` (FK →
+  `users.id`, not null), `created_at`, `completed_at` (nullable).
+- `contact_import_rows`: `id` (UUID PK), `import_id` (FK → `contact_imports.id` ON DELETE
+  CASCADE), `row_number`, `raw_data` (jsonb, the original CSV row), `status`
+  (`PENDING` | `IMPORTED` | `SKIPPED` | `ERROR`, default `PENDING`), `error_message`
+  (nullable), `contact_id` (nullable FK → `contacts.id`, set once imported or matched to
+  an existing contact by email).
+
+### `consent_records`
+
+- Purpose: an **insert-only compliance history** of consent grants/withdrawals — mirrors
+  `audit_logs`'s insert-only pattern, since "who consented, to what, when" must never be
+  editable after the fact.
+- Primary key: `id` (UUID)
+- Required fields: `contact_id` (FK → `contacts.id` ON DELETE CASCADE), `channel`
+  (`EMAIL` | `SMS` — SMS included now even though SMS marketing itself is Release 1.2, so
+  this table doesn't need a schema change later), `status`
+  (`GRANTED` | `WITHDRAWN` | `UNKNOWN`, default `UNKNOWN`), `recorded_at` (default `now()`)
+- Optional fields: `source` (e.g. `import`, `manual`, future `unsubscribe_link`),
+  `recorded_by_user_id` (nullable FK → `users.id` — null for contact-initiated events,
+  none of which exist yet in Slice 2)
+- Current consent status for a contact+channel is derived as "most recent row," not
+  stored as separate mutable state.
+
+### `suppression_entries`
+
+- Purpose: a fast, current-state "never contact this address" list — distinct from
+  `consent_records`'s append-only history, because its only job is a fast lookup before
+  any future send (Slice 3+).
+- Primary key: `id` (UUID)
+- Required fields: `email` (citext, **unique** — one active suppression per address),
+  `reason` (`UNSUBSCRIBED` | `BOUNCED` | `COMPLAINED` | `MANUAL`), `suppressed_at`
+  (default `now()`)
+- Optional fields: `contact_id` (nullable FK → `contacts.id` — an address can be
+  suppressed even with no matching contact record, e.g. a hard bounce), `suppressed_by_user_id`
+  (nullable FK → `users.id`)
+- Re-suppressing an already-suppressed email updates `reason`/`suppressed_at` in place
+  (upsert on the unique `email` index), it does not create a second row.
+
 ## Full MVP entity landscape (target slice)
 
-Entities beyond Sprint 1 are named here for continuity with `docs/02-features/` and future
+Entities beyond Slice 2 are named here for continuity with `docs/02-features/` and future
 `docs/06-api/` work, but are **not** designed in field-level detail until the slice that
 needs them:
 
 | Entity group | Target slice | Notes |
 |---|---|---|
-| `contacts`, `contact_custom_fields`, `contact_field_values`, `tags`, `contact_tags`, `contact_lists`, `contact_list_members`, `segments`, `segment_rules`, `contact_imports`, `contact_import_rows`, `consent_records`, `suppression_entries` | Slice 2 | Contact & Audience Management |
 | `email_provider_connections`, `sender_identities`, `email_templates`, `email_template_versions`, `campaigns`, `campaign_versions`, `campaign_recipients`, `campaign_schedules`, `message_deliveries`, `delivery_attempts`, `email_events`, `unsubscribe_events` | Slice 3–4 | Email Marketing |
 | `social_provider_connections`, `social_accounts`, `social_posts`, `social_post_targets`, `social_post_media`, `social_publish_attempts`, `content_calendar_items` | Slice 5 | Social Media Automation |
 | `ai_prompt_templates`, `ai_prompt_versions`, `ai_generations`, `ai_usage_events` | Slice 6 | AI Content Assistant |

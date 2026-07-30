@@ -1,16 +1,18 @@
-# Database Schema — Sprint 1 Scope
+# Database Schema
 
 - Document ID: DOC-DB-SCHEMA
-- Status: ACTIVE (Sprint 1 scope only)
-- Version: 1.0
-- Last updated: 2026-07-22
+- Status: ACTIVE (extended per slice, not redesigned)
+- Version: 1.1
+- Last updated: 2026-07-30
 - Owner: Coding agent
 - Related documents: [DATA_MODEL](DATA_MODEL.md), [ERD](ERD.md), [MIGRATION_STRATEGY](MIGRATION_STRATEGY.md)
 
-This is the implementation-level schema reference for the tables Sprint 1 must create via
-Alembic migrations. Column types are PostgreSQL types. All tables use `uuid` primary keys
-generated application-side (or via `gen_random_uuid()`), per the UUID convention in
-[DATA_MODEL.md](DATA_MODEL.md).
+This is the implementation-level schema reference for tables created via Alembic
+migrations, extended per slice as each one is designed. Column types are PostgreSQL
+types. All tables use `uuid` primary keys generated application-side (or via
+`gen_random_uuid()`), per the UUID convention in [DATA_MODEL.md](DATA_MODEL.md).
+
+## Sprint 1 (Foundation) tables
 
 ## `users`
 
@@ -170,11 +172,183 @@ application layer — insert-only table.
 
 Indexes: index on `(operation_type, created_at)` for future usage aggregation queries.
 
+## Slice 2 (Contacts) tables
+
+## `contacts`
+
+| Column | Type | Constraints |
+|---|---|---|
+| id | uuid | PK |
+| email | citext | UNIQUE, NOT NULL |
+| first_name | text | NULL |
+| last_name | text | NULL |
+| phone | text | NULL |
+| status | text | NOT NULL, CHECK IN ('ACTIVE','ARCHIVED'), DEFAULT 'ACTIVE' |
+| source | text | NULL |
+| created_by_user_id | uuid | FK → users.id, NULL |
+| created_at | timestamptz | NOT NULL, DEFAULT now() |
+| updated_at | timestamptz | NOT NULL, DEFAULT now() |
+
+Indexes: unique index on `email`; index on `status` (list/segment filtering).
+
+## `contact_custom_fields`
+
+| Column | Type | Constraints |
+|---|---|---|
+| id | uuid | PK |
+| key | text | UNIQUE, NOT NULL |
+| label | text | NOT NULL |
+| field_type | text | NOT NULL, CHECK IN ('TEXT','NUMBER','DATE','BOOLEAN') |
+| created_at | timestamptz | NOT NULL, DEFAULT now() |
+
+## `contact_field_values`
+
+| Column | Type | Constraints |
+|---|---|---|
+| contact_id | uuid | PK (composite), FK → contacts.id ON DELETE CASCADE |
+| field_id | uuid | PK (composite), FK → contact_custom_fields.id ON DELETE CASCADE |
+| value | text | NULL |
+
+## `tags`
+
+| Column | Type | Constraints |
+|---|---|---|
+| id | uuid | PK |
+| name | text | UNIQUE, NOT NULL |
+| created_at | timestamptz | NOT NULL, DEFAULT now() |
+
+## `contact_tags`
+
+| Column | Type | Constraints |
+|---|---|---|
+| contact_id | uuid | PK (composite), FK → contacts.id ON DELETE CASCADE |
+| tag_id | uuid | PK (composite), FK → tags.id ON DELETE CASCADE |
+
+## `contact_lists`
+
+| Column | Type | Constraints |
+|---|---|---|
+| id | uuid | PK |
+| name | text | NOT NULL |
+| description | text | NULL |
+| created_by_user_id | uuid | FK → users.id, NULL |
+| created_at | timestamptz | NOT NULL, DEFAULT now() |
+| updated_at | timestamptz | NOT NULL, DEFAULT now() |
+
+## `contact_list_members`
+
+| Column | Type | Constraints |
+|---|---|---|
+| list_id | uuid | PK (composite), FK → contact_lists.id ON DELETE CASCADE |
+| contact_id | uuid | PK (composite), FK → contacts.id ON DELETE CASCADE |
+| added_at | timestamptz | NOT NULL, DEFAULT now() |
+
+## `segments`
+
+| Column | Type | Constraints |
+|---|---|---|
+| id | uuid | PK |
+| name | text | NOT NULL |
+| type | text | NOT NULL, CHECK IN ('DYNAMIC','SAVED') |
+| created_by_user_id | uuid | FK → users.id, NULL |
+| created_at | timestamptz | NOT NULL, DEFAULT now() |
+| updated_at | timestamptz | NOT NULL, DEFAULT now() |
+
+## `segment_rules`
+
+| Column | Type | Constraints |
+|---|---|---|
+| id | uuid | PK |
+| segment_id | uuid | FK → segments.id ON DELETE CASCADE, NOT NULL |
+| field | text | NOT NULL |
+| operator | text | NOT NULL |
+| value | text | NOT NULL |
+
+Indexes: index on `segment_id`.
+
+## `segment_members`
+
+| Column | Type | Constraints |
+|---|---|---|
+| segment_id | uuid | PK (composite), FK → segments.id ON DELETE CASCADE |
+| contact_id | uuid | PK (composite), FK → contacts.id ON DELETE CASCADE |
+| captured_at | timestamptz | NOT NULL, DEFAULT now() |
+
+Used only for `segments.type = 'SAVED'`; empty for `'DYNAMIC'`.
+
+## `contact_imports`
+
+| Column | Type | Constraints |
+|---|---|---|
+| id | uuid | PK |
+| file_name | text | NOT NULL |
+| status | text | NOT NULL, CHECK IN ('PENDING','VALIDATING','IMPORTING','COMPLETED','FAILED'), DEFAULT 'PENDING' |
+| total_rows | integer | NULL |
+| imported_count | integer | NOT NULL, DEFAULT 0 |
+| skipped_count | integer | NOT NULL, DEFAULT 0 |
+| error_count | integer | NOT NULL, DEFAULT 0 |
+| column_mapping | jsonb | NOT NULL, DEFAULT '{}' |
+| created_by_user_id | uuid | FK → users.id, NOT NULL |
+| created_at | timestamptz | NOT NULL, DEFAULT now() |
+| completed_at | timestamptz | NULL |
+
+## `contact_import_rows`
+
+| Column | Type | Constraints |
+|---|---|---|
+| id | uuid | PK |
+| import_id | uuid | FK → contact_imports.id ON DELETE CASCADE, NOT NULL |
+| row_number | integer | NOT NULL |
+| raw_data | jsonb | NOT NULL |
+| status | text | NOT NULL, CHECK IN ('PENDING','IMPORTED','SKIPPED','ERROR'), DEFAULT 'PENDING' |
+| error_message | text | NULL |
+| contact_id | uuid | FK → contacts.id, NULL |
+
+Indexes: index on `import_id`.
+
+## `consent_records`
+
+| Column | Type | Constraints |
+|---|---|---|
+| id | uuid | PK |
+| contact_id | uuid | FK → contacts.id ON DELETE CASCADE, NOT NULL |
+| channel | text | NOT NULL, CHECK IN ('EMAIL','SMS') |
+| status | text | NOT NULL, CHECK IN ('GRANTED','WITHDRAWN','UNKNOWN'), DEFAULT 'UNKNOWN' |
+| source | text | NULL |
+| recorded_at | timestamptz | NOT NULL, DEFAULT now() |
+| recorded_by_user_id | uuid | FK → users.id, NULL |
+
+Indexes: index on `(contact_id, channel, recorded_at)` — current status is the latest row
+per `(contact_id, channel)`. No UPDATE/DELETE grants at the application layer —
+insert-only, same pattern as `audit_logs`.
+
+## `suppression_entries`
+
+| Column | Type | Constraints |
+|---|---|---|
+| id | uuid | PK |
+| email | citext | UNIQUE, NOT NULL |
+| reason | text | NOT NULL, CHECK IN ('UNSUBSCRIBED','BOUNCED','COMPLAINED','MANUAL') |
+| contact_id | uuid | FK → contacts.id, NULL |
+| suppressed_at | timestamptz | NOT NULL, DEFAULT now() |
+| suppressed_by_user_id | uuid | FK → users.id, NULL |
+
+Indexes: unique index on `email` (upsert target — re-suppressing updates the existing row).
+
 ## Extensions required
 
 - `pgcrypto` or equivalent for `gen_random_uuid()`.
 - `citext` for case-insensitive email columns.
 
-Migration order (Alembic): `roles`/`permissions`/`role_permissions` seed migration →
-`users` → `user_roles` → `refresh_tokens` / `password_reset_tokens` / `user_invitations` →
+## Migration order (Alembic)
+
+Sprint 1: `roles`/`permissions`/`role_permissions` seed migration → `users` →
+`user_roles` → `refresh_tokens` / `password_reset_tokens` / `user_invitations` →
 `company_profile` → `brand_profiles` → `audit_logs` → `usage_records`.
+
+Slice 2: `contacts` → `contact_custom_fields` → `contact_field_values` → `tags` →
+`contact_tags` → `contact_lists` → `contact_list_members` → `segments` →
+`segment_rules` → `segment_members` → `contact_imports` → `contact_import_rows` →
+`consent_records` → `suppression_entries`. Also a seed migration adding the new
+`contacts.manage` / `contacts.view` permission codes and their role grants (see
+[RBAC.md](../08-security/RBAC.md)).

@@ -10,6 +10,31 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
+## 2026-07-30 — Sprint 2 (Contacts) planning
+
+- All tracked Sprint 1 tasks are `DONE` except `GRX-DEVOPS-001` (push confirmation) and
+  `GRX-DOC-003` (blocked on it) — per the user's direction, moved on to planning Slice 2
+  (Contacts) rather than waiting.
+- Extended `DATA_MODEL.md`, `DATABASE_SCHEMA.md`, and `ERD.md` with full field-level detail
+  for `contacts`, `contact_custom_fields`/`contact_field_values`, `tags`/`contact_tags`,
+  `contact_lists`/`contact_list_members`, `segments`/`segment_rules`/`segment_members`,
+  `contact_imports`/`contact_import_rows`, and `consent_records`/`suppression_entries`.
+  Notable design calls: dedup is email-only; segment rules are AND-only in Slice 2 (no
+  OR/grouping); "contact activity history" reuses the existing `audit_logs` table instead
+  of a new one; `consent_records` is insert-only (compliance history) while
+  `suppression_entries` is a fast current-state upsert-on-email table — deliberately
+  different patterns for different jobs.
+- Extended `RBAC.md` with `contacts.manage`/`contacts.view` and a Slice 2 role matrix —
+  Marketing Manager gets full manage access (matches its stated scope), Analyst gets
+  view-only, Content Creator and Viewer get neither yet (no stated Slice 2 need; Sprint 1
+  set the precedent that view access is granted explicitly per module, not assumed).
+- Wrote `SPRINT_02_CONTACTS.md` (scope, exclusions, acceptance criteria) and a Slice 2
+  readiness gate in `DEVELOPMENT_READINESS.md`, mirroring Sprint 1's structure.
+- Added nine tasks to `MASTER_TASK_TRACKER.md` (`GRX-CONTACT-001`–`009`): schema+CRUD,
+  tags/lists, segments, CSV import, consent/suppression — each with a frontend
+  counterpart. `GRX-CONTACT-001` is the first `READY` task.
+- Planning only — no code written yet for Slice 2.
+
 ## 2026-07-30 — Toast notification system (UI polish, no tracker ID)
 
 - Found while manually testing `GRX-USER-002`: form errors only showed as an inline red

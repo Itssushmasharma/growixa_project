@@ -2,8 +2,8 @@
 
 - Document ID: DOC-PROJECT-STATUS
 - Status: ACTIVE
-- Version: 1.26
-- Last updated: 2026-07-29
+- Version: 1.27
+- Last updated: 2026-07-30
 - Owner: Coding agent (on behalf of product owner)
 - Related documents: [MASTER_TASK_TRACKER](MASTER_TASK_TRACKER.md), [DECISIONS](DECISIONS.md), [DEVELOPMENT_READINESS](DEVELOPMENT_READINESS.md)
 
@@ -57,6 +57,16 @@ requires pushing, a permission-gated action awaiting the user's go-ahead.
 on at a time. See [AGENT_HANDOFF.md](AGENT_HANDOFF.md) for session-by-session
 detail.
 
+**Development Readiness Gate for Slice 2 (Sprint 2: Contacts): PASS.** See
+[DEVELOPMENT_READINESS.md](DEVELOPMENT_READINESS.md) and
+[SPRINT_02_CONTACTS.md](../14-sprints/SPRINT_02_CONTACTS.md). Data model
+([DATA_MODEL.md](../05-data/DATA_MODEL.md), [DATABASE_SCHEMA.md](../05-data/DATABASE_SCHEMA.md),
+[ERD.md](../05-data/ERD.md)) and RBAC ([RBAC.md](../08-security/RBAC.md)) extended for
+`contacts`, `tags`, `contact_lists`, `segments`, `contact_imports`,
+`consent_records`/`suppression_entries`. Nine tasks added to
+[MASTER_TASK_TRACKER.md](MASTER_TASK_TRACKER.md) (`GRX-CONTACT-001`–`009`).
+**First task cleared to `READY`: `GRX-CONTACT-001` — contacts schema + CRUD.**
+
 ## Documents created so far
 
 | Document | Status |
@@ -82,6 +92,7 @@ detail.
 | `docs/08-security/SECURITY_ARCHITECTURE.md`, `AUTHENTICATION.md`, `RBAC.md`, `THREAT_MODEL.md` | DONE |
 | `docs/12-development/AGENT_EXECUTION_RULES.md` | DONE |
 | `docs/14-sprints/SPRINT_01_FOUNDATION.md` | DONE |
+| `docs/14-sprints/SPRINT_02_CONTACTS.md` | DONE (planning — implementation not started) |
 | `docs/diagrams/container-architecture.mmd`, `er-diagram.mmd` | DONE |
 | `docs/archive/source-prd-seo-aeo-geo-website-intelligence/` | DONE (relabeled from "legacy/superseded" to "future source material") |
 | `docs/10-testing/TEST_STRATEGY.md` | DONE |
