@@ -105,6 +105,22 @@ services:
       retries: 10
       start_period: 10s
 
+  worker:
+    build:
+      context: ./apps/worker
+    restart: unless-stopped
+    environment:
+      ENVIRONMENT: local
+      LOG_LEVEL: info
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-guest}:${RABBITMQ_PASSWORD}@rabbitmq:5672/
+    volumes:
+      - ./apps/worker/src:/app/src
+    networks:
+      - growixa-net
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
   web:
     build:
       context: ./apps/web

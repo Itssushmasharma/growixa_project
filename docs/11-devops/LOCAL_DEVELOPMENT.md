@@ -67,7 +67,7 @@ cp apps/web/.env.example apps/web/.env.local
 | `rabbitmq` | `rabbitmq:3-management` | Job queue + management UI |
 | `api` | build from `apps/api/` | FastAPI backend |
 | `web` | build from `apps/web/` | Next.js frontend |
-| `worker` | build from `apps/api/` (worker entrypoint) | RabbitMQ consumer process |
+| `worker` | build from `apps/worker/` | RabbitMQ consumer process (`GRX-FOUND-007`) |
 
 ## Service ports (local defaults)
 
@@ -151,9 +151,9 @@ The worker has no interactive CLI in Sprint 1 — it only consumes the health-ch
 curl http://localhost:8000/health
 ```
 
-Expected: `200 OK` once `GRX-FOUND-003` (FastAPI foundation) lands. A worker health signal
-is visible via `docker compose logs worker` showing successful health-check message
-consumption once `GRX-FOUND-007` lands.
+Expected: `200 OK`. To confirm the worker is consuming, trigger a healthcheck job as an
+Admin/Super Admin (`POST /system/jobs/healthcheck`), then check `docker compose logs
+worker` for a `Processed healthcheck job <job_id>` line.
 
 ## Test commands
 
