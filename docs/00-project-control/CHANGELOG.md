@@ -10,6 +10,30 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
+## 2026-07-30 — GRX-CONTACT-002: Tags & lists
+
+- Added `tags`/`contact_tags` and `contact_lists`/`contact_list_members` tables (migration
+  `788ff9dd33db`) and their API: `GET`/`POST /contacts/tags`, attach/detach via
+  `POST`/`DELETE /contacts/{id}/tags[/{tag_id}]`, `GET`/`POST /contacts/lists`, `GET
+  /contacts/lists/{id}`, and member add/remove via `POST`/`DELETE
+  /contacts/lists/{id}/members[/{contact_id}]`.
+- `ContactOut` now includes `tags: list[str]`; `ContactListOut` includes a live
+  `member_count` computed on every read rather than stored and risking drift.
+- Tag/list changes emit `contact.tagged`/`contact.list_added` audit events, continuing to
+  reuse `audit_logs` rather than a new activity table.
+- No RBAC changes needed — `contacts.manage`/`contacts.view` already covered tag/list
+  management per this session's Slice 2 planning pass.
+- `ruff`/`mypy` clean; `pytest` 76 passed, 3 skipped (94% coverage, 7 new tests); `alembic
+  check` → no drift. Live-verified against rebuilt Compose containers: attached/detached a
+  tag (tags array updated both times), added/removed a list member (`member_count` went
+  0→1→0), and confirmed the same Analyst-view/Viewer-none permission split as
+  `GRX-CONTACT-001`.
+- Note for future sessions: the full `pytest` run's migration round-trip test drops and
+  recreates all tables against the same database Compose uses, wiping any manually
+  created accounts (like `admin@growixa.local`) — recreated it again after this run, same
+  as after `GRX-CONTACT-001`.
+- `GRX-CONTACT-003` (segments) is now the next `READY` task. Commit `1e69461`.
+
 ## 2026-07-30 — GRX-CONTACT-001: Contacts schema + CRUD
 
 - First Slice 2 implementation task. Added `contacts`, `contact_custom_fields`,
