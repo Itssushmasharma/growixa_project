@@ -2,6 +2,7 @@
 
 import { type FormEvent, useEffect, useState } from "react";
 
+import { useToast } from "@/components/toast/toast-context";
 import { apiFetch } from "@/lib/api-client";
 
 import styles from "./company-settings-form.module.css";
@@ -47,14 +48,13 @@ function linesToList(value: string): string[] {
 }
 
 export function CompanySettingsForm() {
+  const { showToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [canEdit, setCanEdit] = useState(false);
   const [company, setCompany] = useState<CompanyFormState>(EMPTY_COMPANY);
   const [brand, setBrand] = useState<BrandFormState>(EMPTY_BRAND);
   const [contactDetails, setContactDetails] = useState<Record<string, unknown>>({});
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -87,19 +87,17 @@ export function CompanySettingsForm() {
           });
         }
       } catch {
-        setError("Could not load company settings.");
+        showToast("error", "Could not load company settings.");
       } finally {
         setLoading(false);
       }
     }
 
     void load();
-  }, []);
+  }, [showToast]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setError(null);
-    setSuccessMessage(null);
     setSaving(true);
 
     try {
@@ -125,9 +123,9 @@ export function CompanySettingsForm() {
         }),
       });
 
-      setSuccessMessage("Settings saved.");
+      showToast("success", "Settings saved.");
     } catch {
-      setError("Could not save settings. Please try again.");
+      showToast("error", "Could not save settings. Please try again.");
     } finally {
       setSaving(false);
     }
@@ -139,8 +137,6 @@ export function CompanySettingsForm() {
 
   return (
     <div className={styles.card}>
-      {error && <p className={styles.error}>{error}</p>}
-      {successMessage && <p className={styles.success}>{successMessage}</p>}
       {!canEdit && (
         <p className={styles.readOnlyNote}>You have view-only access to company settings.</p>
       )}

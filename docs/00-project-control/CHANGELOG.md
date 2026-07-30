@@ -10,6 +10,28 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
+## 2026-07-30 — Toast notification system (UI polish, no tracker ID)
+
+- Found while manually testing `GRX-USER-002`: form errors only showed as an inline red
+  banner easy to miss, and successful role/status changes gave no feedback at all. Added a
+  shared `ToastProvider`/`useToast()` (`apps/web/src/components/toast/`), wired into the
+  root layout so it's available app-wide.
+- Login, company settings, and the Team page now show errors and successes as an
+  auto-dismissing (5s) popup in the top-right corner instead of (or in addition to) inline
+  banners. The Team page's invite-token success banner stays inline since it holds an
+  actionable value the admin needs to copy, not a transient message.
+- Added a proper `--color-error` token to `globals.css` (previously every page hardcoded
+  the same `rgba(244, 63, 94, ...)` value inline).
+- `eslint`/`prettier`/`tsc` clean; Vitest 17 passed (4 new for the toast component, 3
+  existing test files updated to wrap renders in `ToastProvider`); `next build` succeeds;
+  Playwright 4 passed (unaffected). Live-verified in a real browser against rebuilt
+  Compose containers: a failed login showed an error toast, a successful role change
+  showed a success toast, both auto-dismissed after 5 seconds.
+- Not filed as a tracked `GRX-*` task — a UI-quality fix found and resolved during manual
+  testing, not a Sprint 1/2 backlog item. A related, not-yet-fixed gap: unlike self-disable
+  (blocked), there's no guard against changing your own role and accidentally losing
+  `users.manage` — flagged to the product owner, not yet actioned.
+
 ## 2026-07-29 — GRX-FOUND-007: RabbitMQ connectivity and worker skeleton
 
 - Added the shared `JobEnvelope` schema and a `publish_job()` producer to

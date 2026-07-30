@@ -2,6 +2,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { ToastProvider } from "@/components/toast/toast-context";
 import { apiFetch } from "@/lib/api-client";
 
 import { TeamPage } from "./team-page";
@@ -12,6 +13,14 @@ vi.mock("@/lib/api-client", () => ({
 }));
 
 const mockedApiFetch = vi.mocked(apiFetch);
+
+function renderTeamPage() {
+  return render(
+    <ToastProvider>
+      <TeamPage />
+    </ToastProvider>,
+  );
+}
 
 const ROLES: Role[] = [
   { id: "role-analyst", name: "Analyst" },
@@ -53,7 +62,7 @@ describe("TeamPage", () => {
       throw new Error(`unexpected path: ${path}`);
     });
 
-    render(<TeamPage />);
+    renderTeamPage();
 
     expect(await screen.findByText(/Admin User/)).toBeInTheDocument();
     expect(screen.getByText("Viewer User")).toBeInTheDocument();
@@ -68,7 +77,7 @@ describe("TeamPage", () => {
       throw new Error(`unexpected path: ${path}`);
     });
 
-    render(<TeamPage />);
+    renderTeamPage();
 
     expect(
       await screen.findByText("You don't have access to manage the team."),
@@ -93,7 +102,7 @@ describe("TeamPage", () => {
       throw new Error(`unexpected call: ${path}`);
     });
 
-    render(<TeamPage />);
+    renderTeamPage();
     await screen.findByText(/Admin User/);
 
     await user.click(screen.getByRole("button", { name: "+ Invite user" }));
@@ -118,7 +127,7 @@ describe("TeamPage", () => {
       throw new Error(`unexpected call: ${path}`);
     });
 
-    render(<TeamPage />);
+    renderTeamPage();
     await screen.findByText("Viewer User");
 
     await user.selectOptions(screen.getByDisplayValue("Viewer"), "Analyst");
@@ -142,7 +151,7 @@ describe("TeamPage", () => {
       throw new Error(`unexpected call: ${path}`);
     });
 
-    render(<TeamPage />);
+    renderTeamPage();
     await screen.findByText("Viewer User");
 
     await user.click(screen.getByRole("button", { name: "Disable" }));

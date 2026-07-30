@@ -2,6 +2,7 @@
 
 import { type FormEvent, useEffect, useState } from "react";
 
+import { useToast } from "@/components/toast/toast-context";
 import { apiFetch } from "@/lib/api-client";
 
 import { avatarColorFor, initialsFor } from "./avatar-color";
@@ -11,6 +12,7 @@ import type { InviteResult, MeResponse, Role, TeamMember } from "./types";
 const MANAGE_PERMISSION = "users.manage";
 
 export function TeamPage() {
+  const { showToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [canManage, setCanManage] = useState(false);
@@ -22,10 +24,8 @@ export function TeamPage() {
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState("");
   const [inviteSubmitting, setInviteSubmitting] = useState(false);
-  const [inviteError, setInviteError] = useState<string | null>(null);
   const [inviteResult, setInviteResult] = useState<InviteResult | null>(null);
 
-  const [rowError, setRowError] = useState<string | null>(null);
   const [pendingRowId, setPendingRowId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -53,7 +53,6 @@ export function TeamPage() {
 
   async function handleInviteSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setInviteError(null);
     setInviteSubmitting(true);
 
     try {
@@ -65,14 +64,16 @@ export function TeamPage() {
       setShowInviteForm(false);
       setInviteEmail("");
     } catch {
-      setInviteError("Could not send the invitation. Check the email and role, then try again.");
+      showToast(
+        "error",
+        "Could not send the invitation. Check the email and role, then try again.",
+      );
     } finally {
       setInviteSubmitting(false);
     }
   }
 
   async function handleRoleChange(userId: string, roleName: string) {
-    setRowError(null);
     setPendingRowId(userId);
     try {
       const updated = await apiFetch<TeamMember>(`/users/${userId}/role`, {
@@ -80,8 +81,9 @@ export function TeamPage() {
         body: JSON.stringify({ role_name: roleName }),
       });
       setMembers((current) => current.map((m) => (m.id === userId ? updated : m)));
+      showToast("success", `Role updated to ${roleName}.`);
     } catch {
-      setRowError("Could not change that user's role.");
+      showToast("error", "Could not change that user's role.");
     } finally {
       setPendingRowId(null);
     }
@@ -89,7 +91,6 @@ export function TeamPage() {
 
   async function handleToggleStatus(userId: string, currentStatus: TeamMember["status"]) {
     const nextStatus = currentStatus === "ACTIVE" ? "DISABLED" : "ACTIVE";
-    setRowError(null);
     setPendingRowId(userId);
     try {
       const updated = await apiFetch<TeamMember>(`/users/${userId}/status`, {
@@ -97,8 +98,10 @@ export function TeamPage() {
         body: JSON.stringify({ status: nextStatus }),
       });
       setMembers((current) => current.map((m) => (m.id === userId ? updated : m)));
+      showToast("success", nextStatus === "DISABLED" ? "User disabled." : "User enabled.");
     } catch {
-      setRowError(
+      showToast(
+        "error",
         nextStatus === "DISABLED"
           ? "Could not disable that user (you cannot disable your own account)."
           : "Could not re-enable that user.",
@@ -145,11 +148,8 @@ export function TeamPage() {
         </div>
       )}
 
-      {rowError && <p className={styles.error}>{rowError}</p>}
-
       {showInviteForm && (
         <form className={styles.inviteForm} onSubmit={handleInviteSubmit}>
-          {inviteError && <p className={styles.error}>{inviteError}</p>}
           <div className={styles.inviteField}>
             <label className={styles.label} htmlFor="invite-email">
               Email

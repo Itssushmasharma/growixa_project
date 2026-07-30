@@ -2,6 +2,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { ToastProvider } from "@/components/toast/toast-context";
 import { apiFetch } from "@/lib/api-client";
 
 import { CompanySettingsForm } from "./company-settings-form";
@@ -12,6 +13,14 @@ vi.mock("@/lib/api-client", () => ({
 }));
 
 const mockedApiFetch = vi.mocked(apiFetch);
+
+function renderCompanySettingsForm() {
+  return render(
+    <ToastProvider>
+      <CompanySettingsForm />
+    </ToastProvider>,
+  );
+}
 
 const COMPANY_PROFILE: CompanyProfile = {
   id: "company-1",
@@ -50,7 +59,7 @@ describe("CompanySettingsForm", () => {
       throw new Error(`unexpected path: ${path}`);
     });
 
-    render(<CompanySettingsForm />);
+    renderCompanySettingsForm();
 
     expect(await screen.findByDisplayValue("Acme Inc")).toBeInTheDocument();
     expect(screen.getByDisplayValue("https://acme.example")).toBeInTheDocument();
@@ -66,7 +75,7 @@ describe("CompanySettingsForm", () => {
       throw new Error(`unexpected path: ${path}`);
     });
 
-    render(<CompanySettingsForm />);
+    renderCompanySettingsForm();
 
     expect(await screen.findByDisplayValue("Acme Inc")).toBeDisabled();
     expect(screen.getByText("You have view-only access to company settings.")).toBeInTheDocument();
@@ -88,7 +97,7 @@ describe("CompanySettingsForm", () => {
       throw new Error(`unexpected call: ${path}`);
     });
 
-    render(<CompanySettingsForm />);
+    renderCompanySettingsForm();
     await screen.findByDisplayValue("Acme Inc");
 
     await user.click(screen.getByRole("button", { name: "Save changes" }));

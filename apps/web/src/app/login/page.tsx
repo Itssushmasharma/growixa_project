@@ -5,20 +5,20 @@ import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
 
 import iconMark from "@/assets/icon/growixa-icon-mark.png";
+import { useToast } from "@/components/toast/toast-context";
 import { ApiError, apiFetch } from "@/lib/api-client";
 
 import styles from "./login.module.css";
 
 export default function LoginPage() {
   const router = useRouter();
+  const { showToast } = useToast();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setError(null);
     setSubmitting(true);
 
     try {
@@ -30,11 +30,11 @@ export default function LoginPage() {
       router.refresh();
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
-        setError("Invalid email or password.");
+        showToast("error", "Invalid email or password.");
       } else if (err instanceof ApiError && err.status === 429) {
-        setError("Too many attempts. Please try again later.");
+        showToast("error", "Too many attempts. Please try again later.");
       } else {
-        setError("Something went wrong. Please try again.");
+        showToast("error", "Something went wrong. Please try again.");
       }
     } finally {
       setSubmitting(false);
@@ -53,8 +53,6 @@ export default function LoginPage() {
         </div>
 
         <form onSubmit={handleSubmit}>
-          {error && <p className={styles.error}>{error}</p>}
-
           <div className={styles.field}>
             <label className={styles.label} htmlFor="email">
               Email
