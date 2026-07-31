@@ -117,3 +117,29 @@ class SegmentOut(BaseModel):
     created_at: datetime
     updated_at: datetime
     rules: list[SegmentRuleOut]
+
+
+class ContactImportOut(BaseModel):
+    model_config = {"from_attributes": True}
+
+    id: uuid.UUID
+    filename: str
+    status: str
+    column_mapping: dict[str, str]
+    total_rows: int
+    imported_count: int
+    updated_count: int
+    skipped_count: int
+    error_count: int
+    created_at: datetime
+    completed_at: datetime | None
+
+
+class ContactImportRowOut(BaseModel):
+    model_config = {"from_attributes": True}
+
+    id: uuid.UUID
+    row_number: int
+    email: str | None
+    status: str
+    error_message: str | None

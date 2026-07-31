@@ -10,6 +10,8 @@ from growixa_api.contacts.models import (
     Contact,
     ContactCustomField,
     ContactFieldValue,
+    ContactImport,
+    ContactImportRow,
     ContactList,
     ContactListMember,
     ContactTag,
@@ -337,5 +339,62 @@ async def list_saved_segment_members(
         select(Contact)
         .join(SegmentMember, SegmentMember.contact_id == Contact.id)
         .where(SegmentMember.segment_id == segment_id)
+    )
+    return result.scalars().all()
+
+
+async def create_import(
+    session: AsyncSession,
+    *,
+    filename: str,
+    column_mapping: dict[str, str],
+    created_by_user_id: uuid.UUID,
+) -> ContactImport:
+    contact_import = ContactImport(
+        filename=filename, column_mapping=column_mapping, created_by_user_id=created_by_user_id
+    )
+    session.add(contact_import)
+    await session.flush()
+    return contact_import
+
+
+async def get_import_by_id(session: AsyncSession, import_id: uuid.UUID) -> ContactImport | None:
+    result = await session.execute(select(ContactImport).where(ContactImport.id == import_id))
+    return result.scalar_one_or_none()
+
+
+async def list_imports(session: AsyncSession) -> Sequence[ContactImport]:
+    result = await session.execute(select(ContactImport).order_by(ContactImport.created_at.desc()))
+    return result.scalars().all()
+
+
+async def add_import_row(
+    session: AsyncSession,
+    *,
+    import_id: uuid.UUID,
+    row_number: int,
+    email: str | None,
+    status: str,
+    error_message: str | None,
+) -> ContactImportRow:
+    row = ContactImportRow(
+        import_id=import_id,
+        row_number=row_number,
+        email=email,
+        status=status,
+        error_message=error_message,
+    )
+    session.add(row)
+    await session.flush()
+    return row
+
+
+async def list_import_rows(
+    session: AsyncSession, import_id: uuid.UUID
+) -> Sequence[ContactImportRow]:
+    result = await session.execute(
+        select(ContactImportRow)
+        .where(ContactImportRow.import_id == import_id)
+        .order_by(ContactImportRow.row_number)
     )
     return result.scalars().all()

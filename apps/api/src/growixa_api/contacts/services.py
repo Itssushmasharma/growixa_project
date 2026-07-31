@@ -1,6 +1,8 @@
+import csv
+import io
 import uuid
 from collections.abc import Sequence
-from datetime import datetime
+from datetime import UTC, datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -8,6 +10,8 @@ from growixa_api.audit.services import record_event
 from growixa_api.contacts.models import (
     Contact,
     ContactCustomField,
+    ContactImport,
+    ContactImportRow,
     ContactList,
     Segment,
     SegmentRule,
@@ -16,6 +20,7 @@ from growixa_api.contacts.models import (
 from growixa_api.contacts.repositories import (
     CUSTOM_FIELD_RULE_OPERATORS,
     SEGMENT_RULE_FIELD_OPERATORS,
+    add_import_row,
     add_list_member,
     add_segment_members,
     apply_contact_fields,
@@ -30,10 +35,13 @@ from growixa_api.contacts.repositories import (
     get_contact_by_id,
     get_contact_list_by_id,
     get_custom_field_by_key,
+    get_import_by_id,
     get_segment_by_id,
     get_tag_by_id,
     get_tag_by_name,
     get_tag_names_for_contact,
+    list_import_rows,
+    list_imports,
     list_saved_segment_members,
     list_segment_rules,
     remove_list_member,
@@ -42,6 +50,7 @@ from growixa_api.contacts.repositories import (
 from growixa_api.contacts.repositories import add_segment_rule as add_segment_rule_row
 from growixa_api.contacts.repositories import create_contact_list as create_contact_list_row
 from growixa_api.contacts.repositories import create_custom_field as create_custom_field_row
+from growixa_api.contacts.repositories import create_import as create_import_row
 from growixa_api.contacts.repositories import create_segment as create_segment_row
 from growixa_api.contacts.repositories import create_tag as create_tag_row
 from growixa_api.contacts.repositories import get_field_values_for_contact as _get_field_values
@@ -53,6 +62,9 @@ from growixa_api.contacts.repositories import list_tags as list_tags_rows
 
 ContactSnapshot = tuple[Contact, dict[str, str], list[str]]
 SegmentDetail = tuple[Segment, Sequence[SegmentRule], int]
+
+# Column-mapping target fields a CSV header may be mapped to, beyond `custom_field:<key>`.
+CONTACT_IMPORT_FIELD_TARGETS = {"email", "first_name", "last_name", "phone", "source"}
 
 
 class DuplicateEmailError(Exception):
@@ -84,6 +96,14 @@ class SegmentNotFoundError(Exception):
 
 
 class InvalidSegmentRuleError(Exception):
+    pass
+
+
+class InvalidColumnMappingError(Exception):
+    pass
+
+
+class ContactImportNotFoundError(Exception):
     pass
 
 
@@ -493,3 +513,159 @@ async def remove_contact_from_list(
 
     count = await count_list_members(session, list_id)
     return contact_list, count
+
+
+async def _validate_column_mapping(session: AsyncSession, column_mapping: dict[str, str]) -> None:
+    if not column_mapping:
+        raise InvalidColumnMappingError("column_mapping must not be empty")
+    if "email" not in column_mapping.values():
+        raise InvalidColumnMappingError("column_mapping must map a column to 'email'")
+
+    for target in column_mapping.values():
+        if target in CONTACT_IMPORT_FIELD_TARGETS:
+            continue
+        if target.startswith("custom_field:"):
+            key = target.split(":", 1)[1]
+            if await get_custom_field_by_key(session, key) is None:
+                raise InvalidColumnMappingError(f"Unknown custom field key: {key}")
+            continue
+        raise InvalidColumnMappingError(f"Unsupported column mapping target: {target}")
+
+
+async def import_contacts_from_csv(
+    session: AsyncSession,
+    *,
+    actor_id: uuid.UUID,
+    filename: str,
+    csv_text: str,
+    column_mapping: dict[str, str],
+) -> ContactImport:
+    await _validate_column_mapping(session, column_mapping)
+
+    contact_import = await create_import_row(
+        session, filename=filename, column_mapping=column_mapping, created_by_user_id=actor_id
+    )
+
+    imported = updated = skipped = errored = 0
+    reader = csv.DictReader(io.StringIO(csv_text))
+    for row_number, raw_row in enumerate(reader, start=1):
+        if not any((raw_row.get(header) or "").strip() for header in column_mapping):
+            await add_import_row(
+                session,
+                import_id=contact_import.id,
+                row_number=row_number,
+                email=None,
+                status="SKIPPED",
+                error_message=None,
+            )
+            skipped += 1
+            continue
+
+        fields: dict[str, str] = {}
+        custom_fields: dict[str, str] = {}
+        for header, target in column_mapping.items():
+            value = (raw_row.get(header) or "").strip()
+            if not value:
+                continue
+            if target.startswith("custom_field:"):
+                custom_fields[target.split(":", 1)[1]] = value
+            else:
+                fields[target] = value
+
+        email = fields.get("email")
+        if not email:
+            await add_import_row(
+                session,
+                import_id=contact_import.id,
+                row_number=row_number,
+                email=None,
+                status="ERROR",
+                error_message="Missing required email value",
+            )
+            errored += 1
+            continue
+
+        existing = await get_contact_by_email(session, email)
+        try:
+            await create_or_update_contact(
+                session,
+                actor_id=actor_id,
+                email=email,
+                first_name=fields.get("first_name"),
+                last_name=fields.get("last_name"),
+                phone=fields.get("phone"),
+                source=fields.get("source"),
+                custom_fields=custom_fields,
+            )
+        except UnknownCustomFieldError as exc:
+            await add_import_row(
+                session,
+                import_id=contact_import.id,
+                row_number=row_number,
+                email=email,
+                status="ERROR",
+                error_message=f"Unknown custom field key: {exc.key}",
+            )
+            errored += 1
+            continue
+
+        if existing is None:
+            imported += 1
+            row_status = "IMPORTED"
+        else:
+            updated += 1
+            row_status = "UPDATED"
+        await add_import_row(
+            session,
+            import_id=contact_import.id,
+            row_number=row_number,
+            email=email,
+            status=row_status,
+            error_message=None,
+        )
+
+    contact_import.total_rows = imported + updated + skipped + errored
+    contact_import.imported_count = imported
+    contact_import.updated_count = updated
+    contact_import.skipped_count = skipped
+    contact_import.error_count = errored
+    contact_import.status = "COMPLETED"
+    contact_import.completed_at = datetime.now(UTC)
+
+    await record_event(
+        session,
+        actor_user_id=actor_id,
+        action="contact_import.completed",
+        entity_type="contact_import",
+        entity_id=contact_import.id,
+        metadata={
+            "filename": filename,
+            "imported": imported,
+            "updated": updated,
+            "skipped": skipped,
+            "errors": errored,
+        },
+    )
+    await session.commit()
+    await session.refresh(contact_import)
+
+    return contact_import
+
+
+async def get_import(session: AsyncSession, import_id: uuid.UUID) -> ContactImport:
+    contact_import = await get_import_by_id(session, import_id)
+    if contact_import is None:
+        raise ContactImportNotFoundError
+    return contact_import
+
+
+async def list_contact_imports(session: AsyncSession) -> Sequence[ContactImport]:
+    return await list_imports(session)
+
+
+async def list_contact_import_rows(
+    session: AsyncSession, import_id: uuid.UUID
+) -> Sequence[ContactImportRow]:
+    if await get_import_by_id(session, import_id) is None:
+        raise ContactImportNotFoundError
+    return await list_import_rows(session, import_id)

@@ -1,8 +1,8 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Text
-from sqlalchemy.dialects.postgresql import CITEXT, UUID
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Integer, Text
+from sqlalchemy.dialects.postgresql import CITEXT, JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
 
@@ -162,3 +162,52 @@ class SegmentMember(Base):
     captured_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+
+
+class ContactImport(Base):
+    __tablename__ = "contact_imports"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('PENDING', 'PROCESSING', 'COMPLETED', 'FAILED')",
+            name="ck_contact_imports_status",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    filename: Mapped[str] = mapped_column(Text, nullable=False)
+    column_mapping: Mapped[dict[str, str]] = mapped_column(JSONB, nullable=False)
+    status: Mapped[str] = mapped_column(Text, nullable=False, server_default="PENDING")
+    total_rows: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    imported_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    updated_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    skipped_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    error_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    created_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class ContactImportRow(Base):
+    __tablename__ = "contact_import_rows"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('IMPORTED', 'UPDATED', 'SKIPPED', 'ERROR')",
+            name="ck_contact_import_rows_status",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    import_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("contact_imports.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    row_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    email: Mapped[str | None] = mapped_column(Text, nullable=True)
+    status: Mapped[str] = mapped_column(Text, nullable=False)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)

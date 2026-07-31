@@ -1,12 +1,14 @@
+import json
 import uuid
 from collections.abc import Sequence
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from growixa_api.contacts.models import (
     Contact,
     ContactCustomField,
+    ContactImport,
     ContactList,
     Segment,
     SegmentRule,
@@ -15,6 +17,8 @@ from growixa_api.contacts.models import (
 from growixa_api.contacts.schemas import (
     AddListMemberIn,
     AttachTagIn,
+    ContactImportOut,
+    ContactImportRowOut,
     ContactIn,
     ContactListIn,
     ContactListOut,
@@ -30,11 +34,13 @@ from growixa_api.contacts.schemas import (
     UpdateContactStatusIn,
 )
 from growixa_api.contacts.services import (
+    ContactImportNotFoundError,
     ContactListNotFoundError,
     ContactNotFoundError,
     DuplicateEmailError,
     DuplicateFieldKeyError,
     DuplicateTagNameError,
+    InvalidColumnMappingError,
     InvalidSegmentRuleError,
     SegmentNotFoundError,
     TagNotFoundError,
@@ -49,8 +55,12 @@ from growixa_api.contacts.services import create_segment_with_rules as create_se
 from growixa_api.contacts.services import create_tag as create_tag_service
 from growixa_api.contacts.services import detach_tag_from_contact as detach_tag_service
 from growixa_api.contacts.services import get_contact_with_fields as get_contact_service
+from growixa_api.contacts.services import get_import as get_import_service
 from growixa_api.contacts.services import get_list_with_count as get_list_service
 from growixa_api.contacts.services import get_segment_with_details as get_segment_service
+from growixa_api.contacts.services import import_contacts_from_csv as import_contacts_service
+from growixa_api.contacts.services import list_contact_import_rows as list_import_rows_service
+from growixa_api.contacts.services import list_contact_imports as list_imports_service
 from growixa_api.contacts.services import list_contacts_with_fields as list_contacts_service
 from growixa_api.contacts.services import list_custom_fields as list_custom_fields_service
 from growixa_api.contacts.services import list_lists_with_counts as list_lists_service
@@ -286,6 +296,83 @@ async def list_segment_members_route(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Segment not found") from exc
 
     return [_to_out(contact, fields, tags) for contact, fields, tags in snapshots]
+
+
+def _import_to_out(contact_import: ContactImport) -> ContactImportOut:
+    return ContactImportOut.model_validate(contact_import)
+
+
+@router.get("/imports", response_model=list[ContactImportOut])
+async def list_imports_route(
+    _actor_id: uuid.UUID = Depends(_require_view),
+    session: AsyncSession = Depends(get_session),
+) -> list[ContactImportOut]:
+    imports = await list_imports_service(session)
+    return [_import_to_out(contact_import) for contact_import in imports]
+
+
+@router.post("/imports", response_model=ContactImportOut, status_code=status.HTTP_201_CREATED)
+async def create_import_route(
+    file: UploadFile = File(...),
+    column_mapping: str = Form(...),
+    actor_id: uuid.UUID = Depends(_require_manage),
+    session: AsyncSession = Depends(get_session),
+) -> ContactImportOut:
+    try:
+        mapping = json.loads(column_mapping)
+    except json.JSONDecodeError as exc:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST, "column_mapping must be valid JSON"
+        ) from exc
+    if not isinstance(mapping, dict):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "column_mapping must be a JSON object")
+
+    raw = await file.read()
+    try:
+        csv_text = raw.decode("utf-8-sig")
+    except UnicodeDecodeError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "File must be UTF-8 encoded CSV") from exc
+
+    try:
+        contact_import = await import_contacts_service(
+            session,
+            actor_id=actor_id,
+            filename=file.filename or "upload.csv",
+            csv_text=csv_text,
+            column_mapping=mapping,
+        )
+    except InvalidColumnMappingError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
+
+    return _import_to_out(contact_import)
+
+
+@router.get("/imports/{import_id}", response_model=ContactImportOut)
+async def get_import_route(
+    import_id: uuid.UUID,
+    _actor_id: uuid.UUID = Depends(_require_view),
+    session: AsyncSession = Depends(get_session),
+) -> ContactImportOut:
+    try:
+        contact_import = await get_import_service(session, import_id)
+    except ContactImportNotFoundError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Import not found") from exc
+
+    return _import_to_out(contact_import)
+
+
+@router.get("/imports/{import_id}/rows", response_model=list[ContactImportRowOut])
+async def list_import_rows_route(
+    import_id: uuid.UUID,
+    _actor_id: uuid.UUID = Depends(_require_view),
+    session: AsyncSession = Depends(get_session),
+) -> list[ContactImportRowOut]:
+    try:
+        rows = await list_import_rows_service(session, import_id)
+    except ContactImportNotFoundError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Import not found") from exc
+
+    return [ContactImportRowOut.model_validate(row) for row in rows]
 
 
 @router.get("", response_model=list[ContactOut])
