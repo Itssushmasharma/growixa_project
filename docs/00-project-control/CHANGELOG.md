@@ -10,6 +10,13 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
+## 2026-07-31 — GRX-DEVOPS-001 confirmed DONE
+
+- The user pushed `main` to GitHub and confirmed the CI workflow (`.github/workflows/ci.yml`,
+  built in this task's original commit `7ff54dc`) ran green. Moved `GRX-DEVOPS-001` from
+  `IN_REVIEW` to `DONE` in the tracker; this unblocks `GRX-DOC-003` (Sprint 1 documentation
+  + handoff update), now `READY`. No code changes in this entry — documentation only.
+
 ## 2026-07-31 — GRX-CONTACT-009: Consent/suppression frontend (closes Sprint 2)
 
 - Extended `ContactsPage`'s detail panel with a lazy-loaded (on row expand) consent

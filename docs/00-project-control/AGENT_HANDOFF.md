@@ -90,21 +90,29 @@ None.
 
 ## Known issues
 
-- Same carryover list as prior Slice 2 entries: possible latent `MissingGreenlet` in
-  `company_profile` (background task filed, unresolved), `GRX-DEVOPS-001` still
-  `IN_REVIEW`, `GRX-DOC-003` blocked on that push.
+- Possible latent `MissingGreenlet` in `company_profile` (background task filed,
+  unresolved).
 - The web dev server's file watcher again did not pick up the new route directory
   without a container restart (same as every prior frontend task this sprint).
 
+## Post-task correction (same session)
+
+After this task closed, the user confirmed `GRX-DEVOPS-001` (CI pipeline) had
+already been pushed and had run green on GitHub Actions — the tracker's prior
+`IN_REVIEW` status was stale. Updated `MASTER_TASK_TRACKER.md`/`PROJECT_STATUS.md`/
+`CHANGELOG.md` to move it to `DONE` and flip `GRX-DOC-003` (Sprint 1 documentation
++ handoff update) to `READY`. No code changes; documentation-only correction.
+
 ## Current state
 
-**Sprint 2 (Contacts) is fully `DONE` — all nine tasks (`GRX-CONTACT-001` through
-`GRX-CONTACT-009`) are complete.** No Sprint 2 task remains `READY` or `BACKLOG`.
+**Sprint 1 and Sprint 2 (Contacts) are both fully `DONE`.** `GRX-DOC-003` is
+`READY` (unblocked by `GRX-DEVOPS-001`'s completion). No Sprint 1 or Sprint 2 task
+remains `READY` or `BACKLOG` other than `GRX-DOC-003` itself.
 
 ## Exact next task
 
-None assigned yet. Sprint 2 is closed; awaiting user direction on what to pick up
-next (a new sprint, or resolving `GRX-DEVOPS-001`'s pending push confirmation).
+None assigned yet. Awaiting user direction — candidates are `GRX-DOC-003` (Sprint 1
+doc/handoff update) or starting a new sprint.
 
 ## Resume commands
 

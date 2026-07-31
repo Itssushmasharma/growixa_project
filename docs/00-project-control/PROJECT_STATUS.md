@@ -2,7 +2,7 @@
 
 - Document ID: DOC-PROJECT-STATUS
 - Status: ACTIVE
-- Version: 1.33
+- Version: 1.34
 - Last updated: 2026-07-31
 - Owner: Coding agent (on behalf of product owner)
 - Related documents: [MASTER_TASK_TRACKER](MASTER_TASK_TRACKER.md), [DECISIONS](DECISIONS.md), [DEVELOPMENT_READINESS](DEVELOPMENT_READINESS.md)
@@ -48,11 +48,10 @@ revocation), `GRX-USER-001` (internal user invitation + acceptance), `GRX-AUTH-0
 (password reset flow), `GRX-FOUND-006` (Redis connectivity), `GRX-AUTH-004` (login rate
 limiting), `GRX-TEST-002` (frontend test foundation), `GRX-FOUND-008` (dashboard
 shell), `GRX-COMPANY-002` (company settings screen), `GRX-USER-002` (user management
-screens), and `GRX-FOUND-007` (RabbitMQ connectivity + worker skeleton) are `DONE`.
-`GRX-DEVOPS-001` (CI pipeline) is `IN_REVIEW` — fully built and locally verified, but not
-moved to `DONE` because a real green run on GitHub Actions hasn't been observed; that
-requires pushing, a permission-gated action awaiting the user's go-ahead.
-**All other tracked Sprint 1 tasks are now `DONE`.** Per
+screens), `GRX-FOUND-007` (RabbitMQ connectivity + worker skeleton), and `GRX-DEVOPS-001`
+(CI pipeline — pushed by the user and confirmed green on GitHub Actions) are `DONE`.
+**All tracked Sprint 1 tasks are now `DONE`.** `GRX-DOC-003` (Sprint 1 documentation +
+handoff update) is now `READY`, unblocked by `GRX-DEVOPS-001`'s completion. Per
 [AGENT_EXECUTION_RULES.md](../12-development/AGENT_EXECUTION_RULES.md), only one is worked
 on at a time. See [AGENT_HANDOFF.md](AGENT_HANDOFF.md) for session-by-session
 detail.
@@ -142,13 +141,12 @@ detail.
 1. Session sequence so far, each picked as "most needed" given dependencies/priority (full
    rationale per task in [CHANGELOG.md](CHANGELOG.md)): `GRX-AUTH-002` → `GRX-AUTH-003` →
    `GRX-USER-001` → `GRX-AUTH-005` → `GRX-FOUND-006` → `GRX-AUTH-004` → `GRX-TEST-002` →
-   `GRX-FOUND-008` → `GRX-DEVOPS-001` (`IN_REVIEW`, needs a push to confirm green — see
-   AGENT_HANDOFF.md) → `GRX-COMPANY-002` → `GRX-USER-002` → `GRX-FOUND-007` → Sprint 2:
-   `GRX-CONTACT-001` → `GRX-CONTACT-002` → `GRX-CONTACT-003` → `GRX-CONTACT-004` →
-   `GRX-CONTACT-005` → `GRX-CONTACT-006` → `GRX-CONTACT-007` → `GRX-CONTACT-008` →
-   `GRX-CONTACT-009`. **Sprint 2 (Contacts) is now fully `DONE`.** Remaining open items:
-   `GRX-DEVOPS-001`'s pending push confirmation and `GRX-DOC-003` (blocked on that same
-   push); awaiting user direction on what to pick up next (a new sprint, or push/confirm CI).
+   `GRX-FOUND-008` → `GRX-DEVOPS-001` → `GRX-COMPANY-002` → `GRX-USER-002` →
+   `GRX-FOUND-007` → Sprint 2: `GRX-CONTACT-001` → `GRX-CONTACT-002` → `GRX-CONTACT-003` →
+   `GRX-CONTACT-004` → `GRX-CONTACT-005` → `GRX-CONTACT-006` → `GRX-CONTACT-007` →
+   `GRX-CONTACT-008` → `GRX-CONTACT-009`. **Sprint 1 and Sprint 2 (Contacts) are both now
+   fully `DONE`**, including `GRX-DEVOPS-001` (user pushed and confirmed a green CI run).
+   `GRX-DOC-003` is `READY`; awaiting user direction on what to pick up next.
 2. Create `FEATURE_STATUS_MATRIX.md`, `RISKS.md`, `BLOCKERS.md` alongside Sprint 1 tasks as they land, not all upfront.
 3. Write full feature specs in `02-features/` for Slice 1 features as each task is picked up, not all upfront.
 4. Do not begin any V1.5+/SEO-AEO-GEO work until Slices 1–6 (MVP) are stable in production.
