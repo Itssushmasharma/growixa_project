@@ -211,3 +211,57 @@ class ContactImportRow(Base):
     email: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(Text, nullable=False)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class ConsentRecord(Base):
+    """Insert-only compliance history — never updated after creation, mirroring
+    `audit_logs`'s pattern. Current status per channel is derived as "most recent row",
+    not stored as separate mutable state."""
+
+    __tablename__ = "consent_records"
+    __table_args__ = (
+        CheckConstraint("channel IN ('EMAIL', 'SMS')", name="ck_consent_records_channel"),
+        CheckConstraint(
+            "status IN ('GRANTED', 'WITHDRAWN', 'UNKNOWN')", name="ck_consent_records_status"
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    contact_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("contacts.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    channel: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(Text, nullable=False, server_default="UNKNOWN")
+    source: Mapped[str | None] = mapped_column(Text, nullable=True)
+    recorded_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
+    )
+    recorded_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class SuppressionEntry(Base):
+    __tablename__ = "suppression_entries"
+    __table_args__ = (
+        CheckConstraint(
+            "reason IN ('UNSUBSCRIBED', 'BOUNCED', 'COMPLAINED', 'MANUAL')",
+            name="ck_suppression_entries_reason",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    email: Mapped[str] = mapped_column(CITEXT, unique=True, nullable=False)
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+    contact_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("contacts.id"), nullable=True
+    )
+    suppressed_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
+    )
+    suppressed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )

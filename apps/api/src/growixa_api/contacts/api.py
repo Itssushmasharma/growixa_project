@@ -17,6 +17,8 @@ from growixa_api.contacts.models import (
 from growixa_api.contacts.schemas import (
     AddListMemberIn,
     AttachTagIn,
+    ConsentRecordIn,
+    ConsentRecordOut,
     ContactImportOut,
     ContactImportRowOut,
     ContactIn,
@@ -29,6 +31,8 @@ from growixa_api.contacts.schemas import (
     SegmentIn,
     SegmentOut,
     SegmentRuleOut,
+    SuppressionEntryIn,
+    SuppressionEntryOut,
     TagIn,
     TagOut,
     UpdateContactStatusIn,
@@ -54,6 +58,7 @@ from growixa_api.contacts.services import create_or_update_contact as create_or_
 from growixa_api.contacts.services import create_segment_with_rules as create_segment_service
 from growixa_api.contacts.services import create_tag as create_tag_service
 from growixa_api.contacts.services import detach_tag_from_contact as detach_tag_service
+from growixa_api.contacts.services import get_consent_history as get_consent_history_service
 from growixa_api.contacts.services import get_contact_with_fields as get_contact_service
 from growixa_api.contacts.services import get_import as get_import_service
 from growixa_api.contacts.services import get_list_with_count as get_list_service
@@ -66,10 +71,13 @@ from growixa_api.contacts.services import list_custom_fields as list_custom_fiel
 from growixa_api.contacts.services import list_lists_with_counts as list_lists_service
 from growixa_api.contacts.services import list_segment_members as list_segment_members_service
 from growixa_api.contacts.services import list_segments_with_details as list_segments_service
+from growixa_api.contacts.services import list_suppressions as list_suppressions_service
 from growixa_api.contacts.services import list_tags as list_tags_service
+from growixa_api.contacts.services import record_consent as record_consent_service
 from growixa_api.contacts.services import (
     remove_contact_from_list as remove_contact_from_list_service,
 )
+from growixa_api.contacts.services import suppress_email as suppress_email_service
 from growixa_api.contacts.services import update_contact as update_contact_service
 from growixa_api.contacts.services import update_contact_status as update_contact_status_service
 from growixa_api.db import get_session
@@ -81,7 +89,9 @@ _require_manage = require_permission("contacts.manage")
 _require_view = require_permission("contacts.view")
 
 
-def _to_out(contact: Contact, custom_fields: dict[str, str], tags: list[str]) -> ContactOut:
+def _to_out(
+    contact: Contact, custom_fields: dict[str, str], tags: list[str], is_suppressed: bool
+) -> ContactOut:
     return ContactOut(
         id=contact.id,
         email=contact.email,
@@ -94,6 +104,7 @@ def _to_out(contact: Contact, custom_fields: dict[str, str], tags: list[str]) ->
         updated_at=contact.updated_at,
         custom_fields=custom_fields,
         tags=tags,
+        is_suppressed=is_suppressed,
     )
 
 
@@ -295,7 +306,10 @@ async def list_segment_members_route(
     except SegmentNotFoundError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Segment not found") from exc
 
-    return [_to_out(contact, fields, tags) for contact, fields, tags in snapshots]
+    return [
+        _to_out(contact, fields, tags, suppressed)
+        for contact, fields, tags, suppressed in snapshots
+    ]
 
 
 def _import_to_out(contact_import: ContactImport) -> ContactImportOut:
@@ -375,13 +389,47 @@ async def list_import_rows_route(
     return [ContactImportRowOut.model_validate(row) for row in rows]
 
 
+@router.get("/suppression", response_model=list[SuppressionEntryOut])
+async def list_suppression_route(
+    _actor_id: uuid.UUID = Depends(_require_view),
+    session: AsyncSession = Depends(get_session),
+) -> list[SuppressionEntryOut]:
+    entries = await list_suppressions_service(session)
+    return [SuppressionEntryOut.model_validate(entry) for entry in entries]
+
+
+@router.post(
+    "/suppression", response_model=SuppressionEntryOut, status_code=status.HTTP_201_CREATED
+)
+async def suppress_email_route(
+    payload: SuppressionEntryIn,
+    actor_id: uuid.UUID = Depends(_require_manage),
+    session: AsyncSession = Depends(get_session),
+) -> SuppressionEntryOut:
+    try:
+        entry = await suppress_email_service(
+            session,
+            actor_id=actor_id,
+            email=payload.email,
+            reason=payload.reason,
+            contact_id=payload.contact_id,
+        )
+    except ContactNotFoundError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Contact not found") from exc
+
+    return SuppressionEntryOut.model_validate(entry)
+
+
 @router.get("", response_model=list[ContactOut])
 async def list_contacts_route(
     _actor_id: uuid.UUID = Depends(_require_view),
     session: AsyncSession = Depends(get_session),
 ) -> list[ContactOut]:
     contacts_with_fields = await list_contacts_service(session)
-    return [_to_out(contact, fields, tags) for contact, fields, tags in contacts_with_fields]
+    return [
+        _to_out(contact, fields, tags, suppressed)
+        for contact, fields, tags, suppressed in contacts_with_fields
+    ]
 
 
 @router.post("", response_model=ContactOut, status_code=status.HTTP_201_CREATED)
@@ -391,7 +439,7 @@ async def create_contact_route(
     session: AsyncSession = Depends(get_session),
 ) -> ContactOut:
     try:
-        contact, fields, tags = await create_or_update_service(
+        contact, fields, tags, suppressed = await create_or_update_service(
             session,
             actor_id=actor_id,
             email=payload.email,
@@ -406,7 +454,7 @@ async def create_contact_route(
             status.HTTP_400_BAD_REQUEST, f"Unknown custom field key: {exc.key}"
         ) from exc
 
-    return _to_out(contact, fields, tags)
+    return _to_out(contact, fields, tags, suppressed)
 
 
 @router.get("/{contact_id}", response_model=ContactOut)
@@ -416,11 +464,11 @@ async def get_contact_route(
     session: AsyncSession = Depends(get_session),
 ) -> ContactOut:
     try:
-        contact, fields, tags = await get_contact_service(session, contact_id)
+        contact, fields, tags, suppressed = await get_contact_service(session, contact_id)
     except ContactNotFoundError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Contact not found") from exc
 
-    return _to_out(contact, fields, tags)
+    return _to_out(contact, fields, tags, suppressed)
 
 
 @router.patch("/{contact_id}", response_model=ContactOut)
@@ -431,7 +479,7 @@ async def update_contact_route(
     session: AsyncSession = Depends(get_session),
 ) -> ContactOut:
     try:
-        contact, fields, tags = await update_contact_service(
+        contact, fields, tags, suppressed = await update_contact_service(
             session,
             actor_id=actor_id,
             contact_id=contact_id,
@@ -452,7 +500,7 @@ async def update_contact_route(
             status.HTTP_400_BAD_REQUEST, f"Unknown custom field key: {exc.key}"
         ) from exc
 
-    return _to_out(contact, fields, tags)
+    return _to_out(contact, fields, tags, suppressed)
 
 
 @router.patch("/{contact_id}/status", response_model=ContactOut)
@@ -463,13 +511,13 @@ async def update_contact_status_route(
     session: AsyncSession = Depends(get_session),
 ) -> ContactOut:
     try:
-        contact, fields, tags = await update_contact_status_service(
+        contact, fields, tags, suppressed = await update_contact_status_service(
             session, actor_id=actor_id, contact_id=contact_id, status=payload.status
         )
     except ContactNotFoundError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Contact not found") from exc
 
-    return _to_out(contact, fields, tags)
+    return _to_out(contact, fields, tags, suppressed)
 
 
 @router.post("/{contact_id}/tags", response_model=ContactOut)
@@ -480,7 +528,7 @@ async def attach_tag_route(
     session: AsyncSession = Depends(get_session),
 ) -> ContactOut:
     try:
-        contact, fields, tags = await attach_tag_service(
+        contact, fields, tags, suppressed = await attach_tag_service(
             session, actor_id=actor_id, contact_id=contact_id, tag_id=payload.tag_id
         )
     except ContactNotFoundError as exc:
@@ -488,7 +536,7 @@ async def attach_tag_route(
     except TagNotFoundError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Tag not found") from exc
 
-    return _to_out(contact, fields, tags)
+    return _to_out(contact, fields, tags, suppressed)
 
 
 @router.delete("/{contact_id}/tags/{tag_id}", response_model=ContactOut)
@@ -499,7 +547,7 @@ async def detach_tag_route(
     session: AsyncSession = Depends(get_session),
 ) -> ContactOut:
     try:
-        contact, fields, tags = await detach_tag_service(
+        contact, fields, tags, suppressed = await detach_tag_service(
             session, actor_id=actor_id, contact_id=contact_id, tag_id=tag_id
         )
     except ContactNotFoundError as exc:
@@ -507,4 +555,42 @@ async def detach_tag_route(
     except TagNotFoundError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Tag not found") from exc
 
-    return _to_out(contact, fields, tags)
+    return _to_out(contact, fields, tags, suppressed)
+
+
+@router.get("/{contact_id}/consent", response_model=list[ConsentRecordOut])
+async def list_consent_route(
+    contact_id: uuid.UUID,
+    _actor_id: uuid.UUID = Depends(_require_view),
+    session: AsyncSession = Depends(get_session),
+) -> list[ConsentRecordOut]:
+    try:
+        records = await get_consent_history_service(session, contact_id)
+    except ContactNotFoundError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Contact not found") from exc
+
+    return [ConsentRecordOut.model_validate(record) for record in records]
+
+
+@router.post(
+    "/{contact_id}/consent", response_model=ConsentRecordOut, status_code=status.HTTP_201_CREATED
+)
+async def record_consent_route(
+    contact_id: uuid.UUID,
+    payload: ConsentRecordIn,
+    actor_id: uuid.UUID = Depends(_require_manage),
+    session: AsyncSession = Depends(get_session),
+) -> ConsentRecordOut:
+    try:
+        record = await record_consent_service(
+            session,
+            actor_id=actor_id,
+            contact_id=contact_id,
+            channel=payload.channel,
+            status=payload.status,
+            source=payload.source,
+        )
+    except ContactNotFoundError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Contact not found") from exc
+
+    return ConsentRecordOut.model_validate(record)

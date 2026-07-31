@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from growixa_api.audit.services import record_event
 from growixa_api.contacts.models import (
+    ConsentRecord,
     Contact,
     ContactCustomField,
     ContactImport,
@@ -15,6 +16,7 @@ from growixa_api.contacts.models import (
     ContactList,
     Segment,
     SegmentRule,
+    SuppressionEntry,
     Tag,
 )
 from growixa_api.contacts.repositories import (
@@ -37,21 +39,29 @@ from growixa_api.contacts.repositories import (
     get_custom_field_by_key,
     get_import_by_id,
     get_segment_by_id,
+    get_suppression_by_email,
     get_tag_by_id,
     get_tag_by_name,
     get_tag_names_for_contact,
+    is_email_suppressed,
+    list_consent_records,
     list_import_rows,
     list_imports,
     list_saved_segment_members,
     list_segment_rules,
+    list_suppression_entries,
     remove_list_member,
     upsert_field_value,
 )
 from growixa_api.contacts.repositories import add_segment_rule as add_segment_rule_row
+from growixa_api.contacts.repositories import create_consent_record as create_consent_record_row
 from growixa_api.contacts.repositories import create_contact_list as create_contact_list_row
 from growixa_api.contacts.repositories import create_custom_field as create_custom_field_row
 from growixa_api.contacts.repositories import create_import as create_import_row
 from growixa_api.contacts.repositories import create_segment as create_segment_row
+from growixa_api.contacts.repositories import (
+    create_suppression_entry as create_suppression_entry_row,
+)
 from growixa_api.contacts.repositories import create_tag as create_tag_row
 from growixa_api.contacts.repositories import get_field_values_for_contact as _get_field_values
 from growixa_api.contacts.repositories import list_contact_lists as list_contact_lists_rows
@@ -60,7 +70,7 @@ from growixa_api.contacts.repositories import list_custom_fields as list_custom_
 from growixa_api.contacts.repositories import list_segments as list_segments_rows
 from growixa_api.contacts.repositories import list_tags as list_tags_rows
 
-ContactSnapshot = tuple[Contact, dict[str, str], list[str]]
+ContactSnapshot = tuple[Contact, dict[str, str], list[str], bool]
 SegmentDetail = tuple[Segment, Sequence[SegmentRule], int]
 
 # Column-mapping target fields a CSV header may be mapped to, beyond `custom_field:<key>`.
@@ -126,7 +136,8 @@ async def _apply_custom_fields(
 async def _snapshot(session: AsyncSession, contact: Contact) -> ContactSnapshot:
     field_values = await _get_field_values(session, contact.id)
     tags = await get_tag_names_for_contact(session, contact.id)
-    return contact, field_values, tags
+    suppressed = await is_email_suppressed(session, contact.email)
+    return contact, field_values, tags, suppressed
 
 
 async def create_or_update_contact(
@@ -669,3 +680,90 @@ async def list_contact_import_rows(
     if await get_import_by_id(session, import_id) is None:
         raise ContactImportNotFoundError
     return await list_import_rows(session, import_id)
+
+
+async def record_consent(
+    session: AsyncSession,
+    *,
+    actor_id: uuid.UUID,
+    contact_id: uuid.UUID,
+    channel: str,
+    status: str,
+    source: str | None,
+) -> ConsentRecord:
+    contact = await get_contact_by_id(session, contact_id)
+    if contact is None:
+        raise ContactNotFoundError
+
+    record = await create_consent_record_row(
+        session,
+        contact_id=contact_id,
+        channel=channel,
+        status=status,
+        source=source,
+        recorded_by_user_id=actor_id,
+    )
+    await record_event(
+        session,
+        actor_user_id=actor_id,
+        action="contact.consent_changed",
+        entity_type="contact",
+        entity_id=contact_id,
+        metadata={"channel": channel, "status": status},
+    )
+    await session.commit()
+
+    return record
+
+
+async def get_consent_history(
+    session: AsyncSession, contact_id: uuid.UUID
+) -> Sequence[ConsentRecord]:
+    if await get_contact_by_id(session, contact_id) is None:
+        raise ContactNotFoundError
+    return await list_consent_records(session, contact_id)
+
+
+async def suppress_email(
+    session: AsyncSession,
+    *,
+    actor_id: uuid.UUID,
+    email: str,
+    reason: str,
+    contact_id: uuid.UUID | None,
+) -> SuppressionEntry:
+    if contact_id is not None and await get_contact_by_id(session, contact_id) is None:
+        raise ContactNotFoundError
+
+    existing = await get_suppression_by_email(session, email)
+    if existing is None:
+        entry = await create_suppression_entry_row(
+            session,
+            email=email,
+            reason=reason,
+            contact_id=contact_id,
+            suppressed_by_user_id=actor_id,
+        )
+    else:
+        existing.reason = reason
+        existing.suppressed_by_user_id = actor_id
+        existing.suppressed_at = datetime.now(UTC)
+        if contact_id is not None:
+            existing.contact_id = contact_id
+        entry = existing
+
+    await record_event(
+        session,
+        actor_user_id=actor_id,
+        action="contact.suppressed",
+        entity_type="suppression_entry",
+        entity_id=entry.id,
+        metadata={"email": email, "reason": reason},
+    )
+    await session.commit()
+
+    return entry
+
+
+async def list_suppressions(session: AsyncSession) -> Sequence[SuppressionEntry]:
+    return await list_suppression_entries(session)

@@ -7,6 +7,7 @@ from sqlalchemy import ColumnElement, Select, and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from growixa_api.contacts.models import (
+    ConsentRecord,
     Contact,
     ContactCustomField,
     ContactFieldValue,
@@ -18,6 +19,7 @@ from growixa_api.contacts.models import (
     Segment,
     SegmentMember,
     SegmentRule,
+    SuppressionEntry,
     Tag,
 )
 
@@ -398,3 +400,70 @@ async def list_import_rows(
         .order_by(ContactImportRow.row_number)
     )
     return result.scalars().all()
+
+
+async def create_consent_record(
+    session: AsyncSession,
+    *,
+    contact_id: uuid.UUID,
+    channel: str,
+    status: str,
+    source: str | None,
+    recorded_by_user_id: uuid.UUID | None,
+) -> ConsentRecord:
+    record = ConsentRecord(
+        contact_id=contact_id,
+        channel=channel,
+        status=status,
+        source=source,
+        recorded_by_user_id=recorded_by_user_id,
+    )
+    session.add(record)
+    await session.flush()
+    return record
+
+
+async def list_consent_records(
+    session: AsyncSession, contact_id: uuid.UUID
+) -> Sequence[ConsentRecord]:
+    result = await session.execute(
+        select(ConsentRecord)
+        .where(ConsentRecord.contact_id == contact_id)
+        .order_by(ConsentRecord.recorded_at.desc())
+    )
+    return result.scalars().all()
+
+
+async def get_suppression_by_email(session: AsyncSession, email: str) -> SuppressionEntry | None:
+    result = await session.execute(select(SuppressionEntry).where(SuppressionEntry.email == email))
+    return result.scalar_one_or_none()
+
+
+async def list_suppression_entries(session: AsyncSession) -> Sequence[SuppressionEntry]:
+    result = await session.execute(
+        select(SuppressionEntry).order_by(SuppressionEntry.suppressed_at.desc())
+    )
+    return result.scalars().all()
+
+
+async def is_email_suppressed(session: AsyncSession, email: str) -> bool:
+    return await get_suppression_by_email(session, email) is not None
+
+
+async def create_suppression_entry(
+    session: AsyncSession,
+    *,
+    email: str,
+    reason: str,
+    contact_id: uuid.UUID | None,
+    suppressed_by_user_id: uuid.UUID | None,
+) -> SuppressionEntry:
+    entry = SuppressionEntry(
+        email=email,
+        reason=reason,
+        contact_id=contact_id,
+        suppressed_by_user_id=suppressed_by_user_id,
+    )
+    session.add(entry)
+    await session.flush()
+    return entry

@@ -53,6 +53,7 @@ class ContactOut(BaseModel):
     updated_at: datetime
     custom_fields: dict[str, str]
     tags: list[str] = Field(default_factory=list)
+    is_suppressed: bool
 
 
 class TagIn(BaseModel):
@@ -143,3 +144,35 @@ class ContactImportRowOut(BaseModel):
     email: str | None
     status: str
     error_message: str | None
+
+
+class ConsentRecordIn(BaseModel):
+    channel: Literal["EMAIL", "SMS"]
+    status: Literal["GRANTED", "WITHDRAWN", "UNKNOWN"]
+    source: str | None = None
+
+
+class ConsentRecordOut(BaseModel):
+    model_config = {"from_attributes": True}
+
+    id: uuid.UUID
+    channel: str
+    status: str
+    source: str | None
+    recorded_at: datetime
+
+
+class SuppressionEntryIn(BaseModel):
+    email: str
+    reason: Literal["UNSUBSCRIBED", "BOUNCED", "COMPLAINED", "MANUAL"]
+    contact_id: uuid.UUID | None = None
+
+
+class SuppressionEntryOut(BaseModel):
+    model_config = {"from_attributes": True}
+
+    id: uuid.UUID
+    email: str
+    reason: str
+    contact_id: uuid.UUID | None
+    suppressed_at: datetime
