@@ -2,7 +2,7 @@
 
 - Document ID: DOC-PROJECT-STATUS
 - Status: ACTIVE
-- Version: 1.32
+- Version: 1.33
 - Last updated: 2026-07-31
 - Owner: Coding agent (on behalf of product owner)
 - Related documents: [MASTER_TASK_TRACKER](MASTER_TASK_TRACKER.md), [DECISIONS](DECISIONS.md), [DEVELOPMENT_READINESS](DEVELOPMENT_READINESS.md)
@@ -65,12 +65,12 @@ detail.
 `contacts`, `tags`, `contact_lists`, `segments`, `contact_imports`,
 `consent_records`/`suppression_entries`. Nine tasks added to
 [MASTER_TASK_TRACKER.md](MASTER_TASK_TRACKER.md) (`GRX-CONTACT-001`–`009`).
-**`GRX-CONTACT-001` (contacts schema + CRUD), `GRX-CONTACT-002` (tags & lists),
-`GRX-CONTACT-003` (segments), `GRX-CONTACT-004` (CSV contact import),
-`GRX-CONTACT-005` (consent & suppression), `GRX-CONTACT-006` (contacts frontend),
-`GRX-CONTACT-007` (tags/lists/segments frontend), and `GRX-CONTACT-008` (CSV import
-frontend) are all `DONE`.** Only one Sprint 2 task remains: `GRX-CONTACT-009`
-(consent/suppression frontend), `READY`.
+**All nine Sprint 2 tasks are now `DONE`: `GRX-CONTACT-001` (contacts schema + CRUD),
+`GRX-CONTACT-002` (tags & lists), `GRX-CONTACT-003` (segments), `GRX-CONTACT-004`
+(CSV contact import), `GRX-CONTACT-005` (consent & suppression), `GRX-CONTACT-006`
+(contacts frontend), `GRX-CONTACT-007` (tags/lists/segments frontend), `GRX-CONTACT-008`
+(CSV import frontend), and `GRX-CONTACT-009` (consent/suppression frontend). Sprint 2
+(Contacts) is complete.**
 
 ## Documents created so far
 
@@ -128,6 +128,7 @@ frontend) are all `DONE`.** Only one Sprint 2 task remains: `GRX-CONTACT-009`
 | `apps/web/src/app/dashboard/company-settings/` | DONE (`GRX-COMPANY-002`) |
 | `apps/web/src/app/dashboard/team/`, `apps/api/src/growixa_api/roles/{api,schemas}.py` (new), `apps/api/src/growixa_api/users/` (extended) | DONE (`GRX-USER-002`) |
 | `apps/api/src/growixa_api/jobs/` (new), `apps/worker/` (new app) | DONE (`GRX-FOUND-007`) |
+| `apps/web/src/app/dashboard/contacts/suppression/` (new), `contacts-page.tsx`/`types.ts` (consent extensions) | DONE (`GRX-CONTACT-009`) |
 | `docs/00-project-control/FEATURE_STATUS_MATRIX.md`, `RISKS.md`, `BLOCKERS.md` | NOT_STARTED (created as Sprint 1 tasks land) |
 | `docs/03-ux-ui/DESIGN_REFERENCES.md` | DONE (reference material only — see its own scope caveat; not a Sprint 1 spec) |
 | `docs/01-product/FUTURE_SCOPE_MULTI_BRAND.md` | DONE (idea capture only — multi-brand profiles + subscription tiers; contradicts DEC-GRX-002/013 as proposed, not scheduled into any release) |
@@ -142,10 +143,12 @@ frontend) are all `DONE`.** Only one Sprint 2 task remains: `GRX-CONTACT-009`
    rationale per task in [CHANGELOG.md](CHANGELOG.md)): `GRX-AUTH-002` → `GRX-AUTH-003` →
    `GRX-USER-001` → `GRX-AUTH-005` → `GRX-FOUND-006` → `GRX-AUTH-004` → `GRX-TEST-002` →
    `GRX-FOUND-008` → `GRX-DEVOPS-001` (`IN_REVIEW`, needs a push to confirm green — see
-   AGENT_HANDOFF.md) → `GRX-COMPANY-002` → `GRX-USER-002` → `GRX-FOUND-007`. All tracked
-   Sprint 1 tasks are now `DONE` except `GRX-DEVOPS-001`'s pending push confirmation and
-   `GRX-DOC-003` (blocked on that same push); awaiting user direction on what to pick up
-   next (Sprint 2, or push/confirm CI).
+   AGENT_HANDOFF.md) → `GRX-COMPANY-002` → `GRX-USER-002` → `GRX-FOUND-007` → Sprint 2:
+   `GRX-CONTACT-001` → `GRX-CONTACT-002` → `GRX-CONTACT-003` → `GRX-CONTACT-004` →
+   `GRX-CONTACT-005` → `GRX-CONTACT-006` → `GRX-CONTACT-007` → `GRX-CONTACT-008` →
+   `GRX-CONTACT-009`. **Sprint 2 (Contacts) is now fully `DONE`.** Remaining open items:
+   `GRX-DEVOPS-001`'s pending push confirmation and `GRX-DOC-003` (blocked on that same
+   push); awaiting user direction on what to pick up next (a new sprint, or push/confirm CI).
 2. Create `FEATURE_STATUS_MATRIX.md`, `RISKS.md`, `BLOCKERS.md` alongside Sprint 1 tasks as they land, not all upfront.
 3. Write full feature specs in `02-features/` for Slice 1 features as each task is picked up, not all upfront.
 4. Do not begin any V1.5+/SEO-AEO-GEO work until Slices 1–6 (MVP) are stable in production.

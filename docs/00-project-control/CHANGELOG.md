@@ -10,6 +10,35 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
+## 2026-07-31 — GRX-CONTACT-009: Consent/suppression frontend (closes Sprint 2)
+
+- Extended `ContactsPage`'s detail panel with a lazy-loaded (on row expand) consent
+  history list (`GET /contacts/{id}/consent`, newest-first) and, for managers, an
+  inline record-consent form (channel/status selects + optional source input)
+  posting to `POST /contacts/{id}/consent`.
+- Built `SuppressionPage` (`/dashboard/contacts/suppression`): a list of all
+  suppression entries (email, linked contact or "No matching contact", reason
+  badge, timestamp) and, for managers, a "+ Suppress an email" form (email, reason
+  select, optional contact picker sourced from `GET /contacts`) posting to `POST
+  /contacts/suppression`. Since the backend has no unsuppress endpoint by design
+  (`GRX-CONTACT-005`), the UI never offers a remove control.
+- Re-suppressing an already-suppressed email is handled by matching the POST
+  response's `id` against existing state and replacing in place rather than
+  appending, mirroring the backend's upsert-on-email semantics — covered by a
+  dedicated test and confirmed live.
+- Added "Suppression" to the sidebar's AUDIENCE section and a page-title entry.
+- `eslint`/`tsc --noEmit`/`prettier --check` clean; `vitest` 46 passed (7 new: 2
+  consent-history/record tests on `ContactsPage`, 5 on `SuppressionPage`).
+- Live-verified against the rebuilt dev server: recorded GRANTED then WITHDRAWN
+  consent for a contact and confirmed newest-first ordering; suppressed an email
+  with a linked contact (its Contacts-page row correctly flipped to "Suppressed"),
+  re-suppressed the same email with a different reason and confirmed the entry
+  updated in place (still exactly one row); confirmed a fresh Analyst sees both the
+  consent history and suppression list read-only with no record-consent form and no
+  "+ Suppress an email" button.
+- This closes GRX-CONTACT-009 — **all of Sprint 2 (GRX-CONTACT-001 through 009) is
+  now DONE.** Commit `81332b5`.
+
 ## 2026-07-31 — GRX-CONTACT-008: CSV import frontend
 
 - Built `ImportsPage` (`/dashboard/contacts/imports`): a file picker reads the CSV
