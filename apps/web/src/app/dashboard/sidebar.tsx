@@ -19,12 +19,18 @@ interface NavSection {
   items: NavItem[];
 }
 
-// Sprint 1 wires up only the nav items that have a real page behind them (per
+// Only nav items that have a real page behind them are wired up (per
 // DESIGN_REFERENCES.md's scope caveat) — every other section from the design brief
-// (Audience, Marketing, Automation, Insights, Billing, ...) has no page yet and is omitted
+// (Marketing, Automation, Insights, Billing, ...) has no page yet and is omitted
 // entirely rather than shipped as a dead link.
 const NAV_SECTIONS: NavSection[] = [
   { label: "OVERVIEW", items: [{ label: "Dashboard", href: "/dashboard" }] },
+  {
+    label: "AUDIENCE",
+    items: [
+      { label: "Contacts", href: "/dashboard/contacts", requiresPermission: "contacts.view" },
+    ],
+  },
   {
     label: "SETTINGS",
     items: [

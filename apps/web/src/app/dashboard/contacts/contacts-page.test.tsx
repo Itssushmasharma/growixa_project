@@ -1,0 +1,194 @@
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+import { ToastProvider } from "@/components/toast/toast-context";
+import { apiFetch } from "@/lib/api-client";
+
+import { ContactsPage } from "./contacts-page";
+import type { Contact, MeResponse } from "./types";
+
+vi.mock("@/lib/api-client", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/api-client")>("@/lib/api-client");
+  return { ...actual, apiFetch: vi.fn() };
+});
+
+const mockedApiFetch = vi.mocked(apiFetch);
+
+function renderContactsPage() {
+  return render(
+    <ToastProvider>
+      <ContactsPage />
+    </ToastProvider>,
+  );
+}
+
+function meWithPermissions(permissions: string[]): MeResponse {
+  return { id: "user-1", email: "admin@example.com", full_name: "Admin User", permissions };
+}
+
+const ACTIVE_CONTACT: Contact = {
+  id: "contact-1",
+  email: "alice@example.com",
+  first_name: "Alice",
+  last_name: "Anderson",
+  phone: null,
+  status: "ACTIVE",
+  source: null,
+  created_at: "2026-07-01T00:00:00Z",
+  updated_at: "2026-07-01T00:00:00Z",
+  custom_fields: {},
+  tags: [],
+  is_suppressed: false,
+};
+
+const SUPPRESSED_CONTACT: Contact = {
+  id: "contact-2",
+  email: "bob@example.com",
+  first_name: "Bob",
+  last_name: null,
+  phone: null,
+  status: "ACTIVE",
+  source: null,
+  created_at: "2026-07-01T00:00:00Z",
+  updated_at: "2026-07-01T00:00:00Z",
+  custom_fields: {},
+  tags: [],
+  is_suppressed: true,
+};
+
+beforeEach(() => {
+  mockedApiFetch.mockReset();
+});
+
+describe("ContactsPage", () => {
+  it("renders the contact list with status and suppressed badges", async () => {
+    mockedApiFetch.mockImplementation((path: string) => {
+      if (path === "/auth/me") {
+        return Promise.resolve(meWithPermissions(["contacts.view", "contacts.manage"]));
+      }
+      if (path === "/contacts") return Promise.resolve([ACTIVE_CONTACT, SUPPRESSED_CONTACT]);
+      throw new Error(`unexpected path: ${path}`);
+    });
+
+    renderContactsPage();
+
+    expect(await screen.findByText("Alice Anderson")).toBeInTheDocument();
+    expect(screen.getByText("Bob")).toBeInTheDocument();
+    expect(screen.getAllByText("Active")).toHaveLength(2);
+    expect(screen.getByText("Suppressed")).toBeInTheDocument();
+  });
+
+  it("shows an access-denied message for a user without contacts.view", async () => {
+    mockedApiFetch.mockImplementation((path: string) => {
+      if (path === "/auth/me") return Promise.resolve(meWithPermissions([]));
+      if (path === "/contacts") return Promise.resolve([]);
+      throw new Error(`unexpected path: ${path}`);
+    });
+
+    renderContactsPage();
+
+    expect(await screen.findByText("You don't have access to view contacts.")).toBeInTheDocument();
+  });
+
+  it("hides write controls for a view-only user", async () => {
+    mockedApiFetch.mockImplementation((path: string) => {
+      if (path === "/auth/me") return Promise.resolve(meWithPermissions(["contacts.view"]));
+      if (path === "/contacts") return Promise.resolve([ACTIVE_CONTACT]);
+      throw new Error(`unexpected path: ${path}`);
+    });
+
+    const user = userEvent.setup();
+    renderContactsPage();
+
+    expect(await screen.findByText("Alice Anderson")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "+ Add contact" })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "View" }));
+    expect(screen.getByText("You have view-only access to contacts.")).toBeInTheDocument();
+  });
+
+  it("creates a contact via the add form", async () => {
+    const created: Contact = { ...ACTIVE_CONTACT, id: "contact-3", email: "new@example.com" };
+    mockedApiFetch.mockImplementation((path: string, init?: RequestInit) => {
+      if (path === "/auth/me") {
+        return Promise.resolve(meWithPermissions(["contacts.view", "contacts.manage"]));
+      }
+      if (path === "/contacts" && (!init || init.method === undefined)) {
+        return Promise.resolve([]);
+      }
+      if (path === "/contacts" && init?.method === "POST") {
+        return Promise.resolve(created);
+      }
+      throw new Error(`unexpected call: ${path}`);
+    });
+
+    const user = userEvent.setup();
+    renderContactsPage();
+
+    await screen.findByText("No contacts yet.");
+    await user.click(screen.getByRole("button", { name: "+ Add contact" }));
+    await user.type(screen.getByLabelText("Email"), "new@example.com");
+    await user.click(screen.getByRole("button", { name: "Create contact" }));
+
+    await waitFor(() => expect(screen.getByText("new@example.com")).toBeInTheDocument());
+  });
+
+  it("edits a contact via the inline detail panel", async () => {
+    mockedApiFetch.mockImplementation((path: string, init?: RequestInit) => {
+      if (path === "/auth/me") {
+        return Promise.resolve(meWithPermissions(["contacts.view", "contacts.manage"]));
+      }
+      if (path === "/contacts" && (!init || init.method === undefined)) {
+        return Promise.resolve([ACTIVE_CONTACT]);
+      }
+      if (path === "/contacts/contact-1" && init?.method === "PATCH") {
+        return Promise.resolve({ ...ACTIVE_CONTACT, first_name: "Alicia" });
+      }
+      throw new Error(`unexpected call: ${path}`);
+    });
+
+    const user = userEvent.setup();
+    renderContactsPage();
+
+    await screen.findByText("Alice Anderson");
+    await user.click(screen.getByRole("button", { name: "View" }));
+
+    const firstNameInput = screen.getByLabelText("First name");
+    await user.clear(firstNameInput);
+    await user.type(firstNameInput, "Alicia");
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+
+    await waitFor(() => {
+      const [, patchCall] =
+        mockedApiFetch.mock.calls.find(
+          ([path, init]) => path === "/contacts/contact-1" && init?.method === "PATCH",
+        ) ?? [];
+      expect(patchCall).toBeDefined();
+    });
+  });
+
+  it("archives a contact via the toggle button", async () => {
+    mockedApiFetch.mockImplementation((path: string, init?: RequestInit) => {
+      if (path === "/auth/me") {
+        return Promise.resolve(meWithPermissions(["contacts.view", "contacts.manage"]));
+      }
+      if (path === "/contacts" && (!init || init.method === undefined)) {
+        return Promise.resolve([ACTIVE_CONTACT]);
+      }
+      if (path === "/contacts/contact-1/status" && init?.method === "PATCH") {
+        return Promise.resolve({ ...ACTIVE_CONTACT, status: "ARCHIVED" });
+      }
+      throw new Error(`unexpected call: ${path}`);
+    });
+
+    const user = userEvent.setup();
+    renderContactsPage();
+
+    await screen.findByText("Alice Anderson");
+    await user.click(screen.getByRole("button", { name: "View" }));
+    await user.click(screen.getByRole("button", { name: "Archive" }));
+
+    await waitFor(() => expect(screen.getByText("Archived")).toBeInTheDocument());
+  });
+});

@@ -6,6 +6,7 @@ import styles from "./topbar.module.css";
 
 const PAGE_TITLES: Record<string, string> = {
   "/dashboard": "Dashboard",
+  "/dashboard/contacts": "Contacts",
   "/dashboard/company-settings": "Company Settings",
   "/dashboard/team": "Team",
 };
