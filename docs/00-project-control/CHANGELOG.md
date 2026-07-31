@@ -10,6 +10,32 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
+## 2026-07-31 — GRX-CONTACT-003: Segments
+
+- Added `segments`/`segment_rules`/`segment_members` tables (migration `18cf808f2b87`)
+  and a rule evaluator supporting `status`/`email`/`source` (equals; email also
+  supports contains), `tag` (equals), `created_at` (before/after), and
+  `custom_field:<key>` (equals/contains) — all AND-combined only, per the Slice 2
+  scope decision (no OR/grouping).
+- `consent_status` was named as an example field during earlier Slice 2 planning but
+  isn't implemented yet, since `consent_records` doesn't exist until `GRX-CONTACT-005`
+  — using it now correctly returns 400 as an unsupported field rather than silently
+  matching nothing.
+- `POST /contacts/segments` validates every rule up front (unknown field, unsupported
+  operator for that field, unknown custom-field key, or an unparseable `created_at`
+  date all return 400) before creating anything.
+- `DYNAMIC` segments compute membership live on every read; `SAVED` segments evaluate
+  once at creation and freeze into `segment_members`. Verified live: tagging a new
+  contact after creating both segment types changed the `DYNAMIC` segment's count but
+  left the `SAVED` one unchanged.
+- `ruff`/`mypy` clean; `pytest` 85 passed, 3 skipped (93% coverage, 9 new tests);
+  `alembic check` → no drift (needed `index=True` added to `SegmentRule.segment_id` in
+  the ORM model to match the migration's explicit index — `alembic check` caught the
+  mismatch itself).
+- This closes out the backend half of Slice 2's core contact-organization features
+  (contacts, tags, lists, segments). `GRX-CONTACT-004` (CSV import) is next `READY`.
+  Commit `a725e0e`.
+
 ## 2026-07-30 — GRX-CONTACT-002: Tags & lists
 
 - Added `tags`/`contact_tags` and `contact_lists`/`contact_list_members` tables (migration

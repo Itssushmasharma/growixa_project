@@ -66,7 +66,8 @@ detail.
 `consent_records`/`suppression_entries`. Nine tasks added to
 [MASTER_TASK_TRACKER.md](MASTER_TASK_TRACKER.md) (`GRX-CONTACT-001`–`009`).
 **`GRX-CONTACT-001` (contacts schema + CRUD) and `GRX-CONTACT-002` (tags & lists) are
-`DONE`.** Next `READY` task: `GRX-CONTACT-003` (segments).
+`DONE`, and `GRX-CONTACT-003` (segments) is `DONE`.** Next `READY` task:
+`GRX-CONTACT-004` (CSV contact import).
 
 ## Documents created so far
 

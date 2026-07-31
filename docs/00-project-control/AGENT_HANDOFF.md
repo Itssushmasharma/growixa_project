@@ -3,44 +3,56 @@
 - Document ID: DOC-AGENT-HANDOFF
 - Status: ACTIVE (updated at the end of every work session)
 - Version: 1.0
-- Last updated: 2026-07-30
+- Last updated: 2026-07-31
 - Owner: Coding agent
 - Related documents: [MASTER_TASK_TRACKER](MASTER_TASK_TRACKER.md), [PROJECT_STATUS](PROJECT_STATUS.md), [CHANGELOG](CHANGELOG.md)
 
 ## Task worked on
 
-`GRX-CONTACT-002` — Tags & lists. Picked immediately after `GRX-CONTACT-001` per the
-user's "Go".
+`GRX-CONTACT-003` — Segments (dynamic and saved). Picked immediately after
+`GRX-CONTACT-002` per the user's "go".
 
 ## Work completed
 
-- New tables (migration `788ff9dd33db`): `tags`, `contact_tags`, `contact_lists`,
-  `contact_list_members`.
-- Endpoints: `GET`/`POST /contacts/tags`; attach/detach a tag on a contact via
-  `POST`/`DELETE /contacts/{id}/tags[/{tag_id}]`; `GET`/`POST /contacts/lists`; `GET
-  /contacts/lists/{id}`; add/remove a list member via `POST`/`DELETE
-  /contacts/lists/{id}/members[/{contact_id}]`.
-- `ContactOut` (from `GRX-CONTACT-001`) extended with `tags: list[str]` — every
-  contact-returning service function now returns a `(Contact, custom_fields_dict,
-  tags_list)` 3-tuple (`ContactSnapshot` type alias) instead of the previous 2-tuple.
-  `ContactListOut` gets a `member_count` computed live on every read.
-- Tag attach/detach and list-membership changes emit `contact.tagged`/
-  `contact.list_added` audit events, continuing to reuse `audit_logs`.
-- No RBAC changes — `contacts.manage`/`contacts.view` already covered this per the
-  Slice 2 planning pass earlier in this session.
+- New tables (migration `18cf808f2b87`): `segments`, `segment_rules`, `segment_members`.
+- Rule evaluator (`contacts/repositories.py`'s `build_rule_condition` +
+  `evaluate_segment_rules`/`count_dynamic_segment_members`) translates a validated
+  `(field, operator, value)` triple into a SQLAlchemy condition over `Contact`. Supported
+  fields: `status`/`source` (equals), `email` (equals/contains), `tag` (equals),
+  `created_at` (before/after, ISO-8601 value), `custom_field:<key>` (equals/contains,
+  key must exist). All rules on a segment are AND-combined only — no OR/grouping, per
+  the Slice 2 scope decision made during planning.
+- `POST /contacts/segments` validates every rule before creating anything
+  (`_validate_segment_rule` in `services.py`) — unsupported field, wrong operator for a
+  field, unknown custom-field key, or an unparseable `created_at` date all return 400.
+- `DYNAMIC` segments: membership computed live on every `GET`. `SAVED` segments:
+  membership evaluated once at creation and written into `segment_members`, never
+  re-evaluated automatically (no scheduler exists yet — that's Slice 4).
+- Endpoints: `GET`/`POST /contacts/segments`, `GET /contacts/segments/{id}`, `GET
+  /contacts/segments/{id}/members` (returns full `ContactOut` snapshots, reusing the
+  same `_snapshot` helper as contacts/tags/lists).
+
+## A scope note worth flagging
+
+Slice 2 planning (this session, `GRX-CONTACT-003`'s tracker row) had named
+`consent_status` as an example segment-rule field. It is **not implemented** — the
+`consent_records` table doesn't exist until `GRX-CONTACT-005`. Using `consent_status` as
+a rule field today correctly 400s as "unsupported field" rather than silently matching
+zero contacts. Extend `SEGMENT_RULE_FIELD_OPERATORS` in `repositories.py` once
+`GRX-CONTACT-005` lands.
 
 ## Files changed
 
-- `apps/api/src/growixa_api/contacts/models.py` (added `Tag`, `ContactTag`,
-  `ContactList`, `ContactListMember`)
-- `apps/api/src/growixa_api/contacts/repositories.py` (tag/list CRUD + membership helpers)
-- `apps/api/src/growixa_api/contacts/services.py` (rewritten: `ContactSnapshot` 3-tuple
-  throughout; new tag/list service functions)
-- `apps/api/src/growixa_api/contacts/schemas.py` (`TagIn`/`TagOut`/`AttachTagIn`,
-  `ContactListIn`/`ContactListOut`/`AddListMemberIn`; `ContactOut.tags`)
-- `apps/api/src/growixa_api/contacts/api.py` (new tag/list routes; `_to_out` takes tags)
-- `apps/api/migrations/versions/788ff9dd33db_tags_and_contact_lists.py` (new)
-- `apps/api/tests/test_contacts_tags_and_lists.py` (new, 7 tests)
+- `apps/api/src/growixa_api/contacts/models.py` (added `Segment`, `SegmentRule`,
+  `SegmentMember`; `SegmentRule.segment_id` has `index=True`)
+- `apps/api/src/growixa_api/contacts/repositories.py` (rule evaluator + segment CRUD)
+- `apps/api/src/growixa_api/contacts/services.py` (`SegmentDetail` type alias; rule
+  validation; `create_segment_with_rules`, `get_segment_with_details`,
+  `list_segments_with_details`, `list_segment_members`)
+- `apps/api/src/growixa_api/contacts/schemas.py` (`SegmentRuleIn`/`Out`, `SegmentIn`/`Out`)
+- `apps/api/src/growixa_api/contacts/api.py` (new segment routes, `_segment_to_out`)
+- `apps/api/migrations/versions/18cf808f2b87_segments.py` (new)
+- `apps/api/tests/test_contacts_segments.py` (new, 9 tests)
 - `docs/00-project-control/MASTER_TASK_TRACKER.md`, `PROJECT_STATUS.md`, `CHANGELOG.md`
   (this update)
 
@@ -48,40 +60,39 @@ user's "Go".
 
 ```bash
 cd apps/api
-.venv/bin/alembic revision --autogenerate -m "tags and contact lists"
+.venv/bin/alembic revision --autogenerate -m "segments"
+# hand-added an index on segment_rules.segment_id, then added index=True to the ORM
+# model to match (alembic check caught the model/migration mismatch on the first pass)
 .venv/bin/alembic upgrade head
 .venv/bin/ruff check . && .venv/bin/ruff format . && .venv/bin/mypy .
-.venv/bin/pytest -q   # 76 passed, 3 skipped (94% coverage)
+.venv/bin/pytest -q   # 85 passed, 3 skipped (93% coverage)
 .venv/bin/alembic check   # no drift
 
 cd ../..
-# stack had fully stopped (containers existed but weren't running) — brought back up with
-# `podman compose up -d` before continuing; no data was lost (unlike an earlier, separate
-# incident this session where containers had been removed entirely)
 podman compose up -d --build api
-# full pytest run's migration round-trip test wiped admin@growixa.local again (same as
-# after GRX-CONTACT-001) — recreated it
-# live curl: create tag -> attach to contact (tags: ["vip"]) -> detach (tags: []) ->
-# create list -> add member (member_count 1) -> remove member (member_count 0) ->
-# Analyst 200/403 split on tags and lists -> Viewer 403/403 split
+# full pytest run wiped admin@growixa.local again (same as after every prior task this
+# session) — recreated it
+# live curl: create a tag, tag contact A, create both a DYNAMIC and a SAVED segment on
+# the same rule (both member_count 1) -> tag contact B (created after both segments) ->
+# DYNAMIC now member_count 2, SAVED still 1 -> Analyst 200/403 split -> Viewer 403
 # cleaned up all smoke-test rows afterward
 ```
 
 ## Test results
 
-`ruff`/`mypy` clean. `pytest` 76 passed, 3 skipped (94% coverage, 7 new tests).
-`alembic check` → no drift. Live-verified end-to-end against rebuilt Compose containers.
+`ruff`/`mypy` clean. `pytest` 85 passed, 3 skipped (93% coverage, 9 new tests).
+`alembic check` → no drift. Live-verified end-to-end against rebuilt Compose containers,
+including the DYNAMIC-vs-SAVED live/frozen distinction that's the whole point of this task.
 
 ## Migrations
 
-`788ff9dd33db` — `tags`, `contact_tags`, `contact_lists`, `contact_list_members` tables.
-No permission seed needed (unlike `209d29349ccf`) since existing Slice 2 permissions
-already cover this.
+`18cf808f2b87` — `segments`, `segment_rules`, `segment_members` tables, plus an index on
+`segment_rules.segment_id`. No permission seed needed — existing `contacts.manage`/
+`contacts.view` already cover segments.
 
 ## Decisions
 
-None new. Confirmed live that `member_count` computed on every read (not stored) stays
-accurate through add/remove cycles.
+None new beyond the scope note above (declined to implement `consent_status` early).
 
 ## Blockers
 
@@ -89,24 +100,24 @@ None.
 
 ## Known issues
 
-- Same carryover list as `GRX-CONTACT-001`'s entry: possible latent `MissingGreenlet` in
-  `company_profile` (background task filed, not yet resolved), `GRX-DEVOPS-001` still
-  `IN_REVIEW`, `GRX-DOC-003` blocked on that push, plus the older pre-existing gaps.
-- Confirmed (again) that running the full `pytest` suite locally wipes any manually
-  created Compose database rows via the migration round-trip test — worth remembering
-  before doing live verification afterward, not itself a bug to fix.
+- Same carryover list as prior Slice 2 entries: possible latent `MissingGreenlet` in
+  `company_profile` (background task filed, unresolved), `GRX-DEVOPS-001` still
+  `IN_REVIEW`, `GRX-DOC-003` blocked on that push.
+- Running the full `pytest` suite locally continues to wipe manually created Compose
+  database rows via the migration round-trip test — same as every prior task this
+  session, not a new issue.
 
 ## Current state
 
-`GRX-CONTACT-002` is `DONE`. Sprint 2's next `READY` task is `GRX-CONTACT-003`
-(segments), which depends on it.
+`GRX-CONTACT-003` is `DONE`. This closes out the backend half of Slice 2's core
+contact-organization features (contacts, tags, lists, segments). Sprint 2's next `READY`
+task is `GRX-CONTACT-004` (CSV contact import).
 
 ## Exact next task
 
-`GRX-CONTACT-003` — Segments (`segments`, `segment_rules`, `segment_members` tables +
-API; AND-only rule evaluation; `DYNAMIC` live-evaluated vs `SAVED` frozen snapshot). No
-explicit user direction beyond continuing Sprint 2; awaiting confirmation before picking
-it up.
+`GRX-CONTACT-004` — CSV contact import (`contact_imports`, `contact_import_rows` tables +
+API; upload, column mapping, validation, per-row status, import history). No explicit
+user direction beyond continuing Sprint 2; awaiting confirmation before picking it up.
 
 ## Resume commands
 
@@ -119,4 +130,4 @@ podman compose up -d
 
 ## Latest commit
 
-`1e69461` — feat(contacts): tags and manually curated lists (GRX-CONTACT-002)
+`a725e0e` — feat(contacts): dynamic and saved segments (GRX-CONTACT-003)
