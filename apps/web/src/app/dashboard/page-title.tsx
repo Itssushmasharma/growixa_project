@@ -10,6 +10,7 @@ const PAGE_TITLES: Record<string, string> = {
   "/dashboard/contacts/lists": "Lists",
   "/dashboard/contacts/segments": "Segments",
   "/dashboard/contacts/imports": "Imports",
+  "/dashboard/contacts/suppression": "Suppression",
   "/dashboard/company-settings": "Company Settings",
   "/dashboard/team": "Team",
 };

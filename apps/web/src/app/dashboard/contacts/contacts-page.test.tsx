@@ -6,7 +6,7 @@ import { ToastProvider } from "@/components/toast/toast-context";
 import { apiFetch } from "@/lib/api-client";
 
 import { ContactsPage } from "./contacts-page";
-import type { Contact, MeResponse, Tag } from "./types";
+import type { ConsentRecord, Contact, MeResponse, Tag } from "./types";
 
 vi.mock("@/lib/api-client", async () => {
   const actual = await vi.importActual<typeof import("@/lib/api-client")>("@/lib/api-client");
@@ -29,6 +29,10 @@ function meWithPermissions(permissions: string[]): MeResponse {
 
 function isTagsGet(path: string, init?: RequestInit): boolean {
   return path === "/contacts/tags" && (!init || init.method === undefined);
+}
+
+function isConsentGet(path: string, init?: RequestInit): boolean {
+  return /^\/contacts\/[^/]+\/consent$/.test(path) && (!init || init.method === undefined);
 }
 
 const ACTIVE_CONTACT: Contact = {
@@ -62,6 +66,14 @@ const SUPPRESSED_CONTACT: Contact = {
 };
 
 const VIP_TAG: Tag = { id: "tag-1", name: "VIP" };
+
+const GRANTED_CONSENT: ConsentRecord = {
+  id: "consent-1",
+  channel: "EMAIL",
+  status: "GRANTED",
+  source: "signup_form",
+  recorded_at: "2026-07-01T00:00:00Z",
+};
 
 beforeEach(() => {
   mockedApiFetch.mockReset();
@@ -104,6 +116,7 @@ describe("ContactsPage", () => {
       if (path === "/auth/me") return Promise.resolve(meWithPermissions(["contacts.view"]));
       if (path === "/contacts") return Promise.resolve([ACTIVE_CONTACT]);
       if (isTagsGet(path, init)) return Promise.resolve([]);
+      if (isConsentGet(path, init)) return Promise.resolve([]);
       throw new Error(`unexpected path: ${path}`);
     });
 
@@ -116,6 +129,7 @@ describe("ContactsPage", () => {
     await user.click(screen.getByRole("button", { name: "View" }));
     expect(screen.getByText("You have view-only access to contacts.")).toBeInTheDocument();
     expect(screen.queryByLabelText("Attach an existing tag")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Consent channel")).not.toBeInTheDocument();
   });
 
   it("creates a contact via the add form", async () => {
@@ -154,6 +168,7 @@ describe("ContactsPage", () => {
         return Promise.resolve([ACTIVE_CONTACT]);
       }
       if (isTagsGet(path, init)) return Promise.resolve([]);
+      if (isConsentGet(path, init)) return Promise.resolve([]);
       if (path === "/contacts/contact-1" && init?.method === "PATCH") {
         return Promise.resolve({ ...ACTIVE_CONTACT, first_name: "Alicia" });
       }
@@ -189,6 +204,7 @@ describe("ContactsPage", () => {
         return Promise.resolve([ACTIVE_CONTACT]);
       }
       if (isTagsGet(path, init)) return Promise.resolve([]);
+      if (isConsentGet(path, init)) return Promise.resolve([]);
       if (path === "/contacts/contact-1/status" && init?.method === "PATCH") {
         return Promise.resolve({ ...ACTIVE_CONTACT, status: "ARCHIVED" });
       }
@@ -214,6 +230,7 @@ describe("ContactsPage", () => {
         return Promise.resolve([ACTIVE_CONTACT]);
       }
       if (isTagsGet(path, init)) return Promise.resolve([VIP_TAG]);
+      if (isConsentGet(path, init)) return Promise.resolve([]);
       if (path === "/contacts/contact-1/tags" && init?.method === "POST") {
         return Promise.resolve({ ...ACTIVE_CONTACT, tags: ["VIP"] });
       }
@@ -241,6 +258,7 @@ describe("ContactsPage", () => {
         return Promise.resolve([tagged]);
       }
       if (isTagsGet(path, init)) return Promise.resolve([VIP_TAG]);
+      if (isConsentGet(path, init)) return Promise.resolve([]);
       if (path === "/contacts/contact-1/tags/tag-1" && init?.method === "DELETE") {
         return Promise.resolve({ ...ACTIVE_CONTACT, tags: [] });
       }
@@ -271,6 +289,7 @@ describe("ContactsPage", () => {
         return Promise.resolve([ACTIVE_CONTACT]);
       }
       if (isTagsGet(path, init)) return Promise.resolve([]);
+      if (isConsentGet(path, init)) return Promise.resolve([]);
       if (path === "/contacts/tags" && init?.method === "POST") {
         return Promise.resolve(createdTag);
       }
@@ -289,5 +308,66 @@ describe("ContactsPage", () => {
     await user.click(screen.getByRole("button", { name: "+ New tag" }));
 
     await waitFor(() => expect(screen.getByText("Newsletter")).toBeInTheDocument());
+  });
+
+  it("loads and displays a contact's consent history", async () => {
+    mockedApiFetch.mockImplementation((path: string, init?: RequestInit) => {
+      if (path === "/auth/me") {
+        return Promise.resolve(meWithPermissions(["contacts.view", "contacts.manage"]));
+      }
+      if (path === "/contacts" && (!init || init.method === undefined)) {
+        return Promise.resolve([ACTIVE_CONTACT]);
+      }
+      if (isTagsGet(path, init)) return Promise.resolve([]);
+      if (isConsentGet(path, init)) return Promise.resolve([GRANTED_CONSENT]);
+      throw new Error(`unexpected call: ${path}`);
+    });
+
+    const user = userEvent.setup();
+    renderContactsPage();
+
+    await screen.findByText("Alice Anderson");
+    await user.click(screen.getByRole("button", { name: "View" }));
+
+    await waitFor(() =>
+      expect(screen.getByText(/EMAIL: GRANTED \(signup_form\)/)).toBeInTheDocument(),
+    );
+  });
+
+  it("records new consent via the inline form", async () => {
+    const newRecord: ConsentRecord = {
+      id: "consent-2",
+      channel: "SMS",
+      status: "WITHDRAWN",
+      source: null,
+      recorded_at: "2026-07-02T00:00:00Z",
+    };
+    mockedApiFetch.mockImplementation((path: string, init?: RequestInit) => {
+      if (path === "/auth/me") {
+        return Promise.resolve(meWithPermissions(["contacts.view", "contacts.manage"]));
+      }
+      if (path === "/contacts" && (!init || init.method === undefined)) {
+        return Promise.resolve([ACTIVE_CONTACT]);
+      }
+      if (isTagsGet(path, init)) return Promise.resolve([]);
+      if (isConsentGet(path, init)) return Promise.resolve([]);
+      if (path === "/contacts/contact-1/consent" && init?.method === "POST") {
+        return Promise.resolve(newRecord);
+      }
+      throw new Error(`unexpected call: ${path}`);
+    });
+
+    const user = userEvent.setup();
+    renderContactsPage();
+
+    await screen.findByText("Alice Anderson");
+    await user.click(screen.getByRole("button", { name: "View" }));
+    await screen.findByText("No consent recorded yet.");
+
+    await user.selectOptions(screen.getByLabelText("Consent channel"), "SMS");
+    await user.selectOptions(screen.getByLabelText("Consent status"), "WITHDRAWN");
+    await user.click(screen.getByRole("button", { name: "Record consent" }));
+
+    await waitFor(() => expect(screen.getByText(/SMS: WITHDRAWN/)).toBeInTheDocument());
   });
 });

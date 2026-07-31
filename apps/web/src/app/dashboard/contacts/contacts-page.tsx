@@ -6,7 +6,7 @@ import { useToast } from "@/components/toast/toast-context";
 import { ApiError, apiFetch } from "@/lib/api-client";
 
 import styles from "./shared.module.css";
-import type { Contact, MeResponse, Tag } from "./types";
+import type { ConsentRecord, Contact, MeResponse, Tag } from "./types";
 
 const VIEW_PERMISSION = "contacts.view";
 const MANAGE_PERMISSION = "contacts.manage";
@@ -24,6 +24,18 @@ const EMPTY_FORM: ContactFormState = {
   first_name: "",
   last_name: "",
   phone: "",
+  source: "",
+};
+
+interface ConsentFormState {
+  channel: "EMAIL" | "SMS";
+  status: "GRANTED" | "WITHDRAWN" | "UNKNOWN";
+  source: string;
+}
+
+const EMPTY_CONSENT_FORM: ConsentFormState = {
+  channel: "EMAIL",
+  status: "GRANTED",
   source: "",
 };
 
@@ -63,6 +75,11 @@ export function ContactsPage() {
   const [attachTagId, setAttachTagId] = useState("");
   const [newTagName, setNewTagName] = useState("");
   const [tagActionPending, setTagActionPending] = useState(false);
+
+  const [consentHistory, setConsentHistory] = useState<ConsentRecord[]>([]);
+  const [consentLoading, setConsentLoading] = useState(false);
+  const [consentForm, setConsentForm] = useState<ConsentFormState>(EMPTY_CONSENT_FORM);
+  const [consentSubmitting, setConsentSubmitting] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -116,7 +133,7 @@ export function ContactsPage() {
     }
   }
 
-  function toggleExpand(contact: Contact) {
+  async function toggleExpand(contact: Contact) {
     if (expandedId === contact.id) {
       setExpandedId(null);
       return;
@@ -131,6 +148,40 @@ export function ContactsPage() {
     });
     setAttachTagId("");
     setNewTagName("");
+    setConsentForm(EMPTY_CONSENT_FORM);
+    setConsentHistory([]);
+    setConsentLoading(true);
+    try {
+      const history = await apiFetch<ConsentRecord[]>(`/contacts/${contact.id}/consent`);
+      setConsentHistory(history);
+    } catch {
+      showToast("error", "Could not load this contact's consent history.");
+    } finally {
+      setConsentLoading(false);
+    }
+  }
+
+  async function handleRecordConsent(event: FormEvent<HTMLFormElement>, contactId: string) {
+    event.preventDefault();
+    setConsentSubmitting(true);
+
+    try {
+      const record = await apiFetch<ConsentRecord>(`/contacts/${contactId}/consent`, {
+        method: "POST",
+        body: JSON.stringify({
+          channel: consentForm.channel,
+          status: consentForm.status,
+          source: consentForm.source || null,
+        }),
+      });
+      setConsentHistory((current) => [record, ...current]);
+      setConsentForm(EMPTY_CONSENT_FORM);
+      showToast("success", "Consent recorded.");
+    } catch {
+      showToast("error", "Could not record consent.");
+    } finally {
+      setConsentSubmitting(false);
+    }
   }
 
   async function handleAttachTag(contactId: string, tagId: string) {
@@ -448,6 +499,80 @@ export function ContactsPage() {
                     ))}
                   </dl>
                 )}
+
+                <div style={{ marginBottom: 16 }}>
+                  <p className={styles.label}>Consent history</p>
+                  {consentLoading && <p className={styles.emptyState}>Loading…</p>}
+                  {!consentLoading && consentHistory.length === 0 && (
+                    <p className={styles.emptyState}>No consent recorded yet.</p>
+                  )}
+                  {!consentLoading && consentHistory.length > 0 && (
+                    <ul className={styles.ruleList}>
+                      {consentHistory.map((record) => (
+                        <li key={record.id}>
+                          {record.channel}: {record.status}
+                          {record.source ? ` (${record.source})` : ""} —{" "}
+                          {new Date(record.recorded_at).toLocaleString()}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {canManage && (
+                    <form
+                      className={styles.manageRow}
+                      onSubmit={(event) => handleRecordConsent(event, contact.id)}
+                    >
+                      <select
+                        className={styles.select}
+                        aria-label="Consent channel"
+                        value={consentForm.channel}
+                        disabled={consentSubmitting}
+                        onChange={(event) =>
+                          setConsentForm({
+                            ...consentForm,
+                            channel: event.target.value as ConsentFormState["channel"],
+                          })
+                        }
+                      >
+                        <option value="EMAIL">Email</option>
+                        <option value="SMS">SMS</option>
+                      </select>
+                      <select
+                        className={styles.select}
+                        aria-label="Consent status"
+                        value={consentForm.status}
+                        disabled={consentSubmitting}
+                        onChange={(event) =>
+                          setConsentForm({
+                            ...consentForm,
+                            status: event.target.value as ConsentFormState["status"],
+                          })
+                        }
+                      >
+                        <option value="GRANTED">Granted</option>
+                        <option value="WITHDRAWN">Withdrawn</option>
+                        <option value="UNKNOWN">Unknown</option>
+                      </select>
+                      <input
+                        className={styles.input}
+                        placeholder="Source (optional)"
+                        aria-label="Consent source"
+                        value={consentForm.source}
+                        disabled={consentSubmitting}
+                        onChange={(event) =>
+                          setConsentForm({ ...consentForm, source: event.target.value })
+                        }
+                      />
+                      <button
+                        type="submit"
+                        className={styles.toggleButton}
+                        disabled={consentSubmitting}
+                      >
+                        Record consent
+                      </button>
+                    </form>
+                  )}
+                </div>
 
                 {canManage ? (
                   <form

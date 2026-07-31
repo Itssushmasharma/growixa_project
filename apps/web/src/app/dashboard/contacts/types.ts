@@ -65,6 +65,22 @@ export interface ContactImportRow {
   error_message: string | null;
 }
 
+export interface ConsentRecord {
+  id: string;
+  channel: "EMAIL" | "SMS";
+  status: "GRANTED" | "WITHDRAWN" | "UNKNOWN";
+  source: string | null;
+  recorded_at: string;
+}
+
+export interface SuppressionEntry {
+  id: string;
+  email: string;
+  reason: "UNSUBSCRIBED" | "BOUNCED" | "COMPLAINED" | "MANUAL";
+  contact_id: string | null;
+  suppressed_at: string;
+}
+
 export interface Contact {
   id: string;
   email: string;
