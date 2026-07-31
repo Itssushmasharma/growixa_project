@@ -1,9 +1,17 @@
 import uuid
+from collections.abc import Sequence
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from growixa_api.contacts.models import Contact, ContactCustomField, ContactList, Tag
+from growixa_api.contacts.models import (
+    Contact,
+    ContactCustomField,
+    ContactList,
+    Segment,
+    SegmentRule,
+    Tag,
+)
 from growixa_api.contacts.schemas import (
     AddListMemberIn,
     AttachTagIn,
@@ -14,6 +22,9 @@ from growixa_api.contacts.schemas import (
     ContactUpdateIn,
     CustomFieldIn,
     CustomFieldOut,
+    SegmentIn,
+    SegmentOut,
+    SegmentRuleOut,
     TagIn,
     TagOut,
     UpdateContactStatusIn,
@@ -24,6 +35,8 @@ from growixa_api.contacts.services import (
     DuplicateEmailError,
     DuplicateFieldKeyError,
     DuplicateTagNameError,
+    InvalidSegmentRuleError,
+    SegmentNotFoundError,
     TagNotFoundError,
     UnknownCustomFieldError,
 )
@@ -32,13 +45,17 @@ from growixa_api.contacts.services import attach_tag_to_contact as attach_tag_se
 from growixa_api.contacts.services import create_custom_field as create_custom_field_service
 from growixa_api.contacts.services import create_list as create_list_service
 from growixa_api.contacts.services import create_or_update_contact as create_or_update_service
+from growixa_api.contacts.services import create_segment_with_rules as create_segment_service
 from growixa_api.contacts.services import create_tag as create_tag_service
 from growixa_api.contacts.services import detach_tag_from_contact as detach_tag_service
 from growixa_api.contacts.services import get_contact_with_fields as get_contact_service
 from growixa_api.contacts.services import get_list_with_count as get_list_service
+from growixa_api.contacts.services import get_segment_with_details as get_segment_service
 from growixa_api.contacts.services import list_contacts_with_fields as list_contacts_service
 from growixa_api.contacts.services import list_custom_fields as list_custom_fields_service
 from growixa_api.contacts.services import list_lists_with_counts as list_lists_service
+from growixa_api.contacts.services import list_segment_members as list_segment_members_service
+from growixa_api.contacts.services import list_segments_with_details as list_segments_service
 from growixa_api.contacts.services import list_tags as list_tags_service
 from growixa_api.contacts.services import (
     remove_contact_from_list as remove_contact_from_list_service,
@@ -78,6 +95,20 @@ def _list_to_out(contact_list: ContactList, member_count: int) -> ContactListOut
         member_count=member_count,
         created_at=contact_list.created_at,
         updated_at=contact_list.updated_at,
+    )
+
+
+def _segment_to_out(
+    segment: Segment, rules: Sequence[SegmentRule], member_count: int
+) -> SegmentOut:
+    return SegmentOut(
+        id=segment.id,
+        name=segment.name,
+        type=segment.type,
+        member_count=member_count,
+        created_at=segment.created_at,
+        updated_at=segment.updated_at,
+        rules=[SegmentRuleOut.model_validate(rule) for rule in rules],
     )
 
 
@@ -198,6 +229,63 @@ async def remove_list_member_route(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Contact not found") from exc
 
     return _list_to_out(contact_list, count)
+
+
+@router.get("/segments", response_model=list[SegmentOut])
+async def list_segments_route(
+    _actor_id: uuid.UUID = Depends(_require_view),
+    session: AsyncSession = Depends(get_session),
+) -> list[SegmentOut]:
+    details = await list_segments_service(session)
+    return [_segment_to_out(segment, rules, count) for segment, rules, count in details]
+
+
+@router.post("/segments", response_model=SegmentOut, status_code=status.HTTP_201_CREATED)
+async def create_segment_route(
+    payload: SegmentIn,
+    actor_id: uuid.UUID = Depends(_require_manage),
+    session: AsyncSession = Depends(get_session),
+) -> SegmentOut:
+    try:
+        segment, rules, count = await create_segment_service(
+            session,
+            actor_id=actor_id,
+            name=payload.name,
+            type_=payload.type,
+            rules=[(r.field, r.operator, r.value) for r in payload.rules],
+        )
+    except InvalidSegmentRuleError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
+
+    return _segment_to_out(segment, rules, count)
+
+
+@router.get("/segments/{segment_id}", response_model=SegmentOut)
+async def get_segment_route(
+    segment_id: uuid.UUID,
+    _actor_id: uuid.UUID = Depends(_require_view),
+    session: AsyncSession = Depends(get_session),
+) -> SegmentOut:
+    try:
+        segment, rules, count = await get_segment_service(session, segment_id)
+    except SegmentNotFoundError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Segment not found") from exc
+
+    return _segment_to_out(segment, rules, count)
+
+
+@router.get("/segments/{segment_id}/members", response_model=list[ContactOut])
+async def list_segment_members_route(
+    segment_id: uuid.UUID,
+    _actor_id: uuid.UUID = Depends(_require_view),
+    session: AsyncSession = Depends(get_session),
+) -> list[ContactOut]:
+    try:
+        snapshots = await list_segment_members_service(session, segment_id)
+    except SegmentNotFoundError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Segment not found") from exc
+
+    return [_to_out(contact, fields, tags) for contact, fields, tags in snapshots]
 
 
 @router.get("", response_model=list[ContactOut])

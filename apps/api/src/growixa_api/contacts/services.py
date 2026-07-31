@@ -1,37 +1,58 @@
 import uuid
 from collections.abc import Sequence
+from datetime import datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from growixa_api.audit.services import record_event
-from growixa_api.contacts.models import Contact, ContactCustomField, ContactList, Tag
+from growixa_api.contacts.models import (
+    Contact,
+    ContactCustomField,
+    ContactList,
+    Segment,
+    SegmentRule,
+    Tag,
+)
 from growixa_api.contacts.repositories import (
+    CUSTOM_FIELD_RULE_OPERATORS,
+    SEGMENT_RULE_FIELD_OPERATORS,
     add_list_member,
+    add_segment_members,
     apply_contact_fields,
     attach_tag,
+    count_dynamic_segment_members,
     count_list_members,
+    count_saved_segment_members,
     create_contact,
     detach_tag,
+    evaluate_segment_rules,
     get_contact_by_email,
     get_contact_by_id,
     get_contact_list_by_id,
     get_custom_field_by_key,
+    get_segment_by_id,
     get_tag_by_id,
     get_tag_by_name,
     get_tag_names_for_contact,
+    list_saved_segment_members,
+    list_segment_rules,
     remove_list_member,
     upsert_field_value,
 )
+from growixa_api.contacts.repositories import add_segment_rule as add_segment_rule_row
 from growixa_api.contacts.repositories import create_contact_list as create_contact_list_row
 from growixa_api.contacts.repositories import create_custom_field as create_custom_field_row
+from growixa_api.contacts.repositories import create_segment as create_segment_row
 from growixa_api.contacts.repositories import create_tag as create_tag_row
 from growixa_api.contacts.repositories import get_field_values_for_contact as _get_field_values
 from growixa_api.contacts.repositories import list_contact_lists as list_contact_lists_rows
 from growixa_api.contacts.repositories import list_contacts as list_contacts_rows
 from growixa_api.contacts.repositories import list_custom_fields as list_custom_fields_rows
+from growixa_api.contacts.repositories import list_segments as list_segments_rows
 from growixa_api.contacts.repositories import list_tags as list_tags_rows
 
 ContactSnapshot = tuple[Contact, dict[str, str], list[str]]
+SegmentDetail = tuple[Segment, Sequence[SegmentRule], int]
 
 
 class DuplicateEmailError(Exception):
@@ -55,6 +76,14 @@ class TagNotFoundError(Exception):
 
 
 class ContactListNotFoundError(Exception):
+    pass
+
+
+class SegmentNotFoundError(Exception):
+    pass
+
+
+class InvalidSegmentRuleError(Exception):
     pass
 
 
@@ -333,6 +362,112 @@ async def add_contact_to_list(
 
     count = await count_list_members(session, list_id)
     return contact_list, count
+
+
+async def _validate_segment_rule(
+    session: AsyncSession, *, field: str, operator: str, value: str
+) -> None:
+    if field.startswith("custom_field:"):
+        key = field.split(":", 1)[1]
+        existing = await get_custom_field_by_key(session, key)
+        if existing is None:
+            raise InvalidSegmentRuleError(f"Unknown custom field key: {key}")
+        allowed = CUSTOM_FIELD_RULE_OPERATORS
+    else:
+        allowed = SEGMENT_RULE_FIELD_OPERATORS.get(field, set())
+        if not allowed:
+            raise InvalidSegmentRuleError(f"Unsupported segment rule field: {field}")
+
+    if operator not in allowed:
+        raise InvalidSegmentRuleError(f"Unsupported operator '{operator}' for field '{field}'")
+
+    if field == "created_at":
+        try:
+            datetime.fromisoformat(value)
+        except ValueError as exc:
+            raise InvalidSegmentRuleError(
+                f"Invalid ISO-8601 date value for created_at: {value}"
+            ) from exc
+
+
+async def _segment_member_count(
+    session: AsyncSession, segment: Segment, rules: Sequence[SegmentRule]
+) -> int:
+    if segment.type == "SAVED":
+        return await count_saved_segment_members(session, segment.id)
+    return await count_dynamic_segment_members(session, rules)
+
+
+async def create_segment_with_rules(
+    session: AsyncSession,
+    *,
+    actor_id: uuid.UUID,
+    name: str,
+    type_: str,
+    rules: list[tuple[str, str, str]],
+) -> SegmentDetail:
+    for field, operator, value in rules:
+        await _validate_segment_rule(session, field=field, operator=operator, value=value)
+
+    segment = await create_segment_row(session, name=name, type_=type_, created_by_user_id=actor_id)
+    rule_rows = [
+        await add_segment_rule_row(session, segment_id=segment.id, field=f, operator=o, value=v)
+        for f, o, v in rules
+    ]
+
+    if type_ == "SAVED":
+        matches = await evaluate_segment_rules(session, rule_rows)
+        await add_segment_members(
+            session, segment_id=segment.id, contact_ids=[c.id for c in matches]
+        )
+
+    await record_event(
+        session,
+        actor_user_id=actor_id,
+        action="segment.created",
+        entity_type="segment",
+        entity_id=segment.id,
+        metadata={"type": type_, "rule_count": len(rule_rows)},
+    )
+    await session.commit()
+
+    count = await _segment_member_count(session, segment, rule_rows)
+    return segment, rule_rows, count
+
+
+async def get_segment_with_details(session: AsyncSession, segment_id: uuid.UUID) -> SegmentDetail:
+    segment = await get_segment_by_id(session, segment_id)
+    if segment is None:
+        raise SegmentNotFoundError
+    rules = await list_segment_rules(session, segment_id)
+    count = await _segment_member_count(session, segment, rules)
+    return segment, rules, count
+
+
+async def list_segments_with_details(session: AsyncSession) -> list[SegmentDetail]:
+    segments = await list_segments_rows(session)
+    details = []
+    for segment in segments:
+        rules = await list_segment_rules(session, segment.id)
+        count = await _segment_member_count(session, segment, rules)
+        details.append((segment, rules, count))
+    return details
+
+
+async def list_segment_members(
+    session: AsyncSession, segment_id: uuid.UUID
+) -> list[ContactSnapshot]:
+    segment = await get_segment_by_id(session, segment_id)
+    if segment is None:
+        raise SegmentNotFoundError
+
+    if segment.type == "SAVED":
+        contacts = await list_saved_segment_members(session, segment_id)
+    else:
+        rules = await list_segment_rules(session, segment_id)
+        contacts = await evaluate_segment_rules(session, rules)
+
+    return [await _snapshot(session, contact) for contact in contacts]
 
 
 async def remove_contact_from_list(

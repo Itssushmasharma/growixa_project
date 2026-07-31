@@ -86,3 +86,34 @@ class ContactListOut(BaseModel):
 
 class AddListMemberIn(BaseModel):
     contact_id: uuid.UUID
+
+
+class SegmentRuleIn(BaseModel):
+    field: str
+    operator: str
+    value: str
+
+
+class SegmentRuleOut(BaseModel):
+    model_config = {"from_attributes": True}
+
+    id: uuid.UUID
+    field: str
+    operator: str
+    value: str
+
+
+class SegmentIn(BaseModel):
+    name: str
+    type: Literal["DYNAMIC", "SAVED"]
+    rules: list[SegmentRuleIn] = Field(default_factory=list)
+
+
+class SegmentOut(BaseModel):
+    id: uuid.UUID
+    name: str
+    type: str
+    member_count: int
+    created_at: datetime
+    updated_at: datetime
+    rules: list[SegmentRuleOut]
