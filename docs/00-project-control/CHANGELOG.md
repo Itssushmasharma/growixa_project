@@ -10,6 +10,32 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
+## 2026-07-31 — GRX-CONTACT-004: CSV contact import
+
+- Added `contact_imports`/`contact_import_rows` tables (migration `b11cffc2cbcf`).
+  `POST /contacts/imports` takes a multipart upload (`file` + a `column_mapping` JSON
+  string mapping CSV headers to `email`/`first_name`/`last_name`/`phone`/`source`/
+  `custom_field:<key>`), processes it synchronously, and returns imported/updated/
+  skipped/error counts plus per-row detail via `GET /contacts/imports/{id}/rows`.
+- Row outcomes: a fully blank row is `SKIPPED`; a row with no email value is `ERROR`;
+  an email that already exists reuses `create_or_update_contact`'s dedup logic and is
+  marked `UPDATED`, a new email `IMPORTED`. A `column_mapping` missing an `email`
+  target, or naming an unknown `custom_field:<key>`, returns 400 before any row runs.
+- `GET /contacts/imports` and `GET /contacts/imports/{id}` expose import history. No
+  new permissions — reuses `contacts.manage`/`contacts.view`.
+- Added the `python-multipart` dependency (first use of FastAPI file/form uploads in
+  this codebase) and extended ruff's `flake8-bugbear` immutable-calls allowlist with
+  `fastapi.File`/`fastapi.Form`.
+- `ruff`/`mypy` clean; `pytest` 93 passed, 3 skipped (8 new tests); `alembic check` →
+  no drift.
+- Live-verified against rebuilt Compose containers: a 3-row CSV (one new email, one
+  pre-existing email, one blank email) mapped to `email`/`first_name`/
+  `custom_field:plan` produced `imported_count=1`, `updated_count=1`, `error_count=1`;
+  the new contact carried its custom field and the existing contact's first name and
+  custom field were both updated; a mapping without an `email` target returned 400.
+- This closes out Sprint 2's backend CSV import slice. `GRX-CONTACT-005` (consent &
+  suppression) is next `READY`. Commit `52fb417`.
+
 ## 2026-07-31 — GRX-CONTACT-003: Segments
 
 - Added `segments`/`segment_rules`/`segment_members` tables (migration `18cf808f2b87`)

@@ -9,50 +9,55 @@
 
 ## Task worked on
 
-`GRX-CONTACT-003` — Segments (dynamic and saved). Picked immediately after
-`GRX-CONTACT-002` per the user's "go".
+`GRX-CONTACT-004` — CSV contact import. Picked immediately after `GRX-CONTACT-003` per
+the user's "Yes continue".
 
 ## Work completed
 
-- New tables (migration `18cf808f2b87`): `segments`, `segment_rules`, `segment_members`.
-- Rule evaluator (`contacts/repositories.py`'s `build_rule_condition` +
-  `evaluate_segment_rules`/`count_dynamic_segment_members`) translates a validated
-  `(field, operator, value)` triple into a SQLAlchemy condition over `Contact`. Supported
-  fields: `status`/`source` (equals), `email` (equals/contains), `tag` (equals),
-  `created_at` (before/after, ISO-8601 value), `custom_field:<key>` (equals/contains,
-  key must exist). All rules on a segment are AND-combined only — no OR/grouping, per
-  the Slice 2 scope decision made during planning.
-- `POST /contacts/segments` validates every rule before creating anything
-  (`_validate_segment_rule` in `services.py`) — unsupported field, wrong operator for a
-  field, unknown custom-field key, or an unparseable `created_at` date all return 400.
-- `DYNAMIC` segments: membership computed live on every `GET`. `SAVED` segments:
-  membership evaluated once at creation and written into `segment_members`, never
-  re-evaluated automatically (no scheduler exists yet — that's Slice 4).
-- Endpoints: `GET`/`POST /contacts/segments`, `GET /contacts/segments/{id}`, `GET
-  /contacts/segments/{id}/members` (returns full `ContactOut` snapshots, reusing the
-  same `_snapshot` helper as contacts/tags/lists).
+- New tables (migration `b11cffc2cbcf`): `contact_imports`, `contact_import_rows`.
+- `POST /contacts/imports` accepts a multipart upload: `file` (the CSV) plus
+  `column_mapping` (a JSON-encoded string, since multipart forms can't carry nested
+  JSON directly) mapping CSV column headers to one of `email`/`first_name`/
+  `last_name`/`phone`/`source`/`custom_field:<key>`. Processing is synchronous —
+  no background job, since Slice 2 has no scheduler/queue wiring for this yet.
+- `_validate_column_mapping` (`contacts/services.py`) requires exactly one column
+  mapped to `email` and rejects unknown custom-field keys or unsupported targets,
+  all before a single `ContactImport` row is created (400, nothing partially written).
+- Per-row outcomes: a row where every mapped column is blank is `SKIPPED`; a row
+  with no email value is `ERROR` ("Missing required email value"); everything else
+  calls `create_or_update_contact` (reusing the same email-dedup logic as the
+  regular contact API) — existing emails are marked `UPDATED`, new emails
+  `IMPORTED`. An `UnknownCustomFieldError` mid-row (only reachable if a field is
+  deleted between mapping validation and row processing) is caught per-row as
+  `ERROR` rather than aborting the whole import.
+- Endpoints: `GET`/`POST /contacts/imports`, `GET /contacts/imports/{id}` (summary +
+  counts), `GET /contacts/imports/{id}/rows` (per-row detail for reviewing errors).
+  No new permissions — reuses `contacts.manage`/`contacts.view`.
 
 ## A scope note worth flagging
 
-Slice 2 planning (this session, `GRX-CONTACT-003`'s tracker row) had named
-`consent_status` as an example segment-rule field. It is **not implemented** — the
-`consent_records` table doesn't exist until `GRX-CONTACT-005`. Using `consent_status` as
-a rule field today correctly 400s as "unsupported field" rather than silently matching
-zero contacts. Extend `SEGMENT_RULE_FIELD_OPERATORS` in `repositories.py` once
-`GRX-CONTACT-005` lands.
+Import processing runs inline inside the request handler. For the CSV sizes expected
+in Slice 2 (manual internal-team imports, not bulk data migration) this is fine; if
+large-file imports become a requirement later, this is the place to move onto the
+existing RabbitMQ worker (`apps/worker/`) instead of extending the synchronous path.
 
 ## Files changed
 
-- `apps/api/src/growixa_api/contacts/models.py` (added `Segment`, `SegmentRule`,
-  `SegmentMember`; `SegmentRule.segment_id` has `index=True`)
-- `apps/api/src/growixa_api/contacts/repositories.py` (rule evaluator + segment CRUD)
-- `apps/api/src/growixa_api/contacts/services.py` (`SegmentDetail` type alias; rule
-  validation; `create_segment_with_rules`, `get_segment_with_details`,
-  `list_segments_with_details`, `list_segment_members`)
-- `apps/api/src/growixa_api/contacts/schemas.py` (`SegmentRuleIn`/`Out`, `SegmentIn`/`Out`)
-- `apps/api/src/growixa_api/contacts/api.py` (new segment routes, `_segment_to_out`)
-- `apps/api/migrations/versions/18cf808f2b87_segments.py` (new)
-- `apps/api/tests/test_contacts_segments.py` (new, 9 tests)
+- `apps/api/src/growixa_api/contacts/models.py` (added `ContactImport`,
+  `ContactImportRow`; `ContactImportRow.import_id` has `index=True`)
+- `apps/api/src/growixa_api/contacts/repositories.py` (`create_import`,
+  `get_import_by_id`, `list_imports`, `add_import_row`, `list_import_rows`)
+- `apps/api/src/growixa_api/contacts/services.py` (`InvalidColumnMappingError`,
+  `ContactImportNotFoundError`, `_validate_column_mapping`,
+  `import_contacts_from_csv`, `get_import`, `list_contact_imports`,
+  `list_contact_import_rows`)
+- `apps/api/src/growixa_api/contacts/schemas.py` (`ContactImportOut`,
+  `ContactImportRowOut`)
+- `apps/api/src/growixa_api/contacts/api.py` (new `/imports` routes, `_import_to_out`)
+- `apps/api/pyproject.toml` (added `python-multipart` dependency; extended
+  `flake8-bugbear` immutable-calls allowlist with `fastapi.File`/`fastapi.Form`)
+- `apps/api/migrations/versions/b11cffc2cbcf_contact_imports.py` (new)
+- `apps/api/tests/test_contacts_import.py` (new, 8 tests)
 - `docs/00-project-control/MASTER_TASK_TRACKER.md`, `PROJECT_STATUS.md`, `CHANGELOG.md`
   (this update)
 
@@ -60,39 +65,44 @@ zero contacts. Extend `SEGMENT_RULE_FIELD_OPERATORS` in `repositories.py` once
 
 ```bash
 cd apps/api
-.venv/bin/alembic revision --autogenerate -m "segments"
-# hand-added an index on segment_rules.segment_id, then added index=True to the ORM
-# model to match (alembic check caught the model/migration mismatch on the first pass)
+uv pip install --python .venv/bin/python -e ".[dev]"   # installs python-multipart;
+# venv has no pip binary (created via `uv venv` without --seed) — uv is the working
+# install path for this project's backend venv
+.venv/bin/alembic revision --autogenerate -m "contact imports"
 .venv/bin/alembic upgrade head
 .venv/bin/ruff check . && .venv/bin/ruff format . && .venv/bin/mypy .
-.venv/bin/pytest -q   # 85 passed, 3 skipped (93% coverage)
+.venv/bin/pytest -q   # 93 passed, 3 skipped
 .venv/bin/alembic check   # no drift
 
 cd ../..
 podman compose up -d --build api
 # full pytest run wiped admin@growixa.local again (same as after every prior task this
-# session) — recreated it
-# live curl: create a tag, tag contact A, create both a DYNAMIC and a SAVED segment on
-# the same rule (both member_count 1) -> tag contact B (created after both segments) ->
-# DYNAMIC now member_count 2, SAVED still 1 -> Analyst 200/403 split -> Viewer 403
-# cleaned up all smoke-test rows afterward
+# session) — recreated it via a Python one-liner (User + UserRole join row, since
+# roles aren't a direct User column)
+# live curl: created a custom field, pre-created one contact, uploaded a 3-row CSV
+# (new email / existing email / blank email) -> imported_count=1, updated_count=1,
+# error_count=1, per-row detail matched, new contact carried its custom field,
+# existing contact's first_name and custom field both updated, mapping without an
+# email target returned 400 -> cleaned up all smoke-test rows afterward
 ```
 
 ## Test results
 
-`ruff`/`mypy` clean. `pytest` 85 passed, 3 skipped (93% coverage, 9 new tests).
-`alembic check` → no drift. Live-verified end-to-end against rebuilt Compose containers,
-including the DYNAMIC-vs-SAVED live/frozen distinction that's the whole point of this task.
+`ruff`/`mypy` clean. `pytest` 93 passed, 3 skipped (8 new tests). `alembic check` → no
+drift. Live-verified end-to-end against rebuilt Compose containers, including the
+create-vs-update dedup distinction and the blank-row/missing-email row outcomes that
+are the point of this task.
 
 ## Migrations
 
-`18cf808f2b87` — `segments`, `segment_rules`, `segment_members` tables, plus an index on
-`segment_rules.segment_id`. No permission seed needed — existing `contacts.manage`/
-`contacts.view` already cover segments.
+`b11cffc2cbcf` — `contact_imports`, `contact_import_rows` tables, plus an index on
+`contact_import_rows.import_id`. No permission seed needed — existing
+`contacts.manage`/`contacts.view` already cover imports.
 
 ## Decisions
 
-None new beyond the scope note above (declined to implement `consent_status` early).
+Import processing is synchronous within the request (see scope note above) — no new
+decision record, just a documented trade-off for Slice 2's expected CSV sizes.
 
 ## Blockers
 
@@ -109,15 +119,17 @@ None.
 
 ## Current state
 
-`GRX-CONTACT-003` is `DONE`. This closes out the backend half of Slice 2's core
-contact-organization features (contacts, tags, lists, segments). Sprint 2's next `READY`
-task is `GRX-CONTACT-004` (CSV contact import).
+`GRX-CONTACT-004` is `DONE`. This closes out Sprint 2's backend-only
+contact-organization slice (contacts, tags, lists, segments, CSV import).
+`GRX-CONTACT-005` (consent & suppression) is next `READY` — its only dependency,
+`GRX-CONTACT-001`, has been `DONE` since early in this sprint, so it was flipped from
+`BACKLOG` to `READY` in this update.
 
 ## Exact next task
 
-`GRX-CONTACT-004` — CSV contact import (`contact_imports`, `contact_import_rows` tables +
-API; upload, column mapping, validation, per-row status, import history). No explicit
-user direction beyond continuing Sprint 2; awaiting confirmation before picking it up.
+`GRX-CONTACT-005` — Consent & suppression (`consent_records` insert-only,
+`suppression_entries` upsert-on-email tables + API). No explicit user direction beyond
+continuing Sprint 2; awaiting confirmation before picking it up.
 
 ## Resume commands
 
@@ -130,4 +142,4 @@ podman compose up -d
 
 ## Latest commit
 
-`a725e0e` — feat(contacts): dynamic and saved segments (GRX-CONTACT-003)
+`52fb417` — feat(contacts): CSV contact import (GRX-CONTACT-004)
