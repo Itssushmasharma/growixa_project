@@ -9,99 +9,85 @@
 
 ## Task worked on
 
-`GRX-CONTACT-005` — Consent & suppression. Picked immediately after `GRX-CONTACT-004`
-per the user's "start".
+`GRX-CONTACT-006` — Contacts frontend. Picked immediately after `GRX-CONTACT-005` per
+the user's "start" / "yes".
 
 ## Work completed
 
-- New tables (migration `97642610fb46`): `consent_records`, `suppression_entries` —
-  built exactly to DATA_MODEL.md's §consent_records/§suppression_entries spec written
-  during Slice 2 planning, no design deviation.
-- `consent_records` is insert-only (mirrors `audit_logs`'s pattern): `POST
-  /contacts/{id}/consent` always inserts a new row (channel `EMAIL`/`SMS`, status
-  `GRANTED`/`WITHDRAWN`/`UNKNOWN`, optional `source`); `GET /contacts/{id}/consent`
-  returns the full history newest-first. There is no separate "current status" field
-  or endpoint — the most recent row per channel is the current status by definition.
-- `suppression_entries` is upsert-on-email: `POST /contacts/suppression` checks for an
-  existing row by the unique `email` index — if found, updates `reason`,
-  `suppressed_by_user_id`, and `suppressed_at` (set explicitly in Python, not a DB
-  `onupdate` trigger) in place; if not, inserts a new row. Verified live that
-  re-suppressing the same email returns the same `id` with the new reason, not a
-  second row. `contact_id` is optional (a hard-bounced address may have no contact
-  record) but is validated to exist via `ContactNotFoundError` when supplied.
-- `ContactOut` gained `is_suppressed: bool`, satisfying the sprint's explicit
-  acceptance criterion that suppression be "visibly flagged wherever contacts are
-  shown." This required widening `ContactSnapshot` (services.py) from a 3-tuple to a
-  4-tuple and updating `_to_out` plus every one of its ~9 call sites in `api.py`.
-  Existing tests still passed unmodified — none asserted the full `ContactOut` JSON
-  body by exact equality, only individual keys.
+- `apps/web/src/app/dashboard/contacts/`: `types.ts` (`Contact`, `MeResponse`),
+  `contacts-page.tsx` (`ContactsPage`), `contacts-page.module.css`, `page.tsx`,
+  `contacts-page.test.tsx`.
+- `ContactsPage` is a single client component (no separate `/[id]` detail route —
+  an expandable inline panel per row satisfies "list/detail/create/edit" without a
+  second page): a header with contact count and a manage-gated "+ Add contact"
+  button; an inline create form (email, first/last name, phone); a row per contact
+  with avatar initials, name, email, an `is_suppressed` badge when set, a status
+  badge, and a "View" toggle; and an expandable detail panel showing created/updated
+  timestamps, read-only tag chips, read-only custom fields, and — only when
+  `contacts.manage` is held — an inline edit form (email/first/last/phone) plus an
+  archive/activate button. A view-only user instead sees "You have view-only access
+  to contacts." in the panel.
+- Sidebar: added a new "AUDIENCE" section with a "Contacts" link gated on
+  `contacts.view`. Page title map got a `/dashboard/contacts` → "Contacts" entry.
 
-## A design choice worth flagging
+## A scope boundary worth flagging
 
-`suppression_entries.suppressed_at` intentionally has **no** `onupdate=func.now()`.
-This session hit a recurring `MissingGreenlet` bug on columns with that pattern
-(`updated_at` on `contacts`/`contact_lists`/`segments` all needed a `session.refresh()`
-after commit). Since the suppression upsert is already hand-written Python logic
-setting fields explicitly, `suppressed_at` is just set to `datetime.now(UTC)` directly
-in `suppress_email()` — sidestepping the whole bug class rather than working around it.
+Tags, custom fields, and `is_suppressed` are all already present on every
+`ContactOut` response (they've existed since `GRX-CONTACT-002`/`005`), so the detail
+panel displays them — but only read-only. Assigning/removing tags, editing custom
+field values, and managing consent/suppression through the UI are explicitly
+`GRX-CONTACT-007`/`009`'s scope, not this task's. Keeping that boundary meant no
+scope creep even though the data was sitting right there in the API response.
 
 ## Files changed
 
-- `apps/api/src/growixa_api/contacts/models.py` (added `ConsentRecord`,
-  `SuppressionEntry`; `ConsentRecord.contact_id` has `index=True`)
-- `apps/api/src/growixa_api/contacts/repositories.py` (`create_consent_record`,
-  `list_consent_records`, `get_suppression_by_email`, `list_suppression_entries`,
-  `is_email_suppressed`, `create_suppression_entry`)
-- `apps/api/src/growixa_api/contacts/services.py` (`_snapshot` now also returns
-  `is_suppressed`; `record_consent`, `get_consent_history`, `suppress_email`,
-  `list_suppressions`; `ContactSnapshot` widened to a 4-tuple)
-- `apps/api/src/growixa_api/contacts/schemas.py` (`ConsentRecordIn`/`Out`,
-  `SuppressionEntryIn`/`Out`; `ContactOut.is_suppressed`)
-- `apps/api/src/growixa_api/contacts/api.py` (`/{contact_id}/consent`,
-  `/suppression` routes; `_to_out` and all call sites updated for the 4-tuple)
-- `apps/api/migrations/versions/97642610fb46_consent_and_suppression.py` (new)
-- `apps/api/tests/test_contacts_consent_and_suppression.py` (new, 8 tests)
+- `apps/web/src/app/dashboard/contacts/types.ts` (new)
+- `apps/web/src/app/dashboard/contacts/contacts-page.tsx` (new)
+- `apps/web/src/app/dashboard/contacts/contacts-page.module.css` (new)
+- `apps/web/src/app/dashboard/contacts/page.tsx` (new)
+- `apps/web/src/app/dashboard/contacts/contacts-page.test.tsx` (new, 6 tests)
+- `apps/web/src/app/dashboard/sidebar.tsx` (added "AUDIENCE" section/"Contacts" link)
+- `apps/web/src/app/dashboard/page-title.tsx` (added contacts page title)
 - `docs/00-project-control/MASTER_TASK_TRACKER.md`, `PROJECT_STATUS.md`, `CHANGELOG.md`
   (this update)
 
 ## Commands executed
 
 ```bash
-cd apps/api
-.venv/bin/alembic revision --autogenerate -m "consent and suppression"
-.venv/bin/alembic upgrade head
-.venv/bin/ruff check . --fix && .venv/bin/ruff format . && .venv/bin/mypy .
-.venv/bin/pytest -q   # 101 passed, 3 skipped
-.venv/bin/alembic check   # no drift
+cd apps/web
+npm run lint && npm run typecheck && npm run format && npm run format:check
+npx vitest run src/app/dashboard/contacts/contacts-page.test.tsx   # 6 passed
+npm run test   # 19 passed (full frontend suite)
 
-cd ../..
-podman compose up -d --build api
-# full pytest run wiped admin@growixa.local again (same as after every prior task this
-# session) — recreated it via the same User + UserRole one-liner as GRX-CONTACT-004
-# live curl: recorded GRANTED then WITHDRAWN consent -> history newest-first ->
-# suppressed a contact's email -> is_suppressed true -> re-suppressed with a
-# different reason -> same id, reason updated, no duplicate -> suppressed an email
-# with no contact -> contact_id null -> unknown contact_id on suppress -> 404 ->
-# cleaned up all smoke-test rows afterward
+cd ..
+podman compose restart web   # dev server's file watcher hadn't picked up the new
+# /dashboard/contacts route directory across the bind mount (20h-old container) —
+# a restart forced Next.js to re-scan and the route resolved on the next request
+# live browser check (see Test results below)
 ```
 
 ## Test results
 
-`ruff`/`mypy` clean. `pytest` 101 passed, 3 skipped (8 new tests). `alembic check` →
-no drift. Live-verified end-to-end against rebuilt Compose containers, including the
-insert-only consent history and the suppression upsert-not-duplicate behavior that are
-the point of this task.
+`eslint`/`tsc --noEmit`/`prettier --check` clean. `vitest` 19 passed (6 new). Live
+browser-verified against the running dev server end to end (see below).
 
-## Migrations
+## Live verification detail
 
-`97642610fb46` — `consent_records` (with an index on `contact_id`), `suppression_entries`
-(unique on `email`) tables. No permission seed needed — existing `contacts.manage`/
-`contacts.view` already cover consent/suppression per RBAC.md.
+Logged in as the Super Admin smoke account, opened Contacts (now in the sidebar's
+new AUDIENCE section), created a contact via the inline form, opened its detail panel
+and edited the first name (the "Updated" timestamp changed to confirm the PATCH
+landed), archived it (status badge → "Archived", button → "Activate", toast
+confirmed), and re-activated it. Then created a throwaway Analyst user directly in
+the database, logged in as them, confirmed the same contact was visible with no
+"+ Add contact" button, and confirmed the detail panel showed "You have view-only
+access to contacts." instead of the edit form. Cleaned up the smoke-test contact and
+the throwaway Analyst user afterward.
 
 ## Decisions
 
-None new — this task implemented Slice 2 planning's already-written spec verbatim, no
-scope questions arose during implementation.
+Detail is an expandable inline panel, not a separate `/dashboard/contacts/[id]`
+route — matches this codebase's existing pattern (Team page's inline row actions)
+and avoids an extra route for a Sprint-2-scoped, non-deep-linked view.
 
 ## Blockers
 
@@ -112,25 +98,23 @@ None.
 - Same carryover list as prior Slice 2 entries: possible latent `MissingGreenlet` in
   `company_profile` (background task filed, unresolved), `GRX-DEVOPS-001` still
   `IN_REVIEW`, `GRX-DOC-003` blocked on that push.
-- Running the full `pytest` suite locally continues to wipe manually created Compose
-  database rows via the migration round-trip test — same as every prior task this
-  session, not a new issue.
+- The web dev server's file watcher did not pick up the new route directory without
+  a container restart — noted here in case it recurs on the next frontend task; not
+  investigated further since a restart is a one-line fix.
 
 ## Current state
 
-`GRX-CONTACT-005` is `DONE`. This closes out **all** of Sprint 2's backend work —
-contacts, tags, lists, segments, CSV import, and consent/suppression are fully
-implemented, tested, and live-verified. `GRX-CONTACT-006` (contacts frontend) is next
-`READY` — its dependencies (`GRX-CONTACT-001`, `GRX-FOUND-004`) have both been `DONE`
-since earlier in the project, so it was flipped from `BACKLOG` to `READY` in this
-update. `GRX-CONTACT-007`/`008`/`009` (tags/lists/segments, CSV import, and
-consent/suppression frontends, respectively) remain `BACKLOG` behind `GRX-CONTACT-006`.
+`GRX-CONTACT-006` is `DONE`. Sprint 2's entire backend (contacts, tags, lists,
+segments, CSV import, consent/suppression) plus the base contacts frontend are done.
+`GRX-CONTACT-007` (tags/lists/segments frontend), `GRX-CONTACT-008` (CSV import
+frontend), and `GRX-CONTACT-009` (consent/suppression frontend) are all now `READY`
+— each depended only on `GRX-CONTACT-006` plus its own already-`DONE` backend task.
 
 ## Exact next task
 
-`GRX-CONTACT-006` — Contacts frontend (list/detail/create/edit UI, gated on
-`contacts.manage`/`contacts.view`). No explicit user direction beyond continuing
-Sprint 2; awaiting confirmation before picking it up.
+One of `GRX-CONTACT-007`/`008`/`009` (all `READY`, no ordering dependency between
+them). No explicit user direction on which to pick first beyond continuing Sprint 2;
+awaiting confirmation before picking one up.
 
 ## Resume commands
 
@@ -143,4 +127,4 @@ podman compose up -d
 
 ## Latest commit
 
-`30b5fc2` — feat(contacts): consent history and suppression list (GRX-CONTACT-005)
+`07550c0` — feat(contacts): contacts list/detail/create/edit frontend (GRX-CONTACT-006)

@@ -10,6 +10,32 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
+## 2026-07-31 — GRX-CONTACT-006: Contacts frontend
+
+- Built `ContactsPage` (`apps/web/src/app/dashboard/contacts/`): a list of contacts
+  with an inline "+ Add contact" create form and an expandable per-row detail/edit
+  panel. Page visibility is gated on `contacts.view`; the create form, edit fields,
+  and archive/activate button are gated on `contacts.manage` — a view-only user sees
+  a "You have view-only access to contacts." note in place of the edit form.
+- The detail panel shows created/updated timestamps and read-only tag chips/custom
+  fields (assigning tags or editing custom-field values through the UI is
+  `GRX-CONTACT-007`'s scope, not this task's) plus the contact's `is_suppressed` flag.
+- Added a new "AUDIENCE" sidebar section with a "Contacts" nav link (gated on
+  `contacts.view` alone — every role holding `contacts.manage` also holds
+  `contacts.view` per RBAC.md's role matrix, so one permission check covers both) and
+  a page-title entry.
+- `eslint`/`tsc --noEmit`/`prettier --check` clean; `vitest` 19 passed (6 new
+  component tests: list rendering, access-denied, view-only hides write controls,
+  create, edit, archive).
+- Live-verified against the rebuilt dev server: created a contact as Super Admin,
+  edited its name inline, archived then re-activated it (toast confirmation each
+  time), then logged in as a fresh Analyst and confirmed the same contact was visible
+  with no write controls.
+- This is the first of Sprint 2's four remaining frontend tasks.
+  `GRX-CONTACT-007`/`008`/`009` (tags/lists/segments, CSV import, and
+  consent/suppression frontends) all had their only frontend dependency
+  (`GRX-CONTACT-006`) satisfied and were flipped to `READY`. Commit `07550c0`.
+
 ## 2026-07-31 — GRX-CONTACT-005: Consent & suppression
 
 - Added `consent_records` (insert-only) and `suppression_entries` (upsert-on-email)
