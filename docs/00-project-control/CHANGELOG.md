@@ -10,6 +10,37 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
+## 2026-07-31 — GRX-CONTACT-007: Tags/lists/segments frontend
+
+- Extended `ContactsPage`'s detail panel with tag management: removable chips (an
+  `×` button calling `DELETE /contacts/{id}/tags/{tag_id}`, resolving the tag's id
+  from a fetched `/contacts/tags` list since `ContactOut.tags` only carries names), a
+  select to attach an existing tag, and an inline "+ New tag" form that creates a tag
+  and attaches it to the contact in one step.
+- Built `ListsPage` (`/dashboard/contacts/lists`): create a list, and per-list
+  add/remove-by-contact-picker controls. There is deliberately no member-browsing UI
+  — the backend only ever exposed `member_count` for `contact_lists`, not a
+  members-list endpoint (unlike segments), and adding one was judged out of this
+  task's frontend-only scope.
+- Built `SegmentsPage` (`/dashboard/contacts/segments`): a rule builder (field,
+  operator, value per row — operators filtered to match each field's allowed set,
+  with a `custom_field:<key>` sub-input when "Custom field" is selected), a segment
+  list with type/member-count badges and a rule-summary, and "View members" backed
+  by the existing `GET /contacts/segments/{id}/members`.
+- Refactored the per-page `contacts-page.module.css` into a shared
+  `shared.module.css` so contacts/lists/segments reuse one set of card, form, row,
+  and badge styles instead of duplicating them three times.
+- Added "Lists" and "Segments" to the sidebar's AUDIENCE section (gated
+  `contacts.view`) and their page-title entries.
+- `eslint`/`tsc --noEmit`/`prettier --check` clean; `vitest` 32 passed (13 new).
+- Live-verified against the rebuilt dev server: created a tag inline and attached it
+  to a contact, detached and reattached it via the dropdown; created a list and
+  added a contact (member count 0→1); created a DYNAMIC segment on `tag equals VIP`
+  and confirmed it matched the tagged contact, with "View members" showing the right
+  email; confirmed an Analyst sees all three pages' data with no write controls.
+- This closes GRX-CONTACT-007. `GRX-CONTACT-008` (CSV import frontend) and
+  `GRX-CONTACT-009` (consent/suppression frontend) remain `READY`. Commit `262d28a`.
+
 ## 2026-07-31 — GRX-CONTACT-006: Contacts frontend
 
 - Built `ContactsPage` (`apps/web/src/app/dashboard/contacts/`): a list of contacts
