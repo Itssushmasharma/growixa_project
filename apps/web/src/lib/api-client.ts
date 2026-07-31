@@ -16,13 +16,20 @@ export class ApiError extends Error {
  * check `response.ok` themselves.
  */
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+  // A FormData body (e.g. CSV import upload) needs the browser to set its own
+  // multipart/form-data Content-Type with the correct boundary — setting it manually
+  // to application/json here would break the upload.
+  const isFormData = init?.body instanceof FormData;
+
   const response = await fetch(`${getApiUrl()}${path}`, {
     ...init,
     credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-      ...init?.headers,
-    },
+    headers: isFormData
+      ? init?.headers
+      : {
+          "Content-Type": "application/json",
+          ...init?.headers,
+        },
   });
 
   if (!response.ok) {

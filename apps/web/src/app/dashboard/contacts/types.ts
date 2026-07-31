@@ -36,6 +36,35 @@ export interface Segment {
   rules: SegmentRule[];
 }
 
+export interface CustomField {
+  id: string;
+  key: string;
+  label: string;
+  field_type: "TEXT" | "NUMBER" | "DATE" | "BOOLEAN";
+}
+
+export interface ContactImport {
+  id: string;
+  filename: string;
+  status: "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED";
+  column_mapping: Record<string, string>;
+  total_rows: number;
+  imported_count: number;
+  updated_count: number;
+  skipped_count: number;
+  error_count: number;
+  created_at: string;
+  completed_at: string | null;
+}
+
+export interface ContactImportRow {
+  id: string;
+  row_number: number;
+  email: string | null;
+  status: "IMPORTED" | "UPDATED" | "SKIPPED" | "ERROR";
+  error_message: string | null;
+}
+
 export interface Contact {
   id: string;
   email: string;

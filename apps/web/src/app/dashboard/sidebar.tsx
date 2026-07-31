@@ -35,6 +35,11 @@ const NAV_SECTIONS: NavSection[] = [
         href: "/dashboard/contacts/segments",
         requiresPermission: "contacts.view",
       },
+      {
+        label: "Imports",
+        href: "/dashboard/contacts/imports",
+        requiresPermission: "contacts.view",
+      },
     ],
   },
   {
