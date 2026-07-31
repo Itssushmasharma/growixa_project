@@ -9,55 +9,58 @@
 
 ## Task worked on
 
-`GRX-CONTACT-004` — CSV contact import. Picked immediately after `GRX-CONTACT-003` per
-the user's "Yes continue".
+`GRX-CONTACT-005` — Consent & suppression. Picked immediately after `GRX-CONTACT-004`
+per the user's "start".
 
 ## Work completed
 
-- New tables (migration `b11cffc2cbcf`): `contact_imports`, `contact_import_rows`.
-- `POST /contacts/imports` accepts a multipart upload: `file` (the CSV) plus
-  `column_mapping` (a JSON-encoded string, since multipart forms can't carry nested
-  JSON directly) mapping CSV column headers to one of `email`/`first_name`/
-  `last_name`/`phone`/`source`/`custom_field:<key>`. Processing is synchronous —
-  no background job, since Slice 2 has no scheduler/queue wiring for this yet.
-- `_validate_column_mapping` (`contacts/services.py`) requires exactly one column
-  mapped to `email` and rejects unknown custom-field keys or unsupported targets,
-  all before a single `ContactImport` row is created (400, nothing partially written).
-- Per-row outcomes: a row where every mapped column is blank is `SKIPPED`; a row
-  with no email value is `ERROR` ("Missing required email value"); everything else
-  calls `create_or_update_contact` (reusing the same email-dedup logic as the
-  regular contact API) — existing emails are marked `UPDATED`, new emails
-  `IMPORTED`. An `UnknownCustomFieldError` mid-row (only reachable if a field is
-  deleted between mapping validation and row processing) is caught per-row as
-  `ERROR` rather than aborting the whole import.
-- Endpoints: `GET`/`POST /contacts/imports`, `GET /contacts/imports/{id}` (summary +
-  counts), `GET /contacts/imports/{id}/rows` (per-row detail for reviewing errors).
-  No new permissions — reuses `contacts.manage`/`contacts.view`.
+- New tables (migration `97642610fb46`): `consent_records`, `suppression_entries` —
+  built exactly to DATA_MODEL.md's §consent_records/§suppression_entries spec written
+  during Slice 2 planning, no design deviation.
+- `consent_records` is insert-only (mirrors `audit_logs`'s pattern): `POST
+  /contacts/{id}/consent` always inserts a new row (channel `EMAIL`/`SMS`, status
+  `GRANTED`/`WITHDRAWN`/`UNKNOWN`, optional `source`); `GET /contacts/{id}/consent`
+  returns the full history newest-first. There is no separate "current status" field
+  or endpoint — the most recent row per channel is the current status by definition.
+- `suppression_entries` is upsert-on-email: `POST /contacts/suppression` checks for an
+  existing row by the unique `email` index — if found, updates `reason`,
+  `suppressed_by_user_id`, and `suppressed_at` (set explicitly in Python, not a DB
+  `onupdate` trigger) in place; if not, inserts a new row. Verified live that
+  re-suppressing the same email returns the same `id` with the new reason, not a
+  second row. `contact_id` is optional (a hard-bounced address may have no contact
+  record) but is validated to exist via `ContactNotFoundError` when supplied.
+- `ContactOut` gained `is_suppressed: bool`, satisfying the sprint's explicit
+  acceptance criterion that suppression be "visibly flagged wherever contacts are
+  shown." This required widening `ContactSnapshot` (services.py) from a 3-tuple to a
+  4-tuple and updating `_to_out` plus every one of its ~9 call sites in `api.py`.
+  Existing tests still passed unmodified — none asserted the full `ContactOut` JSON
+  body by exact equality, only individual keys.
 
-## A scope note worth flagging
+## A design choice worth flagging
 
-Import processing runs inline inside the request handler. For the CSV sizes expected
-in Slice 2 (manual internal-team imports, not bulk data migration) this is fine; if
-large-file imports become a requirement later, this is the place to move onto the
-existing RabbitMQ worker (`apps/worker/`) instead of extending the synchronous path.
+`suppression_entries.suppressed_at` intentionally has **no** `onupdate=func.now()`.
+This session hit a recurring `MissingGreenlet` bug on columns with that pattern
+(`updated_at` on `contacts`/`contact_lists`/`segments` all needed a `session.refresh()`
+after commit). Since the suppression upsert is already hand-written Python logic
+setting fields explicitly, `suppressed_at` is just set to `datetime.now(UTC)` directly
+in `suppress_email()` — sidestepping the whole bug class rather than working around it.
 
 ## Files changed
 
-- `apps/api/src/growixa_api/contacts/models.py` (added `ContactImport`,
-  `ContactImportRow`; `ContactImportRow.import_id` has `index=True`)
-- `apps/api/src/growixa_api/contacts/repositories.py` (`create_import`,
-  `get_import_by_id`, `list_imports`, `add_import_row`, `list_import_rows`)
-- `apps/api/src/growixa_api/contacts/services.py` (`InvalidColumnMappingError`,
-  `ContactImportNotFoundError`, `_validate_column_mapping`,
-  `import_contacts_from_csv`, `get_import`, `list_contact_imports`,
-  `list_contact_import_rows`)
-- `apps/api/src/growixa_api/contacts/schemas.py` (`ContactImportOut`,
-  `ContactImportRowOut`)
-- `apps/api/src/growixa_api/contacts/api.py` (new `/imports` routes, `_import_to_out`)
-- `apps/api/pyproject.toml` (added `python-multipart` dependency; extended
-  `flake8-bugbear` immutable-calls allowlist with `fastapi.File`/`fastapi.Form`)
-- `apps/api/migrations/versions/b11cffc2cbcf_contact_imports.py` (new)
-- `apps/api/tests/test_contacts_import.py` (new, 8 tests)
+- `apps/api/src/growixa_api/contacts/models.py` (added `ConsentRecord`,
+  `SuppressionEntry`; `ConsentRecord.contact_id` has `index=True`)
+- `apps/api/src/growixa_api/contacts/repositories.py` (`create_consent_record`,
+  `list_consent_records`, `get_suppression_by_email`, `list_suppression_entries`,
+  `is_email_suppressed`, `create_suppression_entry`)
+- `apps/api/src/growixa_api/contacts/services.py` (`_snapshot` now also returns
+  `is_suppressed`; `record_consent`, `get_consent_history`, `suppress_email`,
+  `list_suppressions`; `ContactSnapshot` widened to a 4-tuple)
+- `apps/api/src/growixa_api/contacts/schemas.py` (`ConsentRecordIn`/`Out`,
+  `SuppressionEntryIn`/`Out`; `ContactOut.is_suppressed`)
+- `apps/api/src/growixa_api/contacts/api.py` (`/{contact_id}/consent`,
+  `/suppression` routes; `_to_out` and all call sites updated for the 4-tuple)
+- `apps/api/migrations/versions/97642610fb46_consent_and_suppression.py` (new)
+- `apps/api/tests/test_contacts_consent_and_suppression.py` (new, 8 tests)
 - `docs/00-project-control/MASTER_TASK_TRACKER.md`, `PROJECT_STATUS.md`, `CHANGELOG.md`
   (this update)
 
@@ -65,44 +68,40 @@ existing RabbitMQ worker (`apps/worker/`) instead of extending the synchronous p
 
 ```bash
 cd apps/api
-uv pip install --python .venv/bin/python -e ".[dev]"   # installs python-multipart;
-# venv has no pip binary (created via `uv venv` without --seed) — uv is the working
-# install path for this project's backend venv
-.venv/bin/alembic revision --autogenerate -m "contact imports"
+.venv/bin/alembic revision --autogenerate -m "consent and suppression"
 .venv/bin/alembic upgrade head
-.venv/bin/ruff check . && .venv/bin/ruff format . && .venv/bin/mypy .
-.venv/bin/pytest -q   # 93 passed, 3 skipped
+.venv/bin/ruff check . --fix && .venv/bin/ruff format . && .venv/bin/mypy .
+.venv/bin/pytest -q   # 101 passed, 3 skipped
 .venv/bin/alembic check   # no drift
 
 cd ../..
 podman compose up -d --build api
 # full pytest run wiped admin@growixa.local again (same as after every prior task this
-# session) — recreated it via a Python one-liner (User + UserRole join row, since
-# roles aren't a direct User column)
-# live curl: created a custom field, pre-created one contact, uploaded a 3-row CSV
-# (new email / existing email / blank email) -> imported_count=1, updated_count=1,
-# error_count=1, per-row detail matched, new contact carried its custom field,
-# existing contact's first_name and custom field both updated, mapping without an
-# email target returned 400 -> cleaned up all smoke-test rows afterward
+# session) — recreated it via the same User + UserRole one-liner as GRX-CONTACT-004
+# live curl: recorded GRANTED then WITHDRAWN consent -> history newest-first ->
+# suppressed a contact's email -> is_suppressed true -> re-suppressed with a
+# different reason -> same id, reason updated, no duplicate -> suppressed an email
+# with no contact -> contact_id null -> unknown contact_id on suppress -> 404 ->
+# cleaned up all smoke-test rows afterward
 ```
 
 ## Test results
 
-`ruff`/`mypy` clean. `pytest` 93 passed, 3 skipped (8 new tests). `alembic check` → no
-drift. Live-verified end-to-end against rebuilt Compose containers, including the
-create-vs-update dedup distinction and the blank-row/missing-email row outcomes that
-are the point of this task.
+`ruff`/`mypy` clean. `pytest` 101 passed, 3 skipped (8 new tests). `alembic check` →
+no drift. Live-verified end-to-end against rebuilt Compose containers, including the
+insert-only consent history and the suppression upsert-not-duplicate behavior that are
+the point of this task.
 
 ## Migrations
 
-`b11cffc2cbcf` — `contact_imports`, `contact_import_rows` tables, plus an index on
-`contact_import_rows.import_id`. No permission seed needed — existing
-`contacts.manage`/`contacts.view` already cover imports.
+`97642610fb46` — `consent_records` (with an index on `contact_id`), `suppression_entries`
+(unique on `email`) tables. No permission seed needed — existing `contacts.manage`/
+`contacts.view` already cover consent/suppression per RBAC.md.
 
 ## Decisions
 
-Import processing is synchronous within the request (see scope note above) — no new
-decision record, just a documented trade-off for Slice 2's expected CSV sizes.
+None new — this task implemented Slice 2 planning's already-written spec verbatim, no
+scope questions arose during implementation.
 
 ## Blockers
 
@@ -119,17 +118,19 @@ None.
 
 ## Current state
 
-`GRX-CONTACT-004` is `DONE`. This closes out Sprint 2's backend-only
-contact-organization slice (contacts, tags, lists, segments, CSV import).
-`GRX-CONTACT-005` (consent & suppression) is next `READY` — its only dependency,
-`GRX-CONTACT-001`, has been `DONE` since early in this sprint, so it was flipped from
-`BACKLOG` to `READY` in this update.
+`GRX-CONTACT-005` is `DONE`. This closes out **all** of Sprint 2's backend work —
+contacts, tags, lists, segments, CSV import, and consent/suppression are fully
+implemented, tested, and live-verified. `GRX-CONTACT-006` (contacts frontend) is next
+`READY` — its dependencies (`GRX-CONTACT-001`, `GRX-FOUND-004`) have both been `DONE`
+since earlier in the project, so it was flipped from `BACKLOG` to `READY` in this
+update. `GRX-CONTACT-007`/`008`/`009` (tags/lists/segments, CSV import, and
+consent/suppression frontends, respectively) remain `BACKLOG` behind `GRX-CONTACT-006`.
 
 ## Exact next task
 
-`GRX-CONTACT-005` — Consent & suppression (`consent_records` insert-only,
-`suppression_entries` upsert-on-email tables + API). No explicit user direction beyond
-continuing Sprint 2; awaiting confirmation before picking it up.
+`GRX-CONTACT-006` — Contacts frontend (list/detail/create/edit UI, gated on
+`contacts.manage`/`contacts.view`). No explicit user direction beyond continuing
+Sprint 2; awaiting confirmation before picking it up.
 
 ## Resume commands
 
@@ -142,4 +143,4 @@ podman compose up -d
 
 ## Latest commit
 
-`52fb417` — feat(contacts): CSV contact import (GRX-CONTACT-004)
+`30b5fc2` — feat(contacts): consent history and suppression list (GRX-CONTACT-005)

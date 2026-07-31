@@ -10,6 +10,37 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
+## 2026-07-31 — GRX-CONTACT-005: Consent & suppression
+
+- Added `consent_records` (insert-only) and `suppression_entries` (upsert-on-email)
+  tables (migration `97642610fb46`), matching DATA_MODEL.md's field-level spec exactly.
+- `POST`/`GET /contacts/{id}/consent` record and list a contact's consent history per
+  channel (`EMAIL`/`SMS`), newest-first. Current status per channel is derived as "most
+  recent row" — there is no separate mutable current-status column.
+- `POST /contacts/suppression` upserts on the unique `email` index: suppressing an
+  already-suppressed email updates `reason`/`suppressed_at` in place (same row, no
+  duplicate) rather than creating a second entry. `contact_id` is optional — an
+  address can be suppressed with no matching contact (e.g. a hard bounce) — but is
+  validated to exist when provided.
+- Per the sprint's explicit acceptance criterion ("visibly flagged as suppressed
+  wherever contacts are shown"), `ContactOut` gained `is_suppressed: bool`. This
+  widened the internal `ContactSnapshot` tuple across every contacts service function
+  and API call site to carry the flag through.
+- No new permissions — suppression and consent recording were already scoped under
+  `contacts.manage` (and viewing under `contacts.view`) in RBAC.md from Slice 2
+  planning.
+- `ruff`/`mypy` clean; `pytest` 101 passed, 3 skipped (8 new tests); `alembic check` →
+  no drift.
+- Live-verified against rebuilt Compose containers: recorded GRANTED then WITHDRAWN
+  consent for a contact and confirmed the history came back newest-first; suppressed a
+  contact's email and confirmed `is_suppressed` flipped true; re-suppressed the same
+  email with a different reason and confirmed it updated the existing row instead of
+  duplicating; suppressed an email with no matching contact; confirmed an unknown
+  `contact_id` 404s.
+- This closes out Sprint 2's entire backend slice (contacts, tags, lists, segments,
+  CSV import, consent/suppression). `GRX-CONTACT-006` (contacts frontend) is next
+  `READY`. Commit `30b5fc2`.
+
 ## 2026-07-31 — GRX-CONTACT-004: CSV contact import
 
 - Added `contact_imports`/`contact_import_rows` tables (migration `b11cffc2cbcf`).

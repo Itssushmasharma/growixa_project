@@ -2,7 +2,7 @@
 
 - Document ID: DOC-PROJECT-STATUS
 - Status: ACTIVE
-- Version: 1.28
+- Version: 1.29
 - Last updated: 2026-07-31
 - Owner: Coding agent (on behalf of product owner)
 - Related documents: [MASTER_TASK_TRACKER](MASTER_TASK_TRACKER.md), [DECISIONS](DECISIONS.md), [DEVELOPMENT_READINESS](DEVELOPMENT_READINESS.md)
@@ -66,9 +66,10 @@ detail.
 `consent_records`/`suppression_entries`. Nine tasks added to
 [MASTER_TASK_TRACKER.md](MASTER_TASK_TRACKER.md) (`GRX-CONTACT-001`–`009`).
 **`GRX-CONTACT-001` (contacts schema + CRUD), `GRX-CONTACT-002` (tags & lists),
-`GRX-CONTACT-003` (segments), and `GRX-CONTACT-004` (CSV contact import) are all `DONE`.**
-This closes out Sprint 2's backend-only contact-organization slice. Next `READY` task:
-`GRX-CONTACT-005` (consent & suppression).
+`GRX-CONTACT-003` (segments), `GRX-CONTACT-004` (CSV contact import), and
+`GRX-CONTACT-005` (consent & suppression) are all `DONE`.** This closes out Sprint 2's
+entire backend slice. Next `READY` task: `GRX-CONTACT-006` (contacts frontend) —
+the first of four remaining frontend tasks (`GRX-CONTACT-006`–`009`).
 
 ## Documents created so far
 
