@@ -173,6 +173,51 @@
   color: var(--color-error);
 }
 
+.countBadge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  background: rgba(58, 108, 214, 0.1);
+  color: var(--color-dark-text);
+}
+
+.description {
+  font-size: 13px;
+  color: var(--color-slate);
+}
+
+.manageRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 12px 0;
+}
+
+.ruleRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.ruleList {
+  font-size: 12px;
+  color: var(--color-slate);
+  margin: 0 0 8px;
+}
+
+.typeBadge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  background: rgba(15, 42, 86, 0.06);
+  color: var(--color-dark-text);
+}
+
 .viewButton {
   padding: 6px 12px;
   border-radius: 8px;
@@ -219,12 +264,54 @@
 }
 
 .tagChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   padding: 4px 10px;
   border-radius: 999px;
   background: rgba(15, 42, 86, 0.06);
   color: var(--color-dark-text);
   font-size: 12px;
   font-weight: 600;
+}
+
+.tagRemoveButton {
+  border: none;
+  background: none;
+  color: var(--color-slate);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
+
+.tagRemoveButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.attachTagRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.newTagForm {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.select {
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(15, 42, 86, 0.14);
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--color-dark-text);
+  background: #fff;
 }
 
 .customFields {

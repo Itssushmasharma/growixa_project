@@ -5,6 +5,37 @@ export interface MeResponse {
   permissions: string[];
 }
 
+export interface Tag {
+  id: string;
+  name: string;
+}
+
+export interface ContactList {
+  id: string;
+  name: string;
+  description: string | null;
+  member_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SegmentRule {
+  id: string;
+  field: string;
+  operator: string;
+  value: string;
+}
+
+export interface Segment {
+  id: string;
+  name: string;
+  type: "DYNAMIC" | "SAVED";
+  member_count: number;
+  created_at: string;
+  updated_at: string;
+  rules: SegmentRule[];
+}
+
 export interface Contact {
   id: string;
   email: string;

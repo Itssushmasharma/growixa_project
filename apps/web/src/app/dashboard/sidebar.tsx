@@ -29,6 +29,12 @@ const NAV_SECTIONS: NavSection[] = [
     label: "AUDIENCE",
     items: [
       { label: "Contacts", href: "/dashboard/contacts", requiresPermission: "contacts.view" },
+      { label: "Lists", href: "/dashboard/contacts/lists", requiresPermission: "contacts.view" },
+      {
+        label: "Segments",
+        href: "/dashboard/contacts/segments",
+        requiresPermission: "contacts.view",
+      },
     ],
   },
   {

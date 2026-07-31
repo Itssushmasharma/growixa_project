@@ -5,8 +5,8 @@ import { type FormEvent, useEffect, useState } from "react";
 import { useToast } from "@/components/toast/toast-context";
 import { ApiError, apiFetch } from "@/lib/api-client";
 
-import styles from "./contacts-page.module.css";
-import type { Contact, MeResponse } from "./types";
+import styles from "./shared.module.css";
+import type { Contact, MeResponse, Tag } from "./types";
 
 const VIEW_PERMISSION = "contacts.view";
 const MANAGE_PERMISSION = "contacts.manage";
@@ -49,6 +49,7 @@ export function ContactsPage() {
   const [canView, setCanView] = useState(false);
   const [canManage, setCanManage] = useState(false);
   const [contacts, setContacts] = useState<Contact[]>([]);
+  const [tags, setTags] = useState<Tag[]>([]);
 
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [createForm, setCreateForm] = useState<ContactFormState>(EMPTY_FORM);
@@ -59,16 +60,22 @@ export function ContactsPage() {
   const [saving, setSaving] = useState(false);
   const [statusPendingId, setStatusPendingId] = useState<string | null>(null);
 
+  const [attachTagId, setAttachTagId] = useState("");
+  const [newTagName, setNewTagName] = useState("");
+  const [tagActionPending, setTagActionPending] = useState(false);
+
   useEffect(() => {
     async function load() {
       try {
-        const [me, contactList] = await Promise.all([
+        const [me, contactList, tagList] = await Promise.all([
           apiFetch<MeResponse>("/auth/me"),
           apiFetch<Contact[]>("/contacts"),
+          apiFetch<Tag[]>("/contacts/tags"),
         ]);
         setCanView(me.permissions.includes(VIEW_PERMISSION));
         setCanManage(me.permissions.includes(MANAGE_PERMISSION));
         setContacts(contactList);
+        setTags(tagList);
       } catch {
         setLoadError("Could not load contacts.");
       } finally {
@@ -122,6 +129,68 @@ export function ContactsPage() {
       phone: contact.phone ?? "",
       source: contact.source ?? "",
     });
+    setAttachTagId("");
+    setNewTagName("");
+  }
+
+  async function handleAttachTag(contactId: string, tagId: string) {
+    if (!tagId) return;
+    setTagActionPending(true);
+
+    try {
+      const updated = await apiFetch<Contact>(`/contacts/${contactId}/tags`, {
+        method: "POST",
+        body: JSON.stringify({ tag_id: tagId }),
+      });
+      setContacts((current) => current.map((c) => (c.id === contactId ? updated : c)));
+      setAttachTagId("");
+    } catch {
+      showToast("error", "Could not attach that tag.");
+    } finally {
+      setTagActionPending(false);
+    }
+  }
+
+  async function handleDetachTag(contactId: string, tagId: string) {
+    setTagActionPending(true);
+
+    try {
+      const updated = await apiFetch<Contact>(`/contacts/${contactId}/tags/${tagId}`, {
+        method: "DELETE",
+      });
+      setContacts((current) => current.map((c) => (c.id === contactId ? updated : c)));
+    } catch {
+      showToast("error", "Could not remove that tag.");
+    } finally {
+      setTagActionPending(false);
+    }
+  }
+
+  async function handleCreateAndAttachTag(event: FormEvent<HTMLFormElement>, contactId: string) {
+    event.preventDefault();
+    setTagActionPending(true);
+
+    try {
+      const tag = await apiFetch<Tag>("/contacts/tags", {
+        method: "POST",
+        body: JSON.stringify({ name: newTagName }),
+      });
+      setTags((current) => [...current, tag]);
+      const updated = await apiFetch<Contact>(`/contacts/${contactId}/tags`, {
+        method: "POST",
+        body: JSON.stringify({ tag_id: tag.id }),
+      });
+      setContacts((current) => current.map((c) => (c.id === contactId ? updated : c)));
+      setNewTagName("");
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 409) {
+        showToast("error", "A tag with this name already exists.");
+      } else {
+        showToast("error", "Could not create that tag.");
+      }
+    } finally {
+      setTagActionPending(false);
+    }
   }
 
   async function handleEditSubmit(event: FormEvent<HTMLFormElement>, contactId: string) {
@@ -298,11 +367,74 @@ export function ContactsPage() {
 
                 {contact.tags.length > 0 && (
                   <div className={styles.tagList}>
-                    {contact.tags.map((tag) => (
-                      <span className={styles.tagChip} key={tag}>
-                        {tag}
-                      </span>
-                    ))}
+                    {contact.tags.map((tagName) => {
+                      const tagId = tags.find((t) => t.name === tagName)?.id;
+                      return (
+                        <span className={styles.tagChip} key={tagName}>
+                          {tagName}
+                          {canManage && tagId && (
+                            <button
+                              type="button"
+                              className={styles.tagRemoveButton}
+                              aria-label={`Remove tag ${tagName}`}
+                              disabled={tagActionPending}
+                              onClick={() => handleDetachTag(contact.id, tagId)}
+                            >
+                              ×
+                            </button>
+                          )}
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {canManage && (
+                  <div className={styles.attachTagRow}>
+                    <select
+                      className={styles.select}
+                      value={attachTagId}
+                      disabled={tagActionPending}
+                      onChange={(event) => setAttachTagId(event.target.value)}
+                      aria-label="Attach an existing tag"
+                    >
+                      <option value="">Attach a tag…</option>
+                      {tags
+                        .filter((tag) => !contact.tags.includes(tag.name))
+                        .map((tag) => (
+                          <option key={tag.id} value={tag.id}>
+                            {tag.name}
+                          </option>
+                        ))}
+                    </select>
+                    <button
+                      type="button"
+                      className={styles.toggleButton}
+                      disabled={tagActionPending || !attachTagId}
+                      onClick={() => handleAttachTag(contact.id, attachTagId)}
+                    >
+                      Attach
+                    </button>
+                    <form
+                      className={styles.newTagForm}
+                      onSubmit={(event) => handleCreateAndAttachTag(event, contact.id)}
+                    >
+                      <input
+                        className={styles.input}
+                        placeholder="New tag name"
+                        aria-label="New tag name"
+                        value={newTagName}
+                        disabled={tagActionPending}
+                        onChange={(event) => setNewTagName(event.target.value)}
+                      />
+                      <button
+                        type="submit"
+                        className={styles.toggleButton}
+                        disabled={tagActionPending || !newTagName}
+                      >
+                        + New tag
+                      </button>
+                    </form>
                   </div>
                 )}
 

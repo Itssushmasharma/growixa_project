@@ -7,6 +7,8 @@ import styles from "./topbar.module.css";
 const PAGE_TITLES: Record<string, string> = {
   "/dashboard": "Dashboard",
   "/dashboard/contacts": "Contacts",
+  "/dashboard/contacts/lists": "Lists",
+  "/dashboard/contacts/segments": "Segments",
   "/dashboard/company-settings": "Company Settings",
   "/dashboard/team": "Team",
 };

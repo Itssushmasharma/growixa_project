@@ -6,7 +6,7 @@ import { ToastProvider } from "@/components/toast/toast-context";
 import { apiFetch } from "@/lib/api-client";
 
 import { ContactsPage } from "./contacts-page";
-import type { Contact, MeResponse } from "./types";
+import type { Contact, MeResponse, Tag } from "./types";
 
 vi.mock("@/lib/api-client", async () => {
   const actual = await vi.importActual<typeof import("@/lib/api-client")>("@/lib/api-client");
@@ -25,6 +25,10 @@ function renderContactsPage() {
 
 function meWithPermissions(permissions: string[]): MeResponse {
   return { id: "user-1", email: "admin@example.com", full_name: "Admin User", permissions };
+}
+
+function isTagsGet(path: string, init?: RequestInit): boolean {
+  return path === "/contacts/tags" && (!init || init.method === undefined);
 }
 
 const ACTIVE_CONTACT: Contact = {
@@ -57,17 +61,20 @@ const SUPPRESSED_CONTACT: Contact = {
   is_suppressed: true,
 };
 
+const VIP_TAG: Tag = { id: "tag-1", name: "VIP" };
+
 beforeEach(() => {
   mockedApiFetch.mockReset();
 });
 
 describe("ContactsPage", () => {
   it("renders the contact list with status and suppressed badges", async () => {
-    mockedApiFetch.mockImplementation((path: string) => {
+    mockedApiFetch.mockImplementation((path: string, init?: RequestInit) => {
       if (path === "/auth/me") {
         return Promise.resolve(meWithPermissions(["contacts.view", "contacts.manage"]));
       }
       if (path === "/contacts") return Promise.resolve([ACTIVE_CONTACT, SUPPRESSED_CONTACT]);
+      if (isTagsGet(path, init)) return Promise.resolve([]);
       throw new Error(`unexpected path: ${path}`);
     });
 
@@ -80,9 +87,10 @@ describe("ContactsPage", () => {
   });
 
   it("shows an access-denied message for a user without contacts.view", async () => {
-    mockedApiFetch.mockImplementation((path: string) => {
+    mockedApiFetch.mockImplementation((path: string, init?: RequestInit) => {
       if (path === "/auth/me") return Promise.resolve(meWithPermissions([]));
       if (path === "/contacts") return Promise.resolve([]);
+      if (isTagsGet(path, init)) return Promise.resolve([]);
       throw new Error(`unexpected path: ${path}`);
     });
 
@@ -92,9 +100,10 @@ describe("ContactsPage", () => {
   });
 
   it("hides write controls for a view-only user", async () => {
-    mockedApiFetch.mockImplementation((path: string) => {
+    mockedApiFetch.mockImplementation((path: string, init?: RequestInit) => {
       if (path === "/auth/me") return Promise.resolve(meWithPermissions(["contacts.view"]));
       if (path === "/contacts") return Promise.resolve([ACTIVE_CONTACT]);
+      if (isTagsGet(path, init)) return Promise.resolve([]);
       throw new Error(`unexpected path: ${path}`);
     });
 
@@ -106,6 +115,7 @@ describe("ContactsPage", () => {
 
     await user.click(screen.getByRole("button", { name: "View" }));
     expect(screen.getByText("You have view-only access to contacts.")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Attach an existing tag")).not.toBeInTheDocument();
   });
 
   it("creates a contact via the add form", async () => {
@@ -117,6 +127,7 @@ describe("ContactsPage", () => {
       if (path === "/contacts" && (!init || init.method === undefined)) {
         return Promise.resolve([]);
       }
+      if (isTagsGet(path, init)) return Promise.resolve([]);
       if (path === "/contacts" && init?.method === "POST") {
         return Promise.resolve(created);
       }
@@ -142,6 +153,7 @@ describe("ContactsPage", () => {
       if (path === "/contacts" && (!init || init.method === undefined)) {
         return Promise.resolve([ACTIVE_CONTACT]);
       }
+      if (isTagsGet(path, init)) return Promise.resolve([]);
       if (path === "/contacts/contact-1" && init?.method === "PATCH") {
         return Promise.resolve({ ...ACTIVE_CONTACT, first_name: "Alicia" });
       }
@@ -176,6 +188,7 @@ describe("ContactsPage", () => {
       if (path === "/contacts" && (!init || init.method === undefined)) {
         return Promise.resolve([ACTIVE_CONTACT]);
       }
+      if (isTagsGet(path, init)) return Promise.resolve([]);
       if (path === "/contacts/contact-1/status" && init?.method === "PATCH") {
         return Promise.resolve({ ...ACTIVE_CONTACT, status: "ARCHIVED" });
       }
@@ -190,5 +203,91 @@ describe("ContactsPage", () => {
     await user.click(screen.getByRole("button", { name: "Archive" }));
 
     await waitFor(() => expect(screen.getByText("Archived")).toBeInTheDocument());
+  });
+
+  it("attaches an existing tag to a contact", async () => {
+    mockedApiFetch.mockImplementation((path: string, init?: RequestInit) => {
+      if (path === "/auth/me") {
+        return Promise.resolve(meWithPermissions(["contacts.view", "contacts.manage"]));
+      }
+      if (path === "/contacts" && (!init || init.method === undefined)) {
+        return Promise.resolve([ACTIVE_CONTACT]);
+      }
+      if (isTagsGet(path, init)) return Promise.resolve([VIP_TAG]);
+      if (path === "/contacts/contact-1/tags" && init?.method === "POST") {
+        return Promise.resolve({ ...ACTIVE_CONTACT, tags: ["VIP"] });
+      }
+      throw new Error(`unexpected call: ${path}`);
+    });
+
+    const user = userEvent.setup();
+    renderContactsPage();
+
+    await screen.findByText("Alice Anderson");
+    await user.click(screen.getByRole("button", { name: "View" }));
+    await user.selectOptions(screen.getByLabelText("Attach an existing tag"), "tag-1");
+    await user.click(screen.getByRole("button", { name: "Attach" }));
+
+    await waitFor(() => expect(screen.getByText("VIP")).toBeInTheDocument());
+  });
+
+  it("removes a tag from a contact", async () => {
+    const tagged: Contact = { ...ACTIVE_CONTACT, tags: ["VIP"] };
+    mockedApiFetch.mockImplementation((path: string, init?: RequestInit) => {
+      if (path === "/auth/me") {
+        return Promise.resolve(meWithPermissions(["contacts.view", "contacts.manage"]));
+      }
+      if (path === "/contacts" && (!init || init.method === undefined)) {
+        return Promise.resolve([tagged]);
+      }
+      if (isTagsGet(path, init)) return Promise.resolve([VIP_TAG]);
+      if (path === "/contacts/contact-1/tags/tag-1" && init?.method === "DELETE") {
+        return Promise.resolve({ ...ACTIVE_CONTACT, tags: [] });
+      }
+      throw new Error(`unexpected call: ${path}`);
+    });
+
+    const user = userEvent.setup();
+    renderContactsPage();
+
+    await screen.findByText("Alice Anderson");
+    await user.click(screen.getByRole("button", { name: "View" }));
+    expect(screen.getByText("VIP")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Remove tag VIP" }));
+
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: "Remove tag VIP" })).not.toBeInTheDocument(),
+    );
+  });
+
+  it("creates a new tag and attaches it to a contact", async () => {
+    const createdTag: Tag = { id: "tag-2", name: "Newsletter" };
+    mockedApiFetch.mockImplementation((path: string, init?: RequestInit) => {
+      if (path === "/auth/me") {
+        return Promise.resolve(meWithPermissions(["contacts.view", "contacts.manage"]));
+      }
+      if (path === "/contacts" && (!init || init.method === undefined)) {
+        return Promise.resolve([ACTIVE_CONTACT]);
+      }
+      if (isTagsGet(path, init)) return Promise.resolve([]);
+      if (path === "/contacts/tags" && init?.method === "POST") {
+        return Promise.resolve(createdTag);
+      }
+      if (path === "/contacts/contact-1/tags" && init?.method === "POST") {
+        return Promise.resolve({ ...ACTIVE_CONTACT, tags: ["Newsletter"] });
+      }
+      throw new Error(`unexpected call: ${path}`);
+    });
+
+    const user = userEvent.setup();
+    renderContactsPage();
+
+    await screen.findByText("Alice Anderson");
+    await user.click(screen.getByRole("button", { name: "View" }));
+    await user.type(screen.getByLabelText("New tag name"), "Newsletter");
+    await user.click(screen.getByRole("button", { name: "+ New tag" }));
+
+    await waitFor(() => expect(screen.getByText("Newsletter")).toBeInTheDocument());
   });
 });
