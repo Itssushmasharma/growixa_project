@@ -10,6 +10,35 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
+## 2026-07-31 — GRX-CONTACT-008: CSV import frontend
+
+- Built `ImportsPage` (`/dashboard/contacts/imports`): a file picker reads the CSV
+  header row client-side, auto-guesses common column→field mappings
+  (email/first_name/last_name/phone/source), and renders a target select per column
+  (including `custom_field:<key>` options from `GET /contacts/custom-fields`).
+  Submitting builds a `column_mapping` JSON string and multipart-POSTs to `POST
+  /contacts/imports`.
+- This was the frontend's first file upload, which surfaced that `apiFetch`
+  unconditionally set `Content-Type: application/json` — fixed by skipping that
+  header when the body is a `FormData` instance, letting the browser set its own
+  multipart boundary. Added `api-client.test.ts` (new, 2 tests) for this
+  previously-uncovered shared utility.
+- Below the upload form, an import-history list shows filename/status/counts per
+  past import, each expandable via "View rows" into per-row email/status/
+  error_message detail. The upload card is omitted entirely (not shown disabled) for
+  non-managers.
+- Added "Imports" to the sidebar's AUDIENCE section and a page-title entry.
+- `eslint`/`tsc --noEmit`/`prettier --check` clean; `vitest` 39 passed (7 new).
+- Live verification note: the browser-automation tool cannot drive a native file
+  picker dialog, so the "select a file" step itself couldn't be exercised through
+  the browser. Instead, uploaded a real 3-row CSV via `curl` multipart (identical
+  wire format to `fetch`+`FormData`) and confirmed the resulting history entry,
+  counts, and row-level detail all rendered correctly in the browser from real
+  backend data; confirmed the imported contacts appeared correctly on the Contacts
+  page; confirmed a fresh Analyst sees only the history card, no upload form.
+- This closes GRX-CONTACT-008. `GRX-CONTACT-009` (consent/suppression frontend) is
+  the last remaining Sprint 2 task. Commit `7796f93`.
+
 ## 2026-07-31 — GRX-CONTACT-007: Tags/lists/segments frontend
 
 - Extended `ContactsPage`'s detail panel with tag management: removable chips (an

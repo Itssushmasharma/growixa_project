@@ -9,60 +9,56 @@
 
 ## Task worked on
 
-`GRX-CONTACT-007` — Tags/lists/segments frontend. Picked immediately after
-`GRX-CONTACT-006` per the user's "continue".
+`GRX-CONTACT-008` — CSV import frontend. Picked immediately after `GRX-CONTACT-007`
+per the user's "continue".
 
 ## Work completed
 
-- **Tag assignment** (extends `ContactsPage`'s existing detail panel): tag chips now
-  carry a remove `×` button (`DELETE /contacts/{id}/tags/{tag_id}`); a select lets an
-  admin attach any existing tag not already on the contact (`POST
-  /contacts/{id}/tags`); an inline "+ New tag" form creates a tag (`POST
-  /contacts/tags`) and attaches it in the same action. Since `ContactOut.tags` is
-  `list[str]` (names only, no ids), the component resolves a tag name back to its id
-  by matching against a separately-fetched `/contacts/tags` list.
-- **`ListsPage`** (`apps/web/src/app/dashboard/contacts/lists/`): create a list
-  (name, description); each list row expands into a "Manage" panel with two contact
-  pickers — one to add, one to remove — each backed by the existing
-  add/remove-member endpoints. No membership browser: see the scope note below.
-- **`SegmentsPage`** (`apps/web/src/app/dashboard/contacts/segments/`): a rule
-  builder where each row picks a field (Status/Email/Source/Tag/Created at/Custom
-  field), an operator (options change per field to match the backend's
-  `SEGMENT_RULE_FIELD_OPERATORS`), and a value; "Custom field" reveals a key input
-  so the submitted field becomes `custom_field:<key>`. The segment list shows a
-  Dynamic/Saved badge, member count, a rule-summary bullet list, and a "View
-  members" toggle that calls the existing `GET /contacts/segments/{id}/members`.
-- Refactored `contacts-page.module.css` → `shared.module.css` so all three pages
-  import one stylesheet instead of duplicating card/form/row/badge CSS three times.
-- Sidebar: added "Lists" and "Segments" under the existing AUDIENCE section (gated
-  `contacts.view`, same as "Contacts"). Page-title map got both new routes.
+- **`apiFetch` FormData support** (`apps/web/src/lib/api-client.ts`): the helper
+  always set `Content-Type: application/json` unconditionally, which breaks a
+  multipart upload (the browser needs to set its own `Content-Type` with the
+  boundary). Now skips the default header when `init.body instanceof FormData`.
+  This is the frontend's first-ever file upload, so this bug had never surfaced
+  before. Added `api-client.test.ts` (new) since this shared utility previously had
+  zero test coverage — verifies JSON requests still get the header and FormData
+  requests don't.
+- **`ImportsPage`** (`apps/web/src/app/dashboard/contacts/imports/`):
+  - File picker (`accept=".csv"`) reads the selected file's first line via
+    `FileReader`/`readAsText`, splits on commas to get header names (a full CSV
+    parser wasn't needed — the backend does the real per-row parsing; the frontend
+    only needs headers to build the mapping UI).
+  - Auto-guesses common column→field mappings (email/first_name/last_name/phone/
+    source) via case-insensitive exact-name matching, then renders one select per
+    column with options: Ignore, Email, First name, Last name, Phone, Source, and
+    one `custom_field:<key>` option per row from `GET /contacts/custom-fields`.
+  - Submit builds `column_mapping` as a JSON string, packs it with the file into a
+    `FormData`, and POSTs to `/contacts/imports`. Shows the returned
+    imported/updated/skipped/error counts immediately.
+  - Below that, an import-history list (`GET /contacts/imports`) with per-import
+    "View rows" expansion (`GET /contacts/imports/{id}/rows`) showing row number,
+    email, status, and error message.
+  - Page visibility gated on `contacts.view`; the entire upload card (not just its
+    submit button) is omitted for non-managers, since there's no partial-view state
+    that makes sense for an upload form.
+- Sidebar: added "Imports" under the existing AUDIENCE section. Page-title map got
+  the new route.
 
-## A scope boundary worth flagging
+## A gap this task exposed and fixed
 
-`ListsPage` cannot show *who* is currently in a list — only `member_count`. The
-backend's `contact_lists` endpoints (`GET /contacts/lists`, `GET
-/contacts/lists/{id}`, `POST`/`DELETE .../members`) never grew a members-list
-endpoint the way segments did (`GET /contacts/segments/{id}/members`). Adding one
-would have meant touching `apps/api` on what the tracker scoped as a frontend-only
-task, so the UI instead offers add-by-picking-any-contact and
-remove-by-picking-any-contact, honestly reflecting what the API can show rather than
-faking a membership browser. If "browse list membership" becomes a real requirement,
-the fix is a small, consistent addition mirroring `list_segment_members`.
+Before this task, nothing in the frontend had ever uploaded a file, so `apiFetch`'s
+hardcoded `Content-Type: application/json` had never been wrong. Fixed at the shared
+utility level (not worked around per-call) since any future upload feature would hit
+the same bug otherwise.
 
 ## Files changed
 
-- `apps/web/src/app/dashboard/contacts/types.ts` (added `Tag`, `ContactList`,
-  `SegmentRule`, `Segment`)
-- `apps/web/src/app/dashboard/contacts/contacts-page.tsx` (tag fetch/attach/detach/
-  create logic and JSX)
-- `apps/web/src/app/dashboard/contacts/contacts-page.test.tsx` (3 new tag tests; all
-  existing tests' mocks updated for the new `/contacts/tags` fetch)
-- `apps/web/src/app/dashboard/contacts/shared.module.css` (new — renamed from
-  `contacts-page.module.css`, extended with list/segment-specific classes)
-- `apps/web/src/app/dashboard/contacts/lists/{lists-page.tsx,page.tsx,lists-page.test.tsx}` (new)
-- `apps/web/src/app/dashboard/contacts/segments/{segments-page.tsx,page.tsx,segments-page.test.tsx}` (new)
-- `apps/web/src/app/dashboard/sidebar.tsx` (added Lists/Segments nav items)
-- `apps/web/src/app/dashboard/page-title.tsx` (added Lists/Segments titles)
+- `apps/web/src/lib/api-client.ts` (skip default `Content-Type` for `FormData` bodies)
+- `apps/web/src/lib/api-client.test.ts` (new, 2 tests)
+- `apps/web/src/app/dashboard/contacts/types.ts` (added `CustomField`, `ContactImport`,
+  `ContactImportRow`)
+- `apps/web/src/app/dashboard/contacts/imports/{imports-page.tsx,page.tsx,imports-page.test.tsx}` (new)
+- `apps/web/src/app/dashboard/sidebar.tsx` (added "Imports" nav item)
+- `apps/web/src/app/dashboard/page-title.tsx` (added Imports title)
 - `docs/00-project-control/MASTER_TASK_TRACKER.md`, `PROJECT_STATUS.md`, `CHANGELOG.md`
   (this update)
 
@@ -71,66 +67,76 @@ the fix is a small, consistent addition mirroring `list_segment_members`.
 ```bash
 cd apps/web
 npm run lint && npm run typecheck && npm run format && npm run format:check
-npx vitest run src/app/dashboard/contacts/   # 19 passed, then 32 after lists/segments
-npm run test   # 32 passed (full frontend suite)
+npx vitest run src/lib/api-client.test.ts src/app/dashboard/contacts/imports/
+npm run test   # 39 passed (full frontend suite)
 
 cd ..
-podman compose restart web   # same dev-server route-discovery issue as GRX-CONTACT-006
-# live browser check (see below)
+podman compose restart web   # same dev-server route-discovery issue as prior tasks
+# live verification (see below)
 ```
 
 ## Test results
 
-`eslint`/`tsc --noEmit`/`prettier --check` clean. `vitest` 32 passed (13 new: 3 tag
-tests on `ContactsPage`, 5 on `ListsPage`, 5 on `SegmentsPage`). Live browser-verified
-end to end (see below).
+`eslint`/`tsc --noEmit`/`prettier --check` clean. `vitest` 39 passed (7 new: 2 on
+`apiFetch`, 5 on `ImportsPage`). Live-verified against the rebuilt dev server and the
+real backend (see below).
 
 ## Live verification detail
 
-Logged in as Super Admin: created a contact, opened its detail panel, typed "VIP"
-into the new-tag form and confirmed it was created and attached in one step (chip
-appeared with an `×`); removed it (chip gone, "VIP" reappeared in the attach
-dropdown); reattached it via the dropdown + Attach button. Switched to Lists: created
-"Smoke Test List", opened Manage, added the tagged contact via the contact picker
-(member count 0→1, toast confirmed). Switched to Segments: built a segment named "VIP
-tagged" with one rule (Tag equals VIP), submitted it, saw it appear as Dynamic with
-`1 members`, clicked "View members" and confirmed the tagged contact's email listed.
-Created a throwaway Analyst user, logged in as them, and confirmed: Lists shows "You
-have view-only access to lists." with no add-list button; Segments shows no
-add-segment button; Contacts shows the VIP tag chip with no `×` and no attach/create
-controls. Cleaned up all smoke-test rows (contact, tag, list, segment, Analyst user)
-afterward.
+**Tool limitation encountered**: the browser-automation tool cannot drive a native OS
+file-picker dialog — browsers block scripts from setting `<input type="file">.value`
+for security, and there's no dedicated file-upload primitive in this session's
+toolset. So the literal "click Choose File, pick a file" step could not be exercised
+through the browser.
+
+Worked around it by uploading a real 3-row CSV via `curl -F` multipart (byte-for-byte
+the same wire format a browser's `fetch`+`FormData` produces) directly against the
+running API, then reloading `/dashboard/contacts/imports` in the browser to verify
+everything downstream of the upload: the history entry appeared with the correct
+filename/status/counts (`imported_count=2`, `error_count=1` for a row with a blank
+email); "View rows" expanded to show all 3 rows with correct per-row status and the
+"Missing required email value" error message; the two successfully imported contacts
+appeared on the Contacts page with their mapped first/last names. Then created a
+throwaway Analyst user, logged in as them, and confirmed the Imports page showed only
+the history card — no upload form at all. Cleaned up all smoke-test rows (contacts,
+import, import rows, Analyst user) afterward.
+
+The client-side pieces the curl workaround couldn't reach — `FileReader` header
+parsing, the auto-guess heuristic, and the FormData-building submit handler — are
+covered instead by `imports-page.test.tsx`'s `userEvent.upload()` test, which
+exercises them against a real `File` object in jsdom.
 
 ## Decisions
 
-Lists intentionally ships without a membership browser (see scope note above) rather
-than adding a new backend endpoint under a frontend-scoped task.
+None new. The `apiFetch` fix was a bug fix (shared infra behaving incorrectly for a
+case that had simply never been exercised before), not a design decision.
 
 ## Blockers
 
-None.
+None — the file-picker verification gap above is a tooling limitation, not a
+blocker on the feature itself, which is otherwise fully verified.
 
 ## Known issues
 
 - Same carryover list as prior Slice 2 entries: possible latent `MissingGreenlet` in
   `company_profile` (background task filed, unresolved), `GRX-DEVOPS-001` still
   `IN_REVIEW`, `GRX-DOC-003` blocked on that push.
-- The web dev server's file watcher again did not pick up the new route directories
-  without a container restart (same as `GRX-CONTACT-006`) — still not investigated
-  further since a restart is a reliable one-line fix.
+- The web dev server's file watcher again did not pick up the new route directory
+  without a container restart (same as every prior frontend task this sprint).
+- Browser-automation tooling cannot drive native file-picker dialogs — noted here so
+  the next task that needs to live-verify a file upload doesn't waste time
+  rediscovering this; use the curl-then-reload pattern described above instead.
 
 ## Current state
 
-`GRX-CONTACT-007` is `DONE`. Sprint 2's backend is fully complete, and two of its
-three remaining frontend tasks (`GRX-CONTACT-006`, `GRX-CONTACT-007`) are done.
-`GRX-CONTACT-008` (CSV import frontend) and `GRX-CONTACT-009` (consent/suppression
-frontend) are both `READY` with no ordering dependency between them — either can be
-picked up next.
+`GRX-CONTACT-008` is `DONE`. Sprint 2 has exactly one task left:
+`GRX-CONTACT-009` (consent/suppression frontend) — `READY`, no dependency blocking it.
 
 ## Exact next task
 
-One of `GRX-CONTACT-008`/`009` (both `READY`). No explicit user direction on which to
-pick first beyond continuing Sprint 2; awaiting confirmation before picking one up.
+`GRX-CONTACT-009` — Consent/suppression frontend (UI to view consent history and
+manage the suppression list). No explicit user direction beyond continuing Sprint 2;
+awaiting confirmation before picking it up. Completing it closes Sprint 2 entirely.
 
 ## Resume commands
 
@@ -143,4 +149,4 @@ podman compose up -d
 
 ## Latest commit
 
-`262d28a` — feat(contacts): tag assignment, lists, and segment builder frontend (GRX-CONTACT-007)
+`7796f93` — feat(contacts): CSV import frontend (GRX-CONTACT-008)
