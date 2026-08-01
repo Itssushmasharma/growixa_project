@@ -1,0 +1,77 @@
+.card {
+  background: #fff;
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
+  padding: 32px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.headerTitle {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.headerCount {
+  font-weight: 400;
+  color: var(--color-slate);
+}
+
+.filterSelect {
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(15, 42, 86, 0.14);
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--color-dark-text);
+  background: #fff;
+}
+
+.emptyState {
+  color: var(--color-slate);
+  font-size: 14px;
+}
+
+.row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 0;
+  border-top: 1px solid rgba(15, 42, 86, 0.08);
+}
+
+.identity {
+  flex: 1;
+  min-width: 0;
+}
+
+.name {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.description {
+  font-size: 13px;
+  color: var(--color-slate);
+  margin-top: 2px;
+  word-break: break-word;
+}
+
+.typeBadge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  background: rgba(37, 99, 235, 0.1);
+  color: #1d4ed8;
+  white-space: nowrap;
+}

@@ -52,6 +52,7 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       { label: "Company", href: "/dashboard/company-settings" },
       { label: "Team", href: "/dashboard/team", requiresPermission: "users.manage" },
+      { label: "Audit Log", href: "/dashboard/audit", requiresPermission: "audit.view" },
     ],
   },
 ];
