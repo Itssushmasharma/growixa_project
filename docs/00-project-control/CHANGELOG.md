@@ -10,6 +10,42 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
+## 2026-07-31 — GRX-AUDIT-002: Audit log viewing (API + frontend)
+
+- Added `GET /audit` (`apps/api/src/growixa_api/audit/api.py`, new), gated on `audit.view`,
+  with optional `entity_type`/`actor_user_id` filters reusing `GRX-AUDIT-001`'s existing
+  `list_events` service function — no new query logic needed on the backend.
+- **Real bug found by the test suite, not manual testing**: `AuditLogOut.ip_address` was
+  typed `str | None`, but Postgres `INET` comes back from asyncpg as an
+  `ipaddress.IPv4Address` object. Every row with a real IP address 500'd on response
+  serialization until a `field_validator` stringified it — caught immediately because the
+  local dev database already had a row with a real IP from earlier session traffic.
+- Built `AuditPage` (`/dashboard/audit`): read-only list (action, resolved actor email,
+  timestamp, non-empty metadata inline, entity_type badge), with a client-side
+  entity_type filter dropdown built from the already-loaded events (no re-fetch per
+  filter change). Actor emails resolved via `GET /users`, gated `users.manage` rather
+  than `audit.view` — safe today since both permissions have identical Super
+  Admin/Admin-only grants, same reasoning as `roles/api.py`'s existing list endpoint.
+- Added "Audit Log" to the sidebar's SETTINGS section (gated `audit.view`) and a
+  page-title entry.
+- `ruff`/`mypy` clean (the handful of pre-existing mypy errors elsewhere were confirmed
+  unrelated via `git stash` diff); `pytest` 107 passed, 3 skipped (3 new: list, filter,
+  403 for a non-`audit.view` role); `alembic check` → no drift (no schema changes —
+  `GRX-AUDIT-001`'s table already fit). `eslint`/`tsc --noEmit`/`prettier --check` clean;
+  `vitest` 54 passed (4 new).
+- Live-verified against rebuilt Compose containers: real `user.login`/`user.login_failed`
+  events rendered with resolved actor emails; created a contact and confirmed a new
+  `contact.created` event appeared newest-first; filtered by entity_type to `contact` and
+  confirmed only that row remained; confirmed a fresh Analyst (no `audit.view`) sees no
+  "Audit Log" nav item and gets an access-denied message on direct navigation.
+- Also recreated the `admin@growixa.local` smoke-test account, which running the full
+  `pytest` suite wiped again via `test_migrations.py`'s known table-drop side effect
+  (documented in this file's `GRX-CONTACT-001`/`002` entries) — not a regression from
+  this task, just a recurring cost of running the full suite against the shared dev DB.
+- This closes `GRX-AUDIT-002` and, with it, the last open gap from `GRX-DOC-003`'s
+  feature audit — no `BACKLOG` or `READY` tasks remain in the tracker. Commit
+  `347a801`.
+
 ## 2026-07-31 — GRX-DOC-003: Sprint 1 documentation + handoff update (closes Sprint 1)
 
 - Created `FEATURE_STATUS_MATRIX.md` (new): per-feature implementation status, checked

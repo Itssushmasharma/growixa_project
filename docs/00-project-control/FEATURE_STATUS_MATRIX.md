@@ -2,7 +2,7 @@
 
 - Document ID: DOC-FEATURE-STATUS-MATRIX
 - Status: ACTIVE
-- Version: 1.0
+- Version: 1.1
 - Last updated: 2026-07-31
 - Owner: Coding agent
 - Related documents: [FEATURE_CATALOG](../02-features/FEATURE_CATALOG.md), [MASTER_TASK_TRACKER](MASTER_TASK_TRACKER.md), [PROJECT_STATUS](PROJECT_STATUS.md)
@@ -24,7 +24,7 @@ criteria met, gaps noted), `DONE` (fully built and verified per its owning `GRX-
 | GRX-FEAT-024 | Notifications | NOT_STARTED | — | A shared toast component exists (`apps/web/src/components/toast/`, built 2026-07-30, no tracker ID — UI polish only) for transient in-page feedback. It is not a notification *feature* (no persistence, no delivery outside the active page) and doesn't satisfy this catalog entry. |
 | GRX-FEAT-025 | Usage Metering | NOT_STARTED | — | No task has touched this. |
 | GRX-FEAT-026 | Integrations (management) | NOT_STARTED | — | No task has touched this. |
-| GRX-FEAT-027 | Audit Logs | PARTIAL | `GRX-AUDIT-001` | Insert-only recording is DONE and tested (`test_audit_log.py`, `test_audit_insert_only.py`) and audit events are written for the Sprint 1 event set. **Gap: no way to actually view them** — the `audit` module has no `api.py` (no `GET` endpoint) and no frontend page, so Sprint 1's acceptance criterion "audit logs... are visible to users with `audit.view`" is not literally met; `audit.view` exists as a permission code but nothing checks it yet. Flagged as `GRX-AUDIT-002` (new, `BACKLOG`) in the tracker. |
+| GRX-FEAT-027 | Audit Logs | DONE | `GRX-AUDIT-001`, `GRX-AUDIT-002` | Insert-only recording (`GRX-AUDIT-001`) plus `GET /audit` (entity_type/actor_user_id filters, gated `audit.view`) and a frontend page (`GRX-AUDIT-002`) — closes the gap this matrix's first pass found. |
 | GRX-FEAT-028 | Admin Portal | NOT_STARTED | — | The dashboard shell (`GRX-FOUND-008`) provides authenticated layout/navigation but "Admin Portal" as its own feature (distinct admin-only management surface) was never separately scoped or built. |
 
 ## Slice 2 (Sprint 2: Contacts)
@@ -45,10 +45,11 @@ Not started — no tasks exist yet for email (Slice 3), campaign scheduling (Sli
 
 ## Summary
 
-- **Slice 1: 7 of 10 features DONE, 1 PARTIAL (Audit Logs — recording works, viewing
-  doesn't), 2 NOT_STARTED** (Usage Metering, Integrations — both explicitly out of Sprint
-  1's minimal scope per [SPRINT_01_FOUNDATION.md](../14-sprints/SPRINT_01_FOUNDATION.md),
-  which never included them as deliverables despite the catalog tagging them "Slice 1").
-  Notifications and Admin Portal are likewise catalog-tagged Slice 1 but were never in
-  Sprint 1's actual task breakdown.
+- **Slice 1: 8 of 10 features DONE, 2 NOT_STARTED** (Usage Metering, Integrations — both
+  explicitly out of Sprint 1's minimal scope per
+  [SPRINT_01_FOUNDATION.md](../14-sprints/SPRINT_01_FOUNDATION.md), which never included
+  them as deliverables despite the catalog tagging them "Slice 1"). Notifications and
+  Admin Portal are likewise catalog-tagged Slice 1 but were never in Sprint 1's actual
+  task breakdown. Audit Logs (`GRX-FEAT-027`) was `PARTIAL` on this matrix's first pass
+  (2026-07-31) — `GRX-AUDIT-002` closed it to `DONE` the same day.
 - **Slice 2: 5 of 5 features DONE.**

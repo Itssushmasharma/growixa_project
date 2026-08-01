@@ -2,7 +2,7 @@
 
 - Document ID: DOC-PROJECT-STATUS
 - Status: ACTIVE
-- Version: 1.35
+- Version: 1.36
 - Last updated: 2026-07-31
 - Owner: Coding agent (on behalf of product owner)
 - Related documents: [MASTER_TASK_TRACKER](MASTER_TASK_TRACKER.md), [DECISIONS](DECISIONS.md), [DEVELOPMENT_READINESS](DEVELOPMENT_READINESS.md), [FEATURE_STATUS_MATRIX](FEATURE_STATUS_MATRIX.md)
@@ -51,12 +51,11 @@ shell), `GRX-COMPANY-002` (company settings screen), `GRX-USER-002` (user manage
 screens), `GRX-FOUND-007` (RabbitMQ connectivity + worker skeleton), `GRX-DEVOPS-001`
 (CI pipeline — pushed by the user and confirmed green on GitHub Actions), and `GRX-DOC-003`
 (Sprint 1 documentation + handoff update, incl. the new
-[FEATURE_STATUS_MATRIX.md](FEATURE_STATUS_MATRIX.md)) are all `DONE`. **Sprint 1 is fully
-`DONE`, with one honestly-tracked gap:** `GRX-DOC-003`'s feature audit found that
-`GRX-FEAT-027` (Audit Logs) only satisfies the *recording* half of Sprint 1's acceptance
-criteria — there is no way to actually view audit events (no API endpoint, no frontend
-page), so `audit.view` is an unused permission code. Filed as new task `GRX-AUDIT-002`
-(`BACKLOG`) rather than left undocumented. See
+[FEATURE_STATUS_MATRIX.md](FEATURE_STATUS_MATRIX.md)), and `GRX-AUDIT-002` (audit log
+viewing — `GET /audit` endpoint + frontend page) are all `DONE`. **Sprint 1 is now fully
+`DONE` with no open gaps** — `GRX-DOC-003`'s feature audit found that `GRX-FEAT-027`
+(Audit Logs) only satisfied the *recording* half of Sprint 1's acceptance criteria (no
+way to view events), which `GRX-AUDIT-002` then closed the same session. See
 [FEATURE_STATUS_MATRIX.md](FEATURE_STATUS_MATRIX.md) for the full per-feature breakdown. Per
 [AGENT_EXECUTION_RULES.md](../12-development/AGENT_EXECUTION_RULES.md), only one is worked
 on at a time. See [AGENT_HANDOFF.md](AGENT_HANDOFF.md) for session-by-session
@@ -135,6 +134,7 @@ detail.
 | `apps/api/src/growixa_api/jobs/` (new), `apps/worker/` (new app) | DONE (`GRX-FOUND-007`) |
 | `apps/web/src/app/dashboard/contacts/suppression/` (new), `contacts-page.tsx`/`types.ts` (consent extensions) | DONE (`GRX-CONTACT-009`) |
 | `docs/00-project-control/FEATURE_STATUS_MATRIX.md` | DONE (`GRX-DOC-003`) |
+| `apps/api/src/growixa_api/audit/{api,schemas}.py` (new), `apps/web/src/app/dashboard/audit/` (new) | DONE (`GRX-AUDIT-002`) |
 | `docs/00-project-control/RISKS.md`, `BLOCKERS.md` | NOT_STARTED (not required by any `GRX-DOC-*` task yet) |
 | `docs/03-ux-ui/DESIGN_REFERENCES.md` | DONE (reference material only — see its own scope caveat; not a Sprint 1 spec) |
 | `docs/01-product/FUTURE_SCOPE_MULTI_BRAND.md` | DONE (idea capture only — multi-brand profiles + subscription tiers; contradicts DEC-GRX-002/013 as proposed, not scheduled into any release) |
@@ -151,11 +151,12 @@ detail.
    `GRX-FOUND-008` → `GRX-DEVOPS-001` → `GRX-COMPANY-002` → `GRX-USER-002` →
    `GRX-FOUND-007` → Sprint 2: `GRX-CONTACT-001` → `GRX-CONTACT-002` → `GRX-CONTACT-003` →
    `GRX-CONTACT-004` → `GRX-CONTACT-005` → `GRX-CONTACT-006` → `GRX-CONTACT-007` →
-   `GRX-CONTACT-008` → `GRX-CONTACT-009` → `GRX-DOC-003`. **Sprint 1 and Sprint 2
-   (Contacts) are both fully `DONE`**, including `GRX-DEVOPS-001` (user pushed and
-   confirmed a green CI run) and `GRX-DOC-003` (Sprint 1 doc/handoff update, which
-   also filed `GRX-AUDIT-002` for the audit-viewing gap it found). Awaiting user
-   direction on what to pick up next — a Sprint 3 kickoff, or `GRX-AUDIT-002`.
+   `GRX-CONTACT-008` → `GRX-CONTACT-009` → `GRX-DOC-003` → `GRX-AUDIT-002`. **Sprint 1
+   and Sprint 2 (Contacts) are both fully `DONE`**, including `GRX-DEVOPS-001` (user
+   pushed and confirmed a green CI run), `GRX-DOC-003` (Sprint 1 doc/handoff update,
+   which filed `GRX-AUDIT-002` for the audit-viewing gap it found), and `GRX-AUDIT-002`
+   itself (closed the same session it was filed). No task is `READY` or `BACKLOG`.
+   Awaiting user direction on what to pick up next — most likely a Sprint 3 kickoff.
 2. `RISKS.md`/`BLOCKERS.md` remain not required by any task yet; create them if/when a
    task's scope actually calls for one.
 3. Write full feature specs in `02-features/` for Slice 1 features as each task is picked up, not all upfront.
