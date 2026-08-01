@@ -5,84 +5,50 @@
 - Version: 1.0
 - Last updated: 2026-07-31
 - Owner: Coding agent
-- Related documents: [MASTER_TASK_TRACKER](MASTER_TASK_TRACKER.md), [PROJECT_STATUS](PROJECT_STATUS.md), [CHANGELOG](CHANGELOG.md)
+- Related documents: [MASTER_TASK_TRACKER](MASTER_TASK_TRACKER.md), [PROJECT_STATUS](PROJECT_STATUS.md), [CHANGELOG](CHANGELOG.md), [FEATURE_STATUS_MATRIX](FEATURE_STATUS_MATRIX.md)
 
 ## Task worked on
 
-`GRX-CONTACT-009` — Consent/suppression frontend. Picked immediately after
-`GRX-CONTACT-008` per the user's "continue". **This was the last remaining Sprint 2
-task — completing it closes Sprint 2 (Contacts) entirely.**
+`GRX-DOC-003` — Sprint 1 documentation + handoff update. Picked up because it was the
+only `READY` task after `GRX-CONTACT-009` (Sprint 2's last task) closed and
+`GRX-DEVOPS-001` was confirmed `DONE` (see "Prior context" below). **This closes
+Sprint 1 for real.**
 
 ## Work completed
 
-- **Consent history** (`ContactsPage`'s detail panel, `apps/web/src/app/dashboard/contacts/contacts-page.tsx`):
-  lazy-loads `GET /contacts/{id}/consent` on row expand (same pattern as segment
-  members in `GRX-CONTACT-007`), rendering newest-first. Managers get an inline
-  record-consent form (channel/status selects, optional source input) posting to
-  `POST /contacts/{id}/consent` and prepending the new record.
-- **`SuppressionPage`** (`apps/web/src/app/dashboard/contacts/suppression/`, new):
-  lists all suppression entries (email, linked contact's email or "No matching
-  contact", reason badge, timestamp). Managers get a "+ Suppress an email" form
-  (email, reason select, optional contact picker from `GET /contacts`) posting to
-  `POST /contacts/suppression`. No remove/unsuppress control — the backend has none
-  by design (`GRX-CONTACT-005`), so the UI doesn't pretend otherwise.
-- **Upsert-in-place handling**: re-suppressing an already-suppressed email returns
-  the same entry `id` from the backend; the frontend matches on `id` and replaces
-  the existing row instead of appending, so the list never shows a duplicate.
-- Sidebar: added "Suppression" under AUDIENCE (gated `contacts.view`). Page-title
-  map got the new route.
+- Created `FEATURE_STATUS_MATRIX.md` (new) — per-feature implementation status,
+  verified against actual code (grepped for API routes, frontend pages, tracker
+  evidence) rather than assumed from the tracker's task-level `DONE` claims.
+- That check surfaced a real gap: `GRX-FEAT-027` (Audit Logs) only has the write
+  path built (`growixa_api/audit/{models,repositories,services}.py`, no `api.py`)
+  — there's no `GET` endpoint and no frontend page, so Sprint 1's acceptance
+  criterion that audit logs be "visible to users with `audit.view`" was never
+  actually met. Filed as new task `GRX-AUDIT-002` (`BACKLOG`) in the tracker
+  rather than silently marking Sprint 1 clean.
+- Confirmed Notifications/Usage Metering/Integrations/Admin Portal — all tagged
+  "Slice 1" in `FEATURE_CATALOG.md` — were never in `SPRINT_01_FOUNDATION.md`'s
+  actual "Included" task list and remain `NOT_STARTED`; the catalog's slice tags
+  mark target release, not delivery status.
+- Updated `PROJECT_STATUS.md` (documents table, current-phase section, immediate
+  next steps) and `CHANGELOG.md` to reflect Sprint 1 as fully `DONE` with that one
+  gap tracked openly.
 
 ## Files changed
 
-- `apps/web/src/app/dashboard/contacts/types.ts` (added `ConsentRecord`, `SuppressionEntry`)
-- `apps/web/src/app/dashboard/contacts/contacts-page.tsx` (consent history + record form)
-- `apps/web/src/app/dashboard/contacts/contacts-page.test.tsx` (2 new tests + consent mocks on existing "View" tests)
-- `apps/web/src/app/dashboard/contacts/suppression/{suppression-page.tsx,page.tsx,suppression-page.test.tsx}` (new)
-- `apps/web/src/app/dashboard/sidebar.tsx` (added "Suppression" nav item)
-- `apps/web/src/app/dashboard/page-title.tsx` (added Suppression title)
-- `docs/00-project-control/MASTER_TASK_TRACKER.md`, `PROJECT_STATUS.md`, `CHANGELOG.md` (this update)
+- `docs/00-project-control/FEATURE_STATUS_MATRIX.md` (new)
+- `docs/00-project-control/MASTER_TASK_TRACKER.md` (`GRX-DOC-003` → `DONE`, new
+  `GRX-AUDIT-002` row)
+- `docs/00-project-control/PROJECT_STATUS.md`, `CHANGELOG.md` (this update)
 
 ## Commands executed
 
-```bash
-cd apps/web
-npm run lint && npm run typecheck && npm run format && npm run format:check
-npm run test   # 46 passed (full frontend suite)
-
-cd ..
-podman compose restart web   # same dev-server route-discovery issue as every prior frontend task this sprint
-# live verification (see below)
-```
-
-## Test results
-
-`eslint`/`tsc --noEmit`/`prettier --check` clean. `vitest` 46 passed (7 new: 2 on
-`ContactsPage` consent history/record, 5 on `SuppressionPage`).
-
-## Live verification detail
-
-Against the rebuilt dev server and real backend (Super Admin):
-
-- Recorded GRANTED then WITHDRAWN consent for a contact; confirmed newest-first
-  ordering in the UI.
-- Suppressed `smoketest.consent@example.com` (linked to a real contact) —
-  confirmed the entry appeared and the contact's Contacts-page row flipped to
-  "Suppressed". Re-suppressed the same email with a different reason (COMPLAINED)
-  and confirmed the entry updated in place — still exactly one row, matching the
-  passing upsert unit test.
-- Created a throwaway Analyst user (`contacts.view` only, no `contacts.manage`),
-  logged in as them, and confirmed: consent history is read-only (no channel/status
-  selects, no "Record consent" form; a "You have view-only access to contacts."
-  note shows instead), and the Suppression page shows the list with no "+ Suppress
-  an email" button.
-- Cleaned up all smoke-test rows afterward (suppression entry, contact + its
-  consent/audit rows, Analyst user + refresh tokens/audit/role rows) — confirmed
-  the suppression list and contacts list were both back to their prior state.
+No code changed — documentation only. No lint/test run needed for this task.
 
 ## Decisions
 
-None new — this task followed the established lazy-load-on-expand and
-gate-write-controls-on-`contacts.manage` patterns from `GRX-CONTACT-006`/`007`/`008`.
+Did not implement `GRX-AUDIT-002` (the audit-viewing gap) inline — it's new
+feature scope beyond `GRX-DOC-003`'s documentation-only mandate. Filed as a
+tracked `BACKLOG` task instead of fixing on the spot or leaving it unrecorded.
 
 ## Blockers
 
@@ -90,29 +56,30 @@ None.
 
 ## Known issues
 
+- `GRX-AUDIT-002` (audit log viewing — API + frontend) is open, `BACKLOG`, `P1`.
 - Possible latent `MissingGreenlet` in `company_profile` (background task filed,
-  unresolved).
-- The web dev server's file watcher again did not pick up the new route directory
-  without a container restart (same as every prior frontend task this sprint).
+  unresolved, carried over from earlier sessions).
 
-## Post-task correction (same session)
+## Prior context (same session, before this task)
 
-After this task closed, the user confirmed `GRX-DEVOPS-001` (CI pipeline) had
-already been pushed and had run green on GitHub Actions — the tracker's prior
-`IN_REVIEW` status was stale. Updated `MASTER_TASK_TRACKER.md`/`PROJECT_STATUS.md`/
-`CHANGELOG.md` to move it to `DONE` and flip `GRX-DOC-003` (Sprint 1 documentation
-+ handoff update) to `READY`. No code changes; documentation-only correction.
+After `GRX-CONTACT-009` closed Sprint 2, the user confirmed `GRX-DEVOPS-001` (CI
+pipeline) had already been pushed and run green on GitHub Actions — the
+tracker's `IN_REVIEW` status was stale. Moved it to `DONE`, which unblocked
+`GRX-DOC-003` (this task). See `CHANGELOG.md`'s "GRX-DEVOPS-001 confirmed DONE"
+entry for that correction, and its "GRX-CONTACT-009" entry above it for the
+Sprint 2 close-out (consent history + suppression list frontend, commit
+`81332b5`).
 
 ## Current state
 
-**Sprint 1 and Sprint 2 (Contacts) are both fully `DONE`.** `GRX-DOC-003` is
-`READY` (unblocked by `GRX-DEVOPS-001`'s completion). No Sprint 1 or Sprint 2 task
-remains `READY` or `BACKLOG` other than `GRX-DOC-003` itself.
+**Sprint 1 and Sprint 2 are both fully `DONE`.** Only one task is `BACKLOG`
+(`GRX-AUDIT-002`); nothing is `READY`.
 
 ## Exact next task
 
-None assigned yet. Awaiting user direction — candidates are `GRX-DOC-003` (Sprint 1
-doc/handoff update) or starting a new sprint.
+None assigned yet. Candidates: `GRX-AUDIT-002` (audit log viewing gap), or
+kicking off a new sprint (Slice 3: email, per `ROADMAP.md`/`MVP_SCOPE.md`).
+Awaiting user direction.
 
 ## Resume commands
 
@@ -125,4 +92,5 @@ podman compose up -d
 
 ## Latest commit
 
-`81332b5` — feat(contacts): consent history and suppression list frontend (GRX-CONTACT-009)
+`1c9189c` — docs(product): mark GRX-DEVOPS-001 DONE after confirmed green CI run
+(this task's own commit is pending as of this writing).

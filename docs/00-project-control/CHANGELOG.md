@@ -10,6 +10,25 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
+## 2026-07-31 — GRX-DOC-003: Sprint 1 documentation + handoff update (closes Sprint 1)
+
+- Created `FEATURE_STATUS_MATRIX.md` (new): per-feature implementation status, checked
+  against actual code rather than trusted from tracker claims alone.
+- Found a real gap while doing that check: `GRX-FEAT-027` (Audit Logs) only has the
+  write path — `growixa_api/audit/` has no `api.py`, so there's no `GET` endpoint and no
+  frontend page, meaning `audit.view` is a permission code nothing checks. Sprint 1's
+  acceptance criterion that audit logs be "visible to users with `audit.view`" was never
+  actually met. Filed as new task `GRX-AUDIT-002` (`BACKLOG`) rather than left silent.
+- Also confirmed Notifications/Usage Metering/Integrations/Admin Portal — all tagged
+  "Slice 1" in `FEATURE_CATALOG.md` — were never in Sprint 1's actual task list
+  (`SPRINT_01_FOUNDATION.md`'s "Included" section) and remain `NOT_STARTED`; the
+  catalog's slice tags reflect the target release, not delivery.
+- Updated `PROJECT_STATUS.md` to reference the new matrix and record Sprint 1 as fully
+  `DONE` with that one gap tracked, not hidden.
+- This closes Sprint 1 for real (all `GRX-FOUND-*`/`GRX-AUTH-*`/`GRX-USER-*`/`GRX-RBAC-*`/
+  `GRX-COMPANY-*`/`GRX-AUDIT-001`/`GRX-TEST-*`/`GRX-DEVOPS-001`/`GRX-DOC-003` are `DONE`).
+  Commit `<pending>`.
+
 ## 2026-07-31 — GRX-DEVOPS-001 confirmed DONE
 
 - The user pushed `main` to GitHub and confirmed the CI workflow (`.github/workflows/ci.yml`,

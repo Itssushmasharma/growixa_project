@@ -2,10 +2,10 @@
 
 - Document ID: DOC-PROJECT-STATUS
 - Status: ACTIVE
-- Version: 1.34
+- Version: 1.35
 - Last updated: 2026-07-31
 - Owner: Coding agent (on behalf of product owner)
-- Related documents: [MASTER_TASK_TRACKER](MASTER_TASK_TRACKER.md), [DECISIONS](DECISIONS.md), [DEVELOPMENT_READINESS](DEVELOPMENT_READINESS.md)
+- Related documents: [MASTER_TASK_TRACKER](MASTER_TASK_TRACKER.md), [DECISIONS](DECISIONS.md), [DEVELOPMENT_READINESS](DEVELOPMENT_READINESS.md), [FEATURE_STATUS_MATRIX](FEATURE_STATUS_MATRIX.md)
 
 ## Product identity (confirmed)
 
@@ -48,10 +48,16 @@ revocation), `GRX-USER-001` (internal user invitation + acceptance), `GRX-AUTH-0
 (password reset flow), `GRX-FOUND-006` (Redis connectivity), `GRX-AUTH-004` (login rate
 limiting), `GRX-TEST-002` (frontend test foundation), `GRX-FOUND-008` (dashboard
 shell), `GRX-COMPANY-002` (company settings screen), `GRX-USER-002` (user management
-screens), `GRX-FOUND-007` (RabbitMQ connectivity + worker skeleton), and `GRX-DEVOPS-001`
-(CI pipeline — pushed by the user and confirmed green on GitHub Actions) are `DONE`.
-**All tracked Sprint 1 tasks are now `DONE`.** `GRX-DOC-003` (Sprint 1 documentation +
-handoff update) is now `READY`, unblocked by `GRX-DEVOPS-001`'s completion. Per
+screens), `GRX-FOUND-007` (RabbitMQ connectivity + worker skeleton), `GRX-DEVOPS-001`
+(CI pipeline — pushed by the user and confirmed green on GitHub Actions), and `GRX-DOC-003`
+(Sprint 1 documentation + handoff update, incl. the new
+[FEATURE_STATUS_MATRIX.md](FEATURE_STATUS_MATRIX.md)) are all `DONE`. **Sprint 1 is fully
+`DONE`, with one honestly-tracked gap:** `GRX-DOC-003`'s feature audit found that
+`GRX-FEAT-027` (Audit Logs) only satisfies the *recording* half of Sprint 1's acceptance
+criteria — there is no way to actually view audit events (no API endpoint, no frontend
+page), so `audit.view` is an unused permission code. Filed as new task `GRX-AUDIT-002`
+(`BACKLOG`) rather than left undocumented. See
+[FEATURE_STATUS_MATRIX.md](FEATURE_STATUS_MATRIX.md) for the full per-feature breakdown. Per
 [AGENT_EXECUTION_RULES.md](../12-development/AGENT_EXECUTION_RULES.md), only one is worked
 on at a time. See [AGENT_HANDOFF.md](AGENT_HANDOFF.md) for session-by-session
 detail.
@@ -128,7 +134,8 @@ detail.
 | `apps/web/src/app/dashboard/team/`, `apps/api/src/growixa_api/roles/{api,schemas}.py` (new), `apps/api/src/growixa_api/users/` (extended) | DONE (`GRX-USER-002`) |
 | `apps/api/src/growixa_api/jobs/` (new), `apps/worker/` (new app) | DONE (`GRX-FOUND-007`) |
 | `apps/web/src/app/dashboard/contacts/suppression/` (new), `contacts-page.tsx`/`types.ts` (consent extensions) | DONE (`GRX-CONTACT-009`) |
-| `docs/00-project-control/FEATURE_STATUS_MATRIX.md`, `RISKS.md`, `BLOCKERS.md` | NOT_STARTED (created as Sprint 1 tasks land) |
+| `docs/00-project-control/FEATURE_STATUS_MATRIX.md` | DONE (`GRX-DOC-003`) |
+| `docs/00-project-control/RISKS.md`, `BLOCKERS.md` | NOT_STARTED (not required by any `GRX-DOC-*` task yet) |
 | `docs/03-ux-ui/DESIGN_REFERENCES.md` | DONE (reference material only — see its own scope caveat; not a Sprint 1 spec) |
 | `docs/01-product/FUTURE_SCOPE_MULTI_BRAND.md` | DONE (idea capture only — multi-brand profiles + subscription tiers; contradicts DEC-GRX-002/013 as proposed, not scheduled into any release) |
 | `docs/01-product/FUTURE_SCOPE_PLATFORM_ADMIN.md` | DONE (idea capture only — self-service multi-tenant SaaS + IITDEVELOPER platform-admin control plane; requires revisiting DEC-GRX-002/013, not scheduled into any release) |
@@ -144,10 +151,13 @@ detail.
    `GRX-FOUND-008` → `GRX-DEVOPS-001` → `GRX-COMPANY-002` → `GRX-USER-002` →
    `GRX-FOUND-007` → Sprint 2: `GRX-CONTACT-001` → `GRX-CONTACT-002` → `GRX-CONTACT-003` →
    `GRX-CONTACT-004` → `GRX-CONTACT-005` → `GRX-CONTACT-006` → `GRX-CONTACT-007` →
-   `GRX-CONTACT-008` → `GRX-CONTACT-009`. **Sprint 1 and Sprint 2 (Contacts) are both now
-   fully `DONE`**, including `GRX-DEVOPS-001` (user pushed and confirmed a green CI run).
-   `GRX-DOC-003` is `READY`; awaiting user direction on what to pick up next.
-2. Create `FEATURE_STATUS_MATRIX.md`, `RISKS.md`, `BLOCKERS.md` alongside Sprint 1 tasks as they land, not all upfront.
+   `GRX-CONTACT-008` → `GRX-CONTACT-009` → `GRX-DOC-003`. **Sprint 1 and Sprint 2
+   (Contacts) are both fully `DONE`**, including `GRX-DEVOPS-001` (user pushed and
+   confirmed a green CI run) and `GRX-DOC-003` (Sprint 1 doc/handoff update, which
+   also filed `GRX-AUDIT-002` for the audit-viewing gap it found). Awaiting user
+   direction on what to pick up next — a Sprint 3 kickoff, or `GRX-AUDIT-002`.
+2. `RISKS.md`/`BLOCKERS.md` remain not required by any task yet; create them if/when a
+   task's scope actually calls for one.
 3. Write full feature specs in `02-features/` for Slice 1 features as each task is picked up, not all upfront.
 4. Do not begin any V1.5+/SEO-AEO-GEO work until Slices 1–6 (MVP) are stable in production.
 5. Do not resolve OQ-002/003/004/006/007/012 early — they don't block Slice 1 (explicit instruction).
