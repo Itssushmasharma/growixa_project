@@ -27,7 +27,7 @@ from Sprint 1 onward, code). Each entry names what changed and the commit(s) it 
   `DONE` with that one gap tracked, not hidden.
 - This closes Sprint 1 for real (all `GRX-FOUND-*`/`GRX-AUTH-*`/`GRX-USER-*`/`GRX-RBAC-*`/
   `GRX-COMPANY-*`/`GRX-AUDIT-001`/`GRX-TEST-*`/`GRX-DEVOPS-001`/`GRX-DOC-003` are `DONE`).
-  Commit `<pending>`.
+  Commit `2cc3acc`.
 
 ## 2026-07-31 — GRX-DEVOPS-001 confirmed DONE
 

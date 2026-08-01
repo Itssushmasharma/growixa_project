@@ -92,5 +92,4 @@ podman compose up -d
 
 ## Latest commit
 
-`1c9189c` — docs(product): mark GRX-DEVOPS-001 DONE after confirmed green CI run
-(this task's own commit is pending as of this writing).
+`2cc3acc` — docs(product): Sprint 1 documentation + handoff update (GRX-DOC-003)
