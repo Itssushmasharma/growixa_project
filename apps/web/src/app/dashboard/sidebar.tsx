@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState } from "react";
 
 import iconMark from "@/assets/icon/growixa-icon-mark.png";
 
@@ -57,41 +58,98 @@ const NAV_SECTIONS: NavSection[] = [
   },
 ];
 
-export function Sidebar({ permissions }: { permissions: string[] }) {
+interface SidebarProps {
+  permissions: string[];
+  // Single boolean drives both breakpoints: on desktop it toggles a full-width vs.
+  // zero-width sidebar (content reflows); on mobile it toggles an off-canvas drawer
+  // sliding in over content (see sidebar.module.css's media query for the split).
+  open: boolean;
+  onClose: () => void;
+}
+
+export function Sidebar({ permissions, open, onClose }: SidebarProps) {
   const pathname = usePathname();
+  // Each section (OVERVIEW/AUDIENCE/SETTINGS) is its own independent accordion,
+  // starting expanded — matches the reference pattern of per-heading expand/collapse
+  // rather than one all-or-nothing toggle for the whole nav.
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>(() =>
+    Object.fromEntries(NAV_SECTIONS.map((section) => [section.label, true])),
+  );
+
+  function toggleSection(label: string) {
+    setExpandedSections((current) => ({ ...current, [label]: !current[label] }));
+  }
 
   return (
-    <nav className={styles.sidebar}>
-      <div className={styles.brand}>
-        <Image src={iconMark} alt="" width={28} height={28} />
-        <div>
-          <div className={styles.brandName}>Growixa</div>
-          <div className={styles.brandCaption}>BY IITDEVELOPER</div>
-        </div>
-      </div>
-
-      {NAV_SECTIONS.map((section) => {
-        const items = section.items.filter(
-          (item) => !item.requiresPermission || permissions.includes(item.requiresPermission),
-        );
-        if (items.length === 0) {
-          return null;
-        }
-        return (
-          <div key={section.label}>
-            <span className={styles.sectionLabel}>{section.label}</span>
-            {items.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={pathname === item.href ? styles.navItemActive : styles.navItem}
-              >
-                {item.label}
-              </Link>
-            ))}
+    <>
+      {open && (
+        <button
+          type="button"
+          aria-label="Close sidebar"
+          className={styles.backdrop}
+          onClick={onClose}
+        />
+      )}
+      <nav
+        className={`${styles.sidebar} ${open ? styles.mobileOpen : styles.collapsed}`}
+        aria-hidden={!open}
+      >
+        <div className={styles.brand}>
+          <Image src={iconMark} alt="" width={28} height={28} />
+          <div>
+            <div className={styles.brandName}>Growixa</div>
+            <div className={styles.brandCaption}>BY IITDEVELOPER</div>
           </div>
-        );
-      })}
-    </nav>
+        </div>
+
+        {NAV_SECTIONS.map((section) => {
+          const items = section.items.filter(
+            (item) => !item.requiresPermission || permissions.includes(item.requiresPermission),
+          );
+          if (items.length === 0) {
+            return null;
+          }
+          const expanded = expandedSections[section.label] ?? true;
+          return (
+            <div key={section.label}>
+              <button
+                type="button"
+                className={styles.sectionHeader}
+                onClick={() => toggleSection(section.label)}
+                aria-expanded={expanded}
+              >
+                <span className={styles.sectionLabel}>{section.label}</span>
+                <svg
+                  className={expanded ? styles.chevronExpanded : styles.chevron}
+                  width="10"
+                  height="10"
+                  viewBox="0 0 10 10"
+                  fill="none"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M2.5 3.5 5 6.5l2.5-3"
+                    stroke="currentColor"
+                    strokeWidth="1.4"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </button>
+              {expanded &&
+                items.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={pathname === item.href ? styles.navItemActive : styles.navItem}
+                  >
+                    {item.label}
+                  </Link>
+                ))}
+            </div>
+          );
+        })}
+      </nav>
+    </>
   );
 }

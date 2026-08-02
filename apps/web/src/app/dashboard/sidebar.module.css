@@ -4,6 +4,52 @@
   min-height: 100vh;
   background: var(--gradient-sidebar);
   padding: 24px 16px;
+  overflow: hidden;
+  transition:
+    width 0.2s ease,
+    padding 0.2s ease,
+    transform 0.2s ease;
+}
+
+/* Desktop: collapsing shrinks the sidebar to nothing so content reflows to fill the
+   space. No per-item icons exist yet, so this is a full hide rather than an icon-only
+   rail — see GRX-FOUND-009. */
+.collapsed {
+  width: 0;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.backdrop {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 50;
+    width: 240px;
+    transform: translateX(-100%);
+  }
+
+  /* Mobile default is closed regardless of the collapsed/open class — .mobileOpen is
+     the only thing that slides it into view at this breakpoint. */
+  .mobileOpen {
+    transform: translateX(0);
+  }
+
+  .backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    border: none;
+    padding: 0;
+    background: rgba(11, 27, 51, 0.5);
+    cursor: pointer;
+  }
 }
 
 .brand {
@@ -27,15 +73,37 @@
   color: var(--color-nav-inactive);
 }
 
-.sectionLabel {
-  display: block;
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
   padding: 0 8px;
   margin-top: 20px;
   margin-bottom: 8px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+}
+
+.sectionLabel {
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.06em;
   color: var(--color-nav-inactive);
+}
+
+.chevron,
+.chevronExpanded {
+  color: var(--color-nav-inactive);
+  flex-shrink: 0;
+  transition: transform 0.15s ease;
+}
+
+.chevron {
+  transform: rotate(-90deg);
 }
 
 .navItem,

@@ -7,6 +7,30 @@
   box-shadow: var(--card-shadow);
 }
 
+.titleArea {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.menuButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid rgba(15, 42, 86, 0.12);
+  background: #fff;
+  color: var(--color-dark-text);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.menuButton:hover {
+  background: #f4f6fb;
+}
+
 .title {
   margin: 0;
   font-size: 22px;
