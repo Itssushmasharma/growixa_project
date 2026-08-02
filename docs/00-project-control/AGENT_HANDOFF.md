@@ -3,93 +3,94 @@
 - Document ID: DOC-AGENT-HANDOFF
 - Status: ACTIVE (updated at the end of every work session)
 - Version: 1.0
-- Last updated: 2026-07-31
+- Last updated: 2026-08-01
 - Owner: Coding agent
 - Related documents: [MASTER_TASK_TRACKER](MASTER_TASK_TRACKER.md), [PROJECT_STATUS](PROJECT_STATUS.md), [CHANGELOG](CHANGELOG.md), [FEATURE_STATUS_MATRIX](FEATURE_STATUS_MATRIX.md)
 
 ## Task worked on
 
-`GRX-AUDIT-002` — Audit log viewing (API + frontend). Picked up on the user's "ok done
-this" after they confirmed they wanted the gap `GRX-DOC-003` found addressed. **This
-closes the last open task in the tracker — no `READY` or `BACKLOG` items remain.**
+`GRX-FOUND-009` — Collapsible/responsive sidebar navigation. Ad hoc, user-requested
+mid-session (not from any sprint plan) after `GRX-AUDIT-002` closed the tracker's last
+open task. Two parts requested in the same conversation: a whole-sidebar hamburger
+toggle, then a per-section accordion referencing a third-party product's sidebar.
 
 ## Work completed
 
-- **`GET /audit`** (`apps/api/src/growixa_api/audit/api.py`, new; `schemas.py`, new):
-  gated on `audit.view` via the existing `require_permission` dependency (passes the
-  route-protection audit test automatically, no allowlist change needed). Accepts
-  optional `entity_type`/`actor_user_id` query filters, both already supported by
-  `GRX-AUDIT-001`'s `list_events` service — no new query logic needed.
-- **Bug found by the test suite**: `AuditLogOut.ip_address` (`str | None`) rejected real
-  rows because Postgres `INET` deserializes via asyncpg as `ipaddress.IPv4Address`, not
-  `str`. Fixed with a `field_validator("ip_address", mode="before")` that stringifies
-  non-`None`, non-`str` values rather than widening the field's type.
-- **`AuditPage`** (`apps/web/src/app/dashboard/audit/`, new): read-only list — action,
-  resolved actor email, timestamp, non-empty metadata inline, entity_type badge. A
-  client-side entity_type filter (built from the already-loaded events, no per-filter
-  re-fetch, since the backend caps at 100 rows). Actor emails resolved via `GET /users`
-  (gated `users.manage`, not `audit.view` — safe today, same reasoning as
-  `roles/api.py`'s existing comment about identical Super Admin/Admin-only grants).
-- Sidebar: added "Audit Log" under SETTINGS (gated `audit.view`). Page-title map got
-  the new route.
+- **Whole-sidebar hamburger toggle.** New `DashboardShell` client component
+  (`apps/web/src/app/dashboard/dashboard-shell.tsx`), split out of `layout.tsx` (which
+  stays a server component for the auth check). Owns one `sidebarOpen` boolean and
+  renders the hamburger button (inline SVG — no icon library in this project).
+  `Sidebar` gained `open`/`onClose` props and a conditionally-rendered backdrop.
+  Desktop: `open=false` collapses the sidebar to zero width (content reflows — no
+  per-item icons exist, so this is a full hide, not an icon rail). Mobile (new `768px`
+  breakpoint — the first responsive breakpoint in this app): off-canvas overlay,
+  hidden via `translateX(-100%)` by default, sliding to `translateX(0)` with a
+  dismissible backdrop when open. One boolean drives both breakpoints purely via CSS
+  media queries. A `useEffect` on `usePathname()` auto-closes the drawer after
+  navigating on mobile (checked via `window.matchMedia`).
+- **Per-section accordion.** Each nav section (OVERVIEW/AUDIENCE/SETTINGS) is now its
+  own independent collapse, defaulting to expanded, via a `Record<string, boolean>`
+  keyed by section label in `Sidebar`. The plain `<span>` section label became a
+  `<button>` with `aria-expanded` and a rotating chevron SVG. Independent of, not a
+  replacement for, the whole-sidebar toggle.
+- Added a `window.matchMedia` polyfill to `vitest.setup.ts` (jsdom has none) — exposed
+  by this task, now reusable by any future responsive-behavior test.
 
 ## Files changed
 
-- `apps/api/src/growixa_api/audit/{api,schemas}.py` (new)
-- `apps/api/src/growixa_api/app.py` (wired `audit_router`)
-- `apps/api/tests/test_audit_view.py` (new, 3 tests)
-- `apps/web/src/app/dashboard/audit/{audit-page.tsx,page.tsx,audit-page.test.tsx,audit-page.module.css,types.ts}` (new)
-- `apps/web/src/app/dashboard/sidebar.tsx` (added "Audit Log" nav item)
-- `apps/web/src/app/dashboard/page-title.tsx` (added Audit Log title)
-- `docs/00-project-control/MASTER_TASK_TRACKER.md`, `PROJECT_STATUS.md`,
-  `FEATURE_STATUS_MATRIX.md`, `CHANGELOG.md` (this update)
+- `apps/web/src/app/dashboard/dashboard-shell.tsx` (new)
+- `apps/web/src/app/dashboard/dashboard-shell.test.tsx` (new, 4 tests)
+- `apps/web/src/app/dashboard/sidebar.tsx` (extended: `open`/`onClose` props, backdrop, per-section accordion)
+- `apps/web/src/app/dashboard/sidebar.module.css` (collapsed/mobileOpen/backdrop states, section header + chevron)
+- `apps/web/src/app/dashboard/topbar.module.css` (`.titleArea`, `.menuButton`)
+- `apps/web/src/app/dashboard/layout.tsx` (now just wires `DashboardShell`)
+- `apps/web/vitest.setup.ts` (`matchMedia` polyfill)
+- `docs/00-project-control/MASTER_TASK_TRACKER.md`, `PROJECT_STATUS.md`, `CHANGELOG.md` (this update)
 
 ## Commands executed
 
 ```bash
-cd apps/api
-.venv/bin/ruff check src/growixa_api/audit/ src/growixa_api/app.py tests/test_audit_view.py
-.venv/bin/ruff format --check src/growixa_api/audit/ tests/test_audit_view.py
-.venv/bin/mypy src/growixa_api/audit/ src/growixa_api/app.py   # confirmed pre-existing errors elsewhere via git stash diff
-.venv/bin/pytest --no-cov   # 104 passed, 3 skipped (before fixing ip_address bug: 1 failed)
-.venv/bin/alembic check      # no drift
-
-cd ../web
+cd apps/web
 npm run lint && npm run typecheck && npm run format && npm run format:check
-npm run test -- --run   # 50 passed (4 new)
+npm run test -- --run    # 54 passed (4 new)
+npm run test:e2e         # 4 passed, unaffected by the refactor
 
-cd ../..
-podman compose restart api web
+cd ..
+podman compose restart web
 # live verification (see below)
 ```
 
 ## Test results
 
-Backend: `ruff`/`mypy` clean; `pytest` 107 passed, 3 skipped (3 new); `alembic check` →
-no drift. Frontend: `eslint`/`tsc --noEmit`/`prettier --check` clean; `vitest` 54 passed
-(4 new).
+`eslint`/`tsc --noEmit`/`prettier --check` clean. `vitest` 54 passed (4 new: default-open
+desktop + toggle, default-closed mobile via a `matchMedia` spy, permission-based nav
+filtering still holds, independent per-section collapse/expand). Playwright `test:e2e`
+(4 tests) unaffected by the refactor.
 
 ## Live verification detail
 
-Against the rebuilt dev server and real backend (Super Admin, `admin@growixa.local`):
+Against the rebuilt `web` container, both `desktop` and `mobile` (375×812) presets:
 
-- Confirmed real `user.login`/`user.login_failed` audit events render with resolved
-  actor emails and correct timestamps (newest-first).
-- Created a contact and confirmed a new `contact.created` event appeared at the top of
-  the list immediately (no page reload needed since the page fetches fresh each visit).
-- Used the entity_type filter dropdown to narrow to `contact` — count and visible rows
-  updated correctly, other entity types disappeared.
-- Created a throwaway Analyst user (no `audit.view`), confirmed the sidebar hides "Audit
-  Log" entirely and direct navigation to `/dashboard/audit` shows an access-denied
-  message.
-- Cleaned up all smoke-test rows afterward (contact, both throwaway users + their audit
-  rows).
+- Desktop: hamburger click smoothly collapses the sidebar to zero width with content
+  reflow; clicking again re-expands it.
+- Mobile: page loads with the sidebar off-screen by default (no flash-then-hide);
+  hamburger opens it as a dimmed overlay drawer; clicking a nav link navigates and
+  auto-closes the drawer; clicking the backdrop also closes it.
+- Section accordion: clicking the "AUDIENCE" heading collapsed its 5 items (chevron
+  rotated to point right) while "OVERVIEW"/"SETTINGS" stayed expanded and unaffected;
+  re-clicking restored it.
 
 ## Decisions
 
-None new beyond the `ip_address` stringification fix (a bug fix, not a design choice)
-and reusing `GET /users` for actor-name resolution (already-established pattern from
-`roles/api.py`/`suppression-page.tsx`, not a new one).
+- Full-hide collapse on desktop rather than an icon-only rail — no per-item icons
+  exist anywhere in this app yet; building a rail would require designing/sourcing a
+  full icon set, which is out of scope for this ad hoc request.
+- One boolean (`sidebarOpen`) driving both breakpoints via CSS alone, rather than
+  separate desktop/mobile state — simpler, and the two breakpoints' visual treatments
+  (width collapse vs. off-canvas transform) don't actually conflict.
+- Section accordions default to expanded (not collapsed) — matches the sidebar's prior
+  always-visible behavior exactly, so this is additive, not a behavior change for
+  anyone who doesn't touch the new toggle.
 
 ## Blockers
 
@@ -101,14 +102,14 @@ None.
   unresolved, carried over from earlier sessions).
 - Running the full backend `pytest` suite wipes `admin@growixa.local` (and any other
   manually-created accounts) as a side effect of `test_migrations.py`'s table-drop
-  round-trip against the same database Compose uses. Recreate it after any full suite
-  run before doing live browser verification — this has recurred every time the full
-  suite has been run this project and is treated as a known quirk, not a bug to fix.
+  round-trip against the same database Compose uses — recreate it after any full suite
+  run before doing live browser verification (known quirk, not a bug to fix).
 
 ## Current state
 
 **No tasks remain `READY` or `BACKLOG` in `MASTER_TASK_TRACKER.md`.** Sprint 1 and
-Sprint 2 (Contacts) are both fully `DONE` with no open gaps.
+Sprint 2 (Contacts) are both fully `DONE` with no open gaps; `GRX-FOUND-009` (this ad
+hoc UX task) is also `DONE`.
 
 ## Exact next task
 
@@ -126,4 +127,4 @@ podman compose up -d
 
 ## Latest commit
 
-`347a801` — feat(audit): audit log viewing API and frontend (GRX-AUDIT-002)
+`ef877c1` — feat(dashboard): collapsible/responsive sidebar navigation (GRX-FOUND-009)

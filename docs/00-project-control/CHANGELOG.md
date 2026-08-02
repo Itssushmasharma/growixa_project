@@ -10,6 +10,35 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
+## 2026-08-01 — GRX-FOUND-009: Collapsible/responsive sidebar navigation
+
+- Ad hoc, user-requested — not part of any sprint plan. Two parts, both requested in
+  the same conversation.
+- **Whole-sidebar hamburger toggle.** New `DashboardShell` client component (split out
+  of `layout.tsx`, which stays a server component for the auth check) owns one
+  `sidebarOpen` boolean and renders a hamburger button. On desktop, closing it
+  collapses the sidebar to zero width (content reflows — no per-item icons exist yet,
+  so this is a full hide, not an icon rail). On mobile (new `768px` breakpoint, the
+  first in this app), the sidebar is an off-canvas overlay: hidden by
+  `translateX(-100%)` by default, slid into view with a dismissible backdrop when
+  open. One boolean, driven entirely by CSS media queries — no JS viewport branching
+  needed for the toggle itself. A `useEffect` on `usePathname()` auto-closes the
+  drawer after navigating on mobile (checked via `window.matchMedia`), so it doesn't
+  cover the new page; desktop navigation is unaffected.
+- **Per-section accordion**, requested as an immediate follow-up referencing a
+  third-party product's sidebar (expandable "Market"/"Automation" headings): each nav
+  section (OVERVIEW/AUDIENCE/SETTINGS) is now its own independent collapse, defaulting
+  to expanded. Complementary to the whole-sidebar toggle, not a replacement — collapsing
+  one section doesn't touch the others or the sidebar's own open state.
+- Added a `window.matchMedia` polyfill to `vitest.setup.ts` (jsdom has none) — exposed
+  by this task, now available to any future responsive-behavior test.
+- `eslint`/`tsc --noEmit`/`prettier --check` clean; `vitest` 54 passed (4 new);
+  `test:e2e` (Playwright, 4 tests) unaffected. Live-verified at both `desktop` and
+  `mobile` (375×812) presets against the rebuilt `web` container: hamburger
+  collapse/expand and mobile drawer/backdrop/auto-close-on-navigate all confirmed;
+  collapsing "AUDIENCE" hid its 5 items while "OVERVIEW"/"SETTINGS" stayed unaffected.
+  Commit `ef877c1`.
+
 ## 2026-07-31 — GRX-AUDIT-002: Audit log viewing (API + frontend)
 
 - Added `GET /audit` (`apps/api/src/growixa_api/audit/api.py`, new), gated on `audit.view`,

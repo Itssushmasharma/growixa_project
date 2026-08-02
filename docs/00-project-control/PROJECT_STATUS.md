@@ -2,8 +2,8 @@
 
 - Document ID: DOC-PROJECT-STATUS
 - Status: ACTIVE
-- Version: 1.36
-- Last updated: 2026-07-31
+- Version: 1.37
+- Last updated: 2026-08-01
 - Owner: Coding agent (on behalf of product owner)
 - Related documents: [MASTER_TASK_TRACKER](MASTER_TASK_TRACKER.md), [DECISIONS](DECISIONS.md), [DEVELOPMENT_READINESS](DEVELOPMENT_READINESS.md), [FEATURE_STATUS_MATRIX](FEATURE_STATUS_MATRIX.md)
 
@@ -76,6 +76,11 @@ detail.
 (CSV import frontend), and `GRX-CONTACT-009` (consent/suppression frontend). Sprint 2
 (Contacts) is complete.**
 
+**Ad hoc UX addition (not tied to a sprint plan):** `GRX-FOUND-009` (collapsible/
+responsive sidebar navigation — hamburger toggle for desktop collapse + mobile overlay
+drawer, plus an independent per-section accordion for each nav heading), requested
+directly by the user mid-session, is `DONE`.
+
 ## Documents created so far
 
 | Document | Status |
@@ -135,6 +140,7 @@ detail.
 | `apps/web/src/app/dashboard/contacts/suppression/` (new), `contacts-page.tsx`/`types.ts` (consent extensions) | DONE (`GRX-CONTACT-009`) |
 | `docs/00-project-control/FEATURE_STATUS_MATRIX.md` | DONE (`GRX-DOC-003`) |
 | `apps/api/src/growixa_api/audit/{api,schemas}.py` (new), `apps/web/src/app/dashboard/audit/` (new) | DONE (`GRX-AUDIT-002`) |
+| `apps/web/src/app/dashboard/{dashboard-shell,sidebar,layout}.tsx` (collapsible/responsive nav) | DONE (`GRX-FOUND-009`) |
 | `docs/00-project-control/RISKS.md`, `BLOCKERS.md` | NOT_STARTED (not required by any `GRX-DOC-*` task yet) |
 | `docs/03-ux-ui/DESIGN_REFERENCES.md` | DONE (reference material only — see its own scope caveat; not a Sprint 1 spec) |
 | `docs/01-product/FUTURE_SCOPE_MULTI_BRAND.md` | DONE (idea capture only — multi-brand profiles + subscription tiers; contradicts DEC-GRX-002/013 as proposed, not scheduled into any release) |
@@ -151,12 +157,14 @@ detail.
    `GRX-FOUND-008` → `GRX-DEVOPS-001` → `GRX-COMPANY-002` → `GRX-USER-002` →
    `GRX-FOUND-007` → Sprint 2: `GRX-CONTACT-001` → `GRX-CONTACT-002` → `GRX-CONTACT-003` →
    `GRX-CONTACT-004` → `GRX-CONTACT-005` → `GRX-CONTACT-006` → `GRX-CONTACT-007` →
-   `GRX-CONTACT-008` → `GRX-CONTACT-009` → `GRX-DOC-003` → `GRX-AUDIT-002`. **Sprint 1
-   and Sprint 2 (Contacts) are both fully `DONE`**, including `GRX-DEVOPS-001` (user
-   pushed and confirmed a green CI run), `GRX-DOC-003` (Sprint 1 doc/handoff update,
-   which filed `GRX-AUDIT-002` for the audit-viewing gap it found), and `GRX-AUDIT-002`
-   itself (closed the same session it was filed). No task is `READY` or `BACKLOG`.
-   Awaiting user direction on what to pick up next — most likely a Sprint 3 kickoff.
+   `GRX-CONTACT-008` → `GRX-CONTACT-009` → `GRX-DOC-003` → `GRX-AUDIT-002` →
+   `GRX-FOUND-009` (ad hoc, user-requested sidebar UX, not part of any sprint plan).
+   **Sprint 1 and Sprint 2 (Contacts) are both fully `DONE`**, including `GRX-DEVOPS-001`
+   (user pushed and confirmed a green CI run), `GRX-DOC-003` (Sprint 1 doc/handoff
+   update, which filed `GRX-AUDIT-002` for the audit-viewing gap it found), and
+   `GRX-AUDIT-002` itself (closed the same session it was filed). No task is `READY` or
+   `BACKLOG`. Awaiting user direction on what to pick up next — most likely a Sprint 3
+   kickoff.
 2. `RISKS.md`/`BLOCKERS.md` remain not required by any task yet; create them if/when a
    task's scope actually calls for one.
 3. Write full feature specs in `02-features/` for Slice 1 features as each task is picked up, not all upfront.
