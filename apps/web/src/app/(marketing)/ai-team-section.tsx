@@ -1,3 +1,4 @@
+import Image from "next/image";
 import styles from "./marketing.module.css";
 
 const aiTeamMembers = [
@@ -53,6 +54,17 @@ export function AiTeamSection() {
             <p className={styles.cardDesc}>{member.desc}</p>
           </div>
         ))}
+      </div>
+
+      {/* 3D Features Showcase Graphic */}
+      <div className={styles.featureGraphicWrapper}>
+        <Image
+          src="/assets/features-3d-concept.png"
+          alt="Growixa 3D Interactive Feature Glass Showcase"
+          width={1200}
+          height={675}
+          className={styles.featureImage3D}
+        />
       </div>
     </section>
   );

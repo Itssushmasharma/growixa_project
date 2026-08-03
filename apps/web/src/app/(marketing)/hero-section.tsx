@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import styles from "./marketing.module.css";
 
@@ -27,22 +28,20 @@ export function HeroSection() {
         </Link>
       </div>
 
-      {/* 3D Dashboard Card Preview */}
+      {/* 3D Dashboard Perspective Container */}
       <div className={styles.heroPreviewWrapper}>
         <div className={styles.glowBg} />
-        <div className={styles.dashboardCard}>
-          <div className={styles.dashboardHeader}>
-            <div className={styles.windowControls}>
-              <span className={`${styles.dot} ${styles.dotRed}`} />
-              <span className={`${styles.dot} ${styles.dotYellow}`} />
-              <span className={`${styles.dot} ${styles.dotGreen}`} />
-            </div>
-            <span style={{ fontSize: "0.8125rem", color: "#64748b", fontWeight: 600 }}>
-              Growixa Live Growth Overview
-            </span>
-          </div>
+        <div className={styles.dashboard3dContainer}>
+          <Image
+            src="/assets/hero-3d-concept.png"
+            alt="Growixa 3D Perspective Dashboard Preview"
+            width={1200}
+            height={675}
+            className={styles.heroImage3D}
+            priority
+          />
 
-          <div className={styles.statsGrid}>
+          <div className={styles.statsGridOverlay}>
             <div className={styles.statItem}>
               <div className={styles.statLabel}>Active Campaigns</div>
               <div className={styles.statValue}>24</div>
@@ -63,36 +62,6 @@ export function HeroSection() {
               <div className={styles.statValue}>450,000</div>
               <div className={styles.statBadge}>↑ 18% growth</div>
             </div>
-          </div>
-
-          {/* Simulated Growth Chart Bar */}
-          <div
-            style={{
-              background: "#f8fafc",
-              border: "1px solid #e2e8f0",
-              borderRadius: "10px",
-              padding: "1.25rem",
-              display: "flex",
-              alignItems: "flex-end",
-              gap: "0.75rem",
-              height: "120px",
-            }}
-          >
-            {[40, 55, 35, 70, 65, 85, 95, 110, 105, 125, 140, 160].map((val, idx) => (
-              <div
-                key={idx}
-                style={{
-                  flex: 1,
-                  height: `${(val / 160) * 100}%`,
-                  background:
-                    idx >= 8
-                      ? "linear-gradient(180deg, #2563eb 0%, #7c3aed 100%)"
-                      : "rgba(37, 99, 235, 0.2)",
-                  borderRadius: "4px 4px 0 0",
-                  transition: "height 0.3s ease",
-                }}
-              />
-            ))}
           </div>
         </div>
       </div>
