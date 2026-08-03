@@ -15,20 +15,24 @@ export interface CurrentUser {
  * Server Component can determine auth state — client-side JS can never read it directly.
  */
 export async function getCurrentUser(): Promise<CurrentUser | null> {
-  const cookieStore = await cookies();
-  const cookieHeader = cookieStore
-    .getAll()
-    .map((cookie) => `${cookie.name}=${cookie.value}`)
-    .join("; ");
+  try {
+    const cookieStore = await cookies();
+    const cookieHeader = cookieStore
+      .getAll()
+      .map((cookie) => `${cookie.name}=${cookie.value}`)
+      .join("; ");
 
-  const response = await fetch(`${getServerApiUrl()}/auth/me`, {
-    headers: { Cookie: cookieHeader },
-    cache: "no-store",
-  });
+    const response = await fetch(`${getServerApiUrl()}/auth/me`, {
+      headers: { Cookie: cookieHeader },
+      cache: "no-store",
+    });
 
-  if (!response.ok) {
+    if (!response.ok) {
+      return null;
+    }
+
+    return (await response.json()) as CurrentUser;
+  } catch {
     return null;
   }
-
-  return (await response.json()) as CurrentUser;
 }
