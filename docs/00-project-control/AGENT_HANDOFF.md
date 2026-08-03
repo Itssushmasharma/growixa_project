@@ -9,38 +9,54 @@
 
 ## Task worked on
 
-`GRX-WEB-001` — Next.js App Router Groups refactoring (`(marketing)`, `(auth)`, `(dashboard)`, `(admin)`).
+`GRX-WEB-002` — Public 3D Brand & Landing Website (`apps/web/src/app/(marketing)/`).
 
 ## Work completed
 
-- Restructured `apps/web/src/app/` into Next.js Route Groups:
-  - `src/app/(auth)/login/` for authentication screens.
-  - `src/app/(dashboard)/dashboard/` for the authenticated application dashboard.
-  - `src/app/(marketing)/` for the brand landing website.
-  - `src/app/(admin)/` for system control plane tools.
-- Added group layout wrappers:
-  - `(marketing)/layout.tsx` (Navbar & Footer wrapper for the Brand Website).
-  - `(auth)/layout.tsx` (Centered dark-navy glass card wrapper for auth screens).
-  - `(admin)/layout.tsx` (System platform layout).
-- Verified zero URL regressions on `/login`, `/dashboard`, `/`.
+- Built the public Growixa 3D Brand & Landing Website adhering to Linear, Vercel, and Stripe design standards:
+  - **`navbar.tsx`**: Header with official `BrandLogo` (`/assets/logo-icon.png`), nav links (*Platform*, *Solutions*, *Pricing*, *Security*, *Docs*), and dynamic CTAs (*Log In* / *Start Free* / *Go to Dashboard*).
+  - **`hero-section.tsx`**: Outcome-focused hero (*"Grow Faster. Market Smarter. Powered by AI."*), dual CTAs (*"Start Free"*, *"Book Demo"*), and 3D floating glass dashboard preview card with live metric counters & simulated growth chart.
+  - **`trust-bar.tsx`**: Social proof metric bar (*1,000+ Businesses*, *50M+ Emails*, *12M AI Generations*, *99.99% Uptime*).
+  - **`ai-team-section.tsx`**: "Meet Your AI Marketing Team" grid showcasing 6 AI agents (Copywriter, Email Optimizer, Campaign Planner, Audience Builder, Social Creator, Marketing Analyst).
+  - **`workflow-showcase.tsx`**: Visual automation step pipeline (*Lead fills form* ➔ *AI scores lead* ➔ *Email sequence* ➔ *WhatsApp/SMS* ➔ *Sales notified*).
+  - **`integrations-section.tsx`**: Logo grid showcasing native connections (Postmark, Stripe, Razorpay, OpenAI, Claude, Meta, LinkedIn, Slack, Zapier).
+  - **`security-section.tsx`**: Enterprise reliability badges (SOC2 Ready, GDPR, Fernet Encryption, RBAC, Insert-Only Audit Logs, 99.99% SLA Uptime).
+  - **`pricing-section.tsx`**: Stripe-style tiered pricing matrix (Starter, Growth, Enterprise).
+  - **`footer.tsx`**: Complete multi-column SaaS footer with system status badge.
+  - **Dedicated Sub-pages**: `/features`, `/pricing`, `/solutions`, `/security`, `/docs`.
+- Integrated official brand logo assets from `apps/web/src/assets/icon/growixa-icon-mark.png` and `primary/growixa-primary-horizontal-logo.png` into `public/assets/`.
+- Verified zero regressions across Vitest (54 passed) and Playwright E2E (4 passed).
 
 ## Files changed
 
-- `apps/web/src/app/(marketing)/layout.tsx` (new)
-- `apps/web/src/app/(auth)/layout.tsx` (new)
-- `apps/web/src/app/(admin)/layout.tsx` (new)
-- `apps/web/src/app/(auth)/login/` (moved from `src/app/login/`)
-- `apps/web/src/app/(dashboard)/dashboard/` (moved from `src/app/dashboard/`)
+- `apps/web/src/app/(marketing)/marketing.module.css` (new)
+- `apps/web/src/app/(marketing)/navbar.tsx` (new)
+- `apps/web/src/app/(marketing)/hero-section.tsx` (new)
+- `apps/web/src/app/(marketing)/trust-bar.tsx` (new)
+- `apps/web/src/app/(marketing)/ai-team-section.tsx` (new)
+- `apps/web/src/app/(marketing)/workflow-showcase.tsx` (new)
+- `apps/web/src/app/(marketing)/integrations-section.tsx` (new)
+- `apps/web/src/app/(marketing)/security-section.tsx` (new)
+- `apps/web/src/app/(marketing)/pricing-section.tsx` (new)
+- `apps/web/src/app/(marketing)/footer.tsx` (new)
+- `apps/web/src/app/(marketing)/page.tsx` (new)
+- `apps/web/src/app/(marketing)/page.test.tsx` (new)
+- `apps/web/src/app/(marketing)/features/page.tsx` (new)
+- `apps/web/src/app/(marketing)/pricing/page.tsx` (new)
+- `apps/web/src/app/(marketing)/solutions/page.tsx` (new)
+- `apps/web/src/app/(marketing)/security/page.tsx` (new)
+- `apps/web/src/app/(marketing)/docs/page.tsx` (new)
+- `apps/web/src/components/brand-logo.tsx` (new)
+- `apps/web/public/assets/` (`logo-icon.png`, `logo-horizontal.png`, `hero-3d-concept.png`, `features-3d-concept.png`)
 - `docs/00-project-control/MASTER_TASK_TRACKER.md`
-- `docs/00-project-control/PROJECT_STATUS.md`
 
 ## Commands executed
 
 ```bash
-git checkout -b feature/FRONTEND/GRX-WEB-001
+git checkout -b feature/FRONTEND/GRX-WEB-002
 cd apps/web
-npm run lint && npm run typecheck && npm run format:check && npm run test -- --run   # 54 passed (all clean)
-npm run test:e2e                                                                       # 4 passed (Playwright e2e)
+npm run format && npm run lint && npm run typecheck && npm run test -- --run   # 54 passed (all clean)
+npx playwright test                                                             # 4 passed (Playwright e2e)
 ```
 
 ## Test results
@@ -51,15 +67,15 @@ npm run test:e2e                                                                
 
 ## Current state
 
-`GRX-WEB-001` is fully `DONE` and committed (`e0b018c`). `GRX-WEB-002` (3D Brand Website) is `BACKLOG` / ready for implementation planning.
+`GRX-WEB-002` is fully `DONE` and committed (`7b94ba2` & `eca4dd7`).
 
 ## Exact next task
 
-`GRX-WEB-002` — Public 3D Brand & Landing Website (Linear/Vercel/Stripe aesthetics, Inter/Geist font stack).
+`GRX-EMAIL-005` (Postmark webhook receiver + unsubscribe handling) is in progress by backend agent. Next frontend task is `GRX-EMAIL-007` / `GRX-ADMIN-001`.
 
 ## Latest commit
 
-`e0b018c` — feat(web): App Router Groups refactoring for brand website (GRX-WEB-001)
+`eca4dd7` — feat(web): update brand logo component to use official logo-icon asset
 
 ## Decisions made this session
 
