@@ -35,8 +35,10 @@ EXPECTED_PERMISSIONS = {
     # Slice 2 additions (GRX-CONTACT-001) — see RBAC.md §Slice 2 permission codes.
     "contacts.manage",
     "contacts.view",
-    # Slice 3 addition (GRX-EMAIL-001) — see RBAC.md §Slice 3 permission codes.
+    # Slice 3 additions (GRX-EMAIL-001, GRX-EMAIL-002) — see RBAC.md §Slice 3 permission codes.
     "integrations.manage",
+    "campaigns.manage",
+    "campaigns.view",
 }
 
 # permission code -> set of role names granted that permission, per RBAC.md's Sprint 1 and
@@ -52,6 +54,14 @@ EXPECTED_MATRIX: dict[str, set[str]] = {
     "contacts.manage": {"Super Admin", "Admin", "Marketing Manager"},
     "contacts.view": {"Super Admin", "Admin", "Marketing Manager", "Analyst"},
     "integrations.manage": {"Super Admin"},
+    "campaigns.manage": {"Super Admin", "Admin", "Marketing Manager", "Content Creator"},
+    "campaigns.view": {
+        "Super Admin",
+        "Admin",
+        "Marketing Manager",
+        "Content Creator",
+        "Analyst",
+    },
 }
 
 
