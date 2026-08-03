@@ -9,9 +9,57 @@
 
 ## Task worked on
 
-`GRX-EMAIL-004` — send pipeline (worker + `email_delivery`), the fourth and largest task
-of Sprint 3 (Email Marketing) so far. Picked up on the user's "go to next" after
-`GRX-EMAIL-003` closed.
+`GRX-WEB-001` — Next.js App Router Groups refactoring (`(marketing)`, `(auth)`, `(dashboard)`, `(admin)`).
+
+## Work completed
+
+- Restructured `apps/web/src/app/` into Next.js Route Groups:
+  - `src/app/(auth)/login/` for authentication screens.
+  - `src/app/(dashboard)/dashboard/` for the authenticated application dashboard.
+  - `src/app/(marketing)/` for the brand landing website.
+  - `src/app/(admin)/` for system control plane tools.
+- Added group layout wrappers:
+  - `(marketing)/layout.tsx` (Navbar & Footer wrapper for the Brand Website).
+  - `(auth)/layout.tsx` (Centered dark-navy glass card wrapper for auth screens).
+  - `(admin)/layout.tsx` (System platform layout).
+- Verified zero URL regressions on `/login`, `/dashboard`, `/`.
+
+## Files changed
+
+- `apps/web/src/app/(marketing)/layout.tsx` (new)
+- `apps/web/src/app/(auth)/layout.tsx` (new)
+- `apps/web/src/app/(admin)/layout.tsx` (new)
+- `apps/web/src/app/(auth)/login/` (moved from `src/app/login/`)
+- `apps/web/src/app/(dashboard)/dashboard/` (moved from `src/app/dashboard/`)
+- `docs/00-project-control/MASTER_TASK_TRACKER.md`
+- `docs/00-project-control/PROJECT_STATUS.md`
+
+## Commands executed
+
+```bash
+git checkout -b feature/FRONTEND/GRX-WEB-001
+cd apps/web
+npm run lint && npm run typecheck && npm run format:check && npm run test -- --run   # 54 passed (all clean)
+npm run test:e2e                                                                       # 4 passed (Playwright e2e)
+```
+
+## Test results
+
+- `tsc --noEmit`, `eslint`, `prettier --check` clean.
+- `vitest` 54 passed.
+- Playwright `test:e2e` 4 passed.
+
+## Current state
+
+`GRX-WEB-001` is fully `DONE` and committed (`e0b018c`). `GRX-WEB-002` (3D Brand Website) is `BACKLOG` / ready for implementation planning.
+
+## Exact next task
+
+`GRX-WEB-002` — Public 3D Brand & Landing Website (Linear/Vercel/Stripe aesthetics, Inter/Geist font stack).
+
+## Latest commit
+
+`e0b018c` — feat(web): App Router Groups refactoring for brand website (GRX-WEB-001)
 
 ## Decisions made this session
 
