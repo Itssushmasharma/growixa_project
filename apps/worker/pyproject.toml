@@ -7,6 +7,11 @@ readme = "README.md"
 dependencies = [
     "pydantic-settings>=2.6",
     "aio-pika>=9.4",
+    "sqlalchemy>=2.0",
+    "greenlet>=3.1",
+    "asyncpg>=0.30",
+    "cryptography>=43.0",
+    "aiosmtplib>=3.0",
 ]
 
 [project.optional-dependencies]
@@ -48,6 +53,8 @@ disallow_untyped_defs = false
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
+asyncio_default_test_loop_scope = "session"
 pythonpath = ["src"]
 addopts = "--cov=growixa_worker --cov-report=term-missing"
 markers = [
