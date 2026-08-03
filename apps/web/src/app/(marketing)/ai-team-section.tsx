@@ -1,4 +1,7 @@
+"use client";
+
 import Image from "next/image";
+import { Card3D } from "@/components/card-3d";
 import styles from "./marketing.module.css";
 
 const aiTeamMembers = [
@@ -48,23 +51,27 @@ export function AiTeamSection() {
 
       <div className={styles.cardsGrid}>
         {aiTeamMembers.map((member, idx) => (
-          <div key={idx} className={styles.card}>
-            <div className={styles.cardIcon}>{member.icon}</div>
-            <h3 className={styles.cardTitle}>{member.title}</h3>
-            <p className={styles.cardDesc}>{member.desc}</p>
-          </div>
+          <Card3D key={idx} depth={10}>
+            <div className={styles.card}>
+              <div className={styles.cardIcon}>{member.icon}</div>
+              <h3 className={styles.cardTitle}>{member.title}</h3>
+              <p className={styles.cardDesc}>{member.desc}</p>
+            </div>
+          </Card3D>
         ))}
       </div>
 
       {/* 3D Features Showcase Graphic */}
       <div className={styles.featureGraphicWrapper}>
-        <Image
-          src="/assets/features-3d-concept.png"
-          alt="Growixa 3D Interactive Feature Glass Showcase"
-          width={1200}
-          height={675}
-          className={styles.featureImage3D}
-        />
+        <Card3D depth={8}>
+          <Image
+            src="/assets/features-3d-concept.png"
+            alt="Growixa 3D Interactive Feature Glass Showcase"
+            width={1200}
+            height={675}
+            className={styles.featureImage3D}
+          />
+        </Card3D>
       </div>
     </section>
   );

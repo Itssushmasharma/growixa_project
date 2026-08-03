@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { Card3D } from "@/components/card-3d";
 import styles from "./marketing.module.css";
 
 const plans = [
@@ -65,55 +68,57 @@ export function PricingSection() {
 
       <div className={styles.pricingGrid}>
         {plans.map((plan, idx) => (
-          <div key={idx} className={plan.featured ? styles.featuredPriceCard : styles.priceCard}>
-            <div>
-              <div className={styles.priceHeader}>
-                {plan.featured && (
-                  <span
-                    style={{
-                      background: "#2563eb",
-                      color: "white",
-                      fontSize: "0.75rem",
-                      fontWeight: 700,
-                      padding: "0.25rem 0.625rem",
-                      borderRadius: "9999px",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.05em",
-                      display: "inline-block",
-                      marginBottom: "0.75rem",
-                    }}
-                  >
-                    Most Popular
-                  </span>
-                )}
-                <div className={styles.planName}>{plan.name}</div>
-                <div>
-                  <span className={styles.priceValue}>{plan.price}</span>
-                  <span className={styles.pricePeriod}>{plan.period}</span>
+          <Card3D key={idx} depth={12}>
+            <div className={plan.featured ? styles.featuredPriceCard : styles.priceCard}>
+              <div>
+                <div className={styles.priceHeader}>
+                  {plan.featured && (
+                    <span
+                      style={{
+                        background: "linear-gradient(135deg, #38bdf8 0%, #a855f7 100%)",
+                        color: "white",
+                        fontSize: "0.75rem",
+                        fontWeight: 700,
+                        padding: "0.25rem 0.625rem",
+                        borderRadius: "9999px",
+                        textTransform: "uppercase",
+                        letterSpacing: "0.05em",
+                        display: "inline-block",
+                        marginBottom: "0.75rem",
+                      }}
+                    >
+                      Most Popular
+                    </span>
+                  )}
+                  <div className={styles.planName}>{plan.name}</div>
+                  <div>
+                    <span className={styles.priceValue}>{plan.price}</span>
+                    <span className={styles.pricePeriod}>{plan.period}</span>
+                  </div>
+                  <div style={{ fontSize: "0.875rem", color: "#94a3b8", marginTop: "0.5rem" }}>
+                    {plan.desc}
+                  </div>
                 </div>
-                <div style={{ fontSize: "0.875rem", color: "#64748b", marginTop: "0.5rem" }}>
-                  {plan.desc}
-                </div>
+
+                <ul className={styles.featureList}>
+                  {plan.features.map((feat, fidx) => (
+                    <li key={fidx} className={styles.featureItem}>
+                      <span className={styles.checkMark}>✓</span>
+                      <span>{feat}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
 
-              <ul className={styles.featureList}>
-                {plan.features.map((feat, fidx) => (
-                  <li key={fidx} className={styles.featureItem}>
-                    <span className={styles.checkMark}>✓</span>
-                    <span>{feat}</span>
-                  </li>
-                ))}
-              </ul>
+              <Link
+                href="/login"
+                className={plan.featured ? styles.primaryBtn : styles.secondaryBtn}
+                style={{ textAlign: "center", display: "block" }}
+              >
+                {plan.buttonText}
+              </Link>
             </div>
-
-            <Link
-              href="/login"
-              className={plan.featured ? styles.primaryBtn : styles.secondaryBtn}
-              style={{ textAlign: "center", display: "block" }}
-            >
-              {plan.buttonText}
-            </Link>
-          </div>
+          </Card3D>
         ))}
       </div>
     </section>

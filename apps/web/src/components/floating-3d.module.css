@@ -1,0 +1,150 @@
+.floatingContainer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.object {
+  position: absolute;
+  perspective: 800px;
+}
+
+.cubeLeft {
+  top: 15%;
+  left: 5%;
+  animation: floatLeft 8s ease-in-out infinite alternate;
+}
+
+.prismRight {
+  top: 25%;
+  right: 6%;
+  animation: floatRight 10s ease-in-out infinite alternate;
+}
+
+/* 3D Cube */
+.cube {
+  width: 60px;
+  height: 60px;
+  position: relative;
+  transform-style: preserve-3d;
+  animation: rotateCube 12s linear infinite;
+}
+
+.face {
+  position: absolute;
+  width: 60px;
+  height: 60px;
+  background: rgba(56, 189, 248, 0.1);
+  border: 1px solid rgba(56, 189, 248, 0.6);
+  box-shadow: 0 0 15px rgba(56, 189, 248, 0.3);
+  backdrop-filter: blur(8px);
+}
+
+.front {
+  transform: translateZ(30px);
+}
+.back {
+  transform: rotateY(180deg) translateZ(30px);
+}
+.right {
+  transform: rotateY(90deg) translateZ(30px);
+}
+.left {
+  transform: rotateY(-90deg) translateZ(30px);
+}
+.top {
+  transform: rotateX(90deg) translateZ(30px);
+}
+.bottom {
+  transform: rotateX(-90deg) translateZ(30px);
+}
+
+/* 3D Pyramid */
+.pyramid {
+  width: 70px;
+  height: 70px;
+  position: relative;
+  transform-style: preserve-3d;
+  animation: rotatePyramid 14s linear infinite;
+}
+
+.pface {
+  position: absolute;
+  width: 0;
+  height: 0;
+  border-left: 35px solid transparent;
+  border-right: 35px solid transparent;
+  border-bottom: 70px solid rgba(168, 85, 247, 0.15);
+  filter: drop-shadow(0 0 10px rgba(168, 85, 247, 0.5));
+}
+
+.p1 {
+  transform: rotateY(0deg) translateZ(20px) rotateX(30deg);
+}
+.p2 {
+  transform: rotateY(90deg) translateZ(20px) rotateX(30deg);
+}
+.p3 {
+  transform: rotateY(180deg) translateZ(20px) rotateX(30deg);
+}
+.p4 {
+  transform: rotateY(270deg) translateZ(20px) rotateX(30deg);
+}
+
+.glowingOrb {
+  position: absolute;
+  top: 30%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(
+    circle,
+    rgba(56, 189, 248, 0.2) 0%,
+    rgba(124, 58, 237, 0.15) 40%,
+    transparent 70%
+  );
+  filter: blur(90px);
+  pointer-events: none;
+}
+
+@keyframes rotateCube {
+  0% {
+    transform: rotateX(0deg) rotateY(0deg) rotateZ(0deg);
+  }
+  100% {
+    transform: rotateX(360deg) rotateY(360deg) rotateZ(360deg);
+  }
+}
+
+@keyframes rotatePyramid {
+  0% {
+    transform: rotateX(20deg) rotateY(0deg);
+  }
+  100% {
+    transform: rotateX(20deg) rotateY(360deg);
+  }
+}
+
+@keyframes floatLeft {
+  0% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  100% {
+    transform: translateY(-25px) rotate(10deg);
+  }
+}
+
+@keyframes floatRight {
+  0% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  100% {
+    transform: translateY(-30px) rotate(-12deg);
+  }
+}
