@@ -7,7 +7,7 @@ import { Floating3DObjects } from "@/components/floating-3d-objects";
 import styles from "./marketing.module.css";
 
 export function HeroSection() {
-  const [aiPrompt, setAiPrompt] = useState("Write a launch email for our new SaaS product");
+  const [aiPrompt, setAiPrompt] = useState("Write a product launch email for our new platform");
   const [aiOutput, setAiOutput] = useState(
     "Subject: 🚀 Introducing the AI Growth Platform for Modern Teams\n\nHi {{first_name}},\nScale your marketing pipeline seamlessly with Growixa. Automated email campaigns, dynamic lead scoring, and instant social scheduler in one unified platform.",
   );
@@ -29,22 +29,23 @@ export function HeroSection() {
 
       <div style={{ position: "relative", zIndex: 2 }}>
         <div className={styles.pillBadge}>
-          <span>✨ The AI Growth Platform for Modern Businesses</span>
+          <span>✨ The AI Growth Platform — Built for Modern Businesses</span>
         </div>
 
         <h1 className={styles.heroTitle}>
-          Grow Faster. Market Smarter. <br />
-          <span className={styles.gradientText}>Powered by AI & Website Growth.</span>
+          AI growth infrastructure <br />
+          <span className={styles.gradientText}>to scale your revenue.</span>
         </h1>
 
         <p className={styles.heroSub}>
-          One platform to automate email campaigns, capture website leads, optimize SEO/AEO search
-          rankings, and schedule social posts with real-time growth analytics.
+          Automate email campaigns, capture high-intent website leads, optimize AI search rankings
+          (SEO & AEO), and schedule multi-channel social posts — from your first lead to your
+          millionth.
         </p>
 
         <div className={styles.heroCtas}>
           <Link href="/login" className={styles.primaryBtn}>
-            Start Free — No credit card required
+            Start Free — Instant setup
           </Link>
           <Link href="/login" className={styles.secondaryBtn}>
             Book Demo →
@@ -52,17 +53,17 @@ export function HeroSection() {
         </div>
       </div>
 
-      {/* Native 3D Interactive Hero Showcase */}
+      {/* Stripe Bento Grid Interactive Showcase */}
       <div className={styles.heroPreviewWrapper} style={{ position: "relative", zIndex: 2 }}>
         <div className={styles.glowBg} />
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "1.5rem" }}>
-          {/* 3D Glass Card 1: Smart Audience Segmentation */}
+          {/* Bento Card 1: Smart Audience Segmentation */}
           <Card3D depth={16}>
             <div
               style={{
                 background:
-                  "radial-gradient(circle at 50% 0%, rgba(56, 189, 248, 0.15), rgba(15, 23, 42, 0.8) 70%)",
+                  "radial-gradient(circle at 50% 0%, rgba(56, 189, 248, 0.15), rgba(15, 23, 42, 0.85) 70%)",
                 border: "1px solid rgba(56, 189, 248, 0.35)",
                 borderRadius: "20px",
                 padding: "1.75rem",
@@ -152,7 +153,7 @@ export function HeroSection() {
                     marginBottom: "0.25rem",
                   }}
                 >
-                  tag == &quot;VIP Buyer&quot;
+                  tag == &quot;VIP Buyer&quot; AND visits &gt; 3
                 </div>
                 <div style={{ fontSize: "0.75rem", color: "#34d399" }}>
                   ✓ 42,850 Matched Contacts
@@ -161,12 +162,12 @@ export function HeroSection() {
             </div>
           </Card3D>
 
-          {/* 3D Glass Card 2: Website Growth & Intelligence */}
+          {/* Bento Card 2: Website Growth & Intelligence */}
           <Card3D depth={16}>
             <div
               style={{
                 background:
-                  "radial-gradient(circle at 50% 0%, rgba(16, 185, 129, 0.15), rgba(15, 23, 42, 0.8) 70%)",
+                  "radial-gradient(circle at 50% 0%, rgba(16, 185, 129, 0.15), rgba(15, 23, 42, 0.85) 70%)",
                 border: "1px solid rgba(16, 185, 129, 0.35)",
                 borderRadius: "20px",
                 padding: "1.75rem",
@@ -229,7 +230,7 @@ export function HeroSection() {
                 </p>
               </div>
 
-              {/* Website Growth Widget */}
+              {/* Site Intelligence Widget */}
               <div
                 style={{
                   background: "rgba(15, 23, 42, 0.9)",
@@ -270,12 +271,12 @@ export function HeroSection() {
             </div>
           </Card3D>
 
-          {/* 3D Glass Card 3: AI Content Assistant */}
+          {/* Bento Card 3: AI Content Assistant */}
           <Card3D depth={16}>
             <div
               style={{
                 background:
-                  "radial-gradient(circle at 50% 0%, rgba(168, 85, 247, 0.15), rgba(15, 23, 42, 0.8) 70%)",
+                  "radial-gradient(circle at 50% 0%, rgba(168, 85, 247, 0.15), rgba(15, 23, 42, 0.85) 70%)",
                 border: "1px solid rgba(168, 85, 247, 0.35)",
                 borderRadius: "20px",
                 padding: "1.75rem",
@@ -338,7 +339,7 @@ export function HeroSection() {
                 </p>
               </div>
 
-              {/* Interactive AI Widget */}
+              {/* Interactive AI Copy Generator Widget */}
               <div
                 style={{
                   background: "rgba(15, 23, 42, 0.9)",

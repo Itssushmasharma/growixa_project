@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { getCurrentUser } from "@/lib/auth";
 import { BrandLogo } from "@/components/brand-logo";
+import { getCurrentUser } from "@/lib/auth";
 import styles from "./marketing.module.css";
 
 export async function Navbar() {
@@ -9,8 +9,7 @@ export async function Navbar() {
   return (
     <header className={styles.navbar}>
       <Link href="/" className={styles.brand}>
-        <BrandLogo width={28} height={28} />
-        <span>Growixa</span>
+        <BrandLogo />
       </Link>
 
       <nav className={styles.navLinks}>
@@ -34,7 +33,7 @@ export async function Navbar() {
       <div className={styles.navActions}>
         {user ? (
           <Link href="/dashboard" className={styles.primaryBtn}>
-            Go to Dashboard
+            Go to Dashboard →
           </Link>
         ) : (
           <>
@@ -42,7 +41,7 @@ export async function Navbar() {
               Log In
             </Link>
             <Link href="/login" className={styles.primaryBtn}>
-              Start Free
+              Start Free →
             </Link>
           </>
         )}
