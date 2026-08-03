@@ -10,6 +10,22 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
+## 2026-08-03 — GRX-EMAIL-002: email templates + versioning
+
+- New `growixa_api.templates` module: `EmailTemplate`/`EmailTemplateVersion` models,
+  gated on `campaigns.manage` (create/edit) and `campaigns.view` (read) per
+  `RBAC.md`'s Slice 3 matrix. Migration `d36211c53aed` seeds both permission codes —
+  neither existed yet, since Slice 3 planning deferred seeding them to whichever task
+  first needed them; `campaigns.send` stays deferred to `GRX-EMAIL-004`.
+- `POST /templates` creates a template and its first version (version 1) together, since
+  a template can't exist without content. `POST /templates/{id}/versions` appends
+  version `max+1`; the previous version's row is never mutated, matching
+  `ConsentRecord`'s insert-only pattern — "current" is derived as the highest
+  `version_number`, not a mutable pointer.
+- `pytest` 117 passed, 3 skipped (6 new integration tests); `alembic check` clean.
+  Live-verified against Compose: created and edited a template via curl (version
+  1 → 2, both rows intact), a throwaway Viewer got 403 on read. Commit `1dac3ff`
+
 ## 2026-08-03 — GRX-EMAIL-001: email provider connection + sender identity
 
 - First Sprint 3 task. New `growixa_api.integrations` module (named per

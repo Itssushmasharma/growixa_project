@@ -2,7 +2,7 @@
 
 - Document ID: DOC-PROJECT-STATUS
 - Status: ACTIVE
-- Version: 1.39
+- Version: 1.40
 - Last updated: 2026-08-03
 - Owner: Coding agent (on behalf of product owner)
 - Related documents: [MASTER_TASK_TRACKER](MASTER_TASK_TRACKER.md), [DECISIONS](DECISIONS.md), [DEVELOPMENT_READINESS](DEVELOPMENT_READINESS.md), [FEATURE_STATUS_MATRIX](FEATURE_STATUS_MATRIX.md)
@@ -177,13 +177,15 @@ directly by the user mid-session, is `DONE`.
    `GRX-CONTACT-008` → `GRX-CONTACT-009` → `GRX-DOC-003` → `GRX-AUDIT-002` →
    `GRX-FOUND-009` (ad hoc, user-requested sidebar UX, not part of any sprint plan) →
    Sprint 3 planning (`DEC-GRX-015` resolving OQ-002, data model, RBAC, threat model,
-   `SPRINT_03_EMAIL_CAMPAIGN.md`, readiness gate, `GRX-EMAIL-001`–`010`) → `GRX-EMAIL-001`.
+   `SPRINT_03_EMAIL_CAMPAIGN.md`, readiness gate, `GRX-EMAIL-001`–`010`) →
+   `GRX-EMAIL-001` → `GRX-EMAIL-002`.
    **Sprint 1 and Sprint 2 (Contacts) are both fully `DONE`**, including `GRX-DEVOPS-001`
    (user pushed and confirmed a green CI run), `GRX-DOC-003` (Sprint 1 doc/handoff
    update, which filed `GRX-AUDIT-002` for the audit-viewing gap it found), and
    `GRX-AUDIT-002` itself (closed the same session it was filed). **Sprint 3 (Email
-   Marketing) is under way**: `GRX-EMAIL-001` (provider connection + sender identity) is
-   `DONE`; next task is `GRX-EMAIL-002` (email templates + versioning).
+   Marketing) is under way**: `GRX-EMAIL-001` (provider connection + sender identity)
+   and `GRX-EMAIL-002` (email templates + versioning) are both `DONE`; next task is
+   `GRX-EMAIL-003` (campaigns CRUD + targeting).
 2. `RISKS.md`/`BLOCKERS.md` remain not required by any task yet; create them if/when a
    task's scope actually calls for one.
 3. Write full feature specs in `02-features/` for Slice 3 features (`EMAIL_PROVIDERS.md`,
