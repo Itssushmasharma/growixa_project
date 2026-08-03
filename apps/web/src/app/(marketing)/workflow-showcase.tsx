@@ -10,7 +10,7 @@ const steps = [
 
 export function WorkflowShowcase() {
   return (
-    <section className={styles.section} style={{ background: "#fafafa" }}>
+    <section className={styles.section}>
       <div className={styles.sectionHeader}>
         <div className={styles.sectionTag}>Visual Automation</div>
         <h2 className={styles.sectionTitle}>Automate Entire Marketing Pipelines</h2>

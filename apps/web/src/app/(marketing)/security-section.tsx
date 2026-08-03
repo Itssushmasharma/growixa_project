@@ -29,7 +29,7 @@ const securityFeatures = [
 
 export function SecuritySection() {
   return (
-    <section className={styles.section} style={{ background: "#f8fafc" }}>
+    <section className={styles.section}>
       <div className={styles.sectionHeader}>
         <div className={styles.sectionTag}>Enterprise Reliability</div>
         <h2 className={styles.sectionTitle}>Built with Bank-Grade Security</h2>
