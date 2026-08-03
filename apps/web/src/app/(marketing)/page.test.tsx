@@ -10,7 +10,7 @@ vi.mock("@/lib/auth", () => ({
 describe("LandingPage", () => {
   it("renders the hero title and branding sections", () => {
     render(<LandingPage />);
-    expect(screen.getByText(/AI growth infrastructure/i)).toBeInTheDocument();
+    expect(screen.getByText(/Grow Faster. Market Smarter./i)).toBeInTheDocument();
     expect(screen.getByText(/Meet Your AI Marketing Team/i)).toBeInTheDocument();
     expect(screen.getByText(/Automate Entire Marketing Pipelines/i)).toBeInTheDocument();
     expect(screen.getByText(/Simple Plans for Every Stage/i)).toBeInTheDocument();

@@ -29,23 +29,22 @@ export function HeroSection() {
 
       <div style={{ position: "relative", zIndex: 2 }}>
         <div className={styles.pillBadge}>
-          <span>✨ The AI Growth Platform — Built for Modern Businesses</span>
+          <span>✨ The AI Growth Platform for Modern Businesses</span>
         </div>
 
         <h1 className={styles.heroTitle}>
-          AI growth infrastructure <br />
-          <span className={styles.gradientText}>to scale your revenue.</span>
+          Grow Faster. Market Smarter. <br />
+          <span className={styles.gradientText}>Powered by AI.</span>
         </h1>
 
         <p className={styles.heroSub}>
-          Automate email campaigns, capture high-intent website leads, optimize AI search rankings
-          (SEO & AEO), and schedule multi-channel social posts — from your first lead to your
-          millionth.
+          One platform to automate email campaigns, capture high-intent website leads, optimize AI
+          search rankings (SEO & AEO), and schedule social posts with real-time growth analytics.
         </p>
 
         <div className={styles.heroCtas}>
           <Link href="/login" className={styles.primaryBtn}>
-            Start Free — Instant setup
+            Start Free — No credit card required
           </Link>
           <Link href="/login" className={styles.secondaryBtn}>
             Book Demo →
@@ -53,7 +52,7 @@ export function HeroSection() {
         </div>
       </div>
 
-      {/* Stripe Bento Grid Interactive Showcase */}
+      {/* Stripe-Quality Bento Grid Interactive Showcase */}
       <div className={styles.heroPreviewWrapper} style={{ position: "relative", zIndex: 2 }}>
         <div className={styles.glowBg} />
 
