@@ -46,7 +46,7 @@ from Sprint 1 onward, code). Each entry names what changed and the commit(s) it 
   `email_delivery`), the Postmark webhook receiver, a campaign report endpoint, and four
   matching frontend tasks. `GRX-EMAIL-001` is `READY`; the rest are `BACKLOG`, chained
   sequentially per this project's one-task-at-a-time practice.
-- Documentation only — no code in this entry. Commit `<pending>`.
+- Documentation only — no code in this entry. Commit `b870849`.
 
 ## 2026-08-01 — GRX-FOUND-009: Collapsible/responsive sidebar navigation
 
