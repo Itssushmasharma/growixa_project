@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { Card3D } from "@/components/card-3d";
 import styles from "./marketing.module.css";
 
@@ -37,6 +36,37 @@ const aiTeamMembers = [
   },
 ];
 
+const pillars = [
+  {
+    badge: "DELIVERABILITY",
+    title: "Email Marketing Engine",
+    desc: "High-deliverability SMTP relay, Postmark integration, instant webhooks, and automated unsubscribe handling.",
+    accent: "rgba(56, 189, 248, 0.4)",
+    badgeColor: "#38bdf8",
+  },
+  {
+    badge: "MULTI-CHANNEL",
+    title: "Social Scheduler",
+    desc: "Visual content calendar, multi-platform publishing, custom hashtags, and post performance analytics.",
+    accent: "rgba(168, 85, 247, 0.4)",
+    badgeColor: "#c084fc",
+  },
+  {
+    badge: "TARGETING",
+    title: "Smart Segmentation",
+    desc: "Real-time AND-rule engine, contact custom fields, automated list tagging, and consent suppression enforcement.",
+    accent: "rgba(16, 185, 129, 0.4)",
+    badgeColor: "#34d399",
+  },
+  {
+    badge: "EFFICIENCY",
+    title: "AI Content Assistant",
+    desc: "Brand voice tone injection, human-in-the-loop approval controls, token cost metering, and LLM prompt optimization.",
+    accent: "rgba(244, 63, 94, 0.4)",
+    badgeColor: "#fb7185",
+  },
+];
+
 export function AiTeamSection() {
   return (
     <section className={styles.section}>
@@ -49,7 +79,7 @@ export function AiTeamSection() {
         </p>
       </div>
 
-      <div className={styles.cardsGrid}>
+      <div className={styles.cardsGrid} style={{ marginBottom: "4rem" }}>
         {aiTeamMembers.map((member, idx) => (
           <Card3D key={idx} depth={10}>
             <div className={styles.card}>
@@ -61,17 +91,58 @@ export function AiTeamSection() {
         ))}
       </div>
 
-      {/* 3D Features Showcase Graphic */}
-      <div className={styles.featureGraphicWrapper}>
-        <Card3D depth={8}>
-          <Image
-            src="/assets/features-3d-concept.png"
-            alt="Growixa 3D Interactive Feature Glass Showcase"
-            width={1200}
-            height={675}
-            className={styles.featureImage3D}
-          />
-        </Card3D>
+      {/* Native 3D Pillars Feature Showcase Grid */}
+      <div className={styles.sectionHeader}>
+        <div className={styles.sectionTag}>Core Pillars</div>
+        <h2 className={styles.sectionTitle}>The 4 Foundations of Growixa</h2>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "2rem" }}>
+        {pillars.map((pil, idx) => (
+          <Card3D key={idx} depth={14}>
+            <div
+              style={{
+                background: "rgba(15, 23, 42, 0.7)",
+                border: `1px solid ${pil.accent}`,
+                borderRadius: "20px",
+                padding: "2.25rem",
+                textAlign: "left",
+                backdropFilter: "blur(20px)",
+                boxShadow: `0 15px 40px rgba(0, 0, 0, 0.4), 0 0 25px ${pil.accent}`,
+              }}
+            >
+              <span
+                style={{
+                  background: "rgba(255, 255, 255, 0.08)",
+                  border: `1px solid ${pil.accent}`,
+                  color: pil.badgeColor,
+                  fontSize: "0.75rem",
+                  fontWeight: 800,
+                  padding: "0.25rem 0.625rem",
+                  borderRadius: "9999px",
+                  letterSpacing: "0.08em",
+                  display: "inline-block",
+                  marginBottom: "1rem",
+                }}
+              >
+                {pil.badge}
+              </span>
+              <h3
+                style={{
+                  fontSize: "1.4rem",
+                  fontWeight: 800,
+                  color: "#ffffff",
+                  marginBottom: "0.625rem",
+                }}
+              >
+                {pil.title}
+              </h3>
+              <p style={{ fontSize: "0.9375rem", color: "#94a3b8", lineHeight: 1.65, margin: 0 }}>
+                {pil.desc}
+              </p>
+            </div>
+          </Card3D>
+        ))}
       </div>
     </section>
   );
