@@ -97,6 +97,8 @@ responsive sidebar navigation — hamburger toggle for desktop collapse + mobile
 drawer, plus an independent per-section accordion for each nav heading), requested
 directly by the user mid-session, is `DONE`.
 
+**Web Architecture & Brand Website Planning Pass:** `GRX-WEB-001` (Next.js App Router Groups refactoring: `(marketing)`, `(auth)`, `(dashboard)`, `(admin)`) added to [MASTER_TASK_TRACKER.md](MASTER_TASK_TRACKER.md) as `READY`. `GRX-WEB-002` (3D Brand & Landing Website: Linear/Vercel/Stripe aesthetic) and `GRX-ADMIN-001` (Admin Portal / Control Plane) added as `BACKLOG`.
+
 ## Documents created so far
 
 | Document | Status |
