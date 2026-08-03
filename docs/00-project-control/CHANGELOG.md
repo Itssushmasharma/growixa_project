@@ -10,6 +10,27 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
+## 2026-08-03 — GRX-EMAIL-003: campaigns CRUD + targeting
+
+- New `growixa_api.campaigns` module. Migration `d7fa144e5c60` creates all three tables
+  named in this task — `campaigns`, `campaign_versions`, `campaign_recipients` — since
+  `DATABASE_SCHEMA.md` groups them in one migration step, but only `campaigns` gets
+  CRUD here; the other two are schema-only until `GRX-EMAIL-004`'s send pipeline
+  populates them (same schema-now/write-path-later split as `GRX-AUDIT-001`→`002`).
+- Recipient targeting (`SEGMENT`/`LIST`/`ALL_CONTACTS`, exactly one of
+  `recipient_segment_id`/`recipient_list_id` set per type) is validated at the service
+  layer, calling directly into `integrations`/`templates`/`contacts`' own repository
+  functions to check referenced IDs exist, per `MODULE_BOUNDARIES.md`'s cross-module
+  call convention. No new permissions — reused `campaigns.manage`/`campaigns.view`.
+- Draft editing uses `exclude_unset` so a `PATCH` can explicitly null a field (e.g.
+  clearing `recipient_segment_id` when switching to `ALL_CONTACTS`) — the first module
+  needing that over the simpler "`None` means don't touch" convention used elsewhere.
+  Editing is blocked (409) once `status` leaves `DRAFT`.
+- `pytest` 127 passed, 3 skipped (10 new integration tests); `alembic check` clean.
+  Live-verified against Compose: created and edited a campaign via curl (targeting
+  switched cleanly, old segment reference cleared), an invalid both-set payload got
+  400, a throwaway Viewer got 403. Commit `52fa336`
+
 ## 2026-08-03 — GRX-EMAIL-002: email templates + versioning
 
 - New `growixa_api.templates` module: `EmailTemplate`/`EmailTemplateVersion` models,
