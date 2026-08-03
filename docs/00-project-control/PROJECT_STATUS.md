@@ -2,7 +2,7 @@
 
 - Document ID: DOC-PROJECT-STATUS
 - Status: ACTIVE
-- Version: 1.37
+- Version: 1.38
 - Last updated: 2026-08-01
 - Owner: Coding agent (on behalf of product owner)
 - Related documents: [MASTER_TASK_TRACKER](MASTER_TASK_TRACKER.md), [DECISIONS](DECISIONS.md), [DEVELOPMENT_READINESS](DEVELOPMENT_READINESS.md), [FEATURE_STATUS_MATRIX](FEATURE_STATUS_MATRIX.md)
@@ -76,6 +76,22 @@ detail.
 (CSV import frontend), and `GRX-CONTACT-009` (consent/suppression frontend). Sprint 2
 (Contacts) is complete.**
 
+**Development Readiness Gate for Slice 3 (Sprint 3: First Email Campaign): PASS.** See
+[DEVELOPMENT_READINESS.md](DEVELOPMENT_READINESS.md) and
+[SPRINT_03_EMAIL_CAMPAIGN.md](../14-sprints/SPRINT_03_EMAIL_CAMPAIGN.md). This gate needed
+one genuinely new prerequisite Slice 1/2 didn't: [OQ-002](OPEN_QUESTIONS.md) (email
+provider) had to be resolved before planning could even start — now closed via
+[DEC-GRX-015](DECISIONS.md): **Postmark, integrated via its SMTP relay endpoint** (the
+user's own preference for an SMTP-based integration, reconciled with keeping Postmark's
+bounce/open/click webhook tracking rather than losing it to a generic personal-mailbox
+SMTP server). Data model, RBAC, and a new threat-model addendum (T13–T19, the first since
+Sprint 1's) extended for `email_provider_connections`, `sender_identities`,
+`email_templates`/`email_template_versions`, `campaigns`/`campaign_versions`,
+`campaign_recipients`, `message_deliveries`/`delivery_attempts`, `email_events`,
+`unsubscribe_events`. Ten tasks added to
+[MASTER_TASK_TRACKER.md](MASTER_TASK_TRACKER.md) (`GRX-EMAIL-001`–`010`); the first,
+`GRX-EMAIL-001` (provider connection + sender identity), is `READY`.
+
 **Ad hoc UX addition (not tied to a sprint plan):** `GRX-FOUND-009` (collapsible/
 responsive sidebar navigation — hamburger toggle for desktop collapse + mobile overlay
 drawer, plus an independent per-section accordion for each nav heading), requested
@@ -102,11 +118,12 @@ directly by the user mid-session, is `DONE`.
 | `docs/02-features/FEATURE_CATALOG.md` | DONE (stub: MVP feature list + deferred feature list) |
 | `docs/02-features/FEATURE_SMS_MARKETING.md` | DONE (`GRX-FEAT-SMS-001` Twilio & SMS spec) |
 | `docs/04-architecture/SYSTEM_ARCHITECTURE.md`, `MODULE_BOUNDARIES.md`, `BACKGROUND_JOB_ARCHITECTURE.md` | DONE |
-| `docs/05-data/DATA_MODEL.md`, `ERD.md`, `DATABASE_SCHEMA.md` | DONE (Sprint 1 entities in full detail) |
-| `docs/08-security/SECURITY_ARCHITECTURE.md`, `AUTHENTICATION.md`, `RBAC.md`, `THREAT_MODEL.md` | DONE |
+| `docs/05-data/DATA_MODEL.md`, `ERD.md`, `DATABASE_SCHEMA.md` | DONE (Sprint 1 + Slice 2 + Slice 3 entities in full detail) |
+| `docs/08-security/SECURITY_ARCHITECTURE.md`, `AUTHENTICATION.md`, `RBAC.md`, `THREAT_MODEL.md` | DONE (RBAC + threat model extended through Slice 3) |
 | `docs/12-development/AGENT_EXECUTION_RULES.md` | DONE |
-| `docs/14-sprints/SPRINT_01_FOUNDATION.md` | DONE |
-| `docs/14-sprints/SPRINT_02_CONTACTS.md` | DONE (planning — implementation not started) |
+| `docs/14-sprints/SPRINT_01_FOUNDATION.md` | DONE (implementation complete) |
+| `docs/14-sprints/SPRINT_02_CONTACTS.md` | DONE (implementation complete) |
+| `docs/14-sprints/SPRINT_03_EMAIL_CAMPAIGN.md` | DONE (planning — implementation not started) |
 | `docs/diagrams/container-architecture.mmd`, `er-diagram.mmd` | DONE |
 | `docs/archive/source-prd-seo-aeo-geo-website-intelligence/` | DONE (relabeled from "legacy/superseded" to "future source material") |
 | `docs/10-testing/TEST_STRATEGY.md` | DONE |
@@ -158,18 +175,23 @@ directly by the user mid-session, is `DONE`.
    `GRX-FOUND-007` → Sprint 2: `GRX-CONTACT-001` → `GRX-CONTACT-002` → `GRX-CONTACT-003` →
    `GRX-CONTACT-004` → `GRX-CONTACT-005` → `GRX-CONTACT-006` → `GRX-CONTACT-007` →
    `GRX-CONTACT-008` → `GRX-CONTACT-009` → `GRX-DOC-003` → `GRX-AUDIT-002` →
-   `GRX-FOUND-009` (ad hoc, user-requested sidebar UX, not part of any sprint plan).
+   `GRX-FOUND-009` (ad hoc, user-requested sidebar UX, not part of any sprint plan) →
+   Sprint 3 planning (`DEC-GRX-015` resolving OQ-002, data model, RBAC, threat model,
+   `SPRINT_03_EMAIL_CAMPAIGN.md`, readiness gate, `GRX-EMAIL-001`–`010`).
    **Sprint 1 and Sprint 2 (Contacts) are both fully `DONE`**, including `GRX-DEVOPS-001`
    (user pushed and confirmed a green CI run), `GRX-DOC-003` (Sprint 1 doc/handoff
    update, which filed `GRX-AUDIT-002` for the audit-viewing gap it found), and
-   `GRX-AUDIT-002` itself (closed the same session it was filed). No task is `READY` or
-   `BACKLOG`. Awaiting user direction on what to pick up next — most likely a Sprint 3
-   kickoff.
+   `GRX-AUDIT-002` itself (closed the same session it was filed). **Sprint 3 (Email
+   Marketing) is now planned and `READY`**, first task `GRX-EMAIL-001` (provider
+   connection + sender identity).
 2. `RISKS.md`/`BLOCKERS.md` remain not required by any task yet; create them if/when a
    task's scope actually calls for one.
-3. Write full feature specs in `02-features/` for Slice 1 features as each task is picked up, not all upfront.
+3. Write full feature specs in `02-features/` for Slice 3 features (`EMAIL_PROVIDERS.md`,
+   `EMAIL_TEMPLATES.md`, `EMAIL_CAMPAIGNS.md`) as each task is picked up, not all upfront
+   — same practice as Sprints 1–2.
 4. Do not begin any V1.5+/SEO-AEO-GEO work until Slices 1–6 (MVP) are stable in production.
-5. Do not resolve OQ-002/003/004/006/007/012 early — they don't block Slice 1 (explicit instruction).
+5. Do not resolve OQ-003/004/006/007/009/012 early — they don't block Slice 3 (explicit
+   instruction; OQ-002 is the one exception, resolved because Slice 3 genuinely needed it).
 6. Do not start more than one Sprint 1 task concurrently (explicit instruction).
 
 ## Changelog

@@ -212,5 +212,47 @@ Decision statuses: `PROPOSED`, `UNDER_REVIEW`, `APPROVED`, `REJECTED`, `SUPERSED
 
 ---
 
-*Decisions DEC-GRX-015 onward will be logged as they are made — e.g., resolutions to
-OQ-002 through OQ-011 in [OPEN_QUESTIONS.md](OPEN_QUESTIONS.md).*
+## DEC-GRX-015: Postmark, integrated via its SMTP relay endpoint (resolves OQ-002)
+
+- Status: APPROVED
+- Date: 2026-08-01
+- Context: Slice 3 (First Email Campaign) cannot start until the production email
+  provider is fixed — it determines the sending adapter's interface, credential fields,
+  and how bounce/complaint/open/click events reach the platform.
+  [OQ-002](OPEN_QUESTIONS.md) asked which provider (e.g. SES, Postmark, SendGrid,
+  Mailgun) is the one production adapter for MVP.
+- Options considered:
+  1. Amazon SES — cheapest at scale, natural fit if already on AWS; more manual setup
+     for deliverability (domain/DKIM/warm-up) and a less ergonomic API.
+  2. Postmark — best-in-class deliverability and a simple API/SMTP surface;
+     historically transactional-focused, but supports marketing sends.
+  3. SendGrid — generous free tier, mature marketing-email feature set; deliverability
+     reputation has been mixed at times.
+  4. Mailgun — developer-friendly, EU-region hosting option for data residency.
+  5. A fully generic SMTP relay using the user's own existing mailbox credentials
+     (raised mid-decision) — simplest to configure, but standard SMTP has no
+     bounce/open/click webhooks, so `MVP_SCOPE.md`'s delivery/bounce/open/click
+     tracking requirement would need to be deferred or self-built (tracking pixels,
+     link-wrapping, unreliable bounce-message parsing).
+- Decision: Postmark (option 2), integrated via **Postmark's SMTP relay endpoint**
+  (host/port + a server API token used as the SMTP password) rather than its REST API.
+- Rationale: Postmark was picked for deliverability and API/SMTP simplicity. The SMTP
+  question that came up mid-decision is resolved by using Postmark's own SMTP relay
+  rather than a generic personal-mailbox SMTP server — this gives an actual SMTP
+  integration (satisfying `MVP_SCOPE.md`'s "SMTP support" bullet literally) while still
+  keeping Postmark's webhook-based bounce/complaint/open/click tracking, which a
+  generic mailbox cannot provide. No loss of capability versus using Postmark's REST
+  API directly; this is purely a transport choice Postmark supports natively.
+- Consequences: The Slice 3 email-provider adapter's config model stores SMTP
+  host/port/username(token)/password(token) rather than a bare REST API key — encrypted
+  at rest per [DEC-GRX-009](DECISIONS.md). If a future release needs a second provider
+  or provider-specific features Postmark's SMTP relay doesn't expose, that requires a
+  new logged decision, not a silent substitution.
+- Related tasks: Slice 3 (First Email Campaign) — `GRX-EMAIL-*` tasks in
+  `MASTER_TASK_TRACKER.md` (to be added).
+- Supersedes: none.
+
+---
+
+*Decisions DEC-GRX-016 onward will be logged as they are made — e.g., resolutions to
+OQ-003 through OQ-011 in [OPEN_QUESTIONS.md](OPEN_QUESTIONS.md).*

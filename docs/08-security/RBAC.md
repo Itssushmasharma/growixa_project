@@ -2,8 +2,8 @@
 
 - Document ID: DOC-SEC-RBAC
 - Status: ACTIVE
-- Version: 1.1
-- Last updated: 2026-07-30
+- Version: 1.2
+- Last updated: 2026-08-01
 - Owner: Coding agent
 - Related documents: [AUTHENTICATION](AUTHENTICATION.md), [DATA_MODEL](../05-data/DATA_MODEL.md), [PRD §20](../01-product/PRD.md#20-user-roles-and-permissions)
 
@@ -77,6 +77,56 @@ Slice 2 requirement calls for it, and per Sprint 1's own precedent (Viewer only 
 explicitly per module, never assumed from a role's name. Extend later if a real need
 surfaces (e.g. Content Creator needing segment context for Slice 6's "audience-specific
 variations").
+
+## Slice 3 permission codes
+
+| Code | Meaning |
+|---|---|
+| `integrations.manage` | Configure the email provider connection (SMTP host/credentials) and sender identities |
+| `campaigns.manage` | Create/edit email templates and campaign drafts (subject, body, recipient targeting) — does not include sending |
+| `campaigns.send` | Send a test email or trigger a campaign's immediate send |
+| `campaigns.view` | Read-only access to templates, campaigns, and delivery/analytics reports |
+
+Unlike Slice 2's single `.manage`/`.view` pair, Slice 3 splits drafting from sending
+(`campaigns.manage` vs `campaigns.send`) and carves out `integrations.manage` separately
+from both. Neither split is new invention — both were already implied by this document's
+own **Roles** table, written in Sprint 1 before any of these modules existed:
+- Content Creator's stated scope is "Drafts, AI generation, media — **no send/publish
+  authority**." A single combined `campaigns.manage` permission would force an
+  all-or-nothing grant that can't honor that boundary; splitting is what actually lets
+  Content Creator's long-documented scope be granted for the first time.
+- Super Admin's stated scope explicitly separates "integrations, provider credentials"
+  from Admin's "most operational access," which doesn't mention either — `integrations.manage`
+  being Super-Admin-only (see matrix below) is the first Slice/Sprint permission where
+  Admin does not automatically get what Super Admin gets, following that existing
+  distinction rather than the Slice 1/2 precedent of Admin mirroring Super Admin on
+  every code.
+
+## Slice 3 role → permission matrix
+
+| Permission | Super Admin | Admin | Marketing Manager | Content Creator | Analyst | Viewer |
+|---|---|---|---|---|---|---|
+| `integrations.manage` | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `campaigns.manage` | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
+| `campaigns.send` | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| `campaigns.view` | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+
+- `integrations.manage`: Super Admin only, per the Roles-table distinction above — this
+  gates SMTP credentials, which are encrypted at rest per
+  [DEC-GRX-009](../00-project-control/DECISIONS.md) and must have the narrowest possible
+  access.
+- `campaigns.manage`: everyone with a real drafting need — Admin (operational access),
+  Marketing Manager (its literal "campaigns" scope), and now Content Creator (its literal
+  "drafts" scope, finally exercised). Analyst and Viewer get none, matching their
+  read-only scopes.
+- `campaigns.send`: Admin and Marketing Manager only — Content Creator is deliberately
+  excluded, honoring "no send/publish authority" exactly as written. This is the
+  project's first real approval-gate permission; Slice 6's AI-content approval
+  requirement ([DEC-GRX-006](../00-project-control/DECISIONS.md)) will reuse this same
+  shape (draft vs. send/publish) rather than inventing a new one.
+- `campaigns.view`: everyone except Viewer — Analyst's "read-only analytics and
+  reporting" scope is exactly what campaign delivery reports are, so (unlike Slice 2,
+  where Analyst only got `contacts.view`) this is Analyst's clearest fit yet.
 
 ## Enforcement rule
 

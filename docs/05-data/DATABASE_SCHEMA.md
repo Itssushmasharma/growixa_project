@@ -2,8 +2,8 @@
 
 - Document ID: DOC-DB-SCHEMA
 - Status: ACTIVE (extended per slice, not redesigned)
-- Version: 1.1
-- Last updated: 2026-07-30
+- Version: 1.2
+- Last updated: 2026-08-01
 - Owner: Coding agent
 - Related documents: [DATA_MODEL](DATA_MODEL.md), [ERD](ERD.md), [MIGRATION_STRATEGY](MIGRATION_STRATEGY.md)
 
@@ -335,6 +335,175 @@ insert-only, same pattern as `audit_logs`.
 
 Indexes: unique index on `email` (upsert target — re-suppressing updates the existing row).
 
+## Slice 3 (Email Marketing) tables
+
+## `email_provider_connections`
+
+| Column | Type | Constraints |
+|---|---|---|
+| id | uuid | PK |
+| provider | text | NOT NULL, CHECK IN ('POSTMARK') |
+| smtp_host | text | NOT NULL |
+| smtp_port | integer | NOT NULL |
+| smtp_username | text | NOT NULL |
+| smtp_password_encrypted | text | NOT NULL |
+| is_active | boolean | NOT NULL, DEFAULT true |
+| created_by_user_id | uuid | FK → users.id, NULL |
+| created_at | timestamptz | NOT NULL, DEFAULT now() |
+| updated_at | timestamptz | NOT NULL, DEFAULT now() |
+
+Indexes: partial index on `(is_active) WHERE is_active` to cheaply find the active
+connection. `smtp_password_encrypted` is Fernet-encrypted application-side before insert
+— never a plaintext column, never selected into a log statement.
+
+## `sender_identities`
+
+| Column | Type | Constraints |
+|---|---|---|
+| id | uuid | PK |
+| email_provider_connection_id | uuid | FK → email_provider_connections.id, NOT NULL |
+| from_email | citext | NOT NULL |
+| from_name | text | NOT NULL |
+| reply_to_email | citext | NULL |
+| verification_status | text | NOT NULL, CHECK IN ('PENDING','VERIFIED','FAILED'), DEFAULT 'PENDING' |
+| created_by_user_id | uuid | FK → users.id, NULL |
+| created_at | timestamptz | NOT NULL, DEFAULT now() |
+| updated_at | timestamptz | NOT NULL, DEFAULT now() |
+
+## `email_templates`
+
+| Column | Type | Constraints |
+|---|---|---|
+| id | uuid | PK |
+| name | text | NOT NULL |
+| created_by_user_id | uuid | FK → users.id, NULL |
+| created_at | timestamptz | NOT NULL, DEFAULT now() |
+| updated_at | timestamptz | NOT NULL, DEFAULT now() |
+
+## `email_template_versions`
+
+| Column | Type | Constraints |
+|---|---|---|
+| id | uuid | PK |
+| template_id | uuid | FK → email_templates.id ON DELETE CASCADE, NOT NULL |
+| version_number | integer | NOT NULL |
+| subject | text | NOT NULL |
+| body_html | text | NOT NULL |
+| body_text | text | NULL |
+| created_by_user_id | uuid | FK → users.id, NULL |
+| created_at | timestamptz | NOT NULL, DEFAULT now() |
+
+Indexes: unique index on `(template_id, version_number)`. No UPDATE/DELETE grants at the
+application layer — insert-only, same pattern as `consent_records`.
+
+## `campaigns`
+
+| Column | Type | Constraints |
+|---|---|---|
+| id | uuid | PK |
+| name | text | NOT NULL |
+| subject | text | NOT NULL |
+| body_html | text | NOT NULL |
+| body_text | text | NULL |
+| template_id | uuid | FK → email_templates.id, NULL |
+| sender_identity_id | uuid | FK → sender_identities.id, NOT NULL |
+| recipient_type | text | NOT NULL, CHECK IN ('SEGMENT','LIST','ALL_CONTACTS') |
+| recipient_segment_id | uuid | FK → segments.id, NULL |
+| recipient_list_id | uuid | FK → contact_lists.id, NULL |
+| status | text | NOT NULL, CHECK IN ('DRAFT','SENDING','SENT','FAILED'), DEFAULT 'DRAFT' |
+| created_by_user_id | uuid | FK → users.id, NULL |
+| created_at | timestamptz | NOT NULL, DEFAULT now() |
+| updated_at | timestamptz | NOT NULL, DEFAULT now() |
+| sent_at | timestamptz | NULL |
+
+Constraints: application-layer check that exactly one of `recipient_segment_id` /
+`recipient_list_id` is set per `recipient_type` (not a DB CHECK constraint — mirrors how
+`contact_imports`' `column_mapping` validation lives in the service layer, not SQL).
+
+## `campaign_versions`
+
+| Column | Type | Constraints |
+|---|---|---|
+| id | uuid | PK |
+| campaign_id | uuid | FK → campaigns.id, NOT NULL |
+| subject | text | NOT NULL |
+| body_html | text | NOT NULL |
+| body_text | text | NULL |
+| recipient_count | integer | NOT NULL |
+| created_at | timestamptz | NOT NULL, DEFAULT now() |
+
+Indexes: index on `campaign_id`. Exactly one row per campaign, written when sending
+starts — not one row per draft edit.
+
+## `campaign_recipients`
+
+| Column | Type | Constraints |
+|---|---|---|
+| id | uuid | PK |
+| campaign_id | uuid | FK → campaigns.id ON DELETE CASCADE, NOT NULL |
+| contact_id | uuid | FK → contacts.id, NOT NULL |
+| email | citext | NOT NULL |
+| status | text | NOT NULL, CHECK IN ('PENDING','SENT','FAILED','SUPPRESSED'), DEFAULT 'PENDING' |
+| created_at | timestamptz | NOT NULL, DEFAULT now() |
+
+Indexes: index on `(campaign_id, status)`.
+
+## `message_deliveries`
+
+| Column | Type | Constraints |
+|---|---|---|
+| id | uuid | PK |
+| campaign_recipient_id | uuid | FK → campaign_recipients.id ON DELETE CASCADE, NOT NULL |
+| provider_message_id | text | NULL |
+| status | text | NOT NULL, CHECK IN ('QUEUED','SENT','DELIVERED','BOUNCED','COMPLAINED','FAILED'), DEFAULT 'QUEUED' |
+| sent_at | timestamptz | NULL |
+| delivered_at | timestamptz | NULL |
+| bounced_at | timestamptz | NULL |
+| created_at | timestamptz | NOT NULL, DEFAULT now() |
+| updated_at | timestamptz | NOT NULL, DEFAULT now() |
+
+Indexes: index on `provider_message_id` (webhook lookups arrive keyed by this).
+
+## `delivery_attempts`
+
+| Column | Type | Constraints |
+|---|---|---|
+| id | uuid | PK |
+| message_delivery_id | uuid | FK → message_deliveries.id ON DELETE CASCADE, NOT NULL |
+| attempt_number | integer | NOT NULL |
+| status | text | NOT NULL |
+| error_message | text | NULL |
+| attempted_at | timestamptz | NOT NULL, DEFAULT now() |
+
+Indexes: index on `message_delivery_id`.
+
+## `email_events`
+
+| Column | Type | Constraints |
+|---|---|---|
+| id | uuid | PK |
+| message_delivery_id | uuid | FK → message_deliveries.id ON DELETE CASCADE, NOT NULL |
+| event_type | text | NOT NULL, CHECK IN ('DELIVERED','OPENED','CLICKED','BOUNCED','COMPLAINED') |
+| occurred_at | timestamptz | NOT NULL |
+| metadata | jsonb | NOT NULL, DEFAULT '{}' |
+| created_at | timestamptz | NOT NULL, DEFAULT now() |
+
+Indexes: index on `message_delivery_id`. No UPDATE/DELETE grants at the application
+layer — insert-only, same pattern as `audit_logs`.
+
+## `unsubscribe_events`
+
+| Column | Type | Constraints |
+|---|---|---|
+| id | uuid | PK |
+| contact_id | uuid | FK → contacts.id, NULL |
+| campaign_id | uuid | FK → campaigns.id, NULL |
+| email | citext | NOT NULL |
+| occurred_at | timestamptz | NOT NULL, DEFAULT now() |
+| created_at | timestamptz | NOT NULL, DEFAULT now() |
+
+Indexes: index on `email`.
+
 ## Extensions required
 
 - `pgcrypto` or equivalent for `gen_random_uuid()`.
@@ -352,3 +521,12 @@ Slice 2: `contacts` → `contact_custom_fields` → `contact_field_values` → `
 `consent_records` → `suppression_entries`. Also a seed migration adding the new
 `contacts.manage` / `contacts.view` permission codes and their role grants (see
 [RBAC.md](../08-security/RBAC.md)).
+
+Slice 3: `email_provider_connections` → `sender_identities` → `email_templates` →
+`email_template_versions` → `campaigns` → `campaign_versions` → `campaign_recipients` →
+`message_deliveries` → `delivery_attempts` → `email_events` → `unsubscribe_events`. Also
+a seed migration adding `campaigns.manage` / `campaigns.send` / `campaigns.view` /
+`integrations.manage` and their role grants (see [RBAC.md](../08-security/RBAC.md)), and
+a settings addition for `ENCRYPTION_KEY` (Fernet key for
+`email_provider_connections.smtp_password_encrypted`, per
+[DEC-GRX-009](../00-project-control/DECISIONS.md)).

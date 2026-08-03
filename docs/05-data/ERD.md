@@ -2,8 +2,8 @@
 
 - Document ID: DOC-ERD
 - Status: ACTIVE (expanded per slice, not redesigned)
-- Version: 1.1
-- Last updated: 2026-07-30
+- Version: 1.2
+- Last updated: 2026-08-01
 - Owner: Coding agent
 - Related documents: [DATA_MODEL](DATA_MODEL.md), [DATABASE_SCHEMA](DATABASE_SCHEMA.md)
 
@@ -239,6 +239,140 @@ erDiagram
     }
 ```
 
-Entities for `campaigns`, `social`, and `ai` are added to this diagram as their owning
-slice is designed (Slice 3–4, 5, 6 respectively) — see
+## Slice 3 (Email Marketing) additions
+
+```mermaid
+erDiagram
+    EMAIL_PROVIDER_CONNECTIONS ||--o{ SENDER_IDENTITIES : "used by"
+    EMAIL_TEMPLATES ||--o{ EMAIL_TEMPLATE_VERSIONS : "versioned by"
+    EMAIL_TEMPLATES ||--o{ CAMPAIGNS : "may seed"
+    SENDER_IDENTITIES ||--o{ CAMPAIGNS : "sends as"
+    SEGMENTS ||--o{ CAMPAIGNS : "may target"
+    CONTACT_LISTS ||--o{ CAMPAIGNS : "may target"
+    CAMPAIGNS ||--o{ CAMPAIGN_VERSIONS : "frozen at send"
+    CAMPAIGNS ||--o{ CAMPAIGN_RECIPIENTS : resolves
+    CONTACTS ||--o{ CAMPAIGN_RECIPIENTS : "targeted as"
+    CAMPAIGN_RECIPIENTS ||--o| MESSAGE_DELIVERIES : "tracked by"
+    MESSAGE_DELIVERIES ||--o{ DELIVERY_ATTEMPTS : has
+    MESSAGE_DELIVERIES ||--o{ EMAIL_EVENTS : "receives"
+    CAMPAIGNS ||--o{ UNSUBSCRIBE_EVENTS : "may trigger"
+    CONTACTS ||--o{ UNSUBSCRIBE_EVENTS : "may cause"
+
+    EMAIL_PROVIDER_CONNECTIONS {
+        uuid id PK
+        string provider
+        string smtp_host
+        int smtp_port
+        string smtp_username
+        string smtp_password_encrypted
+        boolean is_active
+        uuid created_by_user_id FK
+        timestamp created_at
+        timestamp updated_at
+    }
+    SENDER_IDENTITIES {
+        uuid id PK
+        uuid email_provider_connection_id FK
+        string from_email
+        string from_name
+        string reply_to_email
+        string verification_status
+        uuid created_by_user_id FK
+        timestamp created_at
+        timestamp updated_at
+    }
+    EMAIL_TEMPLATES {
+        uuid id PK
+        string name
+        uuid created_by_user_id FK
+        timestamp created_at
+        timestamp updated_at
+    }
+    EMAIL_TEMPLATE_VERSIONS {
+        uuid id PK
+        uuid template_id FK
+        int version_number
+        string subject
+        string body_html
+        string body_text
+        uuid created_by_user_id FK
+        timestamp created_at
+    }
+    CAMPAIGNS {
+        uuid id PK
+        string name
+        string subject
+        string body_html
+        string body_text
+        uuid template_id FK
+        uuid sender_identity_id FK
+        string recipient_type
+        uuid recipient_segment_id FK
+        uuid recipient_list_id FK
+        string status
+        uuid created_by_user_id FK
+        timestamp created_at
+        timestamp updated_at
+        timestamp sent_at
+    }
+    CAMPAIGN_VERSIONS {
+        uuid id PK
+        uuid campaign_id FK
+        string subject
+        string body_html
+        string body_text
+        int recipient_count
+        timestamp created_at
+    }
+    CAMPAIGN_RECIPIENTS {
+        uuid id PK
+        uuid campaign_id FK
+        uuid contact_id FK
+        string email
+        string status
+        timestamp created_at
+    }
+    MESSAGE_DELIVERIES {
+        uuid id PK
+        uuid campaign_recipient_id FK
+        string provider_message_id
+        string status
+        timestamp sent_at
+        timestamp delivered_at
+        timestamp bounced_at
+        timestamp created_at
+        timestamp updated_at
+    }
+    DELIVERY_ATTEMPTS {
+        uuid id PK
+        uuid message_delivery_id FK
+        int attempt_number
+        string status
+        string error_message
+        timestamp attempted_at
+    }
+    EMAIL_EVENTS {
+        uuid id PK
+        uuid message_delivery_id FK
+        string event_type
+        timestamp occurred_at
+        jsonb metadata
+        timestamp created_at
+    }
+    UNSUBSCRIBE_EVENTS {
+        uuid id PK
+        uuid contact_id FK
+        uuid campaign_id FK
+        string email
+        timestamp occurred_at
+        timestamp created_at
+    }
+```
+
+`campaign_schedules` (Slice 4) and generic `webhook_*` tables (deferred indefinitely) are
+intentionally absent — see [DATA_MODEL.md §Explicitly deferred, not designed in Slice
+3](DATA_MODEL.md#explicitly-deferred-not-designed-in-slice-3).
+
+Entities for `social` and `ai` are added to this diagram as their owning slice is designed
+(Slice 5, 6 respectively) — see
 [DATA_MODEL.md §Full MVP entity landscape](DATA_MODEL.md#full-mvp-entity-landscape-target-slice).

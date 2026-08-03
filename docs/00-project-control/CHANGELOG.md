@@ -10,6 +10,44 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
+## 2026-08-01 — Sprint 3 (Email Marketing) planning
+
+- Slice 3 (First Email Campaign) needed one prerequisite Sprint 1/2 never did:
+  [OQ-002](OPEN_QUESTIONS.md) (email provider) had to be resolved before planning could
+  start at all. Logged as [DEC-GRX-015](DECISIONS.md): **Postmark, integrated via its
+  SMTP relay endpoint** — the user initially picked Postmark from a shortlist, then
+  asked about using their own SMTP server instead; resolved by using Postmark's own
+  SMTP relay (API token as the password) rather than a generic personal-mailbox SMTP
+  server, which keeps Postmark's bounce/open/click webhook tracking that a generic
+  mailbox can't provide while still satisfying `MVP_SCOPE.md`'s "SMTP support" bullet.
+- Data model: added Slice 3 entities in full field-level detail —
+  `email_provider_connections`, `sender_identities`, `email_templates`/
+  `email_template_versions`, `campaigns`/`campaign_versions`, `campaign_recipients`,
+  `message_deliveries`/`delivery_attempts`, `email_events`, `unsubscribe_events` — to
+  `DATA_MODEL.md`, `DATABASE_SCHEMA.md`, and `ERD.md`. `campaign_schedules` (Slice 4)
+  and generic multi-provider `webhook_*`/`analytics_events` tables stay explicitly
+  deferred, with reasons recorded rather than silently dropped.
+- RBAC: added `integrations.manage`, `campaigns.manage`, `campaigns.send`,
+  `campaigns.view`. Unlike Slice 2's single manage/view pair, Slice 3 splits drafting
+  from sending and carves out provider credentials separately — both splits were
+  already implied by RBAC.md's own Sprint-1-era Roles table (Content Creator's "no
+  send/publish authority," Super Admin's "provider credentials" scope distinct from
+  Admin's), not new invention. `integrations.manage` is the project's first
+  Admin-excluded permission.
+- Threat model: added a Slice 3 addendum (T13–T19) covering SMTP credential handling,
+  forged webhook events, suppression-bypass, personalization-variable injection,
+  recipient data exposure, bulk-send abuse, and SSRF via the provider host — the first
+  threat-model update since Sprint 1's baseline.
+- Wrote `SPRINT_03_EMAIL_CAMPAIGN.md` (included/excluded scope, acceptance criteria,
+  definition of done) and added a Slice 3 readiness-gate table to
+  `DEVELOPMENT_READINESS.md`, following the exact structure Slice 1/2 established.
+- Added ten tasks to `MASTER_TASK_TRACKER.md` (`GRX-EMAIL-001`–`010`): provider
+  connection + sender identity, templates, campaigns CRUD, the send pipeline (worker +
+  `email_delivery`), the Postmark webhook receiver, a campaign report endpoint, and four
+  matching frontend tasks. `GRX-EMAIL-001` is `READY`; the rest are `BACKLOG`, chained
+  sequentially per this project's one-task-at-a-time practice.
+- Documentation only — no code in this entry. Commit `<pending>`.
+
 ## 2026-08-01 — GRX-FOUND-009: Collapsible/responsive sidebar navigation
 
 - Ad hoc, user-requested — not part of any sprint plan. Two parts, both requested in

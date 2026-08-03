@@ -2,10 +2,10 @@
 
 - Document ID: DOC-DEV-READINESS
 - Status: ACTIVE
-- Version: 4.0
-- Last updated: 2026-07-30
+- Version: 5.0
+- Last updated: 2026-08-01
 - Owner: Coding agent
-- Related documents: [DEFINITION_OF_DONE](DEFINITION_OF_DONE.md), [PROJECT_STATUS](PROJECT_STATUS.md), [MASTER_TASK_TRACKER](MASTER_TASK_TRACKER.md), [SPRINT_01_FOUNDATION](../14-sprints/SPRINT_01_FOUNDATION.md), [SPRINT_02_CONTACTS](../14-sprints/SPRINT_02_CONTACTS.md)
+- Related documents: [DEFINITION_OF_DONE](DEFINITION_OF_DONE.md), [PROJECT_STATUS](PROJECT_STATUS.md), [MASTER_TASK_TRACKER](MASTER_TASK_TRACKER.md), [SPRINT_01_FOUNDATION](../14-sprints/SPRINT_01_FOUNDATION.md), [SPRINT_02_CONTACTS](../14-sprints/SPRINT_02_CONTACTS.md), [SPRINT_03_EMAIL_CAMPAIGN](../14-sprints/SPRINT_03_EMAIL_CAMPAIGN.md)
 
 No product feature implementation may begin until every item below is `PASS` for Slice 1
 (Sprint 1 — Foundation).
@@ -48,12 +48,15 @@ See [MASTER_TASK_TRACKER.md](MASTER_TASK_TRACKER.md).
 
 ## Deliberately still open (per explicit instruction — do not resolve prematurely)
 
-Email provider ([OQ-002](OPEN_QUESTIONS.md)), first social platform ([OQ-003](OPEN_QUESTIONS.md)),
-AI provider/model ([OQ-004](OPEN_QUESTIONS.md)), billing provider ([OQ-007](OPEN_QUESTIONS.md)),
-production cloud ([OQ-006](OPEN_QUESTIONS.md)), and advanced workflow scope ([OQ-012](OPEN_QUESTIONS.md))
-remain open. None of them gate Slice 1. Each becomes a hard blocker only for the slice that
-actually needs it (Slice 3, 5, 6, etc. respectively) — do not resolve them early just because
-this gate passed.
+Email provider ([OQ-002](OPEN_QUESTIONS.md), since **resolved** — see the Slice 3 gate
+below), first social platform ([OQ-003](OPEN_QUESTIONS.md)), AI provider/model
+([OQ-004](OPEN_QUESTIONS.md)), billing provider ([OQ-007](OPEN_QUESTIONS.md)), production
+cloud ([OQ-006](OPEN_QUESTIONS.md)), and advanced workflow scope
+([OQ-012](OPEN_QUESTIONS.md)) were all open at Slice 1's gate. None of them gated Slice 1.
+Each becomes a hard blocker only for the slice that actually needs it (Slice 3, 5, 6, etc.
+respectively) — this snapshot is preserved as a record of what Slice 1's gate deliberately
+left open, not a live status (see [OPEN_QUESTIONS.md](OPEN_QUESTIONS.md) for current
+status).
 
 ## Readiness gate — Slice 2 (Contacts)
 
@@ -71,8 +74,28 @@ this gate passed.
 Mirrors Slice 1's gate structure rather than re-litigating documentation standards from
 scratch; only genuinely new items (data model, RBAC, sprint plan) needed a fresh pass.
 
+## Readiness gate — Slice 3 (First Email Campaign)
+
+| Readiness item | Required | Status | Evidence |
+|---|---|---|---|
+| Email provider decision (OQ-002) | Yes — this is the item Slice 2's gate flagged as deferred, not N/A | PASS | [DECISIONS.md §DEC-GRX-015](DECISIONS.md) — Postmark, via its SMTP relay endpoint |
+| Data model additions | Yes | PASS | [DATA_MODEL.md §Slice 3 entities](../05-data/DATA_MODEL.md#slice-3-entities-full-detail), [DATABASE_SCHEMA.md §Slice 3](../05-data/DATABASE_SCHEMA.md#slice-3-email-marketing-tables), [ERD.md §Slice 3 additions](../05-data/ERD.md#slice-3-email-marketing-additions) |
+| RBAC additions | Yes | PASS | [RBAC.md §Slice 3](../08-security/RBAC.md#slice-3-permission-codes) — `integrations.manage`, `campaigns.manage`, `campaigns.send`, `campaigns.view` |
+| Threat model addendum | Yes (new external surface: credential storage, outbound sending, inbound webhooks) | PASS | [THREAT_MODEL.md §Slice 3](../08-security/THREAT_MODEL.md#slice-3-email-marketing-scope) — T13–T19 |
+| Sprint 3 plan | Yes | PASS | [SPRINT_03_EMAIL_CAMPAIGN.md](../14-sprints/SPRINT_03_EMAIL_CAMPAIGN.md) |
+| Feature specs (`EMAIL_PROVIDERS.md`, `EMAIL_TEMPLATES.md`, `EMAIL_CAMPAIGNS.md`) | No (written per-task, not upfront — same practice as Sprints 1–2) | DEFERRED TO EACH TASK | [FEATURE_CATALOG.md](../02-features/FEATURE_CATALOG.md) |
+| Project tracker rows | Yes | PASS | [MASTER_TASK_TRACKER.md](MASTER_TASK_TRACKER.md) — `GRX-EMAIL-*` |
+| AI safety baseline | No (no AI feature in Slice 3) | N/A FOR SLICE 3 | — |
+| Social/billing provider decisions (OQ-003, OQ-007) | No (not needed until Slice 5) | N/A FOR SLICE 3 | [OPEN_QUESTIONS.md](OPEN_QUESTIONS.md) |
+| Email template editor choice (OQ-009) | No — narrower than a slice-entry blocker; only the specific template-editor task needs it | DEFERRED TO THAT TASK | [OPEN_QUESTIONS.md](OPEN_QUESTIONS.md) |
+
+**Overall status: READY — first task cleared: `GRX-EMAIL-001` (email provider connection +
+sender identity).** The one genuinely new prerequisite versus Slice 1/2's gate structure
+was OQ-002 itself — every other item follows the same per-slice pattern (data model,
+RBAC, threat model, sprint plan).
+
 ## Gate for later slices
 
-Slice 3 (First Email Campaign) onward will each need their own readiness pass (data model
+Slice 4 (Scheduled Email) onward will each need their own readiness pass (data model
 additions, feature specs, etc.) before becoming `READY` — this table will be extended per
 slice rather than re-litigated from scratch.
