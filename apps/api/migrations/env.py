@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 from growixa_api.audit import models as audit_models  # noqa: F401
 from growixa_api.auth import models as auth_models  # noqa: F401
 from growixa_api.brand import models as brand_models  # noqa: F401
+from growixa_api.campaigns import models as campaigns_models  # noqa: F401
 from growixa_api.company import models as company_models  # noqa: F401
 from growixa_api.config import get_settings
 from growixa_api.contacts import models as contacts_models  # noqa: F401
