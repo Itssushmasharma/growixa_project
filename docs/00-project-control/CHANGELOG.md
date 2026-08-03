@@ -10,6 +10,44 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
+## 2026-08-04 — GRX-EMAIL-004: send pipeline (worker + email_delivery)
+
+- **Real gap found and fixed**: `usage_records` was documented (`DATA_MODEL.md`,
+  `DEC-GRX-007`) as already existing since Sprint 1, but no migration or model for it
+  existed anywhere in the codebase. Created it now (new `growixa_api.usage` module)
+  since this task's own acceptance criterion — `usage_records` gets its first real
+  write — needed the table to actually exist.
+- Per an explicit decision this session, `apps/worker` gained its own minimal
+  SQLAlchemy/asyncpg data layer — models for exactly the tables `send_campaign` reads
+  or writes (including a duplicated segment-rule evaluator) — rather than depending on
+  `growixa_api` as a library, keeping the two apps independently deployable per
+  `SYSTEM_ARCHITECTURE.md`.
+- New `growixa_api.email_delivery` module: `POST /campaigns/{id}/test-send` sends
+  synchronously and inline (explicitly fine — it touches no campaign/recipient/delivery
+  state); `POST /campaigns/{id}/send` flips the campaign to `SENDING` and enqueues
+  `grx.email_delivery.send_campaign`, never sending inline. New `campaigns.send`
+  permission (Super Admin/Admin/Marketing Manager only, Content Creator excluded).
+- The worker's job handler resolves recipients per targeting type (including live
+  `DYNAMIC` segment rule evaluation), excludes suppressed or consent-withdrawn
+  addresses (`DEC-GRX-008`), freezes one `campaign_versions` snapshot, sends via real
+  `aiosmtplib`, and writes `message_deliveries`/`delivery_attempts`/`usage_records`.
+  Idempotent via a `campaign_versions`-existence check rather than a separate key store.
+- Also fixed a latent `apps/worker` test-config gap found while debugging the new
+  tests: missing `asyncio_default_fixture_loop_scope`/`asyncio_default_test_loop_scope
+  = "session"` (present in `apps/api` since GRX-TEST-001, never added to the worker)
+  was giving each test a fresh event loop, breaking the worker's cached DB engine
+  across tests.
+- `apps/api` `pytest`: 135 passed, 3 skipped (8 new). `apps/worker` `pytest`: 8 passed
+  (new). `alembic check` clean on both.
+- **Documented evidence gap (DEC-GRX-011 / SPRINT_03's pre-approved fallback)**: no
+  live Postmark account is available in this environment. Live-verified everything up
+  to the credential boundary — a real TCP/TLS + STARTTLS handshake against Postmark's
+  actual relay, rejected with a genuine `535 5.7.8 authentication failed` — proving the
+  SMTP path is real, not mocked. The worker correctly caught the failure, still wrote
+  the `campaign_versions` snapshot and a `usage_records` row (`quantity=0`), and left
+  the campaign `SENT` rather than crashing. Closes automatically once a real Postmark
+  server token is configured. Commit `aa2bdb4`
+
 ## 2026-08-03 — GRX-EMAIL-003: campaigns CRUD + targeting
 
 - New `growixa_api.campaigns` module. Migration `d7fa144e5c60` creates all three tables
