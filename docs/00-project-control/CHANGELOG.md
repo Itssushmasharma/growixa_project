@@ -10,6 +10,29 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
+## 2026-08-03 — GRX-EMAIL-001: email provider connection + sender identity
+
+- First Sprint 3 task. New `growixa_api.integrations` module (named per
+  `MODULE_BOUNDARIES.md` — the designated home for all future provider connections, not
+  email-specific) with `EmailProviderConnection`/`SenderIdentity` models and CRUD routes
+  gated on a new `integrations.manage` permission, granted to Super Admin only — the
+  project's first Admin-excluded permission.
+- Added Fernet symmetric encryption (`auth/encryption.py`, a new `encryption_key`
+  setting) for SMTP credentials at rest per `DEC-GRX-009`; `EmailProviderConnectionOut`
+  never returns the password or its encrypted form. Creating a new connection
+  deactivates any existing active one instead of mutating it in place.
+- Migration `393c4222c8af` adds `email_provider_connections`/`sender_identities` plus
+  the partial `(is_active) WHERE is_active` index, and seeds `integrations.manage`.
+- **Real bug found and fixed**: the sender-identity status-update route hit
+  `MissingGreenlet` on `updated_at` after commit — `onupdate=func.now()` columns expire
+  on UPDATE and need an explicit `session.refresh()` before serialization, the same
+  issue and fix already documented in `contacts/services.py`.
+- `pytest` 111 passed, 3 skipped (7 new integration tests); `alembic check` clean;
+  rebuilt the `api` container for the new `cryptography` dependency. Live-verified
+  against Compose: Super Admin created a connection + sender identity via curl with the
+  password never appearing in any response, and a throwaway Admin-role user got 403 on
+  the same routes. Commit `f545ad0`
+
 ## 2026-08-01 — Sprint 3 (Email Marketing) planning
 
 - Slice 3 (First Email Campaign) needed one prerequisite Sprint 1/2 never did:
