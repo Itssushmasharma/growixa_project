@@ -5,6 +5,11 @@ import styles from "./marketing.module.css";
 
 const aiTeamMembers = [
   {
+    icon: "🌐",
+    title: "Website Growth Agent",
+    desc: "Automated site crawling, lead capture popups, and AI Search Optimization (SEO / AEO / GEO) to scale organic traffic.",
+  },
+  {
     icon: "✍️",
     title: "AI Copywriter",
     desc: "Generate high-converting email copy, subject lines, and ad text tailored to your brand voice in seconds.",
@@ -29,14 +34,16 @@ const aiTeamMembers = [
     title: "Social Creator",
     desc: "Craft, schedule, and publish platform-optimized posts across LinkedIn, Twitter, Meta, and Instagram.",
   },
-  {
-    icon: "📊",
-    title: "Marketing Analyst",
-    desc: "Instant revenue attribution insights, open/click heatmaps, and actionable growth recommendations.",
-  },
 ];
 
 const pillars = [
+  {
+    badge: "WEBSITE GROWTH",
+    title: "Site Intelligence & Lead Capture",
+    desc: "Smart exit-intent popups, automated website crawling, lead forms, and AI Search Engine Optimization (SEO / AEO / GEO).",
+    accent: "rgba(16, 185, 129, 0.4)",
+    badgeColor: "#34d399",
+  },
   {
     badge: "DELIVERABILITY",
     title: "Email Marketing Engine",
@@ -50,13 +57,6 @@ const pillars = [
     desc: "Visual content calendar, multi-platform publishing, custom hashtags, and post performance analytics.",
     accent: "rgba(168, 85, 247, 0.4)",
     badgeColor: "#c084fc",
-  },
-  {
-    badge: "TARGETING",
-    title: "Smart Segmentation",
-    desc: "Real-time AND-rule engine, contact custom fields, automated list tagging, and consent suppression enforcement.",
-    accent: "rgba(16, 185, 129, 0.4)",
-    badgeColor: "#34d399",
   },
   {
     badge: "EFFICIENCY",
@@ -74,8 +74,8 @@ export function AiTeamSection() {
         <div className={styles.sectionTag}>Autonomous Capabilities</div>
         <h2 className={styles.sectionTitle}>Meet Your AI Marketing Team</h2>
         <p className={styles.sectionSub}>
-          Replace fragmented tools with AI agents designed to handle campaign drafting, audience
-          targeting, and analytics.
+          Replace fragmented tools with AI agents designed to handle website growth, email
+          campaigns, audience targeting, and analytics.
         </p>
       </div>
 

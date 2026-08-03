@@ -34,12 +34,12 @@ export function HeroSection() {
 
         <h1 className={styles.heroTitle}>
           Grow Faster. Market Smarter. <br />
-          <span className={styles.gradientText}>Powered by AI.</span>
+          <span className={styles.gradientText}>Powered by AI & Website Growth.</span>
         </h1>
 
         <p className={styles.heroSub}>
-          One platform to automate email campaigns, generate AI content, manage audience segments,
-          and schedule social posts with real-time growth analytics.
+          One platform to automate email campaigns, capture website leads, optimize SEO/AEO search
+          rankings, and schedule social posts with real-time growth analytics.
         </p>
 
         <div className={styles.heroCtas}>
@@ -56,7 +56,7 @@ export function HeroSection() {
       <div className={styles.heroPreviewWrapper} style={{ position: "relative", zIndex: 2 }}>
         <div className={styles.glowBg} />
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "1.75rem" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "1.5rem" }}>
           {/* 3D Glass Card 1: Smart Audience Segmentation */}
           <Card3D depth={16}>
             <div
@@ -64,8 +64,8 @@ export function HeroSection() {
                 background:
                   "radial-gradient(circle at 50% 0%, rgba(56, 189, 248, 0.15), rgba(15, 23, 42, 0.8) 70%)",
                 border: "1px solid rgba(56, 189, 248, 0.35)",
-                borderRadius: "24px",
-                padding: "2.25rem",
+                borderRadius: "20px",
+                padding: "1.75rem",
                 textAlign: "left",
                 boxShadow: "0 20px 50px rgba(0, 0, 0, 0.5), 0 0 30px rgba(56, 189, 248, 0.25)",
                 backdropFilter: "blur(20px)",
@@ -81,10 +81,10 @@ export function HeroSection() {
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "space-between",
-                    marginBottom: "1.25rem",
+                    marginBottom: "1rem",
                   }}
                 >
-                  <div style={{ fontSize: "2rem" }}>🎯 👥</div>
+                  <div style={{ fontSize: "1.75rem" }}>🎯 👥</div>
                   <span
                     style={{
                       background: "rgba(56, 189, 248, 0.15)",
@@ -103,7 +103,7 @@ export function HeroSection() {
 
                 <h3
                   style={{
-                    fontSize: "1.4rem",
+                    fontSize: "1.2rem",
                     fontWeight: 800,
                     color: "#ffffff",
                     marginBottom: "0.5rem",
@@ -114,10 +114,10 @@ export function HeroSection() {
                 </h3>
                 <p
                   style={{
-                    fontSize: "0.9375rem",
+                    fontSize: "0.875rem",
                     color: "#94a3b8",
                     lineHeight: 1.6,
-                    marginBottom: "1.5rem",
+                    marginBottom: "1.25rem",
                   }}
                 >
                   Create laser-focused customer segments based on real-time behavior, dynamic
@@ -125,104 +125,160 @@ export function HeroSection() {
                 </p>
               </div>
 
-              {/* Native Dynamic Rule Widget */}
+              {/* Dynamic Rule Widget */}
               <div
                 style={{
                   background: "rgba(15, 23, 42, 0.9)",
                   border: "1px solid rgba(255, 255, 255, 0.1)",
-                  borderRadius: "14px",
-                  padding: "1.25rem",
+                  borderRadius: "12px",
+                  padding: "1rem",
                 }}
               >
                 <div
                   style={{
-                    fontSize: "0.8125rem",
+                    fontSize: "0.75rem",
                     color: "#64748b",
                     fontWeight: 600,
-                    marginBottom: "0.75rem",
+                    marginBottom: "0.5rem",
                   }}
                 >
-                  DYNAMIC SEGMENT RULE BUILDER
+                  DYNAMIC RULE BUILDER
                 </div>
-
                 <div
                   style={{
-                    display: "flex",
-                    gap: "0.5rem",
-                    flexWrap: "wrap",
-                    marginBottom: "0.75rem",
-                  }}
-                >
-                  <span
-                    style={{
-                      background: "rgba(37, 99, 235, 0.2)",
-                      color: "#60a5fa",
-                      padding: "0.375rem 0.75rem",
-                      borderRadius: "6px",
-                      fontSize: "0.8125rem",
-                      fontWeight: 600,
-                      border: "1px solid rgba(37, 99, 235, 0.4)",
-                    }}
-                  >
-                    Field: tag
-                  </span>
-                  <span
-                    style={{
-                      background: "rgba(124, 58, 237, 0.2)",
-                      color: "#c084fc",
-                      padding: "0.375rem 0.75rem",
-                      borderRadius: "6px",
-                      fontSize: "0.8125rem",
-                      fontWeight: 600,
-                      border: "1px solid rgba(124, 58, 237, 0.4)",
-                    }}
-                  >
-                    Operator: equals
-                  </span>
-                  <span
-                    style={{
-                      background: "rgba(16, 185, 129, 0.2)",
-                      color: "#34d399",
-                      padding: "0.375rem 0.75rem",
-                      borderRadius: "6px",
-                      fontSize: "0.8125rem",
-                      fontWeight: 600,
-                      border: "1px solid rgba(16, 185, 129, 0.4)",
-                    }}
-                  >
-                    Value: &quot;VIP Buyer&quot;
-                  </span>
-                </div>
-
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    paddingTop: "0.5rem",
-                    borderTop: "1px solid rgba(255, 255, 255, 0.08)",
                     fontSize: "0.8125rem",
-                    color: "#94a3b8",
+                    color: "#38bdf8",
+                    fontWeight: 700,
+                    marginBottom: "0.25rem",
                   }}
                 >
-                  <span>
-                    Matched Contacts: <strong style={{ color: "#38bdf8" }}>42,850</strong>
-                  </span>
-                  <span style={{ color: "#34d399", fontWeight: 600 }}>✓ Auto-Updating</span>
+                  tag == &quot;VIP Buyer&quot;
+                </div>
+                <div style={{ fontSize: "0.75rem", color: "#34d399" }}>
+                  ✓ 42,850 Matched Contacts
                 </div>
               </div>
             </div>
           </Card3D>
 
-          {/* 3D Glass Card 2: AI Content Assistant */}
+          {/* 3D Glass Card 2: Website Growth & Intelligence */}
+          <Card3D depth={16}>
+            <div
+              style={{
+                background:
+                  "radial-gradient(circle at 50% 0%, rgba(16, 185, 129, 0.15), rgba(15, 23, 42, 0.8) 70%)",
+                border: "1px solid rgba(16, 185, 129, 0.35)",
+                borderRadius: "20px",
+                padding: "1.75rem",
+                textAlign: "left",
+                boxShadow: "0 20px 50px rgba(0, 0, 0, 0.5), 0 0 30px rgba(16, 185, 129, 0.25)",
+                backdropFilter: "blur(20px)",
+                height: "100%",
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "space-between",
+              }}
+            >
+              <div>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    marginBottom: "1rem",
+                  }}
+                >
+                  <div style={{ fontSize: "1.75rem" }}>🌐 📈</div>
+                  <span
+                    style={{
+                      background: "rgba(16, 185, 129, 0.15)",
+                      border: "1px solid rgba(16, 185, 129, 0.4)",
+                      color: "#34d399",
+                      fontSize: "0.75rem",
+                      fontWeight: 800,
+                      padding: "0.25rem 0.625rem",
+                      borderRadius: "9999px",
+                      letterSpacing: "0.08em",
+                    }}
+                  >
+                    WEBSITE GROWTH
+                  </span>
+                </div>
+
+                <h3
+                  style={{
+                    fontSize: "1.2rem",
+                    fontWeight: 800,
+                    color: "#ffffff",
+                    marginBottom: "0.5rem",
+                    letterSpacing: "-0.02em",
+                  }}
+                >
+                  WEBSITE GROWTH & INTELLIGENCE
+                </h3>
+                <p
+                  style={{
+                    fontSize: "0.875rem",
+                    color: "#94a3b8",
+                    lineHeight: 1.6,
+                    marginBottom: "1.25rem",
+                  }}
+                >
+                  Smart lead capture popups, automated website crawling, and AI Search Optimization
+                  (SEO / AEO / GEO) to scale traffic.
+                </p>
+              </div>
+
+              {/* Website Growth Widget */}
+              <div
+                style={{
+                  background: "rgba(15, 23, 42, 0.9)",
+                  border: "1px solid rgba(255, 255, 255, 0.1)",
+                  borderRadius: "12px",
+                  padding: "1rem",
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: "0.75rem",
+                    color: "#64748b",
+                    fontWeight: 600,
+                    marginBottom: "0.5rem",
+                  }}
+                >
+                  SITE INTELLIGENCE SCORE
+                </div>
+                <div
+                  style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}
+                >
+                  <span style={{ fontSize: "1.25rem", fontWeight: 800, color: "#34d399" }}>
+                    98 / 100
+                  </span>
+                  <span
+                    style={{
+                      fontSize: "0.75rem",
+                      color: "#60a5fa",
+                      background: "rgba(37, 99, 235, 0.2)",
+                      padding: "0.25rem 0.5rem",
+                      borderRadius: "4px",
+                    }}
+                  >
+                    SEO + AEO Ready
+                  </span>
+                </div>
+              </div>
+            </div>
+          </Card3D>
+
+          {/* 3D Glass Card 3: AI Content Assistant */}
           <Card3D depth={16}>
             <div
               style={{
                 background:
                   "radial-gradient(circle at 50% 0%, rgba(168, 85, 247, 0.15), rgba(15, 23, 42, 0.8) 70%)",
                 border: "1px solid rgba(168, 85, 247, 0.35)",
-                borderRadius: "24px",
-                padding: "2.25rem",
+                borderRadius: "20px",
+                padding: "1.75rem",
                 textAlign: "left",
                 boxShadow: "0 20px 50px rgba(0, 0, 0, 0.5), 0 0 30px rgba(168, 85, 247, 0.25)",
                 backdropFilter: "blur(20px)",
@@ -238,15 +294,15 @@ export function HeroSection() {
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "space-between",
-                    marginBottom: "1.25rem",
+                    marginBottom: "1rem",
                   }}
                 >
-                  <div style={{ fontSize: "2rem" }}>🤖 ✨</div>
+                  <div style={{ fontSize: "1.75rem" }}>🤖 ✨</div>
                   <span
                     style={{
-                      background: "rgba(16, 185, 129, 0.15)",
-                      border: "1px solid rgba(16, 185, 129, 0.4)",
-                      color: "#34d399",
+                      background: "rgba(244, 63, 94, 0.15)",
+                      border: "1px solid rgba(244, 63, 94, 0.4)",
+                      color: "#fb7185",
                       fontSize: "0.75rem",
                       fontWeight: 800,
                       padding: "0.25rem 0.625rem",
@@ -260,7 +316,7 @@ export function HeroSection() {
 
                 <h3
                   style={{
-                    fontSize: "1.4rem",
+                    fontSize: "1.2rem",
                     fontWeight: 800,
                     color: "#ffffff",
                     marginBottom: "0.5rem",
@@ -271,27 +327,27 @@ export function HeroSection() {
                 </h3>
                 <p
                   style={{
-                    fontSize: "0.9375rem",
+                    fontSize: "0.875rem",
                     color: "#94a3b8",
                     lineHeight: 1.6,
-                    marginBottom: "1.5rem",
+                    marginBottom: "1.25rem",
                   }}
                 >
-                  Generate compelling copy, email subject lines, social captions, and creative ideas
-                  powered by AI.
+                  Generate compelling email copy, subject lines, captions, and blog drafts tailored
+                  to your brand voice.
                 </p>
               </div>
 
-              {/* Native Interactive AI Copy Generator Widget */}
+              {/* Interactive AI Widget */}
               <div
                 style={{
                   background: "rgba(15, 23, 42, 0.9)",
                   border: "1px solid rgba(255, 255, 255, 0.1)",
-                  borderRadius: "14px",
-                  padding: "1.25rem",
+                  borderRadius: "12px",
+                  padding: "0.875rem",
                 }}
               >
-                <div style={{ display: "flex", gap: "0.5rem", marginBottom: "0.75rem" }}>
+                <div style={{ display: "flex", gap: "0.375rem", marginBottom: "0.5rem" }}>
                   <input
                     type="text"
                     value={aiPrompt}
@@ -300,13 +356,12 @@ export function HeroSection() {
                       flex: 1,
                       background: "rgba(255, 255, 255, 0.06)",
                       border: "1px solid rgba(255, 255, 255, 0.15)",
-                      borderRadius: "8px",
-                      padding: "0.5rem 0.75rem",
+                      borderRadius: "6px",
+                      padding: "0.375rem 0.5rem",
                       color: "#ffffff",
-                      fontSize: "0.8125rem",
+                      fontSize: "0.75rem",
                       outline: "none",
                     }}
-                    placeholder="Enter prompt..."
                   />
                   <button
                     onClick={handleGenerate}
@@ -315,28 +370,25 @@ export function HeroSection() {
                       background: "linear-gradient(135deg, #7c3aed, #2563eb)",
                       color: "white",
                       border: "none",
-                      borderRadius: "8px",
-                      padding: "0.5rem 0.875rem",
-                      fontSize: "0.8125rem",
+                      borderRadius: "6px",
+                      padding: "0.375rem 0.625rem",
+                      fontSize: "0.75rem",
                       fontWeight: 700,
                       cursor: "pointer",
                       whiteSpace: "nowrap",
                     }}
                   >
-                    {isGenerating ? "Generating..." : "⚡ Generate"}
+                    {isGenerating ? "..." : "⚡ AI"}
                   </button>
                 </div>
-
                 <div
                   style={{
                     background: "rgba(0, 0, 0, 0.4)",
-                    border: "1px solid rgba(255, 255, 255, 0.08)",
-                    borderRadius: "8px",
-                    padding: "0.875rem",
-                    fontSize: "0.8125rem",
+                    borderRadius: "6px",
+                    padding: "0.5rem",
+                    fontSize: "0.75rem",
                     color: "#cbd5e1",
-                    whiteSpace: "pre-wrap",
-                    maxHeight: "100px",
+                    maxHeight: "55px",
                     overflowY: "auto",
                     fontFamily: "monospace",
                   }}
