@@ -1,11 +1,17 @@
 import uuid
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel
 
+# GRX-EMAIL-011 / DEC-GRX-016: Postmark plus a generic Custom SMTP provider — no
+# default, since a request omitting `provider` is now ambiguous rather than "obviously
+# Postmark," and should 422 at the API boundary instead of silently picking one.
+EmailProvider = Literal["POSTMARK", "CUSTOM_SMTP"]
+
 
 class EmailProviderConnectionIn(BaseModel):
-    provider: str = "POSTMARK"
+    provider: EmailProvider
     smtp_host: str
     smtp_port: int
     smtp_username: str
@@ -16,7 +22,7 @@ class EmailProviderConnectionOut(BaseModel):
     model_config = {"from_attributes": True}
 
     id: uuid.UUID
-    provider: str
+    provider: EmailProvider
     smtp_host: str
     smtp_port: int
     smtp_username: str

@@ -9,20 +9,37 @@ from growixa_api.integrations.models import EmailProviderConnection, SenderIdent
 
 
 async def get_active_email_provider_connection(
-    session: AsyncSession,
+    session: AsyncSession, provider: str
 ) -> EmailProviderConnection | None:
     result = await session.execute(
-        select(EmailProviderConnection).where(EmailProviderConnection.is_active.is_(True))
+        select(EmailProviderConnection).where(
+            EmailProviderConnection.provider == provider,
+            EmailProviderConnection.is_active.is_(True),
+        )
     )
     return result.scalar_one_or_none()
 
 
-async def deactivate_all_email_provider_connections(session: AsyncSession) -> None:
+async def deactivate_active_email_provider_connections(
+    session: AsyncSession, provider: str
+) -> None:
     await session.execute(
         update(EmailProviderConnection)
-        .where(EmailProviderConnection.is_active.is_(True))
+        .where(
+            EmailProviderConnection.provider == provider,
+            EmailProviderConnection.is_active.is_(True),
+        )
         .values(is_active=False)
     )
+
+
+async def list_email_provider_connections(
+    session: AsyncSession,
+) -> Sequence[EmailProviderConnection]:
+    result = await session.execute(
+        select(EmailProviderConnection).order_by(EmailProviderConnection.provider)
+    )
+    return result.scalars().all()
 
 
 async def create_email_provider_connection(

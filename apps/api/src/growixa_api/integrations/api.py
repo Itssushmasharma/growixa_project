@@ -17,7 +17,7 @@ from growixa_api.integrations.services import (
     SenderIdentityNotFoundError,
     create_connection,
     create_identity,
-    get_active_connection,
+    list_connections,
     list_identities,
     update_identity_verification_status,
 )
@@ -28,13 +28,16 @@ router = APIRouter(prefix="/integrations", tags=["integrations"])
 _require_manage = require_permission("integrations.manage")
 
 
-@router.get("/email-provider", response_model=EmailProviderConnectionOut | None)
-async def read_email_provider_connection(
+@router.get("/email-providers", response_model=list[EmailProviderConnectionOut])
+async def list_email_provider_connections_route(
     _actor_id: uuid.UUID = Depends(_require_manage),
     session: AsyncSession = Depends(get_session),
-) -> EmailProviderConnectionOut | None:
-    connection = await get_active_connection(session)
-    return EmailProviderConnectionOut.model_validate(connection) if connection is not None else None
+) -> list[EmailProviderConnectionOut]:
+    """Lists every configured provider connection (GRX-EMAIL-011: one active row per
+    provider now, not a single global one) — the frontend renders one card per known
+    provider and looks up its row here, rather than fetching "the" connection."""
+    connections = await list_connections(session)
+    return [EmailProviderConnectionOut.model_validate(connection) for connection in connections]
 
 
 @router.post(

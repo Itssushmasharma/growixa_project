@@ -16,7 +16,7 @@ from collections.abc import Awaitable, Callable
 import jwt
 import pytest
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy import delete, select
+from sqlalchemy import delete
 
 from growixa_api.app import create_app
 from growixa_api.auth.encryption import decrypt_secret
@@ -30,6 +30,14 @@ CONNECTION_PAYLOAD = {
     "smtp_port": 587,
     "smtp_username": "postmark-server-token",
     "smtp_password": "super-secret-smtp-password",
+}
+
+CUSTOM_SMTP_PAYLOAD = {
+    "provider": "CUSTOM_SMTP",
+    "smtp_host": "smtp.example.com",
+    "smtp_port": 587,
+    "smtp_username": "custom-smtp-username",
+    "smtp_password": "custom-smtp-password",
 }
 
 
@@ -65,10 +73,12 @@ async def test_super_admin_can_create_connection_and_password_is_encrypted(
             assert "smtp_password" not in body
             assert "smtp_password_encrypted" not in body
 
-            get_response = await client.get("/integrations/email-provider")
+            get_response = await client.get("/integrations/email-providers")
 
         assert get_response.status_code == 200
-        assert get_response.json()["smtp_host"] == "smtp.postmarkapp.com"
+        connections = get_response.json()
+        assert len(connections) == 1
+        assert connections[0]["smtp_host"] == "smtp.postmarkapp.com"
 
         async with async_session_factory() as session:
             row = await session.get(EmailProviderConnection, uuid.UUID(body["id"]))
@@ -83,7 +93,7 @@ async def test_super_admin_can_create_connection_and_password_is_encrypted(
 
 @pytest.mark.asyncio
 @pytest.mark.integration
-async def test_creating_a_new_connection_deactivates_the_previous_one(
+async def test_creating_a_new_connection_deactivates_the_previous_one_for_that_provider(
     user_factory: Callable[..., Awaitable[uuid.UUID]],
 ) -> None:
     super_admin_id = await user_factory(full_name="Test Super Admin", role_name="Super Admin")
@@ -97,16 +107,68 @@ async def test_creating_a_new_connection_deactivates_the_previous_one(
             second_payload = {**CONNECTION_PAYLOAD, "smtp_username": "second-token"}
             second_response = await client.post("/integrations/email-provider", json=second_payload)
 
-            get_response = await client.get("/integrations/email-provider")
+            get_response = await client.get("/integrations/email-providers")
 
         assert second_response.status_code == 201
-        assert get_response.json()["smtp_username"] == "second-token"
+        connections = get_response.json()
+        postmark_connections = [c for c in connections if c["provider"] == "POSTMARK"]
+        assert len(postmark_connections) == 2
+        active = [c for c in postmark_connections if c["is_active"]]
+        assert len(active) == 1
+        assert active[0]["smtp_username"] == "second-token"
+    finally:
+        await _cleanup()
 
-        async with async_session_factory() as session:
-            active_flags = (
-                (await session.execute(select(EmailProviderConnection.is_active))).scalars().all()
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_connecting_a_different_provider_leaves_the_other_active(
+    user_factory: Callable[..., Awaitable[uuid.UUID]],
+) -> None:
+    """GRX-EMAIL-011: "singleton by convention" became "one active connection per
+    provider" — connecting Custom SMTP must not touch an already-active Postmark row,
+    and vice versa."""
+    super_admin_id = await user_factory(full_name="Test Super Admin", role_name="Super Admin")
+    try:
+        cookies = _access_token_cookie(super_admin_id)
+        transport = ASGITransport(app=create_app())
+        async with AsyncClient(
+            transport=transport, base_url="http://test", cookies=cookies
+        ) as client:
+            await client.post("/integrations/email-provider", json=CONNECTION_PAYLOAD)
+            custom_smtp_response = await client.post(
+                "/integrations/email-provider", json=CUSTOM_SMTP_PAYLOAD
             )
-            assert sum(1 for is_active in active_flags if is_active) == 1
+            get_response = await client.get("/integrations/email-providers")
+
+        assert custom_smtp_response.status_code == 201
+        connections = get_response.json()
+        assert len(connections) == 2
+        assert all(c["is_active"] for c in connections)
+        providers = {c["provider"] for c in connections}
+        assert providers == {"POSTMARK", "CUSTOM_SMTP"}
+    finally:
+        await _cleanup()
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_invalid_provider_value_returns_422(
+    user_factory: Callable[..., Awaitable[uuid.UUID]],
+) -> None:
+    super_admin_id = await user_factory(full_name="Test Super Admin", role_name="Super Admin")
+    try:
+        cookies = _access_token_cookie(super_admin_id)
+        transport = ASGITransport(app=create_app())
+        async with AsyncClient(
+            transport=transport, base_url="http://test", cookies=cookies
+        ) as client:
+            response = await client.post(
+                "/integrations/email-provider",
+                json={**CONNECTION_PAYLOAD, "provider": "SENDGRID"},
+            )
+
+        assert response.status_code == 422
     finally:
         await _cleanup()
 
@@ -120,7 +182,7 @@ async def test_admin_gets_403_on_integrations_manage_routes(
     cookies = _access_token_cookie(admin_id)
     transport = ASGITransport(app=create_app())
     async with AsyncClient(transport=transport, base_url="http://test", cookies=cookies) as client:
-        get_response = await client.get("/integrations/email-provider")
+        get_response = await client.get("/integrations/email-providers")
         post_response = await client.post("/integrations/email-provider", json=CONNECTION_PAYLOAD)
 
     assert get_response.status_code == 403
@@ -132,7 +194,7 @@ async def test_admin_gets_403_on_integrations_manage_routes(
 async def test_unauthenticated_requests_are_rejected() -> None:
     transport = ASGITransport(app=create_app())
     async with AsyncClient(transport=transport, base_url="http://test") as client:
-        get_response = await client.get("/integrations/email-provider")
+        get_response = await client.get("/integrations/email-providers")
         post_response = await client.post("/integrations/email-provider", json=CONNECTION_PAYLOAD)
 
     assert get_response.status_code == 401

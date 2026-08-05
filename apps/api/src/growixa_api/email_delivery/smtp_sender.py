@@ -28,6 +28,11 @@ async def send_email(
     message.set_content(body_text or "")
     message.add_alternative(body_html, subtype="html")
 
+    # Port 465 is implicit TLS (encrypted from the first byte); every other port
+    # (587, 25, ...) is plaintext-then-STARTTLS. Passing start_tls=True to a port-465
+    # server makes aiosmtplib wait for a plaintext banner that never arrives.
+    implicit_tls = smtp_port == 465
+
     try:
         await aiosmtplib.send(
             message,
@@ -35,7 +40,11 @@ async def send_email(
             port=smtp_port,
             username=smtp_username,
             password=smtp_password,
-            start_tls=True,
+            use_tls=implicit_tls,
+            start_tls=not implicit_tls,
         )
-    except aiosmtplib.SMTPException as exc:
+    except (aiosmtplib.SMTPException, OSError) as exc:
+        # OSError also catches ssl.SSLError (e.g. an expired/invalid server certificate
+        # surfaces as ssl.SSLCertVerificationError, not an SMTPException) plus raw
+        # connection failures (DNS, refused, reset) that aiosmtplib doesn't wrap itself.
         raise EmailSendError(str(exc)) from exc

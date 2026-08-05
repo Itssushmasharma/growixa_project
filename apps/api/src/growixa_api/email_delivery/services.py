@@ -122,10 +122,17 @@ async def trigger_campaign_send(
 
 
 async def verify_webhook_credentials(session: AsyncSession, username: str, password: str) -> bool:
-    """Fails closed: no active connection, or a connection whose webhook credentials
-    were never generated (pre-GRX-EMAIL-005 row), rejects every request. Constant-time
-    comparison on both fields per THREAT_MODEL.md's T14."""
-    connection = await get_active_email_provider_connection(session)
+    """Fails closed: no active Postmark connection, or a connection whose webhook
+    credentials were never generated (pre-GRX-EMAIL-005 row), rejects every request.
+    Constant-time comparison on both fields per THREAT_MODEL.md's T14.
+
+    Hardcoded to the POSTMARK provider (not "whichever connection is active" — since
+    GRX-EMAIL-011 that's ambiguous, as Custom SMTP can be independently active too):
+    this route is `/webhooks/postmark`, so only Postmark's own credentials are ever
+    relevant here. Custom SMTP has no webhook route at all — plain SMTP has no
+    bounce/complaint/open/click callback mechanism to receive.
+    """
+    connection = await get_active_email_provider_connection(session, provider="POSTMARK")
     if (
         connection is None
         or connection.webhook_username is None

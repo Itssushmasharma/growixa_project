@@ -12,11 +12,17 @@ from growixa_api.db import Base
 class EmailProviderConnection(Base):
     __tablename__ = "email_provider_connections"
     __table_args__ = (
-        CheckConstraint("provider IN ('POSTMARK')", name="ck_email_provider_connections_provider"),
-        # Partial index to cheaply find the active connection (DATABASE_SCHEMA.md).
+        CheckConstraint(
+            "provider IN ('POSTMARK', 'CUSTOM_SMTP')",
+            name="ck_email_provider_connections_provider",
+        ),
+        # DB-enforced "one active connection per provider" (GRX-EMAIL-011 / DEC-GRX-016)
+        # — a partial unique index, not just the app-level deactivate-then-create
+        # convention DATA_MODEL.md describes for e.g. company_profile.
         Index(
-            "ix_email_provider_connections_active",
-            "is_active",
+            "ux_email_provider_connections_active_per_provider",
+            "provider",
+            unique=True,
             postgresql_where=text("is_active"),
         ),
     )

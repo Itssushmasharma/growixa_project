@@ -9,10 +9,11 @@ from growixa_api.integrations.models import EmailProviderConnection, SenderIdent
 from growixa_api.integrations.repositories import (
     create_email_provider_connection,
     create_sender_identity,
-    deactivate_all_email_provider_connections,
+    deactivate_active_email_provider_connections,
     get_active_email_provider_connection,
     get_email_provider_connection,
     get_sender_identity,
+    list_email_provider_connections,
     list_sender_identities,
 )
 from growixa_api.integrations.schemas import EmailProviderConnectionIn, SenderIdentityIn
@@ -32,8 +33,14 @@ class InvalidVerificationStatusError(Exception):
     pass
 
 
-async def get_active_connection(session: AsyncSession) -> EmailProviderConnection | None:
-    return await get_active_email_provider_connection(session)
+async def get_active_connection(
+    session: AsyncSession, provider: str
+) -> EmailProviderConnection | None:
+    return await get_active_email_provider_connection(session, provider)
+
+
+async def list_connections(session: AsyncSession) -> Sequence[EmailProviderConnection]:
+    return await list_email_provider_connections(session)
 
 
 async def create_connection(
@@ -41,15 +48,17 @@ async def create_connection(
     data: EmailProviderConnectionIn,
     actor_id: uuid.UUID,
 ) -> tuple[EmailProviderConnection, str]:
-    """Deactivates any existing active connection and creates a new row rather than
-    overwriting in place, so the credential history isn't silently lost (per
-    DATA_MODEL.md's singleton-by-convention note).
+    """Deactivates any existing active connection **for this same provider** and
+    creates a new row rather than overwriting in place, so the credential history
+    isn't silently lost (per DATA_MODEL.md's singleton-by-convention note) — since
+    GRX-EMAIL-011, "singleton" means one active connection per provider, not one
+    globally, so a different provider's active connection is left untouched.
 
     Also generates this connection's webhook Basic Auth credentials (THREAT_MODEL.md's
     T14) — the plaintext password is returned once, alongside the row, for the API
     layer to include in this one response; it is never persisted or retrievable again.
     """
-    await deactivate_all_email_provider_connections(session)
+    await deactivate_active_email_provider_connections(session, data.provider)
     webhook_username = secrets.token_urlsafe(12)
     webhook_password = secrets.token_urlsafe(24)
     connection = await create_email_provider_connection(

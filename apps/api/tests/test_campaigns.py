@@ -374,13 +374,18 @@ async def test_view_only_role_can_read_but_not_create_or_edit(
 @pytest.mark.asyncio
 @pytest.mark.integration
 async def test_unauthenticated_requests_are_rejected(sender_identity_id: uuid.UUID) -> None:
-    transport = ASGITransport(app=create_app())
-    async with AsyncClient(transport=transport, base_url="http://test") as client:
-        list_response = await client.get("/campaigns")
-        post_response = await client.post("/campaigns", json=_campaign_payload(sender_identity_id))
+    try:
+        transport = ASGITransport(app=create_app())
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            list_response = await client.get("/campaigns")
+            post_response = await client.post(
+                "/campaigns", json=_campaign_payload(sender_identity_id)
+            )
 
-    assert list_response.status_code == 401
-    assert post_response.status_code == 401
+        assert list_response.status_code == 401
+        assert post_response.status_code == 401
+    finally:
+        await _cleanup()
 
 
 @pytest.mark.asyncio

@@ -6,11 +6,14 @@ import { useToast } from "@/components/toast/toast-context";
 import { apiFetch } from "@/lib/api-client";
 
 import styles from "./integrations-page.module.css";
-import type {
-  EmailProviderConnection,
-  MeResponse,
-  SenderIdentity,
-  VerificationStatus,
+import {
+  type EmailProvider,
+  type EmailProviderConnection,
+  type MeResponse,
+  PROVIDER_REGISTRY,
+  type ProviderDefinition,
+  type SenderIdentity,
+  type VerificationStatus,
 } from "./types";
 
 const MANAGE_PERMISSION = "integrations.manage";
@@ -22,8 +25,17 @@ interface ConnectionFormState {
   smtp_password: string;
 }
 
-const EMPTY_CONNECTION_FORM: ConnectionFormState = {
-  smtp_host: "smtp.postmarkapp.com",
+function emptyConnectionForm(definition: ProviderDefinition): ConnectionFormState {
+  return {
+    smtp_host: definition.defaultHost,
+    smtp_port: definition.defaultPort,
+    smtp_username: "",
+    smtp_password: "",
+  };
+}
+
+const BLANK_CONNECTION_FORM: ConnectionFormState = {
+  smtp_host: "",
   smtp_port: "587",
   smtp_username: "",
   smtp_password: "",
@@ -47,25 +59,42 @@ function statusBadgeClass(status: VerificationStatus): string | undefined {
   return styles.statusPending;
 }
 
+function initialsFor(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  const initials =
+    parts.length > 1 ? `${parts[0]?.[0] ?? ""}${parts[1]?.[0] ?? ""}` : parts[0]?.slice(0, 2);
+  return (initials || "?").toUpperCase();
+}
+
+function ProviderIcon({ initial }: { initial: string }) {
+  return <span className={styles.providerIcon}>{initial}</span>;
+}
+
 export function IntegrationsPage() {
   const { showToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [canManage, setCanManage] = useState(false);
-  const [connection, setConnection] = useState<EmailProviderConnection | null>(null);
+  const [connections, setConnections] = useState<
+    Partial<Record<EmailProvider, EmailProviderConnection>>
+  >({});
   const [identities, setIdentities] = useState<SenderIdentity[]>([]);
 
-  const [showConnectionForm, setShowConnectionForm] = useState(false);
-  const [connectionForm, setConnectionForm] = useState<ConnectionFormState>(EMPTY_CONNECTION_FORM);
+  const [connectionFormFor, setConnectionFormFor] = useState<EmailProvider | null>(null);
+  const [connectionForm, setConnectionForm] = useState<ConnectionFormState>(BLANK_CONNECTION_FORM);
   const [connectionSaving, setConnectionSaving] = useState(false);
   // The webhook password is only ever returned once, in this response — shown here
-  // until the user navigates away, then it's gone for good (matches EmailProviderConnectionOut's
-  // documented one-time-reveal convention, same shape as Team's invite-token banner).
-  const [webhookReveal, setWebhookReveal] = useState<{ username: string; password: string } | null>(
-    null,
-  );
+  // until the user navigates away, then it's gone for good (matches
+  // EmailProviderConnectionOut's documented one-time-reveal convention, same shape as
+  // Team's invite-token banner). Scoped to whichever provider's card generated it.
+  const [webhookReveal, setWebhookReveal] = useState<{
+    provider: EmailProvider;
+    username: string;
+    password: string;
+  } | null>(null);
 
-  const [showIdentityForm, setShowIdentityForm] = useState(false);
+  const [expandedIdentitiesFor, setExpandedIdentitiesFor] = useState<EmailProvider | null>(null);
+  const [identityFormFor, setIdentityFormFor] = useState<EmailProvider | null>(null);
   const [identityForm, setIdentityForm] = useState<IdentityFormState>(EMPTY_IDENTITY_FORM);
   const [identitySaving, setIdentitySaving] = useState(false);
   const [pendingIdentityId, setPendingIdentityId] = useState<string | null>(null);
@@ -83,11 +112,15 @@ export function IntegrationsPage() {
         // reject this Promise.all and mask the friendly access-denied message below
         // with a generic load-error one.
         if (hasAccess) {
-          const [activeConnection, identityList] = await Promise.all([
-            apiFetch<EmailProviderConnection | null>("/integrations/email-provider"),
+          const [connectionList, identityList] = await Promise.all([
+            apiFetch<EmailProviderConnection[]>("/integrations/email-providers"),
             apiFetch<SenderIdentity[]>("/integrations/sender-identities"),
           ]);
-          setConnection(activeConnection);
+          const byProvider: Partial<Record<EmailProvider, EmailProviderConnection>> = {};
+          for (const connection of connectionList) {
+            byProvider[connection.provider] = connection;
+          }
+          setConnections(byProvider);
           setIdentities(identityList);
         }
       } catch {
@@ -100,30 +133,36 @@ export function IntegrationsPage() {
     void load();
   }, []);
 
+  function openConnectionForm(definition: ProviderDefinition) {
+    setConnectionForm(emptyConnectionForm(definition));
+    setConnectionFormFor(definition.key);
+  }
+
   async function handleConnectionSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!connectionFormFor) return;
     setConnectionSaving(true);
 
     try {
       const created = await apiFetch<EmailProviderConnection>("/integrations/email-provider", {
         method: "POST",
         body: JSON.stringify({
-          provider: "POSTMARK",
+          provider: connectionFormFor,
           smtp_host: connectionForm.smtp_host,
           smtp_port: Number(connectionForm.smtp_port),
           smtp_username: connectionForm.smtp_username,
           smtp_password: connectionForm.smtp_password,
         }),
       });
-      setConnection(created);
+      setConnections((current) => ({ ...current, [connectionFormFor]: created }));
       if (created.webhook_username && created.webhook_password) {
         setWebhookReveal({
+          provider: connectionFormFor,
           username: created.webhook_username,
           password: created.webhook_password,
         });
       }
-      setConnectionForm(EMPTY_CONNECTION_FORM);
-      setShowConnectionForm(false);
+      setConnectionFormFor(null);
       showToast("success", "Provider connection saved.");
     } catch {
       showToast("error", "Could not save the provider connection. Please try again.");
@@ -134,6 +173,7 @@ export function IntegrationsPage() {
 
   async function handleIdentitySubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const connection = identityFormFor ? connections[identityFormFor] : undefined;
     if (!connection) return;
     setIdentitySaving(true);
 
@@ -149,7 +189,7 @@ export function IntegrationsPage() {
       });
       setIdentities((current) => [...current, created]);
       setIdentityForm(EMPTY_IDENTITY_FORM);
-      setShowIdentityForm(false);
+      setIdentityFormFor(null);
       showToast("success", "Sender identity added.");
     } catch {
       showToast("error", "Could not add that sender identity. Please try again.");
@@ -175,256 +215,331 @@ export function IntegrationsPage() {
   }
 
   if (loading) {
-    return <div className={styles.card}>Loading…</div>;
+    return (
+      <div className={styles.page}>
+        <div className={styles.card}>Loading…</div>
+      </div>
+    );
   }
 
   if (loadError) {
-    return <div className={styles.card}>{loadError}</div>;
+    return (
+      <div className={styles.page}>
+        <div className={styles.card}>{loadError}</div>
+      </div>
+    );
   }
 
   if (!canManage) {
-    return <div className={styles.card}>You don&apos;t have access to configure integrations.</div>;
+    return (
+      <div className={styles.page}>
+        <div className={styles.card}>You don&apos;t have access to configure integrations.</div>
+      </div>
+    );
   }
 
   return (
-    <>
-      <div className={styles.card}>
-        <div className={styles.header}>
-          <h2 className={styles.headerTitle}>Email provider connection</h2>
-          {!showConnectionForm && (
-            <button
-              type="button"
-              className={styles.actionButton}
-              onClick={() => setShowConnectionForm(true)}
-            >
-              {connection ? "Replace connection" : "+ Configure connection"}
-            </button>
-          )}
-        </div>
+    <div className={styles.grid}>
+      {PROVIDER_REGISTRY.map((definition) => {
+        const connection = connections[definition.key];
+        const connectionIdentities = connection
+          ? identities.filter((i) => i.email_provider_connection_id === connection.id)
+          : [];
+        const showConnectionForm = connectionFormFor === definition.key;
+        const showIdentityForm = identityFormFor === definition.key;
+        const identitiesExpanded = expandedIdentitiesFor === definition.key;
 
-        {webhookReveal && (
-          <div className={styles.secretReveal}>
-            Webhook credentials generated — copy these now, the password won&apos;t be shown again.
-            Configure them as Basic Auth on the Postmark webhook pointed at{" "}
-            <code>/webhooks/postmark</code>.
-            <code>
-              {webhookReveal.username}:{webhookReveal.password}
-            </code>
-          </div>
-        )}
+        return (
+          <div className={styles.card} key={definition.key}>
+            <div className={styles.header}>
+              <div className={styles.headerTitleGroup}>
+                <ProviderIcon initial={definition.displayName.charAt(0)} />
+                <div>
+                  <h2 className={styles.headerTitle}>{definition.displayName}</h2>
+                  <p className={styles.headerSubtitle}>{definition.description}</p>
+                </div>
+              </div>
+            </div>
 
-        {connection && !showConnectionForm && (
-          <div>
-            <div className={styles.summaryRow}>
-              <span className={styles.summaryLabel}>Provider</span>
-              <span>{connection.provider}</span>
+            <div className={styles.summaryGrid}>
+              <div className={styles.summaryCell}>
+                <span className={styles.summaryLabel}>Status</span>
+                <span
+                  className={`${styles.statusBadge} ${connection ? styles.statusActive : styles.statusUnconfigured}`}
+                >
+                  {connection ? "Connected" : "Unconfigured"}
+                </span>
+              </div>
+              <div className={styles.summaryCell}>
+                <span className={styles.summaryLabel}>Identities</span>
+                <span className={styles.summaryValue}>{connectionIdentities.length} active</span>
+              </div>
             </div>
-            <div className={styles.summaryRow}>
-              <span className={styles.summaryLabel}>SMTP host</span>
-              <span>{connection.smtp_host}</span>
-            </div>
-            <div className={styles.summaryRow}>
-              <span className={styles.summaryLabel}>SMTP port</span>
-              <span>{connection.smtp_port}</span>
-            </div>
-            <div className={styles.summaryRow}>
-              <span className={styles.summaryLabel}>SMTP username</span>
-              <span>{connection.smtp_username}</span>
-            </div>
-            <div className={styles.summaryRow}>
-              <span className={styles.summaryLabel}>Status</span>
-              <span className={`${styles.statusBadge} ${styles.statusActive}`}>Active</span>
-            </div>
-          </div>
-        )}
 
-        {!connection && !showConnectionForm && (
-          <p className={styles.hint}>No email provider connected yet.</p>
-        )}
-
-        {showConnectionForm && (
-          <form className={styles.form} onSubmit={handleConnectionSubmit}>
-            {connection && (
-              <p className={styles.replaceNotice}>
-                Saving replaces the current connection — the previous one is deactivated, not
-                deleted.
-              </p>
+            {webhookReveal?.provider === definition.key && (
+              <div className={styles.secretReveal}>
+                Webhook credentials generated — copy these now, the password won&apos;t be shown
+                again.
+                {definition.hasWebhook && (
+                  <>
+                    {" "}
+                    Configure them as Basic Auth on the Postmark webhook pointed at{" "}
+                    <code>/webhooks/postmark</code>.
+                  </>
+                )}
+                <code>
+                  {webhookReveal.username}:{webhookReveal.password}
+                </code>
+              </div>
             )}
-            <div className={styles.field}>
-              <label className={styles.label} htmlFor="smtp-host">
-                SMTP host
-              </label>
-              <input
-                id="smtp-host"
-                className={styles.input}
-                required
-                value={connectionForm.smtp_host}
-                onChange={(event) =>
-                  setConnectionForm({ ...connectionForm, smtp_host: event.target.value })
-                }
-              />
-            </div>
-            <div className={styles.field}>
-              <label className={styles.label} htmlFor="smtp-port">
-                SMTP port
-              </label>
-              <input
-                id="smtp-port"
-                type="number"
-                className={styles.input}
-                required
-                value={connectionForm.smtp_port}
-                onChange={(event) =>
-                  setConnectionForm({ ...connectionForm, smtp_port: event.target.value })
-                }
-              />
-            </div>
-            <div className={styles.field}>
-              <label className={styles.label} htmlFor="smtp-username">
-                SMTP username
-              </label>
-              <input
-                id="smtp-username"
-                className={styles.input}
-                required
-                value={connectionForm.smtp_username}
-                onChange={(event) =>
-                  setConnectionForm({ ...connectionForm, smtp_username: event.target.value })
-                }
-              />
-            </div>
-            <div className={styles.field}>
-              <label className={styles.label} htmlFor="smtp-password">
-                SMTP password / server token
-              </label>
-              <input
-                id="smtp-password"
-                type="password"
-                className={styles.input}
-                required
-                value={connectionForm.smtp_password}
-                onChange={(event) =>
-                  setConnectionForm({ ...connectionForm, smtp_password: event.target.value })
-                }
-              />
-            </div>
-            <button type="submit" className={styles.actionButton} disabled={connectionSaving}>
-              {connectionSaving ? "Saving…" : "Save connection"}
-            </button>{" "}
-            <button
-              type="button"
-              className={styles.secondaryButton}
-              onClick={() => setShowConnectionForm(false)}
-            >
-              Cancel
-            </button>
-          </form>
-        )}
-      </div>
 
-      <div className={styles.card}>
-        <div className={styles.header}>
-          <h2 className={styles.headerTitle}>Sender identities</h2>
-          {!showIdentityForm && (
-            <button
-              type="button"
-              className={styles.actionButton}
-              disabled={!connection}
-              onClick={() => setShowIdentityForm(true)}
-            >
-              + Add sender identity
-            </button>
-          )}
-        </div>
+            {connection && !showConnectionForm && (
+              <div className={styles.connectionDetails}>
+                <div className={styles.summaryRow}>
+                  <span className={styles.summaryLabel}>SMTP host</span>
+                  <span>{connection.smtp_host}</span>
+                </div>
+                <div className={styles.summaryRow}>
+                  <span className={styles.summaryLabel}>SMTP port</span>
+                  <span>{connection.smtp_port}</span>
+                </div>
+                <div className={styles.summaryRow}>
+                  <span className={styles.summaryLabel}>SMTP username</span>
+                  <span>{connection.smtp_username}</span>
+                </div>
+              </div>
+            )}
 
-        {!connection && <p className={styles.hint}>Configure a provider connection first.</p>}
+            {!connection && !showConnectionForm && (
+              <p className={styles.hint}>No connection configured yet.</p>
+            )}
 
-        {showIdentityForm && (
-          <form className={styles.form} onSubmit={handleIdentitySubmit}>
-            <div className={styles.field}>
-              <label className={styles.label} htmlFor="identity-from-email">
-                From email
-              </label>
-              <input
-                id="identity-from-email"
-                type="email"
-                className={styles.input}
-                required
-                value={identityForm.from_email}
-                onChange={(event) =>
-                  setIdentityForm({ ...identityForm, from_email: event.target.value })
-                }
-              />
-            </div>
-            <div className={styles.field}>
-              <label className={styles.label} htmlFor="identity-from-name">
-                From name
-              </label>
-              <input
-                id="identity-from-name"
-                className={styles.input}
-                required
-                value={identityForm.from_name}
-                onChange={(event) =>
-                  setIdentityForm({ ...identityForm, from_name: event.target.value })
-                }
-              />
-            </div>
-            <div className={styles.field}>
-              <label className={styles.label} htmlFor="identity-reply-to">
-                Reply-to email (optional)
-              </label>
-              <input
-                id="identity-reply-to"
-                type="email"
-                className={styles.input}
-                value={identityForm.reply_to_email}
-                onChange={(event) =>
-                  setIdentityForm({ ...identityForm, reply_to_email: event.target.value })
-                }
-              />
-            </div>
-            <button type="submit" className={styles.actionButton} disabled={identitySaving}>
-              {identitySaving ? "Saving…" : "Add identity"}
-            </button>{" "}
-            <button
-              type="button"
-              className={styles.secondaryButton}
-              onClick={() => setShowIdentityForm(false)}
-            >
-              Cancel
-            </button>
-          </form>
-        )}
+            {showConnectionForm && (
+              <form className={styles.form} onSubmit={handleConnectionSubmit}>
+                {connection && (
+                  <p className={styles.replaceNotice}>
+                    Saving replaces the current connection — the previous one is deactivated, not
+                    deleted.
+                  </p>
+                )}
+                <div className={styles.field}>
+                  <label className={styles.label} htmlFor={`smtp-host-${definition.key}`}>
+                    SMTP host
+                  </label>
+                  <input
+                    id={`smtp-host-${definition.key}`}
+                    className={styles.input}
+                    required
+                    value={connectionForm.smtp_host}
+                    onChange={(event) =>
+                      setConnectionForm({ ...connectionForm, smtp_host: event.target.value })
+                    }
+                  />
+                </div>
+                <div className={styles.field}>
+                  <label className={styles.label} htmlFor={`smtp-port-${definition.key}`}>
+                    SMTP port
+                  </label>
+                  <input
+                    id={`smtp-port-${definition.key}`}
+                    type="number"
+                    className={styles.input}
+                    required
+                    value={connectionForm.smtp_port}
+                    onChange={(event) =>
+                      setConnectionForm({ ...connectionForm, smtp_port: event.target.value })
+                    }
+                  />
+                </div>
+                <div className={styles.field}>
+                  <label className={styles.label} htmlFor={`smtp-username-${definition.key}`}>
+                    SMTP username
+                  </label>
+                  <input
+                    id={`smtp-username-${definition.key}`}
+                    className={styles.input}
+                    required
+                    value={connectionForm.smtp_username}
+                    onChange={(event) =>
+                      setConnectionForm({ ...connectionForm, smtp_username: event.target.value })
+                    }
+                  />
+                </div>
+                <div className={styles.field}>
+                  <label className={styles.label} htmlFor={`smtp-password-${definition.key}`}>
+                    SMTP password / server token
+                  </label>
+                  <input
+                    id={`smtp-password-${definition.key}`}
+                    type="password"
+                    className={styles.input}
+                    required
+                    value={connectionForm.smtp_password}
+                    onChange={(event) =>
+                      setConnectionForm({ ...connectionForm, smtp_password: event.target.value })
+                    }
+                  />
+                </div>
+                <div className={styles.formActions}>
+                  <button type="submit" className={styles.actionButton} disabled={connectionSaving}>
+                    {connectionSaving ? "Saving…" : "Save connection"}
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.secondaryButton}
+                    onClick={() => setConnectionFormFor(null)}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            )}
 
-        {identities.map((identity) => (
-          <div className={styles.identityRow} key={identity.id}>
-            <div className={styles.identity}>
-              <div className={styles.identityName}>{identity.from_name}</div>
-              <div className={styles.identityEmail}>{identity.from_email}</div>
-            </div>
-            <div className={styles.identityActions}>
-              <span
-                className={`${styles.statusBadge} ${statusBadgeClass(identity.verification_status)}`}
+            <div className={styles.cardActions}>
+              {!showConnectionForm && (
+                <button
+                  type="button"
+                  className={styles.secondaryButton}
+                  onClick={() => openConnectionForm(definition)}
+                >
+                  {connection ? "Replace connection" : "+ Configure connection"}
+                </button>
+              )}
+              <button
+                type="button"
+                className={styles.secondaryButton}
+                disabled={!connection}
+                onClick={() => setExpandedIdentitiesFor(identitiesExpanded ? null : definition.key)}
               >
-                {identity.verification_status}
-              </span>
-              <select
-                className={styles.select}
-                value={identity.verification_status}
-                disabled={pendingIdentityId === identity.id}
-                onChange={(event) =>
-                  handleVerificationChange(identity.id, event.target.value as VerificationStatus)
-                }
-              >
-                <option value="PENDING">PENDING</option>
-                <option value="VERIFIED">VERIFIED</option>
-                <option value="FAILED">FAILED</option>
-              </select>
+                Manage identities
+              </button>
             </div>
+
+            {identitiesExpanded && connection && (
+              <div className={styles.identitiesSection}>
+                {!showIdentityForm && (
+                  <button
+                    type="button"
+                    className={styles.secondaryButton}
+                    onClick={() => setIdentityFormFor(definition.key)}
+                  >
+                    + Add sender identity
+                  </button>
+                )}
+
+                {showIdentityForm && (
+                  <form className={styles.form} onSubmit={handleIdentitySubmit}>
+                    <div className={styles.field}>
+                      <label
+                        className={styles.label}
+                        htmlFor={`identity-from-email-${definition.key}`}
+                      >
+                        From email
+                      </label>
+                      <input
+                        id={`identity-from-email-${definition.key}`}
+                        type="email"
+                        className={styles.input}
+                        required
+                        value={identityForm.from_email}
+                        onChange={(event) =>
+                          setIdentityForm({ ...identityForm, from_email: event.target.value })
+                        }
+                      />
+                    </div>
+                    <div className={styles.field}>
+                      <label
+                        className={styles.label}
+                        htmlFor={`identity-from-name-${definition.key}`}
+                      >
+                        From name
+                      </label>
+                      <input
+                        id={`identity-from-name-${definition.key}`}
+                        className={styles.input}
+                        required
+                        value={identityForm.from_name}
+                        onChange={(event) =>
+                          setIdentityForm({ ...identityForm, from_name: event.target.value })
+                        }
+                      />
+                    </div>
+                    <div className={styles.field}>
+                      <label
+                        className={styles.label}
+                        htmlFor={`identity-reply-to-${definition.key}`}
+                      >
+                        Reply-to email (optional)
+                      </label>
+                      <input
+                        id={`identity-reply-to-${definition.key}`}
+                        type="email"
+                        className={styles.input}
+                        value={identityForm.reply_to_email}
+                        onChange={(event) =>
+                          setIdentityForm({ ...identityForm, reply_to_email: event.target.value })
+                        }
+                      />
+                    </div>
+                    <div className={styles.formActions}>
+                      <button
+                        type="submit"
+                        className={styles.actionButton}
+                        disabled={identitySaving}
+                      >
+                        {identitySaving ? "Saving…" : "Add identity"}
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.secondaryButton}
+                        onClick={() => setIdentityFormFor(null)}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </form>
+                )}
+
+                {connectionIdentities.length === 0 && !showIdentityForm && (
+                  <p className={styles.hint}>No sender identities yet.</p>
+                )}
+
+                {connectionIdentities.map((identity) => (
+                  <div className={styles.identityRow} key={identity.id}>
+                    <div className={styles.identityAvatar}>{initialsFor(identity.from_name)}</div>
+                    <div className={styles.identity}>
+                      <div className={styles.identityName}>{identity.from_name}</div>
+                      <div className={styles.identityEmail}>{identity.from_email}</div>
+                    </div>
+                    <div className={styles.identityActions}>
+                      <span
+                        className={`${styles.statusBadge} ${statusBadgeClass(identity.verification_status)}`}
+                      >
+                        {identity.verification_status}
+                      </span>
+                      <select
+                        className={styles.select}
+                        value={identity.verification_status}
+                        disabled={pendingIdentityId === identity.id}
+                        onChange={(event) =>
+                          handleVerificationChange(
+                            identity.id,
+                            event.target.value as VerificationStatus,
+                          )
+                        }
+                      >
+                        <option value="PENDING">PENDING</option>
+                        <option value="VERIFIED">VERIFIED</option>
+                        <option value="FAILED">FAILED</option>
+                      </select>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-        ))}
-      </div>
-    </>
+        );
+      })}
+    </div>
   );
 }
