@@ -14,6 +14,7 @@ const PAGE_TITLES: Record<string, string> = {
   "/dashboard/company-settings": "Company Settings",
   "/dashboard/team": "Team",
   "/dashboard/audit": "Audit Log",
+  "/dashboard/integrations": "Integrations",
 };
 
 export function PageTitle() {

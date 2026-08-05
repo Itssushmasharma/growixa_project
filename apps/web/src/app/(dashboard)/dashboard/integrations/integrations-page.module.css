@@ -1,0 +1,196 @@
+.card {
+  background: #fff;
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
+  padding: 32px;
+  max-width: 640px;
+}
+
+.card:not(:first-child) {
+  margin-top: 24px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.headerTitle {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.readOnlyNote {
+  margin: 0 0 20px;
+  font-size: 13px;
+  color: var(--color-slate);
+}
+
+.field {
+  margin-bottom: 16px;
+}
+
+.label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-slate);
+  margin-bottom: 6px;
+}
+
+.input,
+.select {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(15, 42, 86, 0.14);
+  font-size: 14px;
+  font-family: inherit;
+  color: var(--color-dark-text);
+  background: #fff;
+}
+
+.hint {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--color-slate-light);
+}
+
+.replaceNotice {
+  margin: 0 0 12px;
+  font-size: 12px;
+  color: var(--color-slate-light);
+}
+
+.actionButton {
+  padding: 9px 16px;
+  border: none;
+  border-radius: var(--pill-radius);
+  background: var(--gradient-primary);
+  color: #fff;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.actionButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.secondaryButton {
+  padding: 9px 16px;
+  border-radius: var(--pill-radius);
+  border: 1px solid rgba(15, 42, 86, 0.14);
+  background: #fff;
+  color: var(--color-dark-text);
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.summaryRow {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-top: 1px solid rgba(15, 42, 86, 0.08);
+  font-size: 13px;
+}
+
+.summaryRow:first-child {
+  border-top: none;
+}
+
+.summaryLabel {
+  color: var(--color-slate);
+}
+
+.statusBadge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.statusActive {
+  background: rgba(34, 160, 107, 0.12);
+  color: var(--color-success);
+}
+
+.statusPending {
+  background: rgba(217, 158, 30, 0.12);
+  color: #a16207;
+}
+
+.statusFailed {
+  background: rgba(244, 63, 94, 0.1);
+  color: #b91c1c;
+}
+
+.secretReveal {
+  margin: 0 0 20px;
+  padding: 14px;
+  border-radius: 10px;
+  background: rgba(217, 158, 30, 0.08);
+  border: 1px solid rgba(217, 158, 30, 0.3);
+  font-size: 13px;
+}
+
+.secretReveal code {
+  display: block;
+  margin-top: 6px;
+  padding: 6px 8px;
+  background: #fff;
+  border-radius: 6px;
+  word-break: break-all;
+  font-size: 12px;
+}
+
+.identityRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-top: 1px solid rgba(15, 42, 86, 0.08);
+}
+
+.identity {
+  flex: 1;
+  min-width: 0;
+}
+
+.identityName {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.identityEmail {
+  font-size: 13px;
+  color: var(--color-slate);
+}
+
+.identityActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.error {
+  margin: 0 0 16px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: rgba(244, 63, 94, 0.08);
+  border: 1px solid rgba(244, 63, 94, 0.25);
+  color: #b91c1c;
+  font-size: 13px;
+}
+
+.form {
+  margin-top: 16px;
+  padding: 16px;
+  border-radius: 12px;
+  background: #f4f6fb;
+}
