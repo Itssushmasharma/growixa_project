@@ -67,11 +67,12 @@ Full requirement mapping: [FUTURE_SCOPE_SEO_AEO_GEO.md](../01-product/FUTURE_SCO
 | GRX-FEAT-SEO-011 | Authority & Outreach Manager | V3 | DEFERRED |
 | GRX-FEAT-SEO-012 | AI Visibility Monitoring | V3 | DEFERRED |
 | GRX-FEAT-SEO-013 | Continuous Improvement / Growth Engine | V3 | DEFERRED |
+| GRX-FEAT-SMS-001 | SMS Marketing & Twilio Integration | Release 1.2 | STAGED |
 
 ## Deferred features (other, indefinite)
 
 Full multi-tenancy, customer-facing SaaS signup, tenant billing, full CRM, sales pipeline,
-WhatsApp/SMS/push marketing, landing-page/form builders, ad campaign automation, ecommerce
+WhatsApp/push marketing (SMS staged in Release 1.2), landing-page/form builders, ad campaign automation, ecommerce
 automation, white-label platform, enterprise workflow builder, multi-region deployment. See
 [MVP_SCOPE.md §Deferred, not cancelled](../01-product/MVP_SCOPE.md#deferred-not-cancelled).
 

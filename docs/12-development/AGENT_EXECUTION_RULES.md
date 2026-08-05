@@ -22,8 +22,9 @@ why that matters here specifically.
 5. Read relevant architecture decisions in `docs/00-project-control/DECISIONS.md`.
 6. Check dependencies and confirm the task is `READY` (not `BLOCKED` on an open question —
    see `docs/00-project-control/OPEN_QUESTIONS.md`).
-7. Set the task to `IN_PROGRESS`, record the start time.
-8. State expected files, acceptance criteria, and required tests before writing code.
+7. **Git Branch Setup**: Pull the latest code from `main` (`git checkout main && git pull origin main`) and checkout a new feature branch following the naming convention: `feature/BACKEND/<task-id>` or `feature/FRONTEND/<task-id>`.
+8. Set the task to `IN_PROGRESS`, record the start time.
+9. State expected files, acceptance criteria, and required tests before writing code.
 
 ## Scope discipline (specific to this repository)
 
@@ -73,12 +74,17 @@ hash.
 
 ## Git and repository discipline
 
-- Commit format: `<type>(<scope>): <summary>` — e.g. `feat(auth): add secure login flow`,
-  `test(email): add duplicate-send prevention tests`.
+- **Branch Naming**: Always pull from `main` before starting a task and create a dedicated branch following the format:
+  - Backend features: `feature/BACKEND/<task-id-or-feature-name>` (e.g., `feature/BACKEND/GRX-AUTH-005`)
+  - Frontend features: `feature/FRONTEND/<task-id-or-feature-name>` (e.g., `feature/FRONTEND/GRX-COMPANY-002`)
+- **Commit Format**: `<type>(<scope>): <summary>` — e.g. `feat(auth): add secure login flow`, `test(email): add duplicate-send prevention tests`.
+- **Co-Author Attribution**: Query terminal/git config (`git config user.name`, `git config user.email`) and include a `Co-Authored-By:` trailer in every commit message body:
+  ```text
+  Co-Authored-By: <User Name> <<User Email>>
+  ```
 - Do not combine unrelated work in one commit.
 - Do not force-push, skip hooks, or rewrite published history without explicit user approval.
-- Do not silently guess on the decision-gate items listed in `DECISIONS.md` — log a
-  `PROPOSED` decision and get it confirmed, or mark the dependent task `BLOCKED`.
+- Do not silently guess on the decision-gate items listed in `DECISIONS.md` — log a `PROPOSED` decision and get it confirmed, or mark the dependent task `BLOCKED`.
 
 ## Diagrams
 
