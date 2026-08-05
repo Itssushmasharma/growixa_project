@@ -95,94 +95,101 @@ Before writing code, two open architectural questions were surfaced to the user 
    final outbound-send success as an evidence gap rather than silently assuming it or
    faking it with a mock.
 
-## Work completed (backend track — GRX-EMAIL-006)
+## Work completed (GRX-EMAIL-007, first Sprint 3 frontend task)
 
-- **Corrected the tracker's own planning-time file location**: the tracker row said
-  this would extend `campaigns`, but `MODULE_BOUNDARIES.md` names a dedicated
-  `analytics` module for exactly this ("read-side aggregation/reporting over
-  campaigns...") and `campaigns`' own allowed-dependency list doesn't include
-  `email_delivery` — extending `campaigns` would have required the exact cross-module
-  import direction the boundaries table forbids. Built a new `growixa_api.analytics`
-  module instead — no models/migration, since `SPRINT_03_EMAIL_CAMPAIGN.md` explicitly
-  excludes a pre-aggregated `analytics_events` table in favor of a live query.
-- `GET /campaigns/{id}/report` mounted under the existing `/campaigns` prefix (same
-  multi-module-same-prefix pattern `email_delivery` already uses for `/send`), gated
-  by the existing `campaigns.view` permission — `RBAC.md`'s own rationale for that
-  grant already named this exact use case ("Analyst's read-only analytics scope is
-  exactly what campaign delivery reports are").
-- Metric definitions: `sent` from `campaign_recipients.status` (stable — never touched
-  by webhook handling, so it reflects the original send outcome even after a later
-  bounce); `delivered`/`bounced`/`complained` from `message_deliveries.status` (single
-  mutable pointer, current terminal state); `opened`/`clicked` from **distinct**
-  deliveries with a matching `email_events` row, not raw event rows — `email_events`
-  is insert-only, so a redelivered webhook notification is a new row and counting rows
-  directly would let one recipient's repeat notification inflate the number.
-- 5 new `apps/api` integration tests (`test_analytics.py`): counts match a hand-built
-  fixture including a duplicate-`OPENED`-event no-double-count check, `campaigns.view`-
-  only role (Analyst) reads successfully, a role lacking it (Viewer) gets 403,
-  unauthenticated 401, unknown campaign 404.
+- New `apps/web/src/app/(dashboard)/dashboard/integrations/` page: a provider
+  connection form (`POST /integrations/email-provider`) with a one-time
+  webhook-credentials reveal banner (matches `EmailProviderConnectionOut`'s
+  documented one-time convention from `GRX-EMAIL-005`, same UX shape as
+  Team's invite-token banner), a read-only connection summary once one
+  exists, and a sender-identity list + add form
+  (`POST /integrations/sender-identities`) with a manual verification-status
+  dropdown (`PATCH .../status`) — verification is a manual admin action in
+  Sprint 3 per `SPRINT_03`'s scope, not automated Postmark polling.
+- New "Integrations" sidebar item gated by `requiresPermission:
+  "integrations.manage"`, matching every other SETTINGS item's pattern.
+- 5 new `apps/web` component tests (`integrations-page.test.tsx`).
 
 ## Real bugs found and fixed while debugging the new tests
 
-None — `ruff`/`mypy`/`pytest` all passed on the first or near-first attempt at every
-verification checkpoint. One mypy fix needed: `dict(result.all())` on a `Sequence[Row]`
-doesn't type-check cleanly; switched to a dict comprehension over the row tuples.
+- **Access-control UX bug, only caught by live browser verification, not by
+  the component tests as first written**: the connection/sender-identity GET
+  routes are themselves `integrations.manage`-gated on the backend (unlike
+  e.g. `/users`, readable by any authenticated user). The page's original
+  load effect fetched `/auth/me` and both GETs in one `Promise.all`, so a
+  real non-Super-Admin's 403s on those GETs rejected the whole `Promise.all`
+  and hit the generic load-error catch *before* the `canManage` check was
+  ever reached — the intended "You don't have access to configure
+  integrations." message never actually rendered. A live login as a
+  throwaway Admin (not Super Admin) surfaced a misleading "Could not load
+  integration settings." instead. Fixed by checking `me.permissions` first
+  and only issuing the connection/identity fetches when access is confirmed.
+  Also fixed the test itself — the original mock resolved the gated GETs
+  instead of rejecting them with a 403, so it couldn't have caught this;
+  updated it to reject with a real `ApiError(403, ...)`, matching what the
+  backend actually returns, so this regression class is now caught by the
+  suite. Lesson for future frontend tasks in this codebase: check whether a
+  page's non-`/auth/me` GETs are permission-gated on the backend before
+  bundling them into the same `Promise.all` as the permission check itself.
 
 ## Files changed
 
-- `apps/api/src/growixa_api/analytics/{__init__,schemas,repositories,services,api}.py` (new)
-- `apps/api/src/growixa_api/app.py` (wired `analytics_router`)
-- `apps/api/tests/test_analytics.py` (new)
-- `docs/00-project-control/MASTER_TASK_TRACKER.md` (`GRX-EMAIL-006` → `DONE`,
-  `GRX-EMAIL-010`'s dependency label updated)
+- `apps/web/src/app/(dashboard)/dashboard/integrations/{page,integrations-page,types}.{tsx,ts}`,
+  `integrations-page.module.css`, `integrations-page.test.tsx` (new)
+- `apps/web/src/app/(dashboard)/dashboard/sidebar.tsx` (new "Integrations" nav item)
+- `apps/web/src/app/(dashboard)/dashboard/page-title.tsx` (new page title)
+- `docs/00-project-control/MASTER_TASK_TRACKER.md` (`GRX-EMAIL-007` → `DONE`,
+  `GRX-EMAIL-009`'s dependency labels updated)
 - `docs/00-project-control/PROJECT_STATUS.md`, `CHANGELOG.md` (this update)
 
 ## Commands executed
 
-- `alembic check` (clean, no drift — no migration, pure query)
-- `ruff check`/`ruff format --check`/`mypy` — clean
-- `pytest`: `apps/api` 147 passed, 3 skipped
-- `podman compose restart api` (no new dependency, code only)
+- `eslint`, `tsc --noEmit`, `prettier --check` — clean
+- `vitest run`: 59 passed (5 new)
+- `next build` — clean, `/dashboard/integrations` route registered
+- `podman compose restart web` (dev-server file watcher didn't pick up the
+  new route directory on its own over the bind mount — needed a restart)
 - Live verification against Compose (see below)
 
 ## Blockers
 
-None. `GRX-EMAIL-007` (provider connection + sender identity frontend) is next — the
-remaining Sprint 3 tasks (`007`–`010`) are all frontend work.
+None. `GRX-EMAIL-008` (email templates frontend) is next.
 
 ## Known issues / evidence gaps
 
-- No new evidence gap introduced by this task. Live verification reused the same `535`
-  SMTP auth-rejection boundary as `GRX-EMAIL-004`/`005` (no live Postmark account):
-  an unsent campaign's report was all zeros; after a real send failed at that boundary,
-  `sent` correctly stayed `0` — a genuine result, not a fabricated success; separately
-  simulated a Postmark-assigned message ID (same workaround as `GRX-EMAIL-005`, since a
-  failed send never receives a real one) and fired real `Delivery`/`Open`/`Open`/`Click`
-  webhook events, after which the report showed `delivered=1, opened=1, clicked=1` —
-  confirming the duplicate `Open` did not double-count. Cleaned up all smoke-test rows
-  afterward.
-- Running the full backend `pytest` suite wipes `admin@growixa.local` again — recreated
-  it before live verification. Known quirk, not a bug to fix.
-- **Branch/doc coordination note (unchanged from `GRX-EMAIL-005`'s entry)**: this
-  session's git branch was already `feature/FRONTEND/GRX-WEB-002` (a concurrent
-  frontend session's branch), so this commit landed there too. `AGENT_HANDOFF.md`
-  remains shared by both tracks; still not fixed unilaterally.
+- No new evidence gap — this task didn't touch email sending. Live-verified
+  against Compose: created a real connection as Super Admin and captured the
+  real one-time webhook credentials in the UI; added a sender identity;
+  flipped its verification status to VERIFIED via the dropdown; created a
+  throwaway Admin (not Super Admin) user directly in the database to
+  exercise the negative path — confirmed no "Integrations" item in their
+  sidebar and, after the bug fix above, the correct access-denied message on
+  direct navigation to `/dashboard/integrations`. Cleaned up the smoke-test
+  connection/identity rows; the throwaway Admin account itself was disabled
+  rather than deleted — deleting it would have violated `audit_logs`'
+  insert-only invariant, since its login had already written an audit row
+  referencing it.
+- **Branch/doc coordination note — resolved**: the user merged the prior
+  `feature/FRONTEND/GRX-WEB-002` branch into `main` via PR during this
+  session (visible as merge commits `f94842f`/`5c644dd` in the log). This
+  commit landed directly on `main`. The branch-split concern flagged in
+  `GRX-EMAIL-005`/`006`'s entries no longer applies going forward.
 - Retry/backoff/dead-letter handling for `send_campaign` remains unimplemented
   (unchanged from `GRX-EMAIL-004`'s note).
 
 ## Current state
 
-Sprint 1 and Sprint 2 are `DONE`. Sprint 3 (Email Marketing) backend is now fully
-`DONE`: `GRX-EMAIL-001` through `GRX-EMAIL-006` are all `DONE`. `GRX-EMAIL-007`–`010`
-remain `BACKLOG` — all four are frontend tasks.
+Sprint 1 and Sprint 2 are `DONE`. Sprint 3 (Email Marketing) backend is fully
+`DONE`; its frontend is now under way: `GRX-EMAIL-001` through `GRX-EMAIL-007`
+are all `DONE`. `GRX-EMAIL-008`–`010` remain `BACKLOG`.
 
 ## Exact next task
 
-`GRX-EMAIL-007` — Provider connection + sender identity frontend. Settings UI for the
-Postmark connection and sender identities under `apps/web/src/app/dashboard/
-integrations/`; only Super Admin (via `integrations.manage`) sees/can use it, per
-`RBAC.md`'s note that this is the project's first Admin-excluded permission. See
-`MASTER_TASK_TRACKER.md`'s row for the exact acceptance criteria and required tests.
+`GRX-EMAIL-008` — Email templates frontend. Template list/create/edit UI
+under `apps/web/src/app/dashboard/templates/`; a `campaigns.manage` user can
+create and edit a template, a view-only user cannot. See
+`MASTER_TASK_TRACKER.md`'s row for the exact acceptance criteria and required
+tests.
 
 ## Resume commands
 
@@ -196,4 +203,4 @@ podman compose up -d
 
 ## Latest commit
 
-`ba12931` — feat(email): campaign report/analytics endpoint (GRX-EMAIL-006)
+`fa0d924` — feat(web): provider connection + sender identity settings UI (GRX-EMAIL-007)

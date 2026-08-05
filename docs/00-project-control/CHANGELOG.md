@@ -10,6 +10,51 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
+## 2026-08-05 — GRX-EMAIL-007: provider connection + sender identity frontend
+
+- New `apps/web/src/app/(dashboard)/dashboard/integrations/` page: a provider
+  connection form (`POST /integrations/email-provider`) with a one-time
+  webhook-credentials reveal banner, a read-only connection summary once one
+  exists, and a sender-identity list + add form
+  (`POST /integrations/sender-identities`) with a manual verification-status
+  dropdown (`PATCH .../status`) — verification is a manual admin action in
+  Sprint 3, not automated Postmark polling, per `SPRINT_03`'s scope.
+- New "Integrations" sidebar item gated by `requiresPermission:
+  "integrations.manage"`, matching every other SETTINGS item's pattern.
+- **Real bug found and fixed during live verification, not caught by the
+  component tests as first written**: the connection/sender-identity GET
+  routes are themselves `integrations.manage`-gated on the backend (unlike
+  e.g. `/users`, readable by any authenticated user), so the page's original
+  load effect — which fetched `/auth/me` and both GETs in one `Promise.all`
+  — let a real non-Super-Admin's 403s on those GETs reject the whole
+  `Promise.all` and hit the generic load-error catch before the permission
+  check was ever reached. The intended "You don't have access to configure
+  integrations." message never actually rendered; a live browser check
+  (login as a throwaway Admin, not Super Admin) surfaced a misleading
+  "Could not load integration settings." instead. Fixed by checking
+  `me.permissions` first and only issuing the gated fetches when access is
+  confirmed; updated the access-denied test to reject those two calls with a
+  real `ApiError(403, ...)` instead of resolving them, so this exact
+  regression class is now caught by the suite — a reminder that a mocked
+  component test can hide a bug if the mock doesn't reproduce the real
+  backend's per-endpoint permission gating.
+- `eslint`/`tsc --noEmit`/`prettier --check` clean. `vitest`: 59 passed (5
+  new). `next build` clean, `/dashboard/integrations` route registered.
+- Live-verified against Compose: created a real connection as Super Admin
+  and captured the real one-time webhook credentials in the UI, added a
+  sender identity, flipped its verification status to VERIFIED; created a
+  throwaway Admin user directly in the database for the negative path —
+  confirmed no "Integrations" sidebar item and, after the fix above, the
+  correct access-denied message on direct navigation. Cleaned up the
+  smoke-test connection/identity rows; the throwaway Admin account was
+  disabled rather than deleted (deleting it would have violated
+  `audit_logs`' insert-only invariant, since its login had already written
+  an audit row referencing it).
+- Note: this commit landed directly on `main` — the user merged the prior
+  `feature/FRONTEND/GRX-WEB-002` branch via PR earlier in the session, so
+  the branch-coordination note from `GRX-EMAIL-005`/`006`'s entries no
+  longer applies going forward. Commit `fa0d924`
+
 ## 2026-08-05 — GRX-EMAIL-006: campaign report/analytics endpoint
 
 - **Corrected the tracker's own planning-time file location**: the `MASTER_TASK_TRACKER.md`

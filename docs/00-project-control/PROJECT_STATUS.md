@@ -2,7 +2,7 @@
 
 - Document ID: DOC-PROJECT-STATUS
 - Status: ACTIVE
-- Version: 1.44
+- Version: 1.45
 - Last updated: 2026-08-05
 - Owner: Coding agent (on behalf of product owner)
 - Related documents: [MASTER_TASK_TRACKER](MASTER_TASK_TRACKER.md), [DECISIONS](DECISIONS.md), [DEVELOPMENT_READINESS](DEVELOPMENT_READINESS.md), [FEATURE_STATUS_MATRIX](FEATURE_STATUS_MATRIX.md)
@@ -181,16 +181,17 @@ directly by the user mid-session, is `DONE`.
    Sprint 3 planning (`DEC-GRX-015` resolving OQ-002, data model, RBAC, threat model,
    `SPRINT_03_EMAIL_CAMPAIGN.md`, readiness gate, `GRX-EMAIL-001`–`010`) →
    `GRX-EMAIL-001` → `GRX-EMAIL-002` → `GRX-EMAIL-003` → `GRX-EMAIL-004` → `GRX-EMAIL-005`
-   → `GRX-EMAIL-006`.
+   → `GRX-EMAIL-006` → `GRX-EMAIL-007`.
    **Sprint 1 and Sprint 2 (Contacts) are both fully `DONE`**, including `GRX-DEVOPS-001`
    (user pushed and confirmed a green CI run), `GRX-DOC-003` (Sprint 1 doc/handoff
    update, which filed `GRX-AUDIT-002` for the audit-viewing gap it found), and
    `GRX-AUDIT-002` itself (closed the same session it was filed). **Sprint 3 (Email
-   Marketing) is under way**: `GRX-EMAIL-001` through `GRX-EMAIL-006` (provider
+   Marketing) is under way**: `GRX-EMAIL-001` through `GRX-EMAIL-007` (provider
    connection, templates, campaigns CRUD, the send pipeline, the Postmark webhook
-   receiver + unsubscribe handling, and the campaign report/analytics endpoint) are all
-   `DONE`; next task is `GRX-EMAIL-007` (provider connection + sender identity
-   frontend) — the remaining Sprint 3 tasks (`007`–`010`) are all frontend work.
+   receiver + unsubscribe handling, the campaign report/analytics endpoint, and the
+   provider connection + sender identity settings UI) are all `DONE`; next task is
+   `GRX-EMAIL-008` (email templates frontend) — the remaining Sprint 3 tasks
+   (`008`–`010`) are all frontend work.
    `GRX-EMAIL-004` also fixed a real gap found along the way — `usage_records` was
    documented as existing since Sprint 1 (`DEC-GRX-007`) but was never actually built —
    and carries one documented evidence gap: no live Postmark account is available in
@@ -208,6 +209,13 @@ directly by the user mid-session, is `DONE`.
    than extending `campaigns` (which `MODULE_BOUNDARIES.md` doesn't permit to depend on
    `email_delivery`), it created the dedicated `analytics` module the boundaries doc
    already names for exactly this ("read-side aggregation/reporting over campaigns...").
+   `GRX-EMAIL-007` (the first frontend task of Sprint 3) found a real permission-check
+   bug during live browser verification, not caught by its own first-written component
+   tests: the connection/sender-identity GET routes are themselves `integrations.manage`-
+   gated on the backend, so a real non-Super-Admin's 403s on those calls masked the
+   intended access-denied message with a generic load-error one — fixed by checking
+   permissions before issuing the gated fetches, and the test suite's mock was corrected
+   to reproduce the real 403s so this regression class is now caught automatically.
 2. `RISKS.md`/`BLOCKERS.md` remain not required by any task yet; create them if/when a
    task's scope actually calls for one.
 3. Write full feature specs in `02-features/` for Slice 3 features (`EMAIL_PROVIDERS.md`,
