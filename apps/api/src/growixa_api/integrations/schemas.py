@@ -23,6 +23,11 @@ class EmailProviderConnectionOut(BaseModel):
     is_active: bool
     created_at: datetime
     updated_at: datetime
+    webhook_username: str | None
+    # Shown once, only in the response to the request that (re)generated it — never
+    # persisted in plaintext, never returned by GET, per the same convention as
+    # smtp_password. Populated by the API layer after creation, not model_validate.
+    webhook_password: str | None = None
 
 
 class SenderIdentityIn(BaseModel):

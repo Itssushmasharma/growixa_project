@@ -9,6 +9,7 @@ from growixa_api.campaigns.api import router as campaigns_router
 from growixa_api.company.api import router as company_router
 from growixa_api.config import get_settings
 from growixa_api.contacts.api import router as contacts_router
+from growixa_api.email_delivery.api import public_router as email_delivery_public_router
 from growixa_api.email_delivery.api import router as email_delivery_router
 from growixa_api.health import router as health_router
 from growixa_api.integrations.api import router as integrations_router
@@ -40,4 +41,5 @@ def create_app() -> FastAPI:
     app.include_router(templates_router)
     app.include_router(campaigns_router)
     app.include_router(email_delivery_router)
+    app.include_router(email_delivery_public_router)
     return app

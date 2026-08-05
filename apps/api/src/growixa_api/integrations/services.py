@@ -1,3 +1,4 @@
+import secrets
 import uuid
 from collections.abc import Sequence
 
@@ -39,11 +40,18 @@ async def create_connection(
     session: AsyncSession,
     data: EmailProviderConnectionIn,
     actor_id: uuid.UUID,
-) -> EmailProviderConnection:
+) -> tuple[EmailProviderConnection, str]:
     """Deactivates any existing active connection and creates a new row rather than
     overwriting in place, so the credential history isn't silently lost (per
-    DATA_MODEL.md's singleton-by-convention note)."""
+    DATA_MODEL.md's singleton-by-convention note).
+
+    Also generates this connection's webhook Basic Auth credentials (THREAT_MODEL.md's
+    T14) — the plaintext password is returned once, alongside the row, for the API
+    layer to include in this one response; it is never persisted or retrievable again.
+    """
     await deactivate_all_email_provider_connections(session)
+    webhook_username = secrets.token_urlsafe(12)
+    webhook_password = secrets.token_urlsafe(24)
     connection = await create_email_provider_connection(
         session,
         {
@@ -52,11 +60,13 @@ async def create_connection(
             "smtp_port": data.smtp_port,
             "smtp_username": data.smtp_username,
             "smtp_password_encrypted": encrypt_secret(data.smtp_password),
+            "webhook_username": webhook_username,
+            "webhook_password_encrypted": encrypt_secret(webhook_password),
             "is_active": True,
             "created_by_user_id": actor_id,
         },
     )
-    return connection
+    return connection, webhook_password
 
 
 async def list_identities(session: AsyncSession) -> Sequence[SenderIdentity]:

@@ -391,3 +391,36 @@ async def test_reprocessing_an_already_sent_campaign_is_a_noop(
         assert len(version_result.scalars().all()) == 1
     finally:
         await _cleanup(session)
+
+
+@pytest.mark.integration
+async def test_send_embeds_per_recipient_unsubscribe_link(
+    session: AsyncSession, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    sent: list[dict[str, object]] = []
+
+    async def _fake_send_email(**kwargs: object) -> None:
+        sent.append(kwargs)
+
+    monkeypatch.setattr(send_campaign_module, "send_email", _fake_send_email)
+
+    try:
+        sender_identity_id = await _create_sender_identity(session)
+        await _create_contact(session, "solo@example.com")
+        campaign_id = await _create_campaign(
+            session, sender_identity_id, recipient_type="ALL_CONTACTS"
+        )
+
+        await handle_send_campaign(session, {"campaign_id": campaign_id})
+
+        assert len(sent) == 1
+        recipients_result = await session.execute(
+            select(CampaignRecipient).where(CampaignRecipient.campaign_id == campaign_id)
+        )
+        recipient = recipients_result.scalar_one()
+
+        expected_url = f"{get_settings().api_public_url}/unsubscribe/{recipient.id}"
+        assert expected_url in str(sent[0]["body_html"])
+        assert expected_url in str(sent[0]["body_text"])
+    finally:
+        await _cleanup(session)

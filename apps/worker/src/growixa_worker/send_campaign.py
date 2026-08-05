@@ -1,10 +1,12 @@
 import logging
+import uuid
 from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from growixa_worker.config import get_settings
 from growixa_worker.email_sender import EmailSendError, send_email
 from growixa_worker.encryption import decrypt_secret
 from growixa_worker.models import (
@@ -41,6 +43,19 @@ async def _is_suppressed_or_withdrawn(session: AsyncSession, contact_id: Any, em
     )
     latest_status = consent_result.scalar_one_or_none()
     return latest_status == "WITHDRAWN"
+
+
+def _with_unsubscribe_footer(
+    body_html: str, body_text: str | None, campaign_recipient_id: uuid.UUID
+) -> tuple[str, str | None]:
+    """Every real send embeds a per-recipient unsubscribe link (GRX-EMAIL-005) — no
+    merge-tag infrastructure exists yet, so this is a plain footer append, not a
+    `{{unsubscribe_url}}` substitution. Identified only by the campaign_recipient's own
+    unguessable UUID, matching how the public /unsubscribe/{id} route authenticates it."""
+    url = f"{get_settings().api_public_url}/unsubscribe/{campaign_recipient_id}"
+    html = f'{body_html}<p><a href="{url}">Unsubscribe</a></p>'
+    text = f"{body_text}\n\nUnsubscribe: {url}" if body_text else f"Unsubscribe: {url}"
+    return html, text
 
 
 async def handle_send_campaign(session: AsyncSession, payload: dict[str, Any]) -> None:
@@ -107,6 +122,9 @@ async def handle_send_campaign(session: AsyncSession, payload: dict[str, Any]) -
         session.add(delivery)
         await session.flush()
 
+        body_html, body_text = _with_unsubscribe_footer(
+            campaign.body_html, campaign.body_text, recipient.id
+        )
         try:
             await send_email(
                 smtp_host=connection.smtp_host,
@@ -117,8 +135,8 @@ async def handle_send_campaign(session: AsyncSession, payload: dict[str, Any]) -
                 from_name=identity.from_name,
                 to_email=recipient.email,
                 subject=campaign.subject,
-                body_html=campaign.body_html,
-                body_text=campaign.body_text,
+                body_html=body_html,
+                body_text=body_text,
             )
         except EmailSendError as exc:
             delivery.status = "FAILED"

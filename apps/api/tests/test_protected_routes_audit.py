@@ -27,6 +27,12 @@ from growixa_api.permissions.dependencies import RequirePermission
 # /auth/me is the same shape as /refresh: identity comes from the access-token cookie
 # itself via get_current_user_id(), and any authenticated user may know who they are —
 # there's no separate permission to check.
+# /webhooks/postmark has no user session at all — Postmark itself is the caller,
+# authenticated via HTTP Basic Auth checked against the active connection's own webhook
+# credentials (THREAT_MODEL.md's T14), not require_permission(). /unsubscribe/{id} is
+# fully public by design: the recipient clicking it has no account, identified only by
+# the unguessable campaign_recipient_id UUID in the link itself (same shape as the
+# invitation-accept token).
 PUBLIC_ROUTE_PATHS = {
     "/health",
     "/auth/login",
@@ -37,6 +43,8 @@ PUBLIC_ROUTE_PATHS = {
     "/auth/password-reset/request",
     "/auth/password-reset/complete",
     "/users/invitations/accept",
+    "/webhooks/postmark",
+    "/unsubscribe/{campaign_recipient_id}",
 }
 
 

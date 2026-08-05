@@ -29,6 +29,12 @@ class EmailProviderConnection(Base):
     # Fernet-encrypted at the service layer before insert — never a plaintext column, per
     # DEC-GRX-009. See growixa_api.auth.encryption.
     smtp_password_encrypted: Mapped[str] = mapped_column(Text, nullable=False)
+    # HTTP Basic Auth credentials for the inbound Postmark webhook, per THREAT_MODEL.md's
+    # T14 ("stored alongside the provider connection, encrypted at rest"). Auto-generated
+    # at connection-creation time; nullable so pre-GRX-EMAIL-005 rows (none exist in
+    # practice) don't need a backfill, but the webhook receiver fails closed on NULL.
+    webhook_username: Mapped[str | None] = mapped_column(Text, nullable=True)
+    webhook_password_encrypted: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="true")
     created_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id"), nullable=True

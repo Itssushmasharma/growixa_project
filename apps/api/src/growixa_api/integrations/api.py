@@ -47,9 +47,11 @@ async def create_email_provider_connection_route(
     actor_id: uuid.UUID = Depends(_require_manage),
     session: AsyncSession = Depends(get_session),
 ) -> EmailProviderConnectionOut:
-    connection = await create_connection(session, payload, actor_id)
+    connection, webhook_password = await create_connection(session, payload, actor_id)
     await session.commit()
-    return EmailProviderConnectionOut.model_validate(connection)
+    out = EmailProviderConnectionOut.model_validate(connection)
+    # Shown once, in this response only — see EmailProviderConnectionOut's docstring.
+    return out.model_copy(update={"webhook_password": webhook_password})
 
 
 @router.get("/sender-identities", response_model=list[SenderIdentityOut])
