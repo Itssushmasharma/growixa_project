@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from growixa_api import __version__
+from growixa_api.analytics.api import router as analytics_router
 from growixa_api.audit.api import router as audit_router
 from growixa_api.auth.api import router as auth_router
 from growixa_api.brand.api import router as brand_router
@@ -42,4 +43,5 @@ def create_app() -> FastAPI:
     app.include_router(campaigns_router)
     app.include_router(email_delivery_router)
     app.include_router(email_delivery_public_router)
+    app.include_router(analytics_router)
     return app
