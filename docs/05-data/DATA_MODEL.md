@@ -249,21 +249,31 @@ Module ownership follows [MODULE_BOUNDARIES.md](../04-architecture/MODULE_BOUNDA
 
 ### `email_provider_connections`
 
-- Purpose: the one production email-sending configuration (Postmark, per
-  [DEC-GRX-015](../00-project-control/DECISIONS.md), via its SMTP relay).
+- Purpose: production email-sending configuration. Postmark per
+  [DEC-GRX-015](../00-project-control/DECISIONS.md); a generic Custom SMTP option was
+  added alongside it per [DEC-GRX-016](../00-project-control/DECISIONS.md) — both via
+  SMTP relay, so they share one schema.
 - Primary key: `id` (UUID)
-- Required fields: `provider` (`POSTMARK` — single value for now, kept as an enum column
-  rather than a free string so a second provider is a data migration, not a schema
-  rewrite), `smtp_host`, `smtp_port`, `smtp_username` (Postmark server token),
-  `smtp_password_encrypted` (the same token, encrypted at rest per
-  [DEC-GRX-009](../00-project-control/DECISIONS.md) — stored twice under different field
-  names because Postmark's SMTP auth uses the token as both), `is_active` (boolean,
-  default `true`)
+- Required fields: `provider` (`POSTMARK` or `CUSTOM_SMTP` — kept as an enum column
+  rather than a free string, per DEC-GRX-015's original framing, so a further provider
+  is a data migration, not a schema rewrite), `smtp_host`, `smtp_port`, `smtp_username`
+  (Postmark server token, or the Custom SMTP account's username), `smtp_password_encrypted`
+  (the same token/password, encrypted at rest per
+  [DEC-GRX-009](../00-project-control/DECISIONS.md) — for Postmark, stored twice under
+  different field names because its SMTP auth uses the token as both), `is_active`
+  (boolean, default `true`)
 - Audit fields: `created_by_user_id`, `created_at`, `updated_at`
-- Singleton-by-convention: only one `is_active = true` row expected at a time, enforced at
-  the application layer (same pattern as `company_profile`, not a DB constraint) — a new
-  connection is created and the previous one deactivated, never overwritten in place, so
-  the credential history isn't silently lost.
+- One active connection **per provider**, not one globally (revised by
+  [DEC-GRX-016](../00-project-control/DECISIONS.md) — previously "singleton by
+  convention," app-enforced only, matching `company_profile`'s pattern): a
+  `ux_email_provider_connections_active_per_provider` partial unique index on
+  `(provider) WHERE is_active` makes this a real DB constraint. A new connection for a
+  given provider deactivates that provider's previous one and is created fresh rather
+  than overwriting in place, so the credential history isn't silently lost — a
+  different provider's active connection is untouched.
+- Webhooks: only Postmark connections' `webhook_username`/`webhook_password_encrypted`
+  are ever consulted (by `POST /webhooks/postmark`) — Custom SMTP has no webhook route
+  at all, since plain SMTP has no bounce/complaint/open/click callback mechanism.
 - Encryption: a new `ENCRYPTION_KEY` setting (Fernet symmetric key, distinct from
   `JWT_SIGNING_KEY`) encrypts `smtp_password_encrypted` before it's written and decrypts it
   only at send time inside the worker — never logged, never returned by any API response

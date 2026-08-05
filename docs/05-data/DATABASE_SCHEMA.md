@@ -342,19 +342,28 @@ Indexes: unique index on `email` (upsert target — re-suppressing updates the e
 | Column | Type | Constraints |
 |---|---|---|
 | id | uuid | PK |
-| provider | text | NOT NULL, CHECK IN ('POSTMARK') |
+| provider | text | NOT NULL, CHECK IN ('POSTMARK', 'CUSTOM_SMTP') |
 | smtp_host | text | NOT NULL |
 | smtp_port | integer | NOT NULL |
 | smtp_username | text | NOT NULL |
 | smtp_password_encrypted | text | NOT NULL |
+| webhook_username | text | NULL |
+| webhook_password_encrypted | text | NULL |
 | is_active | boolean | NOT NULL, DEFAULT true |
 | created_by_user_id | uuid | FK → users.id, NULL |
 | created_at | timestamptz | NOT NULL, DEFAULT now() |
 | updated_at | timestamptz | NOT NULL, DEFAULT now() |
 
-Indexes: partial index on `(is_active) WHERE is_active` to cheaply find the active
-connection. `smtp_password_encrypted` is Fernet-encrypted application-side before insert
-— never a plaintext column, never selected into a log statement.
+Indexes: `ux_email_provider_connections_active_per_provider`, a **unique** partial index
+on `(provider) WHERE is_active` (GRX-EMAIL-011 / DEC-GRX-016) — DB-enforces at most one
+active connection per provider; replaces the earlier non-unique `(is_active)` partial
+index from when there was only ever one provider. `smtp_password_encrypted` and
+`webhook_password_encrypted` are Fernet-encrypted application-side before insert — never
+plaintext columns, never selected into a log statement. `webhook_username`/
+`webhook_password_encrypted` (added by `GRX-EMAIL-005`, per `THREAT_MODEL.md`'s T14) are
+only ever consulted for the active `POSTMARK` connection, by `POST /webhooks/postmark` —
+`CUSTOM_SMTP` connections get them generated too (for schema uniformity) but nothing
+reads them, since plain SMTP has no webhook mechanism.
 
 ## `sender_identities`
 

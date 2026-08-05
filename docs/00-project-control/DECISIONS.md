@@ -252,7 +252,51 @@ Decision statuses: `PROPOSED`, `UNDER_REVIEW`, `APPROVED`, `REJECTED`, `SUPERSED
   `MASTER_TASK_TRACKER.md` (to be added).
 - Supersedes: none.
 
+## DEC-GRX-016: Add Custom SMTP as a second email provider, via SMTP relay only (fulfills DEC-GRX-015's second-provider clause)
+
+- Status: APPROVED
+- Date: 2026-08-06
+- Context: User-requested multi-provider support for the Integrations settings page
+  (`GRX-EMAIL-011`), after reviewing a design reference showing a provider-card grid
+  (Postmark, SendGrid, Resend, AWS SES, Custom SMTP, Mailgun). `DEC-GRX-015`'s own
+  consequences clause anticipated this: "a future release [needing] a second provider
+  ... requires a new logged decision, not a silent substitution."
+- Options considered:
+  1. Add all five providers shown in the reference, each via its native API/SDK
+     (SendGrid API, AWS SES SDK, etc.) — most "real" per-provider integration, but a
+     separate adapter, credential shape, and send code path per provider.
+  2. Add all five providers, all via SMTP relay (every one of them supports an SMTP
+     relay interface) — no new sending code path, but ships UI for providers nobody
+     has asked to actually use yet.
+  3. Add just one second provider, Custom SMTP, via the existing SMTP-relay send path
+     — the smallest change that still proves out "more than one active connection at a
+     time" as a real capability, without speculative UI for unused providers.
+- Decision: Option 3 — Custom SMTP only, via SMTP relay (no new sending code).
+- Rationale: This codebase's established practice (this session, repeatedly) is to not
+  build UI for capabilities that don't exist yet — Options 1 and 2 would both add
+  visible cards for SendGrid/Resend/AWS SES/Mailgun with no working backend behind
+  them. Custom SMTP costs almost nothing beyond it (same credential shape as Postmark:
+  host/port/username/password) while genuinely exercising the harder part of this
+  change — the data model moving from "one active connection globally" to "one active
+  connection per provider," now a real DB-enforced partial unique index on
+  `(provider) WHERE is_active` rather than the app-only convention `DATA_MODEL.md`
+  previously described.
+- Consequences: `email_provider_connections.provider`'s CHECK constraint becomes
+  `IN ('POSTMARK', 'CUSTOM_SMTP')`. Postmark's webhook receiver
+  (`POST /webhooks/postmark`) remains Postmark-specific and un-generalized — Custom
+  SMTP gets no webhook route at all, since plain SMTP has no bounce/complaint/open/click
+  callback mechanism (the same conclusion `DEC-GRX-015`'s own generic-SMTP option
+  reached). This means `SPRINT_03_EMAIL_CAMPAIGN.md`'s "explicitly excluded" generic
+  multi-provider webhook abstraction stays excluded — a second provider existing
+  doesn't require it, since only Postmark ever receives webhook traffic. Adding a
+  third provider that also needs webhooks (a real SendGrid/Mailgun/AWS SES
+  integration) would need its own new decision, same as this one.
+- Related tasks: `GRX-EMAIL-011` (ad hoc, not part of the original Sprint 3 plan) in
+  `MASTER_TASK_TRACKER.md`.
+- Supersedes: none — fulfills, rather than contradicts, `DEC-GRX-015`'s own
+  "requires a new logged decision" consequence.
+
 ---
 
-*Decisions DEC-GRX-016 onward will be logged as they are made — e.g., resolutions to
+*Decisions DEC-GRX-017 onward will be logged as they are made — e.g., resolutions to
 OQ-003 through OQ-011 in [OPEN_QUESTIONS.md](OPEN_QUESTIONS.md).*

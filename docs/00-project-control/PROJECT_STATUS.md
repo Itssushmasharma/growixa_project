@@ -92,6 +92,16 @@ Sprint 1's) extended for `email_provider_connections`, `sender_identities`,
 [MASTER_TASK_TRACKER.md](MASTER_TASK_TRACKER.md) (`GRX-EMAIL-001`–`010`); the first,
 `GRX-EMAIL-001` (provider connection + sender identity), is `READY`.
 
+**Ad hoc addition to Sprint 3:** `GRX-EMAIL-011` (Custom SMTP as a second email
+provider) is `DONE` — `email_provider_connections` now allows one active connection
+*per provider* (DB-enforced via a partial unique index), so Postmark and Custom SMTP
+can both be connected at once, logged as [DEC-GRX-016](DECISIONS.md). Live-testing it
+against the user's own real SMTP server found and fixed two real transport bugs: the
+SMTP sender only supported STARTTLS, so port-465 (implicit TLS) servers hung
+indefinitely; and TLS/certificate errors weren't caught by the sender's exception
+wrapper, surfacing as an unhandled 500 instead of a clean error. The user's own server
+has an expired certificate — an external blocker on their end, unrelated to this fix.
+
 **Ad hoc UX addition (not tied to a sprint plan):** `GRX-FOUND-009` (collapsible/
 responsive sidebar navigation — hamburger toggle for desktop collapse + mobile overlay
 drawer, plus an independent per-section accordion for each nav heading), requested

@@ -10,6 +10,42 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
+## 2026-08-06 — GRX-EMAIL-011: Custom SMTP as a second provider + SMTP TLS fixes
+
+- `email_provider_connections` now allows one active connection *per provider*
+  instead of one globally — DB-enforced via a new partial unique index
+  `(provider) WHERE is_active` (migration `04cce299c2d1`), replacing the old
+  non-unique index. `provider` CHECK expanded to `('POSTMARK', 'CUSTOM_SMTP')`.
+  Logged as [DEC-GRX-016](DECISIONS.md), fulfilling the "second provider
+  needs a new decision" clause from `DEC-GRX-015`.
+- New `GET /integrations/email-providers` (plural) lists all connections,
+  replacing the old singular GET; `POST /integrations/email-provider` is now
+  provider-scoped when deactivating a prior active connection.
+- Integrations page rebuilt as a 2-card grid (Postmark, Custom SMTP), each
+  independently showing connection status, identity count, and its own
+  scoped sender-identity list/add form.
+- **Real bug found and fixed**: `test_campaigns.py`'s
+  `test_unauthenticated_requests_are_rejected` created a sender-identity
+  fixture but never cleaned it up — harmless before this task's new unique
+  constraint, a genuine cross-test failure after it went in.
+- **Two further real bugs found live-testing against a real SMTP server**
+  (the user's own `mail.iitdeveloper.com`, using their real password —
+  entered by the user themselves, never typed by the agent): (1)
+  `smtp_sender.py`/`email_sender.py` hardcoded STARTTLS (`start_tls=True`)
+  unconditionally, so a port-465 (implicit-TLS) server just hung waiting for
+  a plaintext banner that never comes — fixed by selecting `use_tls` vs
+  `start_tls` based on `smtp_port == 465`. (2) `ssl.SSLCertVerificationError`
+  (e.g. an expired server certificate) is an `OSError`, not an
+  `aiosmtplib.SMTPException`, so it escaped `EmailSendError`'s except clause
+  and surfaced as an unhandled 500 instead of the intended 502 "Test send
+  failed" — fixed by also catching `OSError`. The user's own server has an
+  expired certificate, an external blocker on their end unrelated to this
+  fix.
+- `apps/api` `pytest`: 152 passed, 3 skipped. `apps/worker` `pytest`: 12
+  passed. `ruff`/`mypy`/`alembic check` clean on both; `eslint`/`tsc
+  --noEmit`/`prettier`/`vitest` (60 passed)/`next build` clean on
+  `apps/web`.
+
 ## 2026-08-05 — GRX-EMAIL-007: provider connection + sender identity frontend
 
 - New `apps/web/src/app/(dashboard)/dashboard/integrations/` page: a provider

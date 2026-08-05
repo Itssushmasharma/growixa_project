@@ -201,6 +201,137 @@ cat docs/14-sprints/SPRINT_03_EMAIL_CAMPAIGN.md
 podman compose up -d
 ```
 
-## Latest commit
+## Latest commit (superseded — see GRX-EMAIL-011 section below)
 
 `fa0d924` — feat(web): provider connection + sender identity settings UI (GRX-EMAIL-007)
+
+## Work completed (GRX-EMAIL-011, ad hoc addition — Custom SMTP as a second provider)
+
+- `email_provider_connections` moved from "one active connection globally"
+  to **one active connection per provider**, DB-enforced via a new partial
+  unique index `(provider) WHERE is_active` (migration `04cce299c2d1`,
+  replacing the old non-unique index); `provider` CHECK expanded to
+  `('POSTMARK', 'CUSTOM_SMTP')`. Logged as `DEC-GRX-016`, following two
+  `AskUserQuestion` rounds that scoped this down from a 6-provider design
+  reference to "actually build it, but just these two providers, SMTP-relay
+  only."
+  `get_active_email_provider_connection`/`deactivate_active_email_provider_connections`
+  are now provider-scoped; new `GET /integrations/email-providers` (plural)
+  replaces the old singular GET.
+- Frontend (`apps/web/.../dashboard/integrations/`) rebuilt as a 2-card grid
+  (`PROVIDER_REGISTRY`), each card independently showing status, identity
+  count, and its own scoped identity list/add form.
+- **Real bug #1**: `test_campaigns.py::test_unauthenticated_requests_are_rejected`
+  created a sender-identity fixture but never cleaned it up — harmless
+  before the new unique constraint, a genuine cross-test failure after.
+  Fixed with try/finally.
+
+## Real bugs found and fixed live-testing against the user's own real SMTP server
+
+The user provided real credentials for their own mail server
+(`mail.iitdeveloper.com`), typing the password into the UI themselves — the
+agent never handled it directly, per this session's credential-handling
+policy. This surfaced two genuine transport-layer bugs neither the mocked
+unit tests nor the earlier Postmark-only work had ever exercised:
+
+- **Bug #1 — no implicit-TLS support**: `smtp_sender.py` (api) and
+  `email_sender.py` (worker) both hardcoded `start_tls=True`
+  unconditionally. Port 465 is *implicit* TLS (encrypted from the first
+  byte); STARTTLS on that port just hangs waiting for a plaintext banner
+  that never arrives — confirmed via a live probe
+  (`SMTPConnectTimeoutError`). Fixed by selecting `use_tls` vs `start_tls`
+  based on `smtp_port == 465`; confirmed the fix reaches a real TLS
+  handshake against the user's server.
+- **Bug #2 — TLS/cert errors weren't wrapped**: once TLS mode was correct, a
+  real test-send against the user's server hit
+  `ssl.SSLCertVerificationError: certificate has expired` — and it surfaced
+  as an **unhandled 500**, not the `POST /campaigns/{id}/test-send`
+  endpoint's intended 502 "Test send failed: ...". Root cause:
+  `ssl.SSLCertVerificationError` is an `OSError`, not an
+  `aiosmtplib.SMTPException`, so `EmailSendError`'s except clause missed it
+  entirely despite its own docstring promising to cover "connection, TLS,
+  auth" failures. Fixed by also catching `OSError` in both `smtp_sender.py`
+  and `email_sender.py`.
+- Confirmed the full fix with diagnostic-only probes (dummy password,
+  `ssl.CERT_NONE` used *only* in a throwaway script, never in shipped code):
+  with the correct TLS mode, the connection reached a real `535 Incorrect
+  authentication data` from the user's own server — proving transport and
+  auth both work correctly end-to-end.
+- **Outstanding, external to this codebase**: the user's own mail server has
+  an actually-expired TLS certificate. Real sends through
+  `mail.iitdeveloper.com` will keep failing with that same 502 until they
+  renew it with their host — nothing further to fix here.
+- Added `apps/api/tests/test_smtp_sender.py` and
+  `apps/worker/tests/test_email_sender.py` (2 tests each: TLS mode
+  selection by port, `OSError`→`EmailSendError` wrapping).
+
+## Known-quirk collision worth flagging to any future session
+
+Running the **full `apps/api` pytest suite** wipes the entire dev database
+(via `test_migrations.py`'s alembic downgrade/upgrade round-trip) — a
+pre-existing quirk noted in earlier sessions' entries, but this is the first
+time it collided with a user's *own real external credentials* sitting in
+the DB for live testing. It happened twice during this task, each time
+silently deleting the user's real Custom SMTP connection along with
+`admin@growixa.local`. **Lesson for future sessions**: if real (non-smoke-test)
+data is known to be in the dev DB — the user's own provider credentials,
+anything they explicitly asked to keep around — run targeted test files
+(e.g. `pytest tests/test_smtp_sender.py`) instead of the full suite until
+that data is no longer needed, or warn the user immediately beforehand.
+`apps/worker`'s suite does not touch Postgres this way and is always safe to
+run in full.
+
+## Files changed (GRX-EMAIL-011)
+
+- `apps/api/migrations/versions/04cce299c2d1_*.py` (new)
+- `apps/api/src/growixa_api/integrations/{models,repositories,services,schemas,api}.py`
+- `apps/api/src/growixa_api/email_delivery/{smtp_sender.py,services.py}`
+- `apps/worker/src/growixa_worker/email_sender.py`
+- `apps/api/tests/{test_integrations.py,test_campaigns.py,test_smtp_sender.py (new)}`
+- `apps/worker/tests/test_email_sender.py` (new)
+- `apps/web/src/app/(dashboard)/dashboard/integrations/{types.ts,integrations-page.tsx,integrations-page.module.css,integrations-page.test.tsx}`
+- `docs/00-project-control/{DECISIONS.md,MASTER_TASK_TRACKER.md,PROJECT_STATUS.md,CHANGELOG.md,AGENT_HANDOFF.md}`
+- `docs/05-data/{DATA_MODEL.md,DATABASE_SCHEMA.md}`
+- `docs/14-sprints/SPRINT_03_EMAIL_CAMPAIGN.md`
+
+## Commands executed (GRX-EMAIL-011)
+
+- `ruff check`/`ruff format --check`/`mypy` — clean on `apps/api` and
+  `apps/worker`
+- `alembic check` — clean, no drift
+- `apps/api` `pytest`: 152 passed, 3 skipped
+- `apps/worker` `pytest`: 12 passed
+- `eslint`/`tsc --noEmit`/`prettier --check` — clean on `apps/web`
+- `vitest run`: 60 passed
+- `next build` — clean
+- `podman compose restart api` (to pick up source changes after the second
+  TLS fix — bind-mounted source with `uvicorn --reload`, restart forced a
+  reload rather than a full image rebuild; no image rebuild was needed since
+  no dependency changed)
+- Recreated `admin@growixa.local` (Super Admin role) twice via direct SQL,
+  matching the argon2 hash produced by `growixa_api.auth.security.hash_password`
+
+## Blockers
+
+None for this codebase. The user's own mail server certificate being
+expired blocks *their* real sends, not further work here.
+
+## Current state
+
+Sprint 3 backend + this ad hoc multi-provider addition are `DONE`.
+`GRX-EMAIL-008`–`010` (templates/campaigns/report frontend) remain
+`BACKLOG` and are the next Sprint-3-shaped work, whenever picked up. A
+"test connection" button (validate SMTP credentials during configuration,
+before saving) was requested by the user as a follow-up — not yet scoped or
+built.
+
+## Exact next task
+
+Unassigned — `GRX-EMAIL-008` (email templates frontend) is next in the
+original Sprint 3 backlog order, or the user may prioritize the "test
+connection" button follow-up first. See `MASTER_TASK_TRACKER.md` for exact
+acceptance criteria.
+
+## Latest commit
+
+`447001c` — feat(email): add Custom SMTP as a second provider + fix SMTP TLS bugs (GRX-EMAIL-011)

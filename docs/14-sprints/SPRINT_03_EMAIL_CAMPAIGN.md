@@ -57,6 +57,11 @@ Full task breakdown with dependencies: [MASTER_TASK_TRACKER.md](../00-project-co
 - A generic multi-provider webhook abstraction (`webhook_endpoints`/`webhook_events`/
   `webhook_deliveries`) — premature with exactly one provider; Slice 3 builds a
   Postmark-specific receiver only. Revisit only if a second provider is ever added.
+  **Update (`GRX-EMAIL-011` / `DEC-GRX-016`)**: a second provider (Custom SMTP) was
+  added, but this exclusion still holds — Custom SMTP has no webhook events at all
+  (plain SMTP has no bounce/complaint/open/click callback mechanism), so the trigger
+  condition this bullet anticipated didn't actually arise. Revisit only if a provider
+  that *does* need webhooks (a real SendGrid/Mailgun/AWS SES API integration) is added.
 - A pre-aggregated `analytics_events` table — the campaign report is computed by
   aggregate queries over `message_deliveries`/`email_events`/`campaign_recipients`.
   Revisit only if those queries become a real performance problem.
