@@ -30,8 +30,7 @@ additional email analytics, team-approval workflows for campaigns.
 
 ## Release 1.2 — Marketing breadth
 
-Additional social platform(s), additional email provider option, experiment/A-B testing for
-subject lines, richer notification center.
+Additional social platform(s), additional email provider option, SMS Marketing & Twilio integration (Admin provider setup, E.164 contact phone formatting, SMS campaign composer, TCPA opt-out webhooks), experiment/A-B testing for subject lines, richer notification center.
 
 ## V1.5 — Website Intelligence Foundation (read-only)
 
