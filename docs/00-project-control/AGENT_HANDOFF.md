@@ -95,118 +95,93 @@ Before writing code, two open architectural questions were surfaced to the user 
    final outbound-send success as an evidence gap rather than silently assuming it or
    faking it with a mock.
 
-## Work completed (backend track — GRX-EMAIL-005)
+## Work completed (backend track — GRX-EMAIL-006)
 
-- **Real gap found and fixed**: `THREAT_MODEL.md`'s `T14` specified webhook Basic Auth
-  credentials "stored alongside the provider connection, encrypted at rest", but
-  `email_provider_connections` never got those columns when Sprint 3 was planned.
-  Migration `f5ecaa79863b` adds `webhook_username`/`webhook_password_encrypted`
-  (nullable, fails closed if unset), auto-generated via `secrets.token_urlsafe` at
-  connection-creation time and Fernet-encrypted like the SMTP password; the plaintext
-  webhook password is returned exactly once, in the create-connection response, never
-  persisted or retrievable again. Same migration adds `email_events` (insert-only,
-  `event_type` CHECK'd) and `unsubscribe_events` per `DATABASE_SCHEMA.md`.
-- New public `email_delivery.public_router`: `POST /webhooks/postmark` (HTTP Basic
-  Auth checked against the active connection's own credentials via
-  `secrets.compare_digest`) maps Postmark's `RecordType` to `event_type`, matches the
-  delivery by `provider_message_id`, no-ops silently on an unmatched `MessageID`
-  (Postmark expects 200 either way), and auto-suppresses on `BOUNCED`/`COMPLAINED` —
-  wiring up `suppression_entries.reason` values that have existed since
-  `GRX-CONTACT-005` but were never written until now.
-- `GET /unsubscribe/{campaign_recipient_id}` is fully public and unauthenticated by
-  design, identified only by the unguessable UUID (same shape as the invitation-accept
-  token); records an `unsubscribe_events` row and suppresses the address with no
-  `actor_id` (new `_upsert_suppression` helper bypasses `suppress_email`'s
-  actor-requiring wrapper for this and the webhook's system-triggered case).
-- The worker now appends a per-recipient unsubscribe footer link
-  (`{api_public_url}/unsubscribe/{campaign_recipient_id}`) to every real send's
-  `body_html`/`body_text` — plain append, no merge-tag infrastructure yet; new
-  `api_public_url` worker setting (Compose default `http://localhost:${API_PORT}`).
-- 8 new `apps/api` integration tests (`test_email_delivery.py`): webhook rejects
-  no-credentials and wrong-credentials requests with zero `email_events` written (key
-  negative test per `SPRINT_03`'s AC), a valid `Delivery` event updates
-  `message_deliveries` and writes the event, a `Bounce` event auto-suppresses, an
-  unmatched `MessageID` is a 200 no-op, a valid unsubscribe creates the event +
-  suppression, an unknown `campaign_recipient_id` 404s.
-- 1 new `apps/worker` integration test (`test_send_campaign.py`): the unsubscribe URL
-  is present in both `body_html` and `body_text` passed to the mocked `send_email`.
+- **Corrected the tracker's own planning-time file location**: the tracker row said
+  this would extend `campaigns`, but `MODULE_BOUNDARIES.md` names a dedicated
+  `analytics` module for exactly this ("read-side aggregation/reporting over
+  campaigns...") and `campaigns`' own allowed-dependency list doesn't include
+  `email_delivery` — extending `campaigns` would have required the exact cross-module
+  import direction the boundaries table forbids. Built a new `growixa_api.analytics`
+  module instead — no models/migration, since `SPRINT_03_EMAIL_CAMPAIGN.md` explicitly
+  excludes a pre-aggregated `analytics_events` table in favor of a live query.
+- `GET /campaigns/{id}/report` mounted under the existing `/campaigns` prefix (same
+  multi-module-same-prefix pattern `email_delivery` already uses for `/send`), gated
+  by the existing `campaigns.view` permission — `RBAC.md`'s own rationale for that
+  grant already named this exact use case ("Analyst's read-only analytics scope is
+  exactly what campaign delivery reports are").
+- Metric definitions: `sent` from `campaign_recipients.status` (stable — never touched
+  by webhook handling, so it reflects the original send outcome even after a later
+  bounce); `delivered`/`bounced`/`complained` from `message_deliveries.status` (single
+  mutable pointer, current terminal state); `opened`/`clicked` from **distinct**
+  deliveries with a matching `email_events` row, not raw event rows — `email_events`
+  is insert-only, so a redelivered webhook notification is a new row and counting rows
+  directly would let one recipient's repeat notification inflate the number.
+- 5 new `apps/api` integration tests (`test_analytics.py`): counts match a hand-built
+  fixture including a duplicate-`OPENED`-event no-double-count check, `campaigns.view`-
+  only role (Analyst) reads successfully, a role lacking it (Viewer) gets 403,
+  unauthenticated 401, unknown campaign 404.
 
 ## Real bugs found and fixed while debugging the new tests
 
-None this time — `ruff`/`mypy`/`pytest` all passed on the first or near-first attempt
-at every verification checkpoint, unlike `GRX-EMAIL-004`'s several real bugs.
+None — `ruff`/`mypy`/`pytest` all passed on the first or near-first attempt at every
+verification checkpoint. One mypy fix needed: `dict(result.all())` on a `Sequence[Row]`
+doesn't type-check cleanly; switched to a dict comprehension over the row tuples.
 
 ## Files changed
 
-- `apps/api/src/growixa_api/email_delivery/{models,schemas,services,api}.py` (extended)
-- `apps/api/src/growixa_api/email_delivery/repositories.py` (new)
-- `apps/api/src/growixa_api/integrations/{models,schemas,services,api}.py` (extended:
-  webhook credential generation/storage)
-- `apps/api/src/growixa_api/app.py` (wired `email_delivery_public_router`)
-- `apps/api/migrations/versions/f5ecaa79863b_webhook_credentials_email_events_.py` (new)
-- `apps/api/tests/test_email_delivery.py`, `test_protected_routes_audit.py` (extended)
-- `apps/worker/src/growixa_worker/config.py` (added `api_public_url`)
-- `apps/worker/src/growixa_worker/send_campaign.py` (extended: unsubscribe footer)
-- `apps/worker/tests/test_send_campaign.py` (extended)
-- `apps/worker/.env.example` (documented `API_PUBLIC_URL`)
-- `compose.yaml` (worker service gets `API_PUBLIC_URL`)
-- `docs/00-project-control/MASTER_TASK_TRACKER.md` (`GRX-EMAIL-005` → `DONE`,
-  `GRX-EMAIL-006` → `READY`)
+- `apps/api/src/growixa_api/analytics/{__init__,schemas,repositories,services,api}.py` (new)
+- `apps/api/src/growixa_api/app.py` (wired `analytics_router`)
+- `apps/api/tests/test_analytics.py` (new)
+- `docs/00-project-control/MASTER_TASK_TRACKER.md` (`GRX-EMAIL-006` → `DONE`,
+  `GRX-EMAIL-010`'s dependency label updated)
 - `docs/00-project-control/PROJECT_STATUS.md`, `CHANGELOG.md` (this update)
 
 ## Commands executed
 
-- `alembic upgrade head`, `alembic check` (clean, no drift)
-- `ruff check`/`ruff format --check`/`mypy` — clean on both `apps/api` and `apps/worker`
-- `pytest`: `apps/api` 142 passed, 3 skipped; `apps/worker` 9 passed
-- `podman compose restart api worker` (no new dependency, code + migration only)
+- `alembic check` (clean, no drift — no migration, pure query)
+- `ruff check`/`ruff format --check`/`mypy` — clean
+- `pytest`: `apps/api` 147 passed, 3 skipped
+- `podman compose restart api` (no new dependency, code only)
 - Live verification against Compose (see below)
 
 ## Blockers
 
-None. `GRX-EMAIL-006` (campaign report/analytics endpoint) is `READY`.
+None. `GRX-EMAIL-007` (provider connection + sender identity frontend) is next — the
+remaining Sprint 3 tasks (`007`–`010`) are all frontend work.
 
 ## Known issues / evidence gaps
 
-- **No live Postmark account available**, same class of gap as `GRX-EMAIL-004`'s — the
-  exact webhook JSON payload shape per `RecordType` is unverified.
-  `PostmarkWebhookPayload` is deliberately permissive (`extra="allow"`, only
-  `RecordType`/`MessageID` required), and the full raw payload is preserved in
-  `email_events.metadata` for future reconciliation once a real payload is captured.
-- Live-verified against Compose: created a connection and captured its one-time
-  webhook credentials via curl; confirmed no-auth/wrong-auth both 401 before touching
-  `email_events`; sent a real campaign (same `535` SMTP auth-rejection boundary as
-  `GRX-EMAIL-004`) and manually set `provider_message_id` on the resulting
-  `message_deliveries` row to simulate a Postmark-assigned ID, since the real send
-  never receives one; a `Delivery` webhook flipped the row to `DELIVERED` and wrote
-  the event; a `Bounce` webhook auto-suppressed the recipient; clicking the real
-  `/unsubscribe/{id}` link returned the HTML confirmation and updated the suppression
-  reason to `UNSUBSCRIBED`; an unknown unsubscribe id 404'd. Cleaned up all smoke-test
-  rows afterward.
+- No new evidence gap introduced by this task. Live verification reused the same `535`
+  SMTP auth-rejection boundary as `GRX-EMAIL-004`/`005` (no live Postmark account):
+  an unsent campaign's report was all zeros; after a real send failed at that boundary,
+  `sent` correctly stayed `0` — a genuine result, not a fabricated success; separately
+  simulated a Postmark-assigned message ID (same workaround as `GRX-EMAIL-005`, since a
+  failed send never receives a real one) and fired real `Delivery`/`Open`/`Open`/`Click`
+  webhook events, after which the report showed `delivered=1, opened=1, clicked=1` —
+  confirming the duplicate `Open` did not double-count. Cleaned up all smoke-test rows
+  afterward.
 - Running the full backend `pytest` suite wipes `admin@growixa.local` again — recreated
   it before live verification. Known quirk, not a bug to fix.
-- **Branch/doc coordination note**: this session's git branch was already
-  `feature/FRONTEND/GRX-WEB-002` (a concurrent frontend session's branch) when this
-  backend work started, so all `GRX-EMAIL-*` commits this session — including this
-  one — landed there rather than on a dedicated backend branch. This file
-  (`AGENT_HANDOFF.md`) is also now shared by both tracks: the frontend session's
-  `GRX-WEB-002` handoff sits above this section rather than being replaced by it. Not
-  fixed unilaterally (would mean a branch move/rebase); flagging for the user to
-  decide whether to split branches going forward.
+- **Branch/doc coordination note (unchanged from `GRX-EMAIL-005`'s entry)**: this
+  session's git branch was already `feature/FRONTEND/GRX-WEB-002` (a concurrent
+  frontend session's branch), so this commit landed there too. `AGENT_HANDOFF.md`
+  remains shared by both tracks; still not fixed unilaterally.
 - Retry/backoff/dead-letter handling for `send_campaign` remains unimplemented
-  (unchanged from `GRX-EMAIL-004`'s note, not newly introduced here).
+  (unchanged from `GRX-EMAIL-004`'s note).
 
 ## Current state
 
-Sprint 1 and Sprint 2 are `DONE`. Sprint 3 (Email Marketing) is under way:
-`GRX-EMAIL-001` through `GRX-EMAIL-005` are all `DONE`. `GRX-EMAIL-006` (campaign
-report/analytics endpoint) is `READY`; `GRX-EMAIL-007`–`010` remain `BACKLOG` behind it.
+Sprint 1 and Sprint 2 are `DONE`. Sprint 3 (Email Marketing) backend is now fully
+`DONE`: `GRX-EMAIL-001` through `GRX-EMAIL-006` are all `DONE`. `GRX-EMAIL-007`–`010`
+remain `BACKLOG` — all four are frontend tasks.
 
 ## Exact next task
 
-`GRX-EMAIL-006` — Campaign report/analytics endpoint. Aggregate
-sent/delivered/opened/clicked/bounced/complained counts per campaign from
-`message_deliveries`/`email_events`, exposed via an extended `campaigns` route. See
+`GRX-EMAIL-007` — Provider connection + sender identity frontend. Settings UI for the
+Postmark connection and sender identities under `apps/web/src/app/dashboard/
+integrations/`; only Super Admin (via `integrations.manage`) sees/can use it, per
+`RBAC.md`'s note that this is the project's first Admin-excluded permission. See
 `MASTER_TASK_TRACKER.md`'s row for the exact acceptance criteria and required tests.
 
 ## Resume commands
@@ -221,4 +196,4 @@ podman compose up -d
 
 ## Latest commit
 
-`9dbe9ee` — feat(email): Postmark webhook receiver + unsubscribe handling (GRX-EMAIL-005)
+`ba12931` — feat(email): campaign report/analytics endpoint (GRX-EMAIL-006)

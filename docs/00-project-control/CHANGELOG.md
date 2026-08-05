@@ -10,6 +10,38 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
+## 2026-08-05 — GRX-EMAIL-006: campaign report/analytics endpoint
+
+- **Corrected the tracker's own planning-time file location**: the `MASTER_TASK_TRACKER.md`
+  row said this task would extend `campaigns`, but `MODULE_BOUNDARIES.md` names a
+  dedicated `analytics` module for exactly this ("read-side aggregation/reporting over
+  campaigns...") and `campaigns`' own allowed-dependency list doesn't include
+  `email_delivery`. Built a new `growixa_api.analytics` module instead — no models or
+  migration, since `SPRINT_03_EMAIL_CAMPAIGN.md` explicitly excludes a pre-aggregated
+  `analytics_events` table in favor of computing the report live.
+- `GET /campaigns/{id}/report` mounted under the existing `/campaigns` prefix (same
+  multi-module-same-prefix pattern `email_delivery` already uses), gated by the
+  existing `campaigns.view` permission — `RBAC.md`'s own rationale for that grant
+  already named this exact use case.
+- Metric definitions: `sent` from `campaign_recipients.status` (stable — never touched
+  by webhook handling, so it reflects the original send outcome even after a later
+  bounce); `delivered`/`bounced`/`complained` from `message_deliveries.status` (a
+  single mutable pointer, current terminal state); `opened`/`clicked` from **distinct**
+  deliveries with a matching `email_events` row, not raw event rows — `email_events` is
+  insert-only, so a redelivered webhook notification is a new row and counting rows
+  directly would let one recipient's repeat notification inflate the number.
+- `pytest`: 147 passed, 3 skipped (5 new: counts match a hand-built fixture incl. a
+  duplicate-event no-double-count check, `campaigns.view`-only role reads successfully,
+  a role lacking it gets 403, unauthenticated 401, unknown campaign 404). `alembic
+  check` clean (no migration). `ruff`/`mypy` clean.
+- Live-verified against Compose: an unsent campaign's report was all zeros; after a
+  real send (same `535` SMTP evidence-gap boundary as `GRX-EMAIL-004`/`005`) the send
+  genuinely failed, so `sent` correctly stayed `0` rather than a fabricated success;
+  separately simulated a Postmark-assigned message ID and fired real
+  `Delivery`/`Open`/`Open`/`Click` webhook events, after which the report showed
+  `delivered=1, opened=1, clicked=1` — the duplicate `Open` did not double-count.
+  Cleaned up all smoke-test rows afterward. Commit `ba12931`
+
 ## 2026-08-05 — GRX-EMAIL-005: Postmark webhook receiver + unsubscribe handling
 
 - **Real gap found and fixed**: `THREAT_MODEL.md`'s `T14` called for webhook Basic Auth
