@@ -11,12 +11,17 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 from growixa_api.audit import models as audit_models  # noqa: F401
 from growixa_api.auth import models as auth_models  # noqa: F401
 from growixa_api.brand import models as brand_models  # noqa: F401
+from growixa_api.campaigns import models as campaigns_models  # noqa: F401
 from growixa_api.company import models as company_models  # noqa: F401
 from growixa_api.config import get_settings
 from growixa_api.contacts import models as contacts_models  # noqa: F401
 from growixa_api.db import Base
+from growixa_api.email_delivery import models as email_delivery_models  # noqa: F401
+from growixa_api.integrations import models as integrations_models  # noqa: F401
 from growixa_api.permissions import models as permissions_models  # noqa: F401
 from growixa_api.roles import models as roles_models  # noqa: F401
+from growixa_api.templates import models as templates_models  # noqa: F401
+from growixa_api.usage import models as usage_models  # noqa: F401
 from growixa_api.users import models as users_models  # noqa: F401
 
 # this is the Alembic Config object, which provides

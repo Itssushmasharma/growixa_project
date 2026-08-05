@@ -113,12 +113,18 @@ services:
       ENVIRONMENT: local
       LOG_LEVEL: info
       RABBITMQ_URL: amqp://${RABBITMQ_USER:-guest}:${RABBITMQ_PASSWORD}@rabbitmq:5672/
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-growixa}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-growixa}
+      # Public origin recipients' browsers hit for the unsubscribe link — not the
+      # internal container hostname, since this URL is embedded in outbound emails.
+      API_PUBLIC_URL: http://localhost:${API_PORT:-8000}
     volumes:
       - ./apps/worker/src:/app/src
     networks:
       - growixa-net
     depends_on:
       rabbitmq:
+        condition: service_healthy
+      postgres:
         condition: service_healthy
 
   web:

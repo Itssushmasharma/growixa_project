@@ -21,6 +21,12 @@ class Settings(BaseSettings):
     cors_allowed_origins: list[str] = ["http://localhost:3000", "http://localhost:3100"]
 
     jwt_signing_key: str = "CHANGE_ME_LOCAL_DEV_ONLY"
+    # Fernet symmetric key for provider-credential encryption at rest (DEC-GRX-009), e.g.
+    # email_provider_connections.smtp_password_encrypted. Distinct from jwt_signing_key —
+    # this one is reversible by design (the worker must decrypt to actually send), so it
+    # must never be reused for anything that should stay one-way. Generate a real key via
+    # `Fernet.generate_key()` in production; this default is local-dev-only.
+    encryption_key: str = "U640ORbquCvIAZca0r5qqd173t669iSoJ3gSuoGGSr0="
     access_token_ttl_minutes: int = 15
     refresh_token_ttl_days: int = 30
     invitation_ttl_days: int = 7

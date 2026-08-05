@@ -1,0 +1,47 @@
+import uuid
+from datetime import datetime
+
+from pydantic import BaseModel
+
+
+class CampaignIn(BaseModel):
+    name: str
+    subject: str
+    body_html: str
+    body_text: str | None = None
+    template_id: uuid.UUID | None = None
+    sender_identity_id: uuid.UUID
+    recipient_type: str
+    recipient_segment_id: uuid.UUID | None = None
+    recipient_list_id: uuid.UUID | None = None
+
+
+class CampaignUpdateIn(BaseModel):
+    name: str | None = None
+    subject: str | None = None
+    body_html: str | None = None
+    body_text: str | None = None
+    template_id: uuid.UUID | None = None
+    sender_identity_id: uuid.UUID | None = None
+    recipient_type: str | None = None
+    recipient_segment_id: uuid.UUID | None = None
+    recipient_list_id: uuid.UUID | None = None
+
+
+class CampaignOut(BaseModel):
+    model_config = {"from_attributes": True}
+
+    id: uuid.UUID
+    name: str
+    subject: str
+    body_html: str
+    body_text: str | None
+    template_id: uuid.UUID | None
+    sender_identity_id: uuid.UUID
+    recipient_type: str
+    recipient_segment_id: uuid.UUID | None
+    recipient_list_id: uuid.UUID | None
+    status: str
+    created_at: datetime
+    updated_at: datetime
+    sent_at: datetime | None

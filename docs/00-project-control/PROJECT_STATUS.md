@@ -2,8 +2,8 @@
 
 - Document ID: DOC-PROJECT-STATUS
 - Status: ACTIVE
-- Version: 1.38
-- Last updated: 2026-08-01
+- Version: 1.43
+- Last updated: 2026-08-05
 - Owner: Coding agent (on behalf of product owner)
 - Related documents: [MASTER_TASK_TRACKER](MASTER_TASK_TRACKER.md), [DECISIONS](DECISIONS.md), [DEVELOPMENT_READINESS](DEVELOPMENT_READINESS.md), [FEATURE_STATUS_MATRIX](FEATURE_STATUS_MATRIX.md)
 
@@ -97,6 +97,8 @@ responsive sidebar navigation — hamburger toggle for desktop collapse + mobile
 drawer, plus an independent per-section accordion for each nav heading), requested
 directly by the user mid-session, is `DONE`.
 
+**Web Architecture & Brand Website Planning Pass:** `GRX-WEB-001` (Next.js App Router Groups refactoring: `(marketing)`, `(auth)`, `(dashboard)`, `(admin)`) added to [MASTER_TASK_TRACKER.md](MASTER_TASK_TRACKER.md) as `READY`. `GRX-WEB-002` (3D Brand & Landing Website: Linear/Vercel/Stripe aesthetic) and `GRX-ADMIN-001` (Admin Portal / Control Plane) added as `BACKLOG`.
+
 ## Documents created so far
 
 | Document | Status |
@@ -177,13 +179,29 @@ directly by the user mid-session, is `DONE`.
    `GRX-CONTACT-008` → `GRX-CONTACT-009` → `GRX-DOC-003` → `GRX-AUDIT-002` →
    `GRX-FOUND-009` (ad hoc, user-requested sidebar UX, not part of any sprint plan) →
    Sprint 3 planning (`DEC-GRX-015` resolving OQ-002, data model, RBAC, threat model,
-   `SPRINT_03_EMAIL_CAMPAIGN.md`, readiness gate, `GRX-EMAIL-001`–`010`).
+   `SPRINT_03_EMAIL_CAMPAIGN.md`, readiness gate, `GRX-EMAIL-001`–`010`) →
+   `GRX-EMAIL-001` → `GRX-EMAIL-002` → `GRX-EMAIL-003` → `GRX-EMAIL-004` → `GRX-EMAIL-005`.
    **Sprint 1 and Sprint 2 (Contacts) are both fully `DONE`**, including `GRX-DEVOPS-001`
    (user pushed and confirmed a green CI run), `GRX-DOC-003` (Sprint 1 doc/handoff
    update, which filed `GRX-AUDIT-002` for the audit-viewing gap it found), and
    `GRX-AUDIT-002` itself (closed the same session it was filed). **Sprint 3 (Email
-   Marketing) is now planned and `READY`**, first task `GRX-EMAIL-001` (provider
-   connection + sender identity).
+   Marketing) is under way**: `GRX-EMAIL-001` through `GRX-EMAIL-005` (provider
+   connection, templates, campaigns CRUD, the send pipeline, and the Postmark webhook
+   receiver + unsubscribe handling) are all `DONE`; next task is `GRX-EMAIL-006`
+   (campaign report/analytics endpoint).
+   `GRX-EMAIL-004` also fixed a real gap found along the way — `usage_records` was
+   documented as existing since Sprint 1 (`DEC-GRX-007`) but was never actually built —
+   and carries one documented evidence gap: no live Postmark account is available in
+   this environment, so the real outbound send was verified up to a genuine `535`
+   auth rejection from Postmark's actual relay, not a successful delivery.
+   `GRX-EMAIL-005` closed a second real gap: `THREAT_MODEL.md`'s `T14` called for webhook
+   Basic Auth credentials "stored alongside the provider connection, encrypted at rest",
+   but `email_provider_connections` never actually got those columns when Sprint 3 was
+   planned — added them here. It carries the same class of evidence gap as
+   `GRX-EMAIL-004`: no live Postmark account exists to confirm the exact webhook JSON
+   payload shape, so `PostmarkWebhookPayload` is deliberately permissive (`extra="allow"`,
+   only `RecordType`/`MessageID` required) and the full raw payload is preserved in
+   `email_events.metadata`.
 2. `RISKS.md`/`BLOCKERS.md` remain not required by any task yet; create them if/when a
    task's scope actually calls for one.
 3. Write full feature specs in `02-features/` for Slice 3 features (`EMAIL_PROVIDERS.md`,

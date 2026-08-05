@@ -2,15 +2,21 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from growixa_api import __version__
+from growixa_api.analytics.api import router as analytics_router
 from growixa_api.audit.api import router as audit_router
 from growixa_api.auth.api import router as auth_router
 from growixa_api.brand.api import router as brand_router
+from growixa_api.campaigns.api import router as campaigns_router
 from growixa_api.company.api import router as company_router
 from growixa_api.config import get_settings
 from growixa_api.contacts.api import router as contacts_router
+from growixa_api.email_delivery.api import public_router as email_delivery_public_router
+from growixa_api.email_delivery.api import router as email_delivery_router
 from growixa_api.health import router as health_router
+from growixa_api.integrations.api import router as integrations_router
 from growixa_api.jobs.api import router as jobs_router
 from growixa_api.roles.api import router as roles_router
+from growixa_api.templates.api import router as templates_router
 from growixa_api.users.api import router as users_router
 
 
@@ -32,4 +38,10 @@ def create_app() -> FastAPI:
     app.include_router(jobs_router)
     app.include_router(contacts_router)
     app.include_router(audit_router)
+    app.include_router(integrations_router)
+    app.include_router(templates_router)
+    app.include_router(campaigns_router)
+    app.include_router(email_delivery_router)
+    app.include_router(email_delivery_public_router)
+    app.include_router(analytics_router)
     return app

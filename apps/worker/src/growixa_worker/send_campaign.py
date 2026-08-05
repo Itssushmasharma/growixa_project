@@ -1,0 +1,177 @@
+import logging
+import uuid
+from datetime import UTC, datetime
+from typing import Any
+
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from growixa_worker.config import get_settings
+from growixa_worker.email_sender import EmailSendError, send_email
+from growixa_worker.encryption import decrypt_secret
+from growixa_worker.models import (
+    Campaign,
+    CampaignRecipient,
+    CampaignVersion,
+    ConsentRecord,
+    DeliveryAttempt,
+    EmailProviderConnection,
+    MessageDelivery,
+    SenderIdentity,
+    SuppressionEntry,
+    UsageRecord,
+)
+from growixa_worker.recipients import resolve_recipients
+
+logger = logging.getLogger("growixa_worker")
+
+
+async def _is_suppressed_or_withdrawn(session: AsyncSession, contact_id: Any, email: str) -> bool:
+    """Per DEC-GRX-008 / SPRINT_03's acceptance criteria: an address on the suppression
+    list OR whose most recent EMAIL consent is WITHDRAWN is excluded from sending."""
+    suppression_result = await session.execute(
+        select(SuppressionEntry.id).where(SuppressionEntry.email == email).limit(1)
+    )
+    if suppression_result.scalar_one_or_none() is not None:
+        return True
+
+    consent_result = await session.execute(
+        select(ConsentRecord.status)
+        .where(ConsentRecord.contact_id == contact_id, ConsentRecord.channel == "EMAIL")
+        .order_by(ConsentRecord.recorded_at.desc())
+        .limit(1)
+    )
+    latest_status = consent_result.scalar_one_or_none()
+    return latest_status == "WITHDRAWN"
+
+
+def _with_unsubscribe_footer(
+    body_html: str, body_text: str | None, campaign_recipient_id: uuid.UUID
+) -> tuple[str, str | None]:
+    """Every real send embeds a per-recipient unsubscribe link (GRX-EMAIL-005) — no
+    merge-tag infrastructure exists yet, so this is a plain footer append, not a
+    `{{unsubscribe_url}}` substitution. Identified only by the campaign_recipient's own
+    unguessable UUID, matching how the public /unsubscribe/{id} route authenticates it."""
+    url = f"{get_settings().api_public_url}/unsubscribe/{campaign_recipient_id}"
+    html = f'{body_html}<p><a href="{url}">Unsubscribe</a></p>'
+    text = f"{body_text}\n\nUnsubscribe: {url}" if body_text else f"Unsubscribe: {url}"
+    return html, text
+
+
+async def handle_send_campaign(session: AsyncSession, payload: dict[str, Any]) -> None:
+    campaign_id = payload["campaign_id"]
+    campaign = await session.get(Campaign, campaign_id)
+    if campaign is None:
+        logger.error("send_campaign: campaign %s not found, dropping job", campaign_id)
+        return
+
+    already_sent = await session.execute(
+        select(CampaignVersion.id).where(CampaignVersion.campaign_id == campaign.id).limit(1)
+    )
+    if already_sent.scalar_one_or_none() is not None:
+        logger.info("send_campaign: campaign %s already has a snapshot, no-op", campaign_id)
+        return
+
+    identity = await session.get(SenderIdentity, campaign.sender_identity_id)
+    connection = (
+        await session.get(EmailProviderConnection, identity.email_provider_connection_id)
+        if identity is not None
+        else None
+    )
+    if identity is None or connection is None:
+        logger.error(
+            "send_campaign: campaign %s has no resolvable sender identity/connection",
+            campaign_id,
+        )
+        campaign.status = "FAILED"
+        await session.commit()
+        return
+
+    contacts = await resolve_recipients(session, campaign)
+
+    recipients: list[CampaignRecipient] = []
+    for contact in contacts:
+        suppressed = await _is_suppressed_or_withdrawn(session, contact.id, contact.email)
+        recipient = CampaignRecipient(
+            campaign_id=campaign.id,
+            contact_id=contact.id,
+            email=contact.email,
+            status="SUPPRESSED" if suppressed else "PENDING",
+        )
+        session.add(recipient)
+        recipients.append(recipient)
+    await session.flush()
+
+    session.add(
+        CampaignVersion(
+            campaign_id=campaign.id,
+            subject=campaign.subject,
+            body_html=campaign.body_html,
+            body_text=campaign.body_text,
+            recipient_count=len(recipients),
+        )
+    )
+
+    smtp_password = decrypt_secret(connection.smtp_password_encrypted)
+    sent_count = 0
+    for recipient in recipients:
+        if recipient.status == "SUPPRESSED":
+            continue
+
+        delivery = MessageDelivery(campaign_recipient_id=recipient.id, status="QUEUED")
+        session.add(delivery)
+        await session.flush()
+
+        body_html, body_text = _with_unsubscribe_footer(
+            campaign.body_html, campaign.body_text, recipient.id
+        )
+        try:
+            await send_email(
+                smtp_host=connection.smtp_host,
+                smtp_port=connection.smtp_port,
+                smtp_username=connection.smtp_username,
+                smtp_password=smtp_password,
+                from_email=identity.from_email,
+                from_name=identity.from_name,
+                to_email=recipient.email,
+                subject=campaign.subject,
+                body_html=body_html,
+                body_text=body_text,
+            )
+        except EmailSendError as exc:
+            delivery.status = "FAILED"
+            recipient.status = "FAILED"
+            session.add(
+                DeliveryAttempt(
+                    message_delivery_id=delivery.id,
+                    attempt_number=1,
+                    status="FAILED",
+                    error_message=str(exc),
+                )
+            )
+            logger.warning("send_campaign: delivery to %s failed: %s", recipient.email, exc)
+        else:
+            delivery.status = "SENT"
+            delivery.sent_at = datetime.now(UTC)
+            recipient.status = "SENT"
+            sent_count += 1
+
+    campaign.status = "SENT"
+    campaign.sent_at = datetime.now(UTC)
+
+    session.add(
+        UsageRecord(
+            operation_type="email.sent",
+            quantity=sent_count,
+            unit="email",
+            created_by_user_id=campaign.created_by_user_id,
+        )
+    )
+
+    await session.commit()
+    logger.info(
+        "send_campaign: campaign %s sent to %s/%s recipients",
+        campaign_id,
+        sent_count,
+        len(recipients),
+    )

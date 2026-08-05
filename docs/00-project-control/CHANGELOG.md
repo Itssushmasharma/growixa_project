@@ -10,6 +10,146 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
+## 2026-08-05 — GRX-EMAIL-005: Postmark webhook receiver + unsubscribe handling
+
+- **Real gap found and fixed**: `THREAT_MODEL.md`'s `T14` called for webhook Basic Auth
+  credentials "stored alongside the provider connection, encrypted at rest", but
+  `email_provider_connections` never got those columns when Sprint 3 was planned.
+  Migration `f5ecaa79863b` adds `webhook_username`/`webhook_password_encrypted`
+  (nullable, fails closed if unset), auto-generated at connection-creation time and
+  Fernet-encrypted like the SMTP password; the plaintext webhook password is returned
+  exactly once, in the create-connection response, never persisted or retrievable
+  again. Same migration adds `email_events` (insert-only) and `unsubscribe_events`.
+- `POST /webhooks/postmark` (public, HTTP Basic Auth against the active connection's
+  own credentials, constant-time comparison) maps Postmark's `RecordType` to our
+  `event_type`, matches the delivery by `provider_message_id`, no-ops silently on an
+  unmatched `MessageID` (Postmark expects 200 either way), and auto-suppresses on
+  `BOUNCED`/`COMPLAINED` — wiring up `suppression_entries.reason` values that have
+  existed since `GRX-CONTACT-005` but were never written until now.
+- `GET /unsubscribe/{campaign_recipient_id}` is fully public, identified only by the
+  unguessable UUID (same shape as the invitation-accept token); records an
+  `unsubscribe_events` row and suppresses the address with no `actor_id` (new
+  `_upsert_suppression` helper, bypassing `suppress_email`'s actor-requiring wrapper).
+- The worker now appends a per-recipient unsubscribe link to every real send's
+  `body_html`/`body_text` (plain footer append, no merge-tag infrastructure yet); new
+  `api_public_url` worker setting.
+- `apps/api` `pytest`: 142 passed, 3 skipped (8 new: webhook no-credentials/wrong-
+  credentials rejection with zero `email_events` written, a valid `Delivery` event,
+  auto-suppression on `Bounce`, unmatched-`MessageID` no-op, valid unsubscribe,
+  unknown-id 404). `apps/worker` `pytest`: 9 passed (1 new: unsubscribe URL present in
+  the sent body). `alembic check` clean; `ruff`/`mypy` clean on both apps.
+- **Documented evidence gap (DEC-GRX-011 / SPRINT_03's pre-approved fallback), same
+  class as `GRX-EMAIL-004`'s**: no live Postmark account is available, so the exact
+  webhook JSON payload shape per `RecordType` is unverified. `PostmarkWebhookPayload`
+  is deliberately permissive (`extra="allow"`), and the full raw payload is preserved
+  in `email_events.metadata` for future reconciliation.
+- Live-verified against Compose: captured one-time webhook credentials from a real
+  connection-create call; confirmed no-auth/wrong-auth both 401 before touching
+  `email_events`; sent a real campaign (same `535` SMTP auth-rejection evidence-gap
+  boundary as `GRX-EMAIL-004`), manually set `provider_message_id` to simulate a
+  Postmark-assigned ID (the real send never receives one), then fired real `Delivery`
+  and `Bounce` webhook events and clicked the real unsubscribe link — all updated the
+  database exactly as expected. Cleaned up all smoke-test rows afterward. Commit
+  `9dbe9ee`
+
+## 2026-08-04 — GRX-EMAIL-004: send pipeline (worker + email_delivery)
+
+- **Real gap found and fixed**: `usage_records` was documented (`DATA_MODEL.md`,
+  `DEC-GRX-007`) as already existing since Sprint 1, but no migration or model for it
+  existed anywhere in the codebase. Created it now (new `growixa_api.usage` module)
+  since this task's own acceptance criterion — `usage_records` gets its first real
+  write — needed the table to actually exist.
+- Per an explicit decision this session, `apps/worker` gained its own minimal
+  SQLAlchemy/asyncpg data layer — models for exactly the tables `send_campaign` reads
+  or writes (including a duplicated segment-rule evaluator) — rather than depending on
+  `growixa_api` as a library, keeping the two apps independently deployable per
+  `SYSTEM_ARCHITECTURE.md`.
+- New `growixa_api.email_delivery` module: `POST /campaigns/{id}/test-send` sends
+  synchronously and inline (explicitly fine — it touches no campaign/recipient/delivery
+  state); `POST /campaigns/{id}/send` flips the campaign to `SENDING` and enqueues
+  `grx.email_delivery.send_campaign`, never sending inline. New `campaigns.send`
+  permission (Super Admin/Admin/Marketing Manager only, Content Creator excluded).
+- The worker's job handler resolves recipients per targeting type (including live
+  `DYNAMIC` segment rule evaluation), excludes suppressed or consent-withdrawn
+  addresses (`DEC-GRX-008`), freezes one `campaign_versions` snapshot, sends via real
+  `aiosmtplib`, and writes `message_deliveries`/`delivery_attempts`/`usage_records`.
+  Idempotent via a `campaign_versions`-existence check rather than a separate key store.
+- Also fixed a latent `apps/worker` test-config gap found while debugging the new
+  tests: missing `asyncio_default_fixture_loop_scope`/`asyncio_default_test_loop_scope
+  = "session"` (present in `apps/api` since GRX-TEST-001, never added to the worker)
+  was giving each test a fresh event loop, breaking the worker's cached DB engine
+  across tests.
+- `apps/api` `pytest`: 135 passed, 3 skipped (8 new). `apps/worker` `pytest`: 8 passed
+  (new). `alembic check` clean on both.
+- **Documented evidence gap (DEC-GRX-011 / SPRINT_03's pre-approved fallback)**: no
+  live Postmark account is available in this environment. Live-verified everything up
+  to the credential boundary — a real TCP/TLS + STARTTLS handshake against Postmark's
+  actual relay, rejected with a genuine `535 5.7.8 authentication failed` — proving the
+  SMTP path is real, not mocked. The worker correctly caught the failure, still wrote
+  the `campaign_versions` snapshot and a `usage_records` row (`quantity=0`), and left
+  the campaign `SENT` rather than crashing. Closes automatically once a real Postmark
+  server token is configured. Commit `aa2bdb4`
+
+## 2026-08-03 — GRX-EMAIL-003: campaigns CRUD + targeting
+
+- New `growixa_api.campaigns` module. Migration `d7fa144e5c60` creates all three tables
+  named in this task — `campaigns`, `campaign_versions`, `campaign_recipients` — since
+  `DATABASE_SCHEMA.md` groups them in one migration step, but only `campaigns` gets
+  CRUD here; the other two are schema-only until `GRX-EMAIL-004`'s send pipeline
+  populates them (same schema-now/write-path-later split as `GRX-AUDIT-001`→`002`).
+- Recipient targeting (`SEGMENT`/`LIST`/`ALL_CONTACTS`, exactly one of
+  `recipient_segment_id`/`recipient_list_id` set per type) is validated at the service
+  layer, calling directly into `integrations`/`templates`/`contacts`' own repository
+  functions to check referenced IDs exist, per `MODULE_BOUNDARIES.md`'s cross-module
+  call convention. No new permissions — reused `campaigns.manage`/`campaigns.view`.
+- Draft editing uses `exclude_unset` so a `PATCH` can explicitly null a field (e.g.
+  clearing `recipient_segment_id` when switching to `ALL_CONTACTS`) — the first module
+  needing that over the simpler "`None` means don't touch" convention used elsewhere.
+  Editing is blocked (409) once `status` leaves `DRAFT`.
+- `pytest` 127 passed, 3 skipped (10 new integration tests); `alembic check` clean.
+  Live-verified against Compose: created and edited a campaign via curl (targeting
+  switched cleanly, old segment reference cleared), an invalid both-set payload got
+  400, a throwaway Viewer got 403. Commit `52fa336`
+
+## 2026-08-03 — GRX-EMAIL-002: email templates + versioning
+
+- New `growixa_api.templates` module: `EmailTemplate`/`EmailTemplateVersion` models,
+  gated on `campaigns.manage` (create/edit) and `campaigns.view` (read) per
+  `RBAC.md`'s Slice 3 matrix. Migration `d36211c53aed` seeds both permission codes —
+  neither existed yet, since Slice 3 planning deferred seeding them to whichever task
+  first needed them; `campaigns.send` stays deferred to `GRX-EMAIL-004`.
+- `POST /templates` creates a template and its first version (version 1) together, since
+  a template can't exist without content. `POST /templates/{id}/versions` appends
+  version `max+1`; the previous version's row is never mutated, matching
+  `ConsentRecord`'s insert-only pattern — "current" is derived as the highest
+  `version_number`, not a mutable pointer.
+- `pytest` 117 passed, 3 skipped (6 new integration tests); `alembic check` clean.
+  Live-verified against Compose: created and edited a template via curl (version
+  1 → 2, both rows intact), a throwaway Viewer got 403 on read. Commit `1dac3ff`
+
+## 2026-08-03 — GRX-EMAIL-001: email provider connection + sender identity
+
+- First Sprint 3 task. New `growixa_api.integrations` module (named per
+  `MODULE_BOUNDARIES.md` — the designated home for all future provider connections, not
+  email-specific) with `EmailProviderConnection`/`SenderIdentity` models and CRUD routes
+  gated on a new `integrations.manage` permission, granted to Super Admin only — the
+  project's first Admin-excluded permission.
+- Added Fernet symmetric encryption (`auth/encryption.py`, a new `encryption_key`
+  setting) for SMTP credentials at rest per `DEC-GRX-009`; `EmailProviderConnectionOut`
+  never returns the password or its encrypted form. Creating a new connection
+  deactivates any existing active one instead of mutating it in place.
+- Migration `393c4222c8af` adds `email_provider_connections`/`sender_identities` plus
+  the partial `(is_active) WHERE is_active` index, and seeds `integrations.manage`.
+- **Real bug found and fixed**: the sender-identity status-update route hit
+  `MissingGreenlet` on `updated_at` after commit — `onupdate=func.now()` columns expire
+  on UPDATE and need an explicit `session.refresh()` before serialization, the same
+  issue and fix already documented in `contacts/services.py`.
+- `pytest` 111 passed, 3 skipped (7 new integration tests); `alembic check` clean;
+  rebuilt the `api` container for the new `cryptography` dependency. Live-verified
+  against Compose: Super Admin created a connection + sender identity via curl with the
+  password never appearing in any response, and a throwaway Admin-role user got 403 on
+  the same routes. Commit `f545ad0`
+
 ## 2026-08-01 — Sprint 3 (Email Marketing) planning
 
 - Slice 3 (First Email Campaign) needed one prerequisite Sprint 1/2 never did:
