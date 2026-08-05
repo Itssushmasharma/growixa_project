@@ -10,6 +10,48 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
+## 2026-08-05 — GRX-EMAIL-005: Postmark webhook receiver + unsubscribe handling
+
+- **Real gap found and fixed**: `THREAT_MODEL.md`'s `T14` called for webhook Basic Auth
+  credentials "stored alongside the provider connection, encrypted at rest", but
+  `email_provider_connections` never got those columns when Sprint 3 was planned.
+  Migration `f5ecaa79863b` adds `webhook_username`/`webhook_password_encrypted`
+  (nullable, fails closed if unset), auto-generated at connection-creation time and
+  Fernet-encrypted like the SMTP password; the plaintext webhook password is returned
+  exactly once, in the create-connection response, never persisted or retrievable
+  again. Same migration adds `email_events` (insert-only) and `unsubscribe_events`.
+- `POST /webhooks/postmark` (public, HTTP Basic Auth against the active connection's
+  own credentials, constant-time comparison) maps Postmark's `RecordType` to our
+  `event_type`, matches the delivery by `provider_message_id`, no-ops silently on an
+  unmatched `MessageID` (Postmark expects 200 either way), and auto-suppresses on
+  `BOUNCED`/`COMPLAINED` — wiring up `suppression_entries.reason` values that have
+  existed since `GRX-CONTACT-005` but were never written until now.
+- `GET /unsubscribe/{campaign_recipient_id}` is fully public, identified only by the
+  unguessable UUID (same shape as the invitation-accept token); records an
+  `unsubscribe_events` row and suppresses the address with no `actor_id` (new
+  `_upsert_suppression` helper, bypassing `suppress_email`'s actor-requiring wrapper).
+- The worker now appends a per-recipient unsubscribe link to every real send's
+  `body_html`/`body_text` (plain footer append, no merge-tag infrastructure yet); new
+  `api_public_url` worker setting.
+- `apps/api` `pytest`: 142 passed, 3 skipped (8 new: webhook no-credentials/wrong-
+  credentials rejection with zero `email_events` written, a valid `Delivery` event,
+  auto-suppression on `Bounce`, unmatched-`MessageID` no-op, valid unsubscribe,
+  unknown-id 404). `apps/worker` `pytest`: 9 passed (1 new: unsubscribe URL present in
+  the sent body). `alembic check` clean; `ruff`/`mypy` clean on both apps.
+- **Documented evidence gap (DEC-GRX-011 / SPRINT_03's pre-approved fallback), same
+  class as `GRX-EMAIL-004`'s**: no live Postmark account is available, so the exact
+  webhook JSON payload shape per `RecordType` is unverified. `PostmarkWebhookPayload`
+  is deliberately permissive (`extra="allow"`), and the full raw payload is preserved
+  in `email_events.metadata` for future reconciliation.
+- Live-verified against Compose: captured one-time webhook credentials from a real
+  connection-create call; confirmed no-auth/wrong-auth both 401 before touching
+  `email_events`; sent a real campaign (same `535` SMTP auth-rejection evidence-gap
+  boundary as `GRX-EMAIL-004`), manually set `provider_message_id` to simulate a
+  Postmark-assigned ID (the real send never receives one), then fired real `Delivery`
+  and `Bounce` webhook events and clicked the real unsubscribe link — all updated the
+  database exactly as expected. Cleaned up all smoke-test rows afterward. Commit
+  `9dbe9ee`
+
 ## 2026-08-04 — GRX-EMAIL-004: send pipeline (worker + email_delivery)
 
 - **Real gap found and fixed**: `usage_records` was documented (`DATA_MODEL.md`,
