@@ -1,10 +1,17 @@
+import os
 from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+# Mirrors growixa_api.config's same pattern: when running pytest, ENVIRONMENT is set to
+# "test" via pyproject.toml's pytest-env config, so tests load .env.test (a separate
+# growixa_test database) instead of .env (the live dev database) — integration tests'
+# fixture teardowns DELETE rows, and must never do that against dev/seed data.
+_env_file = ".env.test" if os.getenv("ENVIRONMENT") == "test" else ".env"
+
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(env_file=_env_file, extra="ignore")
 
     environment: str = "local"
     log_level: str = "info"

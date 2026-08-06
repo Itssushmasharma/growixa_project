@@ -22,6 +22,7 @@ dev = [
     "pytest>=8.3",
     "pytest-asyncio>=0.24",
     "pytest-cov>=6.0",
+    "pytest-env>=1.1",
 ]
 
 [build-system]
@@ -58,6 +59,9 @@ asyncio_default_fixture_loop_scope = "session"
 asyncio_default_test_loop_scope = "session"
 pythonpath = ["src"]
 addopts = "--cov=growixa_worker --cov-report=term-missing"
+# !! CRITICAL: always target the isolated test DB, never the live dev `growixa` database.
+# Tests run fixture teardowns that DELETE rows. Without this, running pytest wipes dev data.
+env = ["ENVIRONMENT=test"]
 markers = [
     "integration: exercises a real backing service (RabbitMQ) — not a pure unit test; run alone via -m integration or exclude via -m 'not integration'",
 ]

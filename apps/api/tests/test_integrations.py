@@ -46,10 +46,20 @@ def _access_token_cookie(user_id: uuid.UUID) -> dict[str, str]:
     return {"access_token": token}
 
 
-async def _cleanup() -> None:
+async def _cleanup(created_by_user_id: uuid.UUID) -> None:
+    """Scoped by created_by_user_id (the actor each test's own user_factory-created user
+    passes when calling the create endpoints) rather than by payload values, since
+    individual tests vary smtp_username per call (e.g. a "second-token" override) — an
+    actor-scoped delete catches every row a test created regardless of payload shape."""
     async with async_session_factory() as session:
-        await session.execute(delete(SenderIdentity))
-        await session.execute(delete(EmailProviderConnection))
+        await session.execute(
+            delete(SenderIdentity).where(SenderIdentity.created_by_user_id == created_by_user_id)
+        )
+        await session.execute(
+            delete(EmailProviderConnection).where(
+                EmailProviderConnection.created_by_user_id == created_by_user_id
+            )
+        )
         await session.commit()
 
 
@@ -88,7 +98,7 @@ async def test_super_admin_can_create_connection_and_password_is_encrypted(
                 decrypt_secret(row.smtp_password_encrypted) == CONNECTION_PAYLOAD["smtp_password"]
             )
     finally:
-        await _cleanup()
+        await _cleanup(super_admin_id)
 
 
 @pytest.mark.asyncio
@@ -117,7 +127,7 @@ async def test_creating_a_new_connection_deactivates_the_previous_one_for_that_p
         assert len(active) == 1
         assert active[0]["smtp_username"] == "second-token"
     finally:
-        await _cleanup()
+        await _cleanup(super_admin_id)
 
 
 @pytest.mark.asyncio
@@ -148,7 +158,7 @@ async def test_connecting_a_different_provider_leaves_the_other_active(
         providers = {c["provider"] for c in connections}
         assert providers == {"POSTMARK", "CUSTOM_SMTP"}
     finally:
-        await _cleanup()
+        await _cleanup(super_admin_id)
 
 
 @pytest.mark.asyncio
@@ -170,7 +180,7 @@ async def test_invalid_provider_value_returns_422(
 
         assert response.status_code == 422
     finally:
-        await _cleanup()
+        await _cleanup(super_admin_id)
 
 
 @pytest.mark.asyncio
@@ -242,7 +252,7 @@ async def test_super_admin_can_create_and_list_sender_identities(
         assert status_response.status_code == 200
         assert status_response.json()["verification_status"] == "VERIFIED"
     finally:
-        await _cleanup()
+        await _cleanup(super_admin_id)
 
 
 @pytest.mark.asyncio
@@ -268,7 +278,7 @@ async def test_sender_identity_rejects_unknown_connection(
 
         assert response.status_code == 404
     finally:
-        await _cleanup()
+        await _cleanup(super_admin_id)
 
 
 @pytest.mark.asyncio
@@ -304,4 +314,4 @@ async def test_sender_identity_status_update_rejects_invalid_status(
 
         assert response.status_code == 400
     finally:
-        await _cleanup()
+        await _cleanup(super_admin_id)

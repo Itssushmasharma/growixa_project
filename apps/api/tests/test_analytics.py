@@ -13,7 +13,7 @@ from datetime import UTC, datetime
 import jwt
 import pytest
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy import delete
+from sqlalchemy import delete, select
 
 from growixa_api.app import create_app
 from growixa_api.auth.encryption import encrypt_secret
@@ -113,10 +113,25 @@ async def _cleanup() -> None:
         await session.execute(delete(EmailEvent))
         await session.execute(delete(MessageDelivery))
         await session.execute(delete(CampaignRecipient))
-        await session.execute(delete(Campaign))
-        await session.execute(delete(Contact))
-        await session.execute(delete(SenderIdentity))
-        await session.execute(delete(EmailProviderConnection))
+        await session.execute(delete(Campaign).where(Campaign.name == CAMPAIGN_PAYLOAD["name"]))
+        await session.execute(delete(Contact).where(Contact.email.like("%@example.com")))
+        connection_ids = (
+            (
+                await session.execute(
+                    select(SenderIdentity.email_provider_connection_id).where(
+                        SenderIdentity.from_email == "hello@growixa.local"
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+        await session.execute(
+            delete(SenderIdentity).where(SenderIdentity.from_email == "hello@growixa.local")
+        )
+        await session.execute(
+            delete(EmailProviderConnection).where(EmailProviderConnection.id.in_(connection_ids))
+        )
         await session.commit()
 
 

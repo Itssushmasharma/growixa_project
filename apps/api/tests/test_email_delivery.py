@@ -77,9 +77,24 @@ async def _create_campaign(sender_identity_id: uuid.UUID, actor_id: uuid.UUID) -
 
 async def _cleanup() -> None:
     async with async_session_factory() as session:
-        await session.execute(delete(Campaign))
-        await session.execute(delete(SenderIdentity))
-        await session.execute(delete(EmailProviderConnection))
+        await session.execute(delete(Campaign).where(Campaign.name == CAMPAIGN_PAYLOAD["name"]))
+        connection_ids = (
+            (
+                await session.execute(
+                    select(SenderIdentity.email_provider_connection_id).where(
+                        SenderIdentity.from_email == "hello@growixa.local"
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+        await session.execute(
+            delete(SenderIdentity).where(SenderIdentity.from_email == "hello@growixa.local")
+        )
+        await session.execute(
+            delete(EmailProviderConnection).where(EmailProviderConnection.id.in_(connection_ids))
+        )
         await session.commit()
 
 
@@ -153,12 +168,29 @@ async def _cleanup_delivery_fixtures() -> None:
         await session.execute(delete(EmailEvent))
         await session.execute(delete(MessageDelivery))
         await session.execute(delete(UnsubscribeEvent))
-        await session.execute(delete(SuppressionEntry))
+        await session.execute(
+            delete(SuppressionEntry).where(SuppressionEntry.email.like("%@example.com"))
+        )
         await session.execute(delete(CampaignRecipient))
-        await session.execute(delete(Campaign))
-        await session.execute(delete(Contact))
-        await session.execute(delete(SenderIdentity))
-        await session.execute(delete(EmailProviderConnection))
+        await session.execute(delete(Campaign).where(Campaign.name == CAMPAIGN_PAYLOAD["name"]))
+        await session.execute(delete(Contact).where(Contact.email.like("%@example.com")))
+        connection_ids = (
+            (
+                await session.execute(
+                    select(SenderIdentity.email_provider_connection_id).where(
+                        SenderIdentity.from_email == "hello@growixa.local"
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+        await session.execute(
+            delete(SenderIdentity).where(SenderIdentity.from_email == "hello@growixa.local")
+        )
+        await session.execute(
+            delete(EmailProviderConnection).where(EmailProviderConnection.id.in_(connection_ids))
+        )
         await session.commit()
 
 

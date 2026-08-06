@@ -11,7 +11,7 @@ from collections.abc import AsyncGenerator, Awaitable, Callable
 import jwt
 import pytest
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy import delete
+from sqlalchemy import delete, select
 
 from growixa_api.app import create_app
 from growixa_api.campaigns.models import Campaign, CampaignRecipient, CampaignVersion
@@ -85,13 +85,28 @@ async def _cleanup() -> None:
     async with async_session_factory() as session:
         await session.execute(delete(CampaignRecipient))
         await session.execute(delete(CampaignVersion))
-        await session.execute(delete(Campaign))
+        await session.execute(delete(Campaign).where(Campaign.name == "Spring Sale"))
         await session.execute(delete(Segment))
         await session.execute(delete(ContactList))
         await session.execute(delete(EmailTemplateVersion))
         await session.execute(delete(EmailTemplate))
-        await session.execute(delete(SenderIdentity))
-        await session.execute(delete(EmailProviderConnection))
+        connection_ids = (
+            (
+                await session.execute(
+                    select(SenderIdentity.email_provider_connection_id).where(
+                        SenderIdentity.from_email == "hello@growixa.local"
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+        await session.execute(
+            delete(SenderIdentity).where(SenderIdentity.from_email == "hello@growixa.local")
+        )
+        await session.execute(
+            delete(EmailProviderConnection).where(EmailProviderConnection.id.in_(connection_ids))
+        )
         await session.commit()
 
 
