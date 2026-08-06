@@ -9,6 +9,7 @@ This document maintains a real-time record of all parallel Git worktrees, active
 | Worktree Path | Branch Name | Feature / Task | Preview URL | Status | Created |
 |---|---|---|---|---|---|
 | `.worktrees/grx-templates-page-redesign` | `feature/FRONTEND/GRX-TEMPLATES-PAGE-REDESIGN` | Email Templates Page Redesign (Hero Showcase, Visual Card Grid, Metric Summary Cards, View Switcher & Live Preview Drawer) | `http://localhost:3001` | 🟡 `IN_PROGRESS` | 2026-08-06 |
+| `.worktrees/grx-admin-health-panel` | `feature/FRONTEND/GRX-ADMIN-001-HEALTH-PANEL` | System Health Panel (`/admin`, real auth gate, live Postgres/Redis/RabbitMQ status, healthcheck-job trigger) — see `docs/14-sprints/SPRINT_ADMIN_001_HEALTH_PANEL.md` for the full scoped plan | `http://localhost:3001` | 🟡 `READY_FOR_AGENT` | 2026-08-06 |
 
 ---
 
