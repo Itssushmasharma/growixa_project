@@ -9,6 +9,7 @@ import type { EmailTemplate } from "../templates/types";
 import { CampaignFormPage } from "./campaign-form-page";
 import type {
   Campaign,
+  CampaignReport,
   ContactListSummary,
   MeResponse,
   SegmentSummary,
@@ -226,6 +227,109 @@ describe("CampaignFormPage", () => {
     expect(screen.queryByRole("button", { name: "Send now" })).not.toBeInTheDocument();
     // Test-send stays available regardless of status.
     expect(screen.getByRole("button", { name: "Send test" })).toBeInTheDocument();
+  });
+
+  it("shows the delivery report for a sent campaign", async () => {
+    const sentCampaign: Campaign = { ...DRAFT_CAMPAIGN, status: "SENT" };
+    const report: CampaignReport = {
+      campaign_id: "campaign-1",
+      sent: 200,
+      delivered: 190,
+      opened: 95,
+      clicked: 38,
+      bounced: 10,
+      complained: 1,
+    };
+    mockedApiFetch.mockImplementation((path: string) => {
+      if (path === "/auth/me")
+        return Promise.resolve(meWithPermissions(["campaigns.view", "campaigns.manage"]));
+      if (path === "/integrations/sender-identities") return Promise.resolve([IDENTITY]);
+      if (path === "/contacts/lists") return Promise.resolve([LIST]);
+      if (path === "/contacts/segments") return Promise.resolve([SEGMENT]);
+      if (path === "/templates") return Promise.resolve([TEMPLATE]);
+      if (path === "/campaigns/campaign-1") return Promise.resolve(sentCampaign);
+      if (path === "/campaigns/campaign-1/report") return Promise.resolve(report);
+      throw new Error(`unexpected path: ${path}`);
+    });
+
+    renderFormPage({ mode: "edit", campaignId: "campaign-1" });
+    await screen.findByLabelText("Campaign name");
+
+    expect(await screen.findByText("Delivery report")).toBeInTheDocument();
+    expect(screen.getByText("200")).toBeInTheDocument();
+    expect(screen.getByText("190 (95%)")).toBeInTheDocument();
+    expect(screen.getByText("95 (50%)")).toBeInTheDocument();
+    expect(screen.getByText("38 (20%)")).toBeInTheDocument();
+    expect(screen.getByText("10 (5%)")).toBeInTheDocument();
+    expect(screen.getByText("1 (1%)")).toBeInTheDocument();
+  });
+
+  it("does not show a delivery report for a draft campaign", async () => {
+    mockedApiFetch.mockImplementation((path: string) => {
+      if (path === "/auth/me")
+        return Promise.resolve(meWithPermissions(["campaigns.view", "campaigns.manage"]));
+      if (path === "/integrations/sender-identities") return Promise.resolve([IDENTITY]);
+      if (path === "/contacts/lists") return Promise.resolve([LIST]);
+      if (path === "/contacts/segments") return Promise.resolve([SEGMENT]);
+      if (path === "/templates") return Promise.resolve([TEMPLATE]);
+      if (path === "/campaigns/campaign-1") return Promise.resolve(DRAFT_CAMPAIGN);
+      throw new Error(`unexpected path: ${path}`);
+    });
+
+    renderFormPage({ mode: "edit", campaignId: "campaign-1" });
+    await screen.findByLabelText("Campaign name");
+
+    expect(screen.queryByText("Delivery report")).not.toBeInTheDocument();
+  });
+
+  it("shows raw counts without a percentage when nothing was sent yet", async () => {
+    const sendingCampaign: Campaign = { ...DRAFT_CAMPAIGN, status: "SENDING" };
+    const report: CampaignReport = {
+      campaign_id: "campaign-1",
+      sent: 0,
+      delivered: 0,
+      opened: 0,
+      clicked: 0,
+      bounced: 0,
+      complained: 0,
+    };
+    mockedApiFetch.mockImplementation((path: string) => {
+      if (path === "/auth/me")
+        return Promise.resolve(meWithPermissions(["campaigns.view", "campaigns.manage"]));
+      if (path === "/integrations/sender-identities") return Promise.resolve([IDENTITY]);
+      if (path === "/contacts/lists") return Promise.resolve([LIST]);
+      if (path === "/contacts/segments") return Promise.resolve([SEGMENT]);
+      if (path === "/templates") return Promise.resolve([TEMPLATE]);
+      if (path === "/campaigns/campaign-1") return Promise.resolve(sendingCampaign);
+      if (path === "/campaigns/campaign-1/report") return Promise.resolve(report);
+      throw new Error(`unexpected path: ${path}`);
+    });
+
+    renderFormPage({ mode: "edit", campaignId: "campaign-1" });
+    await screen.findByLabelText("Campaign name");
+
+    expect(await screen.findByText("Delivery report")).toBeInTheDocument();
+    expect(screen.getAllByText("0")).toHaveLength(6);
+  });
+
+  it("still renders the campaign when the report fetch fails", async () => {
+    const sentCampaign: Campaign = { ...DRAFT_CAMPAIGN, status: "SENT" };
+    mockedApiFetch.mockImplementation((path: string) => {
+      if (path === "/auth/me")
+        return Promise.resolve(meWithPermissions(["campaigns.view", "campaigns.manage"]));
+      if (path === "/integrations/sender-identities") return Promise.resolve([IDENTITY]);
+      if (path === "/contacts/lists") return Promise.resolve([LIST]);
+      if (path === "/contacts/segments") return Promise.resolve([SEGMENT]);
+      if (path === "/templates") return Promise.resolve([TEMPLATE]);
+      if (path === "/campaigns/campaign-1") return Promise.resolve(sentCampaign);
+      if (path === "/campaigns/campaign-1/report") return Promise.reject(new Error("boom"));
+      throw new Error(`unexpected path: ${path}`);
+    });
+
+    renderFormPage({ mode: "edit", campaignId: "campaign-1" });
+
+    expect(await screen.findByLabelText("Campaign name")).toHaveValue("Spring Sale");
+    expect(screen.queryByText("Delivery report")).not.toBeInTheDocument();
   });
 
   it("hides the test/send panel entirely for a user without campaigns.send", async () => {

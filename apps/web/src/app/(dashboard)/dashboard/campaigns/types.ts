@@ -45,3 +45,13 @@ export interface SegmentSummary {
   name: string;
   member_count: number;
 }
+
+export interface CampaignReport {
+  campaign_id: string;
+  sent: number;
+  delivered: number;
+  opened: number;
+  clicked: number;
+  bounced: number;
+  complained: number;
+}

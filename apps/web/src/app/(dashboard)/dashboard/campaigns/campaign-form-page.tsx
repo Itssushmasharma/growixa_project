@@ -12,6 +12,7 @@ import type { EmailTemplate } from "../templates/types";
 import styles from "./campaign-form-page.module.css";
 import type {
   Campaign,
+  CampaignReport,
   ContactListSummary,
   MeResponse,
   RecipientType,
@@ -73,6 +74,7 @@ export function CampaignFormPage({ mode, campaignId }: CampaignFormPageProps) {
   const [canSend, setCanSend] = useState(false);
 
   const [campaign, setCampaign] = useState<Campaign | null>(null);
+  const [report, setReport] = useState<CampaignReport | null>(null);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [submitting, setSubmitting] = useState(false);
 
@@ -118,6 +120,16 @@ export function CampaignFormPage({ mode, campaignId }: CampaignFormPageProps) {
           const loaded = await apiFetch<Campaign>(`/campaigns/${campaignId}`);
           setCampaign(loaded);
           setForm(campaignToForm(loaded));
+          if (loaded.status !== "DRAFT") {
+            // Best-effort: the report is supplementary, so a failure here shouldn't
+            // block the rest of the page (which already loaded successfully) from rendering.
+            try {
+              const reportData = await apiFetch<CampaignReport>(`/campaigns/${campaignId}/report`);
+              setReport(reportData);
+            } catch {
+              // Leave report null — no report section renders.
+            }
+          }
         }
       } catch {
         setLoadError("Could not load this campaign.");
@@ -522,6 +534,48 @@ export function CampaignFormPage({ mode, campaignId }: CampaignFormPageProps) {
             )}
           </div>
 
+          {report && (
+            <div className={styles.reportCard}>
+              <h3 className={styles.previewHeading}>Delivery report</h3>
+              <div className={styles.reportGrid}>
+                <div className={styles.reportStat}>
+                  <span className={styles.reportValue}>{report.sent}</span>
+                  <span className={styles.reportLabel}>Sent</span>
+                </div>
+                <div className={styles.reportStat}>
+                  <span className={styles.reportValue}>
+                    {formatMetric(report.delivered, report.sent)}
+                  </span>
+                  <span className={styles.reportLabel}>Delivered</span>
+                </div>
+                <div className={styles.reportStat}>
+                  <span className={styles.reportValue}>
+                    {formatMetric(report.opened, report.delivered)}
+                  </span>
+                  <span className={styles.reportLabel}>Opened</span>
+                </div>
+                <div className={styles.reportStat}>
+                  <span className={styles.reportValue}>
+                    {formatMetric(report.clicked, report.delivered)}
+                  </span>
+                  <span className={styles.reportLabel}>Clicked</span>
+                </div>
+                <div className={styles.reportStat}>
+                  <span className={styles.reportValue}>
+                    {formatMetric(report.bounced, report.sent)}
+                  </span>
+                  <span className={styles.reportLabel}>Bounced</span>
+                </div>
+                <div className={styles.reportStat}>
+                  <span className={styles.reportValue}>
+                    {formatMetric(report.complained, report.sent)}
+                  </span>
+                  <span className={styles.reportLabel}>Complained</span>
+                </div>
+              </div>
+            </div>
+          )}
+
           {mode === "edit" && campaign && canSend && (
             <div className={styles.sendCard}>
               <h3 className={styles.previewHeading}>Test &amp; send</h3>
@@ -567,6 +621,12 @@ export function CampaignFormPage({ mode, campaignId }: CampaignFormPageProps) {
       </div>
     </div>
   );
+}
+
+function formatMetric(count: number, denominator: number): string {
+  if (denominator === 0) return `${count}`;
+  const rate = Math.round((count / denominator) * 100);
+  return `${count} (${rate}%)`;
 }
 
 function parseApiErrorDetail(error: unknown, fallback: string): string {
