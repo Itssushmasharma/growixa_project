@@ -797,6 +797,167 @@ cat docs/14-sprints/SPRINT_04_SCHEDULED_CAMPAIGN.md
 podman compose up -d
 ```
 
-## Latest commit
+## Latest commit (superseded — see GRX-SCHED-002/003/004/005/006 section below)
 
 `20dba50` — feat(web): campaign delivery report card (GRX-EMAIL-010)
+
+## Work completed (GRX-SCHED-002/003/004/005/006, Sprint 4's remaining backend — user explicitly asked to have this actually built, not just documented as a gap)
+
+- **Scheduler ticker** (`apps/api/src/growixa_api/campaigns/scheduler.py`, new):
+  `claim_due_campaigns()` does one `UPDATE campaigns SET status='DISPATCHING' WHERE
+  status='SCHEDULED' AND scheduled_at <= NOW() RETURNING *` (safe under concurrent
+  tickers via Postgres row locks); `run_scheduler_loop()` runs forever as a `FastAPI`
+  `lifespan` background `asyncio` task, polling every `scheduler_poll_interval_seconds`
+  (new setting, default 5s), publishing one `grx.campaigns.dispatch` job per claimed
+  campaign after committing the claim.
+- **Worker dispatch consumer** (`apps/worker/src/growixa_worker/consumer.py`): reuses
+  `handle_send_campaign` unmodified — confirmed by reading it that it's status-agnostic
+  and already idempotent via a `CampaignVersion`-existence check, so the immediate
+  "Send now" path and scheduled dispatch safely share it.
+- **Redis idempotency** (`apps/worker/src/growixa_worker/redis_client.py`, new): marks a
+  job's `idempotency_key` done *after* success, never before attempting — a
+  claim-before-attempt lock would incorrectly block a legitimate retry after a transient
+  failure. The DB-level `CampaignVersion` check remains authoritative either way; this is
+  a fast-path optimization against worker-restart redelivery duplication only.
+- **Retry backoff**: RabbitMQ TTL + dead-letter-exchange pattern — three durable wait
+  queues (`grx.campaigns.dispatch.retry.{0,1,2}`, TTL 1m/5m/15m) whose
+  `x-dead-letter-routing-key` points back at `grx.campaigns.dispatch`, so a "delayed"
+  message reappears automatically once its TTL expires. No delay plugin needed, and
+  retries survive a worker restart (unlike an in-process sleep).
+- **DLQ**: after `MAX_DISPATCH_ATTEMPTS` (3 retries beyond the first attempt), the job is
+  republished to `grx.campaigns.dlq` and the campaign is marked `FAILED`.
+- **Tests**: `apps/api/tests/test_campaign_scheduler_ticker.py` (3, claim-scoping,
+  one-job-per-claim, no-op-when-nothing-due) and
+  `apps/worker/tests/test_dispatch_consumer.py` (4, idempotency skip, mark-done-after-
+  success, retry-queue routing, DLQ+FAILED-after-max-attempts) — all against real
+  Postgres, with a fake in-memory Redis/AMQP-channel stand-in for the worker tests since
+  what's under test is `consumer.py`'s own routing decisions, not `aio_pika`'s/`redis-
+  py`'s wire behavior.
+
+## Real bugs found and fixed while writing this
+
+1. **Migration downgrade collision**: `caf1c42204c9` (a corrective migration from the
+   `GRX-SCHED-001` session, written to fix a stale-column-type drift in this dev DB) and
+   `4a92b8107c12` (the migration below it) both dropped a unique constraint of the exact
+   same name (`uq_campaigns_idempotency_key`) in their respective `downgrade()`
+   functions. Harmless on the way up (redundant no-op), but a full `alembic downgrade`
+   chain failed on the second drop with "constraint does not exist" —
+   `test_alembic_upgrade_head_then_downgrade_base_round_trips_cleanly` caught it. Root-
+   caused by directly testing single-step (`alembic downgrade -1`, passed) vs.
+   multi-step (`alembic downgrade -2`, failed) downgrades via `alembic.command`, not by
+   guessing. Fixed by making `caf1c42204c9`'s `upgrade()`/`downgrade()` both no-ops,
+   since its only job was already fully subsumed by `4a92b8107c12`'s own (correct)
+   definition — it stays in the revision chain purely as a historical marker.
+2. **The live `growixa-api-1` container had zero volume mounts.** `docker inspect
+   growixa-api-1 --format '{{json .Mounts}}'` returned `[]` despite `compose.yaml`
+   defining bind mounts for `src`/`migrations` — the container had been created before
+   those mounts existed in `compose.yaml`, and `docker compose restart` doesn't reapply
+   config (only recreation does), so it had been silently serving a stale baked-in image
+   the entire session. Every source edit made this session (and possibly earlier ones)
+   never actually reached the running process. Found while investigating why the
+   scheduler's own startup log line never appeared live, despite the code being correct
+   and the integration tests passing. `docker compose up -d --build api` recreated it
+   correctly — confirmed via `docker inspect` afterward showing the mounts present, and
+   the scheduler's log line then appearing.
+3. **No handler was ever configured for the `growixa_api` logger namespace** — a smaller
+   bug surfaced by #2. Uvicorn only configures its own `uvicorn`/`uvicorn.access`/
+   `uvicorn.error` loggers; nothing in `growixa_api` called `logging.basicConfig`, so
+   every `logger.info`/`.exception` call anywhere in the app (not just the new
+   scheduler) was silently going nowhere. Added a `logging.basicConfig` call to
+   `create_app()`.
+
+## Files changed
+
+- `apps/api/src/growixa_api/campaigns/scheduler.py` (new), `apps/api/src/growixa_api/app.py`,
+  `apps/api/src/growixa_api/config.py`
+- `apps/api/tests/test_campaign_scheduler_ticker.py` (new)
+- `apps/api/migrations/versions/caf1c42204c9_fix_campaigns_idempotency_key_type.py`
+  (upgrade/downgrade both changed to no-ops)
+- `apps/worker/src/growixa_worker/{consumer.py,redis_client.py (new),config.py,main.py,models.py}`
+- `apps/worker/tests/test_dispatch_consumer.py` (new)
+- `apps/worker/pyproject.toml` (added `redis` dependency), `apps/worker/.env` (added `REDIS_URL`)
+- `compose.yaml` (worker service: added `REDIS_URL` env var + `redis` healthy dependency)
+- `docs/00-project-control/{MASTER_TASK_TRACKER.md,PROJECT_STATUS.md,CHANGELOG.md,AGENT_HANDOFF.md}`
+
+## Commands executed
+
+- `ruff check`/`ruff format --check`/`mypy` (both `apps/api` and `apps/worker`) — clean
+  on every file this session touched
+- `alembic check` — clean, no drift
+- `pytest tests/test_campaign_scheduler_ticker.py tests/test_migrations.py` (apps/api) —
+  4 passed, reliably reproducible
+- `pytest tests/test_dispatch_consumer.py` (apps/worker) — 4 passed, reliably reproducible
+- `docker compose build worker && docker compose up -d worker` — clean startup, listening
+  on all three queues (`grx.system.healthcheck`, `grx.email_delivery.send_campaign`,
+  `grx.campaigns.dispatch`)
+- `docker compose up -d --build api` — clean startup after the stale-mount fix
+- `rabbitmqctl list_queues name arguments` — confirmed all 5 queues declared with the
+  correct TTL/DLX arguments
+- Watched `docker compose logs api` across several scheduler poll intervals — zero
+  errors, ticker running as expected
+
+## Blockers
+
+None for the codebase itself.
+
+## Known issues / evidence gaps
+
+- **No frontend UI exists yet to schedule or cancel a campaign.** The
+  `/{id}/schedule`/`/{id}/cancel` endpoints exist (from `GRX-SCHED-001`) and now
+  actually dispatch on time, but `campaign-form-page.tsx` has no way to call them — a
+  real, undone gap for whoever picks up Sprint 4's frontend next. Not part of any
+  `GRX-SCHED-*` row's stated scope, so not attempted here.
+- **Full-suite `pytest` was not used as the final gate.** This dev DB is being actively
+  used concurrently by another live session/user throughout this work — real HTTP
+  traffic visible in the API's own access logs, a live SMTP-cert-expiry error reported
+  by the user mid-session, and an in-progress uncommitted edit to `test_email_delivery.py`
+  from another session (fixing the exact same unscoped-`DELETE`-in-cleanup pattern
+  found here — not touched by this session). Pre-existing, unrelated integration tests
+  (`test_integrations.py`, `test_campaigns.py`) failed only when run as part of the full
+  suite and passed cleanly in isolation, consistent with collision against that
+  concurrent traffic rather than a regression from this session's changes.
+  `test_send_campaign.py`'s own pre-existing, unmodified `_cleanup()` (an unscoped
+  `DELETE FROM contacts`) incidentally wiped roughly 900 rows of what looks like
+  disposable CSV-import sample data (`sample_1000_contacts.csv`, still on disk at the
+  repo root) while running its existing, unrelated suite — flagged to the user, not
+  fixed, since it's out of this row's scope and touches shared state.
+- No live end-to-end verification of an actual scheduled campaign dispatching through
+  the full stack (schedule → ticker claims → worker sends) was done via the real UI,
+  since the dev DB is in active concurrent use and there's no frontend to schedule one
+  from yet. Confidence instead rests on: the integration tests exercising the exact same
+  `claim_due_campaigns`/`run_scheduler_tick` functions the live ticker calls, against
+  real Postgres; and live confirmation that the ticker itself runs cleanly in the actual
+  container (startup log line present, multiple poll intervals observed with zero
+  errors, RabbitMQ topology confirmed correct).
+- Same expired-cert issue on the user's own mail server as prior sessions' entries
+  (`mail.iitdeveloper.com`, port 465) — unrelated to this row, resurfaced when the user
+  tried the "Test connection" button mid-session.
+
+## Current state
+
+**Sprint 4 (Scheduled Campaigns) is now fully `DONE` on the backend.** Sprints 1–4 are
+all complete on the backend. The one open item across the whole scheduled-campaigns
+feature is the frontend: no UI exists to actually schedule or cancel a campaign yet.
+
+## Exact next task
+
+Build the Sprint 4 frontend: add schedule/cancel controls to
+`apps/web/src/app/(dashboard)/dashboard/campaigns/campaign-form-page.tsx` (a datetime
+picker + "Schedule" action for `DRAFT` campaigns, a "Cancel" action for
+`SCHEDULED`/`DISPATCHING` campaigns, calling the existing `/{id}/schedule`/`/{id}/cancel`
+endpoints), plus whatever list-page status-tab/badge treatment `SCHEDULED` needs. No
+backend work required — everything it needs already exists.
+
+## Resume commands
+
+```bash
+cd /Users/ravi/Documents/projects/growixa
+git log --oneline -5
+cat docs/00-project-control/MASTER_TASK_TRACKER.md
+docker compose up -d
+docker compose logs api --tail 20 | grep -i scheduler
+```
+
+## Latest commit
+
+`14fb258` — feat(worker): dispatch consumer with Redis idempotency and retry/DLQ (GRX-SCHED-003/004/005)

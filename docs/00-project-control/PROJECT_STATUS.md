@@ -2,7 +2,7 @@
 
 - Document ID: DOC-PROJECT-STATUS
 - Status: ACTIVE
-- Version: 1.45
+- Version: 1.46
 - Last updated: 2026-08-06
 - Owner: Coding agent (on behalf of product owner)
 - Related documents: [MASTER_TASK_TRACKER](MASTER_TASK_TRACKER.md), [WORKTREE_TRACKER](WORKTREE_TRACKER.md), [DECISIONS](DECISIONS.md), [DEVELOPMENT_READINESS](DEVELOPMENT_READINESS.md), [FEATURE_STATUS_MATRIX](FEATURE_STATUS_MATRIX.md)
@@ -218,10 +218,14 @@ directly by the user mid-session, is `DONE`.
    report frontend — a "Delivery report" card on the same detail page, showing
    sent/delivered/opened/clicked/bounced/complained counts and rates once a campaign
    leaves `DRAFT`) are all `DONE`, none needing any backend changes beyond what
-   Sprint 3's backend tasks already shipped. Next up is Sprint 4 (Scheduled Campaigns),
-   already mid-flight in a concurrent session's uncommitted work (`GRX-SCHED-001`
-   through `006` rows visible in `MASTER_TASK_TRACKER.md`, plus
-   `docs/14-sprints/SPRINT_04_SCHEDULED_CAMPAIGN.md`) as of this update.
+   Sprint 3's backend tasks already shipped. **Sprint 4 (Scheduled Campaigns) is now
+   fully `DONE`**: `GRX-SCHED-001` (schema + schedule/cancel endpoints, built in parallel
+   by two sessions and reconciled) and `GRX-SCHED-002` through `006` (scheduler ticker,
+   worker dispatch consumer, Redis idempotency, TTL+DLX retry backoff, and DLQ, plus
+   their tests — see `MASTER_TASK_TRACKER.md`). Backend-only: the `/{id}/schedule` and
+   `/{id}/cancel` endpoints exist and now actually dispatch on time, but
+   `campaign-form-page.tsx` has no UI to call them yet — a real, undone gap, not part of
+   any `GRX-SCHED-*` row's scope, tracked here for whoever picks up Sprint 4's frontend.
    `GRX-EMAIL-004` also fixed a real gap found along the way — `usage_records` was
    documented as existing since Sprint 1 (`DEC-GRX-007`) but was never actually built —
    and carries one documented evidence gap: no live Postmark account is available in

@@ -10,6 +10,36 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
+## 2026-08-06 — GRX-SCHED-002/003/004/005/006: Scheduler ticker, worker dispatch, retry/DLQ (Sprint 4 complete)
+
+- New `apps/api/src/growixa_api/campaigns/scheduler.py`: `claim_due_campaigns()` atomically
+  flips due `SCHEDULED` campaigns to `DISPATCHING` via a single `UPDATE...RETURNING`;
+  `run_scheduler_loop()` polls every `scheduler_poll_interval_seconds` (default 5s) as a
+  FastAPI `lifespan` background task and publishes one `grx.campaigns.dispatch` job per
+  claimed campaign.
+- New worker dispatch handler in `apps/worker/src/growixa_worker/consumer.py`: reuses the
+  existing `handle_send_campaign` unmodified (already status-agnostic and idempotent via a
+  `CampaignVersion`-existence check). Redis (`redis_client.py`, new) marks a job's
+  `idempotency_key` done *after* success — never before attempting, so a legitimate retry
+  after a transient failure is never blocked.
+- Retry backoff via RabbitMQ's TTL + dead-letter-exchange pattern: three durable wait
+  queues (`grx.campaigns.dispatch.retry.{0,1,2}`, 1m/5m/15m TTL) dead-letter back into
+  `grx.campaigns.dispatch`, no delay plugin needed. After 3 retries, the job is republished
+  to `grx.campaigns.dlq` and the campaign is marked `FAILED`.
+- `apps/worker` gained a `redis` dependency and `REDIS_URL` (wired into `compose.yaml`).
+- 7 new integration tests against real Postgres (`test_campaign_scheduler_ticker.py`,
+  `test_dispatch_consumer.py`).
+- Two real bugs found and fixed: (1) `caf1c42204c9`'s and `4a92b8107c12`'s `downgrade()`
+  both tried to drop the same-named unique constraint — harmless going up, fatal going
+  down; `caf1c42204c9` is now a no-op on both sides (its job was already fully subsumed by
+  `4a92b8107c12`). (2) The live `growixa-api-1` Compose container had zero volume mounts —
+  created before `compose.yaml`'s bind mounts existed, and `restart` doesn't reapply
+  config — so it had been silently serving a stale image all session; `docker compose up
+  -d --build api` fixed it. Also added `logging.basicConfig` to `create_app()`, since
+  nothing previously configured a handler for the `growixa_api` logger namespace.
+- **Sprint 4 (Scheduled Campaigns) is now fully `DONE`** on the backend. No frontend UI
+  exists yet to call `/{id}/schedule`/`/{id}/cancel` — a real, tracked gap.
+
 ## 2026-08-06 — GRX-EMAIL-010: Campaign report frontend (Sprint 3 complete)
 
 - New "Delivery report" card on the campaign detail page, shown once a campaign
