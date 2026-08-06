@@ -21,6 +21,15 @@ const FIELD_LABELS: Record<string, string> = {
   phone: "Phone",
 };
 
+const THEMES = [
+  { icon: "👥", bg: "rgba(59, 130, 246, 0.12)", color: "#2563eb", bar: "#3b82f6" },
+  { icon: "📰", bg: "rgba(16, 185, 129, 0.12)", color: "#059669", bar: "#10b981" },
+  { icon: "⏳", bg: "rgba(245, 158, 11, 0.12)", color: "#d97706", bar: "#f59e0b" },
+  { icon: "🎯", bg: "rgba(236, 72, 153, 0.12)", color: "#db2777", bar: "#ec4899" },
+  { icon: "⭐", bg: "rgba(139, 92, 246, 0.12)", color: "#7c3aed", bar: "#8b5cf6" },
+  { icon: "⚠️", bg: "rgba(239, 68, 68, 0.12)", color: "#dc2626", bar: "#ef4444" },
+];
+
 export interface SegmentRuleInput {
   field: string;
   operator: string;
@@ -89,6 +98,11 @@ export function SegmentsPage() {
     const dynamicSegments = segments.filter((s) => s.type === "DYNAMIC").length;
     const totalRules = segments.reduce((acc, s) => acc + s.rules.length, 0);
     return { totalSegments, dynamicSegments, totalRules };
+  }, [segments]);
+
+  const maxMembers = useMemo(() => {
+    if (segments.length === 0) return 1;
+    return Math.max(1, ...segments.map((s) => s.member_count));
   }, [segments]);
 
   async function handleCreateSubmit(event: FormEvent<HTMLFormElement>) {
@@ -208,51 +222,70 @@ export function SegmentsPage() {
         {segments.length === 0 ? (
           <div className={styles.emptyState}>No segments yet.</div>
         ) : (
-          <div>
-            {/* Table Header Row */}
-            <div
-              className={styles.tableHeader}
-              style={{ gridTemplateColumns: "2fr 3fr 1fr 1fr 120px" }}
-            >
-              <div>Name</div>
-              <div>Rules Summary</div>
-              <div>Type</div>
-              <div>Members</div>
-              <div style={{ textAlign: "right" }}>Actions</div>
-            </div>
+          <div className={styles.segmentGrid}>
+            {segments.map((segment, idx) => {
+              const theme = THEMES[idx % THEMES.length]!;
+              const percentage = Math.min(
+                100,
+                Math.round((segment.member_count / maxMembers) * 100),
+              );
 
-            {segments.map((segment) => {
               return (
-                <div key={segment.id} className={styles.contactBlock}>
-                  <div
-                    className={styles.row}
-                    style={{ gridTemplateColumns: "2fr 3fr 1fr 1fr 120px" }}
-                  >
-                    <div className={styles.name}>{segment.name}</div>
-                    <div className={styles.ruleList}>
-                      {segment.rules.length === 0 ? (
-                        <span>No rules defined.</span>
-                      ) : (
-                        segment.rules.map((rule) => (
-                          <div key={rule.id}>
-                            {ruleSummary(rule.field, rule.operator, rule.value)}
-                          </div>
-                        ))
-                      )}
+                <div
+                  key={segment.id}
+                  className={styles.segmentCard}
+                  onClick={() => openMemberModal(segment)}
+                >
+                  <div className={styles.segmentCardTop}>
+                    <div
+                      className={styles.segmentIconBadge}
+                      style={{ background: theme.bg, color: theme.color }}
+                    >
+                      {theme.icon}
                     </div>
-                    <div>
+                    <span
+                      className={styles.percentageBadge}
+                      style={{ background: theme.bg, color: theme.color }}
+                    >
+                      {percentage}% of contacts
+                    </span>
+                  </div>
+
+                  <div>
+                    <h3 className={styles.segmentCardTitle}>{segment.name}</h3>
+                    <div className={styles.segmentCardCount}>
+                      {segment.member_count.toLocaleString()}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className={styles.progressTrack}>
+                      <div
+                        className={styles.progressFill}
+                        style={{ width: `${Math.max(5, percentage)}%`, background: theme.bar }}
+                      />
+                    </div>
+                    <div className={styles.segmentCardFooter}>
                       <span className={styles.typeBadge}>
                         {segment.type === "DYNAMIC" ? "Dynamic" : "Saved"}
                       </span>
-                    </div>
-                    <div>
                       <span className={styles.countBadge}>{segment.member_count} members</span>
-                    </div>
-                    <div className={styles.rowActions}>
+                      <span className={styles.ruleList} style={{ fontSize: 12 }}>
+                        {segment.rules.length > 0
+                          ? ruleSummary(
+                              segment.rules[0]!.field,
+                              segment.rules[0]!.operator,
+                              segment.rules[0]!.value,
+                            )
+                          : "No filter"}
+                      </span>
                       <button
                         type="button"
                         className={styles.viewButton}
-                        onClick={() => openMemberModal(segment)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void openMemberModal(segment);
+                        }}
                       >
                         View members
                       </button>
@@ -436,7 +469,7 @@ export function SegmentsPage() {
                 <div>No rules configured.</div>
               ) : (
                 selectedSegment.rules.map((rule) => (
-                  <div key={rule.id}>• {ruleSummary(rule.field, rule.operator, rule.value)}</div>
+                  <div key={rule.id}>{ruleSummary(rule.field, rule.operator, rule.value)}</div>
                 ))
               )}
             </div>

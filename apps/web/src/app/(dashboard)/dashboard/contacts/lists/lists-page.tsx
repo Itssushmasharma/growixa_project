@@ -11,6 +11,14 @@ import type { Contact, ContactList, MeResponse } from "../types";
 const VIEW_PERMISSION = "contacts.view";
 const MANAGE_PERMISSION = "contacts.manage";
 
+const LIST_THEMES = [
+  { icon: "📧", bg: "rgba(16, 185, 129, 0.12)", color: "#059669", bar: "#10b981" },
+  { icon: "⭐", bg: "rgba(139, 92, 246, 0.12)", color: "#7c3aed", bar: "#8b5cf6" },
+  { icon: "🎓", bg: "rgba(59, 130, 246, 0.12)", color: "#2563eb", bar: "#3b82f6" },
+  { icon: "🚀", bg: "rgba(236, 72, 153, 0.12)", color: "#db2777", bar: "#ec4899" },
+  { icon: "💼", bg: "rgba(245, 158, 11, 0.12)", color: "#d97706", bar: "#f59e0b" },
+];
+
 interface ListFormState {
   name: string;
   description: string;
@@ -66,6 +74,11 @@ export function ListsPage() {
     return { totalLists, totalMemberships, avgMembers };
   }, [lists]);
 
+  const maxMembers = useMemo(() => {
+    if (lists.length === 0) return 1;
+    return Math.max(1, ...lists.map((l) => l.member_count));
+  }, [lists]);
+
   async function handleCreateSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setCreating(true);
@@ -119,8 +132,10 @@ export function ListsPage() {
       });
       setLists((current) => current.map((l) => (l.id === listId ? updatedList : l)));
       setSelectedList(updatedList);
-      const updatedMembers = await apiFetch<Contact[]>(`/contacts/lists/${listId}/members`);
-      setListMembers(updatedMembers);
+      const added = contacts.find((c) => c.id === addContactId);
+      if (added && !listMembers.some((m) => m.id === added.id)) {
+        setListMembers((prev) => [...prev, added]);
+      }
       setAddContactId("");
       showToast("success", "Contact added to list.");
     } catch {
@@ -204,29 +219,58 @@ export function ListsPage() {
         {lists.length === 0 ? (
           <div className={styles.emptyState}>No lists yet.</div>
         ) : (
-          <div>
-            {/* Table Header Row */}
-            <div className={styles.tableHeader}>
-              <div>Name</div>
-              <div>Description</div>
-              <div>Members</div>
-              <div style={{ textAlign: "right" }}>Actions</div>
-            </div>
+          <div className={styles.segmentGrid}>
+            {lists.map((list, idx) => {
+              const theme = LIST_THEMES[idx % LIST_THEMES.length]!;
+              const percentage = Math.min(100, Math.round((list.member_count / maxMembers) * 100));
 
-            {lists.map((list) => {
               return (
-                <div key={list.id} className={styles.contactBlock}>
-                  <div className={styles.row}>
-                    <div className={styles.name}>{list.name}</div>
-                    <div className={styles.description}>{list.description || "—"}</div>
-                    <div>
-                      <span className={styles.countBadge}>{list.member_count} members</span>
+                <div
+                  key={list.id}
+                  className={styles.segmentCard}
+                  onClick={() => openManageModal(list)}
+                >
+                  <div className={styles.segmentCardTop}>
+                    <div
+                      className={styles.segmentIconBadge}
+                      style={{ background: theme.bg, color: theme.color }}
+                    >
+                      {theme.icon}
                     </div>
-                    <div className={styles.rowActions}>
+                    <span
+                      className={styles.percentageBadge}
+                      style={{ background: theme.bg, color: theme.color }}
+                    >
+                      {percentage}% of max
+                    </span>
+                  </div>
+
+                  <div>
+                    <h3 className={styles.segmentCardTitle}>{list.name}</h3>
+                    <div className={styles.segmentCardCount}>
+                      {list.member_count.toLocaleString()}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className={styles.progressTrack}>
+                      <div
+                        className={styles.progressFill}
+                        style={{ width: `${Math.max(5, percentage)}%`, background: theme.bar }}
+                      />
+                    </div>
+                    <div className={styles.segmentCardFooter}>
+                      <span className={styles.countBadge}>{list.member_count} members</span>
+                      <span className={styles.description} style={{ fontSize: 12 }}>
+                        {list.description || "No description"}
+                      </span>
                       <button
                         type="button"
                         className={styles.viewButton}
-                        onClick={() => openManageModal(list)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void openManageModal(list);
+                        }}
                       >
                         Manage
                       </button>
