@@ -87,6 +87,12 @@ export function CampaignFormPage({ mode, campaignId }: CampaignFormPageProps) {
   const [testSending, setTestSending] = useState(false);
   const [sendingNow, setSendingNow] = useState(false);
 
+  // Send Mode: only visible to canManage users on DRAFT campaigns
+  type SendMode = "now" | "schedule";
+  const [sendMode, setSendMode] = useState<SendMode>("now");
+  const [scheduledAt, setScheduledAt] = useState("");
+  const [scheduling, setScheduling] = useState(false);
+
   useEffect(() => {
     async function load() {
       try {
@@ -250,6 +256,35 @@ export function CampaignFormPage({ mode, campaignId }: CampaignFormPageProps) {
     } finally {
       setSendingNow(false);
     }
+  }
+
+  async function handleSchedule() {
+    if (!campaign || !scheduledAt) return;
+    // Convert local datetime-local value to UTC ISO string
+    const utcIso = new Date(scheduledAt).toISOString();
+    setScheduling(true);
+    try {
+      const updated = await apiFetch<Campaign>(`/campaigns/${campaign.id}/schedule`, {
+        method: "POST",
+        body: JSON.stringify({ scheduled_at: utcIso }),
+      });
+      setCampaign(updated);
+      showToast(
+        "success",
+        `Campaign scheduled for ${new Date(utcIso).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}.`,
+      );
+    } catch (error) {
+      showToast("error", parseApiErrorDetail(error, "Could not schedule that campaign."));
+    } finally {
+      setScheduling(false);
+    }
+  }
+
+  // Minimum selectable datetime: now + 10 minutes (UX safeguard)
+  function minDatetimeLocal(): string {
+    const d = new Date(Date.now() + 10 * 60 * 1000);
+    // datetime-local requires "YYYY-MM-DDTHH:mm"
+    return d.toISOString().slice(0, 16);
   }
 
   if (loading) {
@@ -599,21 +634,95 @@ export function CampaignFormPage({ mode, campaignId }: CampaignFormPageProps) {
                 </div>
               </form>
 
-              {campaign.status === "DRAFT" && (
+              {campaign.status === "DRAFT" && canManage && (
                 <>
-                  <p className={styles.hint}>
-                    Sending now enqueues delivery to every resolved recipient. This can&apos;t be
-                    undone.
-                  </p>
-                  <button
-                    type="button"
-                    className={styles.actionButton}
-                    disabled={sendingNow}
-                    onClick={handleSendNow}
-                  >
-                    {sendingNow ? "Starting send…" : "Send now"}
-                  </button>
+                  <div className={styles.sendModeGroup} role="group" aria-label="Send mode">
+                    <label className={styles.sendModeOption}>
+                      <input
+                        type="radio"
+                        name="send-mode"
+                        value="now"
+                        checked={sendMode === "now"}
+                        onChange={() => setSendMode("now")}
+                      />
+                      Send Now
+                    </label>
+                    <label className={styles.sendModeOption}>
+                      <input
+                        type="radio"
+                        name="send-mode"
+                        value="schedule"
+                        checked={sendMode === "schedule"}
+                        onChange={() => setSendMode("schedule")}
+                      />
+                      Schedule for Later
+                    </label>
+                  </div>
+
+                  {sendMode === "now" && (
+                    <>
+                      <p className={styles.hint}>
+                        Sending now enqueues delivery to every resolved recipient. This can&apos;t
+                        be undone.
+                      </p>
+                      <button
+                        type="button"
+                        className={styles.actionButton}
+                        disabled={sendingNow}
+                        onClick={handleSendNow}
+                      >
+                        {sendingNow ? "Starting send…" : "Send now"}
+                      </button>
+                    </>
+                  )}
+
+                  {sendMode === "schedule" && (
+                    <>
+                      <label className={styles.label} htmlFor="schedule-datetime">
+                        Send date &amp; time
+                      </label>
+                      <input
+                        id="schedule-datetime"
+                        type="datetime-local"
+                        className={`${styles.input} ${styles.schedulePicker}`}
+                        min={minDatetimeLocal()}
+                        value={scheduledAt}
+                        onChange={(e) => setScheduledAt(e.target.value)}
+                        required
+                      />
+                      {scheduledAt && (
+                        <p className={styles.scheduleConfirmText}>
+                          This campaign will be sent on{" "}
+                          {new Date(scheduledAt).toLocaleString(undefined, {
+                            weekday: "long",
+                            month: "long",
+                            day: "numeric",
+                            year: "numeric",
+                            hour: "numeric",
+                            minute: "2-digit",
+                          })}
+                          .
+                        </p>
+                      )}
+                      <button
+                        type="button"
+                        className={styles.actionButton}
+                        disabled={scheduling || !scheduledAt}
+                        onClick={handleSchedule}
+                      >
+                        {scheduling ? "Scheduling…" : "Confirm schedule"}
+                      </button>
+                    </>
+                  )}
                 </>
+              )}
+
+              {campaign.status === "SCHEDULED" && (
+                <p className={styles.hint}>
+                  This campaign is scheduled and will be sent automatically.{" "}
+                  {campaign.scheduled_at &&
+                    `Scheduled for ${new Date(campaign.scheduled_at).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}.`}
+                </p>
               )}
             </div>
           )}

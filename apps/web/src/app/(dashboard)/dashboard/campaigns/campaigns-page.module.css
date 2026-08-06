@@ -151,6 +151,16 @@
   color: var(--color-slate);
 }
 
+.statusScheduled {
+  background: rgba(37, 99, 235, 0.1);
+  color: #1d4ed8;
+}
+
+.statusDispatching {
+  background: rgba(139, 92, 246, 0.12);
+  color: #7c3aed;
+}
+
 .statusSending {
   background: rgba(217, 158, 30, 0.12);
   color: #a16207;
@@ -161,7 +171,49 @@
   color: var(--color-success);
 }
 
+.statusCancelled {
+  background: rgba(100, 116, 139, 0.12);
+  color: #64748b;
+}
+
 .statusFailed {
   background: rgba(244, 63, 94, 0.1);
   color: #b91c1c;
+}
+
+.scheduledAtLabel {
+  font-size: 11.5px;
+  color: #1d4ed8;
+  font-weight: 600;
+  margin-top: 6px;
+}
+
+.cardActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cancelButton {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #b91c1c;
+  background: rgba(244, 63, 94, 0.08);
+  border: 1px solid rgba(244, 63, 94, 0.2);
+  border-radius: 6px;
+  padding: 3px 10px;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+}
+
+.cancelButton:hover:not(:disabled) {
+  background: rgba(244, 63, 94, 0.15);
+  border-color: rgba(244, 63, 94, 0.4);
+}
+
+.cancelButton:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }

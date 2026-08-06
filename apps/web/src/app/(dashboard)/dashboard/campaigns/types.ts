@@ -6,7 +6,8 @@ export interface MeResponse {
 }
 
 export type RecipientType = "SEGMENT" | "LIST" | "ALL_CONTACTS";
-export type CampaignStatus = "DRAFT" | "SENDING" | "SENT" | "FAILED";
+export type CampaignStatus =
+  "DRAFT" | "SCHEDULED" | "DISPATCHING" | "SENDING" | "SENT" | "CANCELLED" | "FAILED";
 
 export interface Campaign {
   id: string;
@@ -20,6 +21,9 @@ export interface Campaign {
   recipient_segment_id: string | null;
   recipient_list_id: string | null;
   status: CampaignStatus;
+  scheduled_at: string | null;
+  cancelled_at: string | null;
+  idempotency_key: string; // NOT NULL in DB — always returned
   created_at: string;
   updated_at: string;
   sent_at: string | null;

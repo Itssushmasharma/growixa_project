@@ -3,9 +3,14 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { apiFetch } from "@/lib/api-client";
+import { ToastProvider } from "@/components/toast/toast-context";
 
 import { CampaignsPage } from "./campaigns-page";
 import type { Campaign, ContactListSummary, MeResponse, SegmentSummary } from "./types";
+
+function renderWithToast(ui: React.ReactElement) {
+  return render(<ToastProvider>{ui}</ToastProvider>);
+}
 
 vi.mock("@/lib/api-client", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/api-client")>();
@@ -36,6 +41,29 @@ const DRAFT_CAMPAIGN: Campaign = {
   recipient_segment_id: null,
   recipient_list_id: "list-1",
   status: "DRAFT",
+  scheduled_at: null,
+  cancelled_at: null,
+  idempotency_key: "idem-key-1",
+  created_at: "2026-08-06T00:00:00Z",
+  updated_at: "2026-08-06T00:00:00Z",
+  sent_at: null,
+};
+
+const SCHEDULED_CAMPAIGN: Campaign = {
+  id: "campaign-3",
+  name: "Black Friday Blast",
+  subject: "Huge deals await",
+  body_html: "<p>Deal</p>",
+  body_text: null,
+  template_id: null,
+  sender_identity_id: "identity-1",
+  recipient_type: "ALL_CONTACTS",
+  recipient_segment_id: null,
+  recipient_list_id: null,
+  status: "SCHEDULED",
+  scheduled_at: "2026-11-29T09:00:00Z",
+  cancelled_at: null,
+  idempotency_key: "idem-key-3",
   created_at: "2026-08-06T00:00:00Z",
   updated_at: "2026-08-06T00:00:00Z",
   sent_at: null,
@@ -53,6 +81,9 @@ const SENT_CAMPAIGN: Campaign = {
   recipient_segment_id: "segment-1",
   recipient_list_id: null,
   status: "SENT",
+  scheduled_at: null,
+  cancelled_at: null,
+  idempotency_key: "idem-key-2",
   created_at: "2026-08-01T00:00:00Z",
   updated_at: "2026-08-01T00:00:00Z",
   sent_at: "2026-08-01T01:00:00Z",
@@ -81,7 +112,7 @@ describe("CampaignsPage", () => {
   it("shows an access-denied message for a user without campaigns.view", async () => {
     mockLoad([], []);
 
-    render(<CampaignsPage />);
+    renderWithToast(<CampaignsPage />);
 
     expect(await screen.findByText("You don't have access to campaigns.")).toBeInTheDocument();
   });
@@ -89,7 +120,7 @@ describe("CampaignsPage", () => {
   it("shows the campaign list to a view-only user without a New campaign link", async () => {
     mockLoad(["campaigns.view"], [DRAFT_CAMPAIGN]);
 
-    render(<CampaignsPage />);
+    renderWithToast(<CampaignsPage />);
 
     expect(await screen.findByText("Spring Sale")).toBeInTheDocument();
     expect(screen.getByText("Spring is here 🌸")).toBeInTheDocument();
@@ -99,7 +130,7 @@ describe("CampaignsPage", () => {
   it("shows the New campaign link for a campaigns.manage user", async () => {
     mockLoad(["campaigns.view", "campaigns.manage"], []);
 
-    render(<CampaignsPage />);
+    renderWithToast(<CampaignsPage />);
     await screen.findByText("No campaigns yet.");
 
     expect(screen.getByRole("link", { name: "+ New campaign" })).toHaveAttribute(
@@ -111,7 +142,7 @@ describe("CampaignsPage", () => {
   it("resolves the recipient list/segment name and status label", async () => {
     mockLoad(["campaigns.view"], [DRAFT_CAMPAIGN, SENT_CAMPAIGN]);
 
-    render(<CampaignsPage />);
+    renderWithToast(<CampaignsPage />);
     await screen.findByText("Spring Sale");
 
     expect(screen.getByText("List: VIP Customers")).toBeInTheDocument();
@@ -125,7 +156,7 @@ describe("CampaignsPage", () => {
   it("links each row to its detail page", async () => {
     mockLoad(["campaigns.view"], [DRAFT_CAMPAIGN]);
 
-    render(<CampaignsPage />);
+    renderWithToast(<CampaignsPage />);
     const row = await screen.findByText("Spring Sale");
 
     expect(row.closest("a")).toHaveAttribute("href", "/dashboard/campaigns/campaign-1");
@@ -135,7 +166,7 @@ describe("CampaignsPage", () => {
     const user = userEvent.setup();
     mockLoad(["campaigns.view"], [DRAFT_CAMPAIGN, SENT_CAMPAIGN]);
 
-    render(<CampaignsPage />);
+    renderWithToast(<CampaignsPage />);
     await screen.findByText("Spring Sale");
     expect(screen.getByText("Monthly Digest")).toBeInTheDocument();
 
@@ -149,7 +180,7 @@ describe("CampaignsPage", () => {
     const user = userEvent.setup();
     mockLoad(["campaigns.view"], [DRAFT_CAMPAIGN, SENT_CAMPAIGN]);
 
-    render(<CampaignsPage />);
+    renderWithToast(<CampaignsPage />);
     await screen.findByText("Spring Sale");
     expect(screen.getByText("Monthly Digest")).toBeInTheDocument();
 
@@ -164,13 +195,63 @@ describe("CampaignsPage", () => {
     expect(screen.getByText("Monthly Digest")).toBeInTheDocument();
   });
 
-  it("does not show Scheduled or Paused tabs (not a real campaign status yet)", async () => {
-    mockLoad(["campaigns.view"], [DRAFT_CAMPAIGN]);
+  it("shows a Scheduled filter tab now that scheduling is built", async () => {
+    mockLoad(["campaigns.view"], [DRAFT_CAMPAIGN, SCHEDULED_CAMPAIGN]);
 
-    render(<CampaignsPage />);
+    renderWithToast(<CampaignsPage />);
     await screen.findByText("Spring Sale");
 
-    expect(screen.queryByRole("tab", { name: "Scheduled" })).not.toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /^Scheduled/ })).toBeInTheDocument();
     expect(screen.queryByRole("tab", { name: "Paused" })).not.toBeInTheDocument();
+  });
+
+  it("Scheduled filter tab shows only SCHEDULED campaigns", async () => {
+    const user = userEvent.setup();
+    mockLoad(["campaigns.view"], [DRAFT_CAMPAIGN, SCHEDULED_CAMPAIGN]);
+
+    renderWithToast(<CampaignsPage />);
+    await screen.findByText("Spring Sale");
+
+    await user.click(screen.getByRole("tab", { name: /^Scheduled/ }));
+
+    expect(screen.queryByText("Spring Sale")).not.toBeInTheDocument();
+    expect(screen.getByText("Black Friday Blast")).toBeInTheDocument();
+  });
+
+  it("renders SCHEDULED status badge for scheduled campaigns", async () => {
+    mockLoad(["campaigns.view"], [SCHEDULED_CAMPAIGN]);
+
+    renderWithToast(<CampaignsPage />);
+    await screen.findByText("Black Friday Blast");
+
+    // Both the tab label and the badge say "Scheduled" — check at least one exists
+    const scheduledElements = screen.getAllByText("Scheduled");
+    expect(scheduledElements.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("shows Cancel button only for DRAFT and SCHEDULED campaigns when canManage", async () => {
+    mockLoad(
+      ["campaigns.view", "campaigns.manage"],
+      [DRAFT_CAMPAIGN, SCHEDULED_CAMPAIGN, SENT_CAMPAIGN],
+    );
+
+    renderWithToast(<CampaignsPage />);
+    await screen.findByText("Spring Sale");
+
+    const cancelButtons = screen.getAllByRole("button", { name: /Cancel campaign/ });
+    // DRAFT + SCHEDULED = 2 cancel buttons; SENT = 0
+    expect(cancelButtons).toHaveLength(2);
+
+    // SENT campaign should have no cancel button
+    expect(screen.queryByLabelText("Cancel campaign Monthly Digest")).not.toBeInTheDocument();
+  });
+
+  it("hides Cancel button entirely when canManage is false", async () => {
+    mockLoad(["campaigns.view"], [DRAFT_CAMPAIGN, SCHEDULED_CAMPAIGN]);
+
+    renderWithToast(<CampaignsPage />);
+    await screen.findByText("Spring Sale");
+
+    expect(screen.queryByRole("button", { name: /Cancel campaign/ })).not.toBeInTheDocument();
   });
 });

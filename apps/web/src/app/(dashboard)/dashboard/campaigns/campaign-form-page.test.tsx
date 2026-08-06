@@ -85,6 +85,9 @@ const DRAFT_CAMPAIGN: Campaign = {
   recipient_segment_id: null,
   recipient_list_id: null,
   status: "DRAFT",
+  scheduled_at: null,
+  cancelled_at: null,
+  idempotency_key: "idem-key-1",
   created_at: "2026-08-06T00:00:00Z",
   updated_at: "2026-08-06T00:00:00Z",
   sent_at: null,
@@ -438,6 +441,105 @@ describe("CampaignFormPage", () => {
 
     expect(mockedApiFetch).not.toHaveBeenCalledWith(
       "/campaigns/campaign-1/send",
+      expect.objectContaining({ method: "POST" }),
+    );
+  });
+
+  it("renders Schedule for Later radio button for DRAFT campaigns with canManage", async () => {
+    mockedApiFetch.mockImplementation((path: string, init?: RequestInit) => {
+      if (path === "/auth/me")
+        return Promise.resolve(
+          meWithPermissions(["campaigns.view", "campaigns.manage", "campaigns.send"]),
+        );
+      if (path === "/integrations/sender-identities") return Promise.resolve([IDENTITY]);
+      if (path === "/contacts/lists") return Promise.resolve([LIST]);
+      if (path === "/contacts/segments") return Promise.resolve([SEGMENT]);
+      if (path === "/templates") return Promise.resolve([TEMPLATE]);
+      if (path === "/campaigns/campaign-1" && !init) return Promise.resolve(DRAFT_CAMPAIGN);
+      throw new Error(`unexpected call: ${path}`);
+    });
+
+    renderFormPage({ mode: "edit", campaignId: "campaign-1" });
+    await screen.findByLabelText("Campaign name");
+
+    expect(screen.getByLabelText("Send Now")).toBeInTheDocument();
+    expect(screen.getByLabelText("Schedule for Later")).toBeInTheDocument();
+  });
+
+  it("shows datetime picker when Schedule for Later is selected", async () => {
+    const user = userEvent.setup();
+    mockedApiFetch.mockImplementation((path: string, init?: RequestInit) => {
+      if (path === "/auth/me")
+        return Promise.resolve(
+          meWithPermissions(["campaigns.view", "campaigns.manage", "campaigns.send"]),
+        );
+      if (path === "/integrations/sender-identities") return Promise.resolve([IDENTITY]);
+      if (path === "/contacts/lists") return Promise.resolve([LIST]);
+      if (path === "/contacts/segments") return Promise.resolve([SEGMENT]);
+      if (path === "/templates") return Promise.resolve([TEMPLATE]);
+      if (path === "/campaigns/campaign-1" && !init) return Promise.resolve(DRAFT_CAMPAIGN);
+      throw new Error(`unexpected call: ${path}`);
+    });
+
+    renderFormPage({ mode: "edit", campaignId: "campaign-1" });
+    await screen.findByLabelText("Campaign name");
+
+    await user.click(screen.getByLabelText("Schedule for Later"));
+
+    expect(screen.getByLabelText("Send date & time")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Confirm schedule" })).toBeInTheDocument();
+  });
+
+  it("hides Send Mode selector when canManage is false", async () => {
+    mockedApiFetch.mockImplementation((path: string, init?: RequestInit) => {
+      if (path === "/auth/me")
+        return Promise.resolve(meWithPermissions(["campaigns.view", "campaigns.send"]));
+      if (path === "/integrations/sender-identities") return Promise.resolve([IDENTITY]);
+      if (path === "/contacts/lists") return Promise.resolve([LIST]);
+      if (path === "/contacts/segments") return Promise.resolve([SEGMENT]);
+      if (path === "/templates") return Promise.resolve([TEMPLATE]);
+      if (path === "/campaigns/campaign-1" && !init) return Promise.resolve(DRAFT_CAMPAIGN);
+      throw new Error(`unexpected call: ${path}`);
+    });
+
+    renderFormPage({ mode: "edit", campaignId: "campaign-1" });
+    await screen.findByLabelText("Campaign name");
+
+    expect(screen.queryByLabelText("Schedule for Later")).not.toBeInTheDocument();
+  });
+
+  it("calls POST /schedule with correct ISO timestamp on confirm", async () => {
+    const user = userEvent.setup();
+    const SCHEDULED_BACK: Campaign = {
+      ...DRAFT_CAMPAIGN,
+      status: "SCHEDULED",
+      scheduled_at: "2026-11-01T09:00:00Z",
+    };
+    mockedApiFetch.mockImplementation((path: string, init?: RequestInit) => {
+      if (path === "/auth/me")
+        return Promise.resolve(
+          meWithPermissions(["campaigns.view", "campaigns.manage", "campaigns.send"]),
+        );
+      if (path === "/integrations/sender-identities") return Promise.resolve([IDENTITY]);
+      if (path === "/contacts/lists") return Promise.resolve([LIST]);
+      if (path === "/contacts/segments") return Promise.resolve([SEGMENT]);
+      if (path === "/templates") return Promise.resolve([TEMPLATE]);
+      if (path === "/campaigns/campaign-1" && !init) return Promise.resolve(DRAFT_CAMPAIGN);
+      if (path === "/campaigns/campaign-1/schedule" && init?.method === "POST")
+        return Promise.resolve(SCHEDULED_BACK);
+      throw new Error(`unexpected call: ${path}`);
+    });
+
+    renderFormPage({ mode: "edit", campaignId: "campaign-1" });
+    await screen.findByLabelText("Campaign name");
+
+    await user.click(screen.getByLabelText("Schedule for Later"));
+    const picker = screen.getByLabelText("Send date & time");
+    await user.type(picker, "2026-11-01T09:00");
+    await user.click(screen.getByRole("button", { name: "Confirm schedule" }));
+
+    expect(mockedApiFetch).toHaveBeenCalledWith(
+      "/campaigns/campaign-1/schedule",
       expect.objectContaining({ method: "POST" }),
     );
   });
