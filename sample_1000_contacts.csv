@@ -1,0 +1,1001 @@
+email,first_name,last_name,phone,status,source
+gabriel.jones1@techcorp.com,Gabriel,Jones,+1-245-542-2883,ACTIVE,Website Signup
+pooja.jackson2@growixa.io,Pooja,Jackson,+1-598-194-7832,ACTIVE,Import CSV
+isabella.liu3@outlook.com,Isabella,Liu,+1-216-635-5848,ACTIVE,Import CSV
+taylor.li4@techcorp.com,Taylor,Li,+1-288-453-2442,UNSUBSCRIBED,Webinar
+peyton.sharma5@innovate.net,Peyton,Sharma,+1-872-782-5399,ACTIVE,Website Signup
+siddharth.rodriguez6@startup.ai,Siddharth,Rodriguez,+1-344-752-7587,ACTIVE,Import CSV
+diego.tran7@enterprise.org,Diego,Tran,+1-470-379-5899,UNSUBSCRIBED,LinkedIn Lead
+rohan.thomas8@outlook.com,Rohan,Thomas,+1-612-976-5057,ACTIVE,API
+mateo.chen9@cloudworks.io,Mateo,Chen,+1-360-114-8603,UNSUBSCRIBED,Import CSV
+neha.mehta10@acme.co,Neha,Mehta,+1-241-923-5856,ACTIVE,API
+sneha.lopez11@gmail.com,Sneha,Lopez,+1-312-869-8782,ACTIVE,Website Signup
+isabella.garcia12@outlook.com,Isabella,Garcia,+1-500-942-8189,ACTIVE,Cold Outreach
+siddharth.davis13@outlook.com,Siddharth,Davis,+1-627-381-1392,BOUNCED,Website Signup
+quinn.brown14@gmail.com,Quinn,Brown,+1-658-706-5534,ACTIVE,Referral
+pat.davis15@innovate.net,Pat,Davis,+1-901-725-9143,ACTIVE,Referral
+camila.garcia16@enterprise.org,Camila,Garcia,+1-884-614-5746,ACTIVE,Cold Outreach
+neha.wilson17@innovate.net,Neha,Wilson,+1-582-294-4755,ARCHIVED,LinkedIn Lead
+sneha.gupta18@enterprise.org,Sneha,Gupta,+1-860-781-5931,BOUNCED,Website Signup
+skyler.martin19@outlook.com,Skyler,Martin,+1-956-510-9774,UNSUBSCRIBED,API
+sam.taylor20@startup.ai,Sam,Taylor,+1-927-238-4192,ACTIVE,Referral
+gabriel.jones21@outlook.com,Gabriel,Jones,+1-543-315-7690,ACTIVE,Webinar
+rohan.nguyen22@yahoo.com,Rohan,Nguyen,+1-265-964-9826,UNSUBSCRIBED,Referral
+siddharth.miller23@techcorp.com,Siddharth,Miller,+1-419-290-4263,BOUNCED,API
+leo.jackson24@outlook.com,Leo,Jackson,+1-244-716-5806,ACTIVE,API
+peyton.tran25@gmail.com,Peyton,Tran,+1-848-627-5501,UNSUBSCRIBED,API
+finley.jones26@startup.ai,Finley,Jones,+1-541-534-3486,ACTIVE,Referral
+alex.anderson27@techcorp.com,Alex,Anderson,+1-642-671-4027,ACTIVE,Import CSV
+riley.davis28@enterprise.org,Riley,Davis,+1-210-978-4475,ACTIVE,API
+mateo.gupta29@startup.ai,Mateo,Gupta,+1-792-258-2378,BOUNCED,Import CSV
+ananya.martinez30@yahoo.com,Ananya,Martinez,+1-829-930-4378,ACTIVE,API
+sofia.davis31@startup.ai,Sofia,Davis,+1-516-160-4194,UNSUBSCRIBED,Webinar
+divya.nguyen32@startup.ai,Divya,Nguyen,+1-515-479-7340,ACTIVE,Cold Outreach
+peyton.sharma33@innovate.net,Peyton,Sharma,+1-970-518-2941,ACTIVE,LinkedIn Lead
+hayden.zhang34@startup.ai,Hayden,Zhang,+1-584-440-6758,ACTIVE,Cold Outreach
+rohan.chen35@startup.ai,Rohan,Chen,+1-937-163-7539,ACTIVE,Referral
+peyton.li36@gmail.com,Peyton,Li,+1-212-821-5359,UNSUBSCRIBED,LinkedIn Lead
+vikram.verma37@cloudworks.io,Vikram,Verma,+1-867-259-7010,UNSUBSCRIBED,Webinar
+mia.kumar38@startup.ai,Mia,Kumar,+1-280-574-6305,ACTIVE,Website Signup
+neha.wilson39@outlook.com,Neha,Wilson,+1-521-895-1196,ACTIVE,Cold Outreach
+peyton.li40@outlook.com,Peyton,Li,+1-529-611-1640,ACTIVE,Website Signup
+divya.kumar41@acme.co,Divya,Kumar,+1-928-752-8167,ACTIVE,Website Signup
+logan.kim42@outlook.com,Logan,Kim,+1-550-265-2068,ACTIVE,Website Signup
+hayden.nguyen43@growixa.io,Hayden,Nguyen,+1-879-745-7955,ACTIVE,Website Signup
+morgan.verma44@cloudworks.io,Morgan,Verma,+1-588-742-6750,ACTIVE,API
+taylor.anderson45@outlook.com,Taylor,Anderson,+1-984-444-3564,ACTIVE,API
+sanjay.martinez46@growixa.io,Sanjay,Martinez,+1-978-504-7856,ACTIVE,Website Signup
+amit.hernandez47@outlook.com,Amit,Hernandez,+1-360-153-3217,ACTIVE,API
+pooja.joshi48@acme.co,Pooja,Joshi,+1-572-275-1266,UNSUBSCRIBED,API
+logan.wang49@techcorp.com,Logan,Wang,+1-275-103-6220,ACTIVE,Import CSV
+sofia.anderson50@outlook.com,Sofia,Anderson,+1-739-157-3484,ACTIVE,Cold Outreach
+kavya.taylor51@acme.co,Kavya,Taylor,+1-494-140-1579,ACTIVE,LinkedIn Lead
+sanjay.verma52@cloudworks.io,Sanjay,Verma,+1-560-141-1295,ACTIVE,Webinar
+siddharth.chen53@enterprise.org,Siddharth,Chen,+1-674-313-6347,ACTIVE,Referral
+leo.verma54@acme.co,Leo,Verma,+1-811-693-8920,ACTIVE,Referral
+anushka.sharma55@outlook.com,Anushka,Sharma,+1-684-304-7392,ACTIVE,LinkedIn Lead
+ananya.pham56@yahoo.com,Ananya,Pham,+1-258-409-6758,ACTIVE,Import CSV
+amit.chen57@growixa.io,Amit,Chen,+1-705-105-5806,ACTIVE,Website Signup
+priya.kumar58@outlook.com,Priya,Kumar,+1-219-929-9503,UNSUBSCRIBED,Cold Outreach
+gabriel.park59@innovate.net,Gabriel,Park,+1-248-487-3154,ACTIVE,Website Signup
+emerson.garcia60@startup.ai,Emerson,Garcia,+1-651-902-8498,ACTIVE,Import CSV
+emerson.hernandez61@yahoo.com,Emerson,Hernandez,+1-937-785-4411,BOUNCED,Import CSV
+rowan.sharma62@cloudworks.io,Rowan,Sharma,+1-893-411-6390,ACTIVE,LinkedIn Lead
+peyton.rodriguez63@cloudworks.io,Peyton,Rodriguez,+1-475-185-7915,ACTIVE,Referral
+diego.lopez64@gmail.com,Diego,Lopez,+1-787-796-7773,ARCHIVED,API
+gabriel.rodriguez65@startup.ai,Gabriel,Rodriguez,+1-587-748-8077,ACTIVE,API
+pat.martinez66@growixa.io,Pat,Martinez,+1-744-558-2380,ACTIVE,Import CSV
+lucas.smith67@outlook.com,Lucas,Smith,+1-244-440-4493,ACTIVE,Cold Outreach
+hayden.pham68@techcorp.com,Hayden,Pham,+1-988-867-3215,ACTIVE,Import CSV
+rohan.hernandez69@cloudworks.io,Rohan,Hernandez,+1-403-535-5849,UNSUBSCRIBED,Cold Outreach
+sneha.thomas70@growixa.io,Sneha,Thomas,+1-549-604-6499,ACTIVE,Cold Outreach
+pat.pham71@yahoo.com,Pat,Pham,+1-728-105-8406,ACTIVE,Referral
+pooja.davis72@growixa.io,Pooja,Davis,+1-486-340-4832,ACTIVE,API
+karan.hernandez73@cloudworks.io,Karan,Hernandez,+1-436-544-1993,ACTIVE,Referral
+lucas.kim74@growixa.io,Lucas,Kim,+1-658-855-5914,ACTIVE,Import CSV
+jordan.park75@growixa.io,Jordan,Park,+1-913-665-9010,ACTIVE,LinkedIn Lead
+lucas.singh76@techcorp.com,Lucas,Singh,+1-583-159-4385,UNSUBSCRIBED,Import CSV
+dakota.kim77@outlook.com,Dakota,Kim,+1-949-286-8723,BOUNCED,Website Signup
+sam.chen78@acme.co,Sam,Chen,+1-974-314-4153,ACTIVE,Referral
+reese.brown79@startup.ai,Reese,Brown,+1-570-752-4027,ACTIVE,Import CSV
+rowan.hernandez80@enterprise.org,Rowan,Hernandez,+1-501-837-3204,ACTIVE,Website Signup
+sneha.shah81@yahoo.com,Sneha,Shah,+1-205-780-1011,ACTIVE,LinkedIn Lead
+morgan.lopez82@enterprise.org,Morgan,Lopez,+1-868-818-6687,UNSUBSCRIBED,Website Signup
+sam.jones83@gmail.com,Sam,Jones,+1-341-188-1020,ACTIVE,Cold Outreach
+chris.liu84@innovate.net,Chris,Liu,+1-571-303-1384,ACTIVE,Import CSV
+rahul.garcia85@enterprise.org,Rahul,Garcia,+1-765-741-6736,ACTIVE,LinkedIn Lead
+peyton.jackson86@gmail.com,Peyton,Jackson,+1-614-287-9371,UNSUBSCRIBED,Cold Outreach
+peyton.johnson87@cloudworks.io,Peyton,Johnson,+1-211-345-1822,ACTIVE,Website Signup
+rowan.zhang88@startup.ai,Rowan,Zhang,+1-913-393-6820,ACTIVE,Referral
+isabella.taylor89@innovate.net,Isabella,Taylor,+1-625-691-3209,ACTIVE,API
+elena.gupta90@cloudworks.io,Elena,Gupta,+1-314-586-5562,ACTIVE,LinkedIn Lead
+taylor.taylor91@startup.ai,Taylor,Taylor,+1-946-199-9943,ACTIVE,Import CSV
+hayden.verma92@techcorp.com,Hayden,Verma,+1-404-890-2854,UNSUBSCRIBED,LinkedIn Lead
+chris.verma93@acme.co,Chris,Verma,+1-329-878-9762,ACTIVE,Website Signup
+skyler.joshi94@innovate.net,Skyler,Joshi,+1-225-781-6355,ACTIVE,Webinar
+lucas.li95@enterprise.org,Lucas,Li,+1-994-207-9487,ACTIVE,Import CSV
+rohan.sharma96@cloudworks.io,Rohan,Sharma,+1-458-175-7464,ARCHIVED,Website Signup
+siddharth.hernandez97@outlook.com,Siddharth,Hernandez,+1-226-961-5773,UNSUBSCRIBED,Import CSV
+cameron.joshi98@yahoo.com,Cameron,Joshi,+1-644-866-2536,ACTIVE,Website Signup
+sam.johnson99@growixa.io,Sam,Johnson,+1-493-878-7524,ACTIVE,Website Signup
+deepak.mehta100@growixa.io,Deepak,Mehta,+1-627-680-4159,ACTIVE,Cold Outreach
+ravi.jones101@growixa.io,Ravi,Jones,+1-979-336-8097,ARCHIVED,API
+ravi.li102@yahoo.com,Ravi,Li,+1-336-310-3024,ACTIVE,Website Signup
+chris.nguyen103@yahoo.com,Chris,Nguyen,+1-909-308-6256,UNSUBSCRIBED,Import CSV
+rohan.wang104@outlook.com,Rohan,Wang,+1-910-849-4089,ACTIVE,Import CSV
+riley.joshi105@yahoo.com,Riley,Joshi,+1-475-830-3694,ACTIVE,API
+karan.kumar106@outlook.com,Karan,Kumar,+1-500-235-6962,ACTIVE,Webinar
+kavya.yadav107@enterprise.org,Kavya,Yadav,+1-558-298-1857,ACTIVE,API
+ravi.patel108@innovate.net,Ravi,Patel,+1-955-795-7391,ACTIVE,Webinar
+pooja.pham109@yahoo.com,Pooja,Pham,+1-698-338-7944,ACTIVE,Webinar
+rahul.thomas110@startup.ai,Rahul,Thomas,+1-381-928-7060,ACTIVE,LinkedIn Lead
+reese.patel111@startup.ai,Reese,Patel,+1-510-591-6048,ACTIVE,Referral
+priya.li112@outlook.com,Priya,Li,+1-254-732-3431,ACTIVE,Import CSV
+isabella.nguyen113@yahoo.com,Isabella,Nguyen,+1-455-955-2767,UNSUBSCRIBED,LinkedIn Lead
+vikram.lopez114@yahoo.com,Vikram,Lopez,+1-517-735-8762,ARCHIVED,Webinar
+divya.kim115@gmail.com,Divya,Kim,+1-524-832-8391,ACTIVE,LinkedIn Lead
+dakota.singh116@startup.ai,Dakota,Singh,+1-975-827-3521,ACTIVE,Cold Outreach
+isabella.hernandez117@acme.co,Isabella,Hernandez,+1-237-828-2084,ACTIVE,API
+mateo.hernandez118@yahoo.com,Mateo,Hernandez,+1-469-235-3305,ACTIVE,Website Signup
+lucas.davis119@gmail.com,Lucas,Davis,+1-763-562-8156,UNSUBSCRIBED,LinkedIn Lead
+sneha.zhang120@techcorp.com,Sneha,Zhang,+1-495-560-9296,BOUNCED,Referral
+ananya.shah121@growixa.io,Ananya,Shah,+1-499-170-1424,ACTIVE,LinkedIn Lead
+alex.brown122@innovate.net,Alex,Brown,+1-740-846-5647,UNSUBSCRIBED,Referral
+pooja.mehta123@cloudworks.io,Pooja,Mehta,+1-866-791-2195,BOUNCED,Referral
+neha.davis124@acme.co,Neha,Davis,+1-270-890-9728,ACTIVE,Referral
+camila.park125@startup.ai,Camila,Park,+1-777-201-7762,ACTIVE,LinkedIn Lead
+dakota.gonzalez126@acme.co,Dakota,Gonzalez,+1-385-451-4669,ACTIVE,Import CSV
+mateo.brown127@cloudworks.io,Mateo,Brown,+1-311-839-9213,ACTIVE,Referral
+pooja.chen128@startup.ai,Pooja,Chen,+1-781-723-2631,UNSUBSCRIBED,Website Signup
+mia.li129@growixa.io,Mia,Li,+1-522-660-9985,ACTIVE,Import CSV
+rohan.rodriguez130@innovate.net,Rohan,Rodriguez,+1-922-750-8355,ACTIVE,Webinar
+jordan.kim131@startup.ai,Jordan,Kim,+1-959-561-4470,ACTIVE,LinkedIn Lead
+priya.martinez132@growixa.io,Priya,Martinez,+1-540-348-1404,UNSUBSCRIBED,LinkedIn Lead
+lucas.park133@techcorp.com,Lucas,Park,+1-770-899-7912,ACTIVE,Referral
+siddharth.wilson134@enterprise.org,Siddharth,Wilson,+1-409-175-8780,ACTIVE,API
+rohan.singh135@enterprise.org,Rohan,Singh,+1-872-642-7762,ACTIVE,Webinar
+logan.taylor136@techcorp.com,Logan,Taylor,+1-636-265-3549,ARCHIVED,API
+quinn.wang137@yahoo.com,Quinn,Wang,+1-341-893-5639,UNSUBSCRIBED,Referral
+pooja.park138@growixa.io,Pooja,Park,+1-786-184-1238,ACTIVE,Import CSV
+rohan.shah139@techcorp.com,Rohan,Shah,+1-633-201-7042,ACTIVE,Cold Outreach
+hayden.anderson140@acme.co,Hayden,Anderson,+1-209-681-4014,ACTIVE,Referral
+vikram.jackson141@techcorp.com,Vikram,Jackson,+1-358-457-9403,BOUNCED,Referral
+gabriel.mehta142@yahoo.com,Gabriel,Mehta,+1-892-694-7354,ACTIVE,API
+emerson.jackson143@enterprise.org,Emerson,Jackson,+1-348-988-8106,ACTIVE,Import CSV
+vikram.park144@outlook.com,Vikram,Park,+1-500-353-4885,ACTIVE,Import CSV
+isabella.williams145@startup.ai,Isabella,Williams,+1-599-359-6346,ACTIVE,Import CSV
+avery.yadav146@startup.ai,Avery,Yadav,+1-224-993-7238,ACTIVE,Webinar
+mateo.rodriguez147@yahoo.com,Mateo,Rodriguez,+1-538-891-8990,ACTIVE,Import CSV
+rohan.liu148@cloudworks.io,Rohan,Liu,+1-312-659-7883,ACTIVE,Website Signup
+mateo.shah149@startup.ai,Mateo,Shah,+1-716-402-4403,ACTIVE,Webinar
+siddharth.miller150@gmail.com,Siddharth,Miller,+1-813-514-5884,BOUNCED,LinkedIn Lead
+sam.wang151@innovate.net,Sam,Wang,+1-206-340-8666,ACTIVE,Webinar
+mateo.singh152@outlook.com,Mateo,Singh,+1-502-957-6035,ACTIVE,Referral
+neha.jones153@acme.co,Neha,Jones,+1-489-352-6291,ACTIVE,Referral
+meera.kumar154@enterprise.org,Meera,Kumar,+1-846-491-8771,ACTIVE,API
+isabella.jackson155@growixa.io,Isabella,Jackson,+1-625-225-9806,ACTIVE,LinkedIn Lead
+riley.lopez156@growixa.io,Riley,Lopez,+1-309-931-4685,ACTIVE,Webinar
+jordan.martinez157@cloudworks.io,Jordan,Martinez,+1-297-844-5164,ACTIVE,Cold Outreach
+meera.singh158@acme.co,Meera,Singh,+1-771-680-7163,ARCHIVED,API
+meera.zhang159@innovate.net,Meera,Zhang,+1-585-530-1860,UNSUBSCRIBED,Website Signup
+sneha.garcia160@innovate.net,Sneha,Garcia,+1-877-782-8170,ACTIVE,LinkedIn Lead
+divya.miller161@outlook.com,Divya,Miller,+1-395-240-7233,ACTIVE,Import CSV
+taylor.anderson162@outlook.com,Taylor,Anderson,+1-865-191-1898,ACTIVE,Import CSV
+siddharth.wilson163@techcorp.com,Siddharth,Wilson,+1-782-977-3570,ARCHIVED,API
+morgan.patel164@enterprise.org,Morgan,Patel,+1-319-254-8201,UNSUBSCRIBED,Referral
+isabella.martinez165@innovate.net,Isabella,Martinez,+1-303-616-8668,ACTIVE,Import CSV
+pat.kumar166@startup.ai,Pat,Kumar,+1-895-115-5173,ACTIVE,Cold Outreach
+priya.yadav167@techcorp.com,Priya,Yadav,+1-523-513-4070,UNSUBSCRIBED,Webinar
+mateo.sharma168@cloudworks.io,Mateo,Sharma,+1-289-987-1108,ACTIVE,Webinar
+diego.gonzalez169@startup.ai,Diego,Gonzalez,+1-866-201-5355,UNSUBSCRIBED,Cold Outreach
+sofia.kumar170@yahoo.com,Sofia,Kumar,+1-299-279-7583,ACTIVE,Website Signup
+aditya.martinez171@innovate.net,Aditya,Martinez,+1-553-995-8232,ACTIVE,LinkedIn Lead
+amit.johnson172@growixa.io,Amit,Johnson,+1-777-745-5811,ACTIVE,Webinar
+aditya.yadav173@techcorp.com,Aditya,Yadav,+1-697-328-8618,ARCHIVED,Cold Outreach
+camila.verma174@innovate.net,Camila,Verma,+1-369-352-5539,ARCHIVED,LinkedIn Lead
+finley.jackson175@cloudworks.io,Finley,Jackson,+1-607-377-3750,ACTIVE,Webinar
+mia.pham176@gmail.com,Mia,Pham,+1-364-767-5993,ACTIVE,API
+avery.tran177@growixa.io,Avery,Tran,+1-899-779-9779,ACTIVE,Cold Outreach
+sanjay.anderson178@innovate.net,Sanjay,Anderson,+1-717-488-5166,ACTIVE,Import CSV
+sneha.tran179@growixa.io,Sneha,Tran,+1-698-738-7127,ACTIVE,Cold Outreach
+finley.taylor180@acme.co,Finley,Taylor,+1-737-259-6275,ACTIVE,Website Signup
+logan.liu181@startup.ai,Logan,Liu,+1-892-464-5225,ACTIVE,Website Signup
+emerson.martin182@acme.co,Emerson,Martin,+1-327-406-2706,UNSUBSCRIBED,Referral
+priya.williams183@startup.ai,Priya,Williams,+1-474-525-1348,UNSUBSCRIBED,Referral
+finley.shah184@cloudworks.io,Finley,Shah,+1-512-234-5819,ACTIVE,Import CSV
+ananya.brown185@startup.ai,Ananya,Brown,+1-754-930-3051,ACTIVE,API
+emerson.jones186@acme.co,Emerson,Jones,+1-215-181-4263,ACTIVE,Webinar
+pooja.hernandez187@cloudworks.io,Pooja,Hernandez,+1-306-329-5184,ACTIVE,Website Signup
+meera.hernandez188@techcorp.com,Meera,Hernandez,+1-395-932-9467,BOUNCED,API
+ananya.garcia189@techcorp.com,Ananya,Garcia,+1-710-503-9078,ACTIVE,LinkedIn Lead
+gabriel.verma190@enterprise.org,Gabriel,Verma,+1-839-922-2528,ACTIVE,LinkedIn Lead
+riley.singh191@startup.ai,Riley,Singh,+1-573-910-2133,ACTIVE,Referral
+anushka.moore192@enterprise.org,Anushka,Moore,+1-465-877-4079,UNSUBSCRIBED,Import CSV
+aarav.martin193@gmail.com,Aarav,Martin,+1-770-472-3303,UNSUBSCRIBED,Referral
+diego.shah194@startup.ai,Diego,Shah,+1-510-516-7806,ACTIVE,API
+mateo.chen195@startup.ai,Mateo,Chen,+1-634-911-3780,ACTIVE,Website Signup
+avery.chen196@gmail.com,Avery,Chen,+1-695-609-7527,ACTIVE,Webinar
+pooja.martin197@yahoo.com,Pooja,Martin,+1-467-633-9788,ACTIVE,Cold Outreach
+sneha.smith198@startup.ai,Sneha,Smith,+1-265-936-7966,ACTIVE,API
+pat.singh199@growixa.io,Pat,Singh,+1-987-912-9438,ACTIVE,Cold Outreach
+jordan.moore200@innovate.net,Jordan,Moore,+1-380-950-7840,ACTIVE,API
+avery.hernandez201@enterprise.org,Avery,Hernandez,+1-920-121-7525,ACTIVE,LinkedIn Lead
+anushka.zhang202@techcorp.com,Anushka,Zhang,+1-770-862-7298,ACTIVE,Referral
+ananya.martinez203@startup.ai,Ananya,Martinez,+1-616-495-4919,ACTIVE,Webinar
+rohan.yadav204@acme.co,Rohan,Yadav,+1-892-168-3590,ACTIVE,API
+quinn.rodriguez205@innovate.net,Quinn,Rodriguez,+1-850-780-7390,ACTIVE,API
+elena.jackson206@outlook.com,Elena,Jackson,+1-889-278-6274,ACTIVE,API
+alex.rodriguez207@outlook.com,Alex,Rodriguez,+1-319-516-3513,ACTIVE,LinkedIn Lead
+rohan.williams208@techcorp.com,Rohan,Williams,+1-459-591-5120,ACTIVE,Webinar
+sofia.mehta209@techcorp.com,Sofia,Mehta,+1-773-205-9497,ACTIVE,Webinar
+lucas.miller210@innovate.net,Lucas,Miller,+1-282-900-5746,ACTIVE,Webinar
+morgan.kumar211@cloudworks.io,Morgan,Kumar,+1-516-517-9550,ACTIVE,Cold Outreach
+siddharth.rodriguez212@techcorp.com,Siddharth,Rodriguez,+1-943-502-8004,ACTIVE,API
+logan.anderson213@outlook.com,Logan,Anderson,+1-665-734-7126,ACTIVE,Website Signup
+mia.zhang214@yahoo.com,Mia,Zhang,+1-894-827-6730,ACTIVE,Cold Outreach
+jordan.mehta215@startup.ai,Jordan,Mehta,+1-642-611-9657,ACTIVE,Import CSV
+alex.li216@gmail.com,Alex,Li,+1-910-555-8459,ACTIVE,Import CSV
+logan.patel217@gmail.com,Logan,Patel,+1-310-247-4938,ACTIVE,API
+quinn.patel218@yahoo.com,Quinn,Patel,+1-480-611-7127,ACTIVE,LinkedIn Lead
+hayden.yadav219@outlook.com,Hayden,Yadav,+1-926-838-8410,ARCHIVED,Referral
+kavya.liu220@techcorp.com,Kavya,Liu,+1-531-776-2824,ACTIVE,Website Signup
+pat.williams221@gmail.com,Pat,Williams,+1-860-270-2525,ACTIVE,Import CSV
+pat.martinez222@growixa.io,Pat,Martinez,+1-260-256-9768,ACTIVE,API
+siddharth.zhang223@startup.ai,Siddharth,Zhang,+1-257-977-1028,UNSUBSCRIBED,Cold Outreach
+jordan.martin224@growixa.io,Jordan,Martin,+1-333-933-9048,ARCHIVED,API
+neha.kim225@enterprise.org,Neha,Kim,+1-382-626-2813,UNSUBSCRIBED,Website Signup
+cameron.hernandez226@techcorp.com,Cameron,Hernandez,+1-896-947-8949,ACTIVE,Website Signup
+avery.liu227@acme.co,Avery,Liu,+1-811-113-3311,ACTIVE,Cold Outreach
+diego.nguyen228@techcorp.com,Diego,Nguyen,+1-913-778-8344,ACTIVE,Webinar
+ravi.lopez229@gmail.com,Ravi,Lopez,+1-343-623-7832,BOUNCED,Referral
+gabriel.gupta230@startup.ai,Gabriel,Gupta,+1-797-879-7115,ACTIVE,Webinar
+rahul.park231@gmail.com,Rahul,Park,+1-957-610-8896,ACTIVE,Import CSV
+rohan.gonzalez232@acme.co,Rohan,Gonzalez,+1-272-582-5034,BOUNCED,Import CSV
+ananya.wilson233@techcorp.com,Ananya,Wilson,+1-584-617-6285,ACTIVE,Import CSV
+dakota.kumar234@enterprise.org,Dakota,Kumar,+1-341-544-6754,ACTIVE,Cold Outreach
+sofia.gupta235@enterprise.org,Sofia,Gupta,+1-380-505-5314,ACTIVE,Cold Outreach
+divya.martinez236@acme.co,Divya,Martinez,+1-710-891-1589,ACTIVE,API
+elena.taylor237@growixa.io,Elena,Taylor,+1-734-180-8977,UNSUBSCRIBED,Import CSV
+kavya.anderson238@gmail.com,Kavya,Anderson,+1-867-306-6617,ACTIVE,Import CSV
+gabriel.smith239@acme.co,Gabriel,Smith,+1-330-793-3837,ACTIVE,Import CSV
+sanjay.gupta240@cloudworks.io,Sanjay,Gupta,+1-870-631-2136,ACTIVE,Webinar
+sam.hernandez241@techcorp.com,Sam,Hernandez,+1-437-435-8974,ACTIVE,Website Signup
+dakota.park242@cloudworks.io,Dakota,Park,+1-521-784-2630,ACTIVE,Cold Outreach
+quinn.kumar243@gmail.com,Quinn,Kumar,+1-958-289-5997,ACTIVE,LinkedIn Lead
+amit.kim244@startup.ai,Amit,Kim,+1-792-918-7001,ACTIVE,Webinar
+isabella.martinez245@cloudworks.io,Isabella,Martinez,+1-929-430-5936,ACTIVE,Webinar
+avery.joshi246@growixa.io,Avery,Joshi,+1-370-435-7620,ACTIVE,Referral
+morgan.pham247@outlook.com,Morgan,Pham,+1-222-629-2148,ACTIVE,Referral
+lucas.sharma248@startup.ai,Lucas,Sharma,+1-241-897-1534,UNSUBSCRIBED,Referral
+quinn.verma249@gmail.com,Quinn,Verma,+1-390-980-9010,ACTIVE,Website Signup
+neha.lopez250@enterprise.org,Neha,Lopez,+1-333-692-2519,ACTIVE,Website Signup
+sanjay.nguyen251@startup.ai,Sanjay,Nguyen,+1-307-510-5269,ACTIVE,LinkedIn Lead
+kavya.moore252@enterprise.org,Kavya,Moore,+1-860-985-1352,ARCHIVED,Import CSV
+pooja.kumar253@yahoo.com,Pooja,Kumar,+1-616-557-5419,ACTIVE,Import CSV
+meera.lopez254@innovate.net,Meera,Lopez,+1-719-316-8297,UNSUBSCRIBED,Webinar
+jordan.lopez255@enterprise.org,Jordan,Lopez,+1-484-914-3474,UNSUBSCRIBED,API
+karan.kumar256@outlook.com,Karan,Kumar,+1-479-418-6095,ACTIVE,Referral
+rahul.singh257@cloudworks.io,Rahul,Singh,+1-685-785-3918,ACTIVE,API
+leo.gonzalez258@innovate.net,Leo,Gonzalez,+1-438-107-8150,ACTIVE,Import CSV
+divya.lopez259@outlook.com,Divya,Lopez,+1-533-831-1195,ARCHIVED,Referral
+siddharth.moore260@gmail.com,Siddharth,Moore,+1-483-546-4806,ACTIVE,Webinar
+rahul.park261@growixa.io,Rahul,Park,+1-791-837-6811,ACTIVE,Webinar
+vikram.gonzalez262@enterprise.org,Vikram,Gonzalez,+1-394-142-5874,ACTIVE,API
+ravi.hernandez263@yahoo.com,Ravi,Hernandez,+1-588-477-3994,BOUNCED,Cold Outreach
+siddharth.davis264@enterprise.org,Siddharth,Davis,+1-881-195-8875,ACTIVE,Webinar
+chris.liu265@cloudworks.io,Chris,Liu,+1-984-963-4146,ACTIVE,Import CSV
+taylor.gonzalez266@growixa.io,Taylor,Gonzalez,+1-956-917-9043,ACTIVE,LinkedIn Lead
+kavya.martin267@enterprise.org,Kavya,Martin,+1-213-615-1652,ACTIVE,LinkedIn Lead
+priya.lopez268@enterprise.org,Priya,Lopez,+1-244-844-3905,ACTIVE,API
+priya.wang269@yahoo.com,Priya,Wang,+1-919-520-1396,ACTIVE,Website Signup
+lucas.chen270@growixa.io,Lucas,Chen,+1-991-681-3552,ACTIVE,Cold Outreach
+aarav.williams271@outlook.com,Aarav,Williams,+1-376-455-6004,ACTIVE,Referral
+amit.mehta272@gmail.com,Amit,Mehta,+1-714-776-2845,ACTIVE,Website Signup
+cameron.singh273@cloudworks.io,Cameron,Singh,+1-718-677-5470,ARCHIVED,Webinar
+aditya.williams274@cloudworks.io,Aditya,Williams,+1-608-264-1275,ACTIVE,Webinar
+aditya.williams275@enterprise.org,Aditya,Williams,+1-599-165-4013,BOUNCED,Cold Outreach
+diego.sharma276@growixa.io,Diego,Sharma,+1-308-331-9305,ACTIVE,API
+sneha.kumar277@outlook.com,Sneha,Kumar,+1-569-365-9756,ACTIVE,Cold Outreach
+mia.yadav278@techcorp.com,Mia,Yadav,+1-828-552-8503,UNSUBSCRIBED,API
+sofia.jones279@cloudworks.io,Sofia,Jones,+1-414-639-9939,ACTIVE,LinkedIn Lead
+taylor.jones280@cloudworks.io,Taylor,Jones,+1-917-290-9051,ACTIVE,Webinar
+mia.hernandez281@innovate.net,Mia,Hernandez,+1-269-592-5243,ACTIVE,Referral
+chris.gonzalez282@startup.ai,Chris,Gonzalez,+1-411-948-4875,ACTIVE,Website Signup
+jordan.pham283@acme.co,Jordan,Pham,+1-741-822-4191,UNSUBSCRIBED,Cold Outreach
+riley.rodriguez284@startup.ai,Riley,Rodriguez,+1-288-336-9456,ACTIVE,Webinar
+aditya.brown285@enterprise.org,Aditya,Brown,+1-356-248-8731,ACTIVE,Import CSV
+mateo.pham286@techcorp.com,Mateo,Pham,+1-667-135-4651,BOUNCED,API
+quinn.davis287@gmail.com,Quinn,Davis,+1-305-922-2429,UNSUBSCRIBED,Referral
+divya.gupta288@growixa.io,Divya,Gupta,+1-586-289-5986,ACTIVE,Cold Outreach
+sam.wang289@startup.ai,Sam,Wang,+1-975-481-3250,UNSUBSCRIBED,Cold Outreach
+pooja.zhang290@outlook.com,Pooja,Zhang,+1-584-265-6701,BOUNCED,Referral
+anushka.jones291@yahoo.com,Anushka,Jones,+1-406-508-2459,ACTIVE,API
+divya.chen292@outlook.com,Divya,Chen,+1-654-464-1398,ACTIVE,Cold Outreach
+ananya.davis293@techcorp.com,Ananya,Davis,+1-510-529-8543,ACTIVE,Import CSV
+emerson.joshi294@gmail.com,Emerson,Joshi,+1-261-313-8805,ACTIVE,Cold Outreach
+ananya.davis295@yahoo.com,Ananya,Davis,+1-613-716-5991,ACTIVE,Cold Outreach
+jordan.mehta296@growixa.io,Jordan,Mehta,+1-962-823-2267,ACTIVE,LinkedIn Lead
+siddharth.park297@startup.ai,Siddharth,Park,+1-388-904-7811,ACTIVE,Cold Outreach
+rahul.chen298@gmail.com,Rahul,Chen,+1-973-773-2241,UNSUBSCRIBED,Website Signup
+chris.garcia299@outlook.com,Chris,Garcia,+1-558-666-3035,UNSUBSCRIBED,Webinar
+logan.garcia300@cloudworks.io,Logan,Garcia,+1-711-677-4280,ACTIVE,Cold Outreach
+avery.davis301@acme.co,Avery,Davis,+1-683-966-7058,ACTIVE,API
+ananya.li302@techcorp.com,Ananya,Li,+1-785-290-1504,ACTIVE,Webinar
+rowan.singh303@growixa.io,Rowan,Singh,+1-613-334-4193,BOUNCED,API
+meera.anderson304@enterprise.org,Meera,Anderson,+1-498-338-7037,BOUNCED,Website Signup
+neha.hernandez305@enterprise.org,Neha,Hernandez,+1-602-737-3384,ACTIVE,Import CSV
+chris.liu306@growixa.io,Chris,Liu,+1-239-125-5884,ACTIVE,Import CSV
+dakota.patel307@cloudworks.io,Dakota,Patel,+1-870-441-3457,ACTIVE,Import CSV
+chris.zhang308@gmail.com,Chris,Zhang,+1-345-552-3763,BOUNCED,Import CSV
+emerson.singh309@outlook.com,Emerson,Singh,+1-913-243-3532,ACTIVE,Import CSV
+gabriel.thomas310@techcorp.com,Gabriel,Thomas,+1-959-565-7484,BOUNCED,Referral
+neha.pham311@innovate.net,Neha,Pham,+1-568-958-8704,ACTIVE,Import CSV
+alex.moore312@techcorp.com,Alex,Moore,+1-573-787-3336,ACTIVE,API
+rohan.liu313@innovate.net,Rohan,Liu,+1-457-944-8966,ACTIVE,LinkedIn Lead
+quinn.williams314@innovate.net,Quinn,Williams,+1-607-320-4353,ACTIVE,Cold Outreach
+alex.liu315@yahoo.com,Alex,Liu,+1-463-258-2675,ACTIVE,LinkedIn Lead
+deepak.martinez316@enterprise.org,Deepak,Martinez,+1-459-866-2684,ACTIVE,Import CSV
+dakota.garcia317@growixa.io,Dakota,Garcia,+1-204-685-1643,UNSUBSCRIBED,Webinar
+peyton.shah318@growixa.io,Peyton,Shah,+1-597-772-6237,UNSUBSCRIBED,Website Signup
+taylor.taylor319@startup.ai,Taylor,Taylor,+1-376-869-3131,BOUNCED,API
+lucas.li320@startup.ai,Lucas,Li,+1-429-225-3902,ACTIVE,Cold Outreach
+hayden.smith321@enterprise.org,Hayden,Smith,+1-379-556-6907,UNSUBSCRIBED,Webinar
+ananya.miller322@cloudworks.io,Ananya,Miller,+1-348-407-2705,ACTIVE,Webinar
+leo.rodriguez323@outlook.com,Leo,Rodriguez,+1-232-627-2963,ACTIVE,Webinar
+priya.wang324@growixa.io,Priya,Wang,+1-521-100-9108,ACTIVE,API
+skyler.kim325@enterprise.org,Skyler,Kim,+1-527-933-5195,ACTIVE,Cold Outreach
+kavya.li326@yahoo.com,Kavya,Li,+1-712-282-9613,ACTIVE,Referral
+reese.miller327@techcorp.com,Reese,Miller,+1-517-487-1362,ACTIVE,Referral
+avery.singh328@yahoo.com,Avery,Singh,+1-653-437-6138,ACTIVE,Referral
+diego.singh329@innovate.net,Diego,Singh,+1-364-852-5193,ACTIVE,Import CSV
+neha.wilson330@growixa.io,Neha,Wilson,+1-395-523-1713,BOUNCED,LinkedIn Lead
+mateo.anderson331@techcorp.com,Mateo,Anderson,+1-434-211-5782,UNSUBSCRIBED,API
+isabella.williams332@enterprise.org,Isabella,Williams,+1-310-598-8430,ACTIVE,Import CSV
+diego.singh333@outlook.com,Diego,Singh,+1-736-200-3198,ACTIVE,Cold Outreach
+chris.davis334@techcorp.com,Chris,Davis,+1-692-412-8081,ACTIVE,Website Signup
+finley.park335@growixa.io,Finley,Park,+1-488-758-1255,ACTIVE,Cold Outreach
+ananya.moore336@cloudworks.io,Ananya,Moore,+1-696-432-9205,BOUNCED,Import CSV
+logan.lopez337@growixa.io,Logan,Lopez,+1-470-959-6514,UNSUBSCRIBED,Website Signup
+kavya.davis338@acme.co,Kavya,Davis,+1-690-602-2620,ACTIVE,Referral
+dakota.rodriguez339@yahoo.com,Dakota,Rodriguez,+1-643-270-6365,ACTIVE,Cold Outreach
+sam.miller340@techcorp.com,Sam,Miller,+1-817-828-1431,ACTIVE,LinkedIn Lead
+finley.li341@gmail.com,Finley,Li,+1-562-269-6893,ACTIVE,Website Signup
+kavya.nguyen342@innovate.net,Kavya,Nguyen,+1-522-178-3992,ACTIVE,Cold Outreach
+riley.rodriguez343@yahoo.com,Riley,Rodriguez,+1-451-770-8388,ACTIVE,Import CSV
+ananya.zhang344@acme.co,Ananya,Zhang,+1-538-784-9947,ACTIVE,LinkedIn Lead
+anushka.tran345@acme.co,Anushka,Tran,+1-893-729-5351,BOUNCED,Webinar
+finley.liu346@techcorp.com,Finley,Liu,+1-648-524-6625,ACTIVE,API
+riley.yadav347@growixa.io,Riley,Yadav,+1-447-330-8897,ACTIVE,Website Signup
+elena.anderson348@gmail.com,Elena,Anderson,+1-780-869-3294,ACTIVE,Import CSV
+ravi.wang349@techcorp.com,Ravi,Wang,+1-600-824-1551,ACTIVE,Website Signup
+isabella.wang350@gmail.com,Isabella,Wang,+1-286-798-1186,ARCHIVED,LinkedIn Lead
+deepak.gupta351@acme.co,Deepak,Gupta,+1-914-857-9815,ACTIVE,API
+alex.yadav352@startup.ai,Alex,Yadav,+1-728-489-1630,ACTIVE,Website Signup
+gabriel.hernandez353@cloudworks.io,Gabriel,Hernandez,+1-285-235-3049,ACTIVE,Referral
+ravi.chen354@innovate.net,Ravi,Chen,+1-431-666-1564,ACTIVE,Webinar
+aditya.yadav355@gmail.com,Aditya,Yadav,+1-515-340-8699,ARCHIVED,Referral
+diego.martin356@enterprise.org,Diego,Martin,+1-333-801-6539,ACTIVE,Website Signup
+aditya.thomas357@cloudworks.io,Aditya,Thomas,+1-511-762-5702,ACTIVE,Referral
+anushka.verma358@acme.co,Anushka,Verma,+1-361-125-7524,ACTIVE,Cold Outreach
+avery.miller359@startup.ai,Avery,Miller,+1-773-327-2186,ACTIVE,API
+kavya.miller360@enterprise.org,Kavya,Miller,+1-674-745-4720,ACTIVE,Website Signup
+dakota.miller361@innovate.net,Dakota,Miller,+1-981-605-2020,UNSUBSCRIBED,Webinar
+kavya.park362@techcorp.com,Kavya,Park,+1-753-930-1130,ACTIVE,Webinar
+kavya.davis363@startup.ai,Kavya,Davis,+1-383-973-1977,ACTIVE,API
+camila.jackson364@cloudworks.io,Camila,Jackson,+1-316-342-2253,ACTIVE,Import CSV
+rowan.joshi365@yahoo.com,Rowan,Joshi,+1-478-406-8161,UNSUBSCRIBED,Website Signup
+mateo.lopez366@cloudworks.io,Mateo,Lopez,+1-851-489-6563,BOUNCED,API
+sneha.lopez367@yahoo.com,Sneha,Lopez,+1-463-698-3742,ACTIVE,LinkedIn Lead
+morgan.nguyen368@cloudworks.io,Morgan,Nguyen,+1-775-992-7979,ACTIVE,Referral
+mia.kumar369@outlook.com,Mia,Kumar,+1-525-426-2568,ACTIVE,Import CSV
+finley.hernandez370@cloudworks.io,Finley,Hernandez,+1-881-346-4296,ACTIVE,Webinar
+elena.martin371@yahoo.com,Elena,Martin,+1-995-173-5419,ACTIVE,Website Signup
+mia.rodriguez372@cloudworks.io,Mia,Rodriguez,+1-771-511-5581,ACTIVE,LinkedIn Lead
+meera.jones373@outlook.com,Meera,Jones,+1-865-542-7883,BOUNCED,Website Signup
+hayden.martinez374@outlook.com,Hayden,Martinez,+1-924-455-8891,ACTIVE,Website Signup
+aditya.wilson375@enterprise.org,Aditya,Wilson,+1-251-209-2135,ACTIVE,Website Signup
+ananya.hernandez376@gmail.com,Ananya,Hernandez,+1-395-543-9549,ACTIVE,Referral
+elena.mehta377@growixa.io,Elena,Mehta,+1-784-329-9563,ACTIVE,Website Signup
+diego.gupta378@growixa.io,Diego,Gupta,+1-443-192-9052,UNSUBSCRIBED,Website Signup
+reese.yadav379@innovate.net,Reese,Yadav,+1-941-128-8132,UNSUBSCRIBED,LinkedIn Lead
+pooja.joshi380@growixa.io,Pooja,Joshi,+1-894-128-3614,ACTIVE,Webinar
+lucas.martin381@gmail.com,Lucas,Martin,+1-950-680-1790,ACTIVE,Website Signup
+reese.joshi382@gmail.com,Reese,Joshi,+1-218-331-3099,ACTIVE,Referral
+divya.kim383@gmail.com,Divya,Kim,+1-614-558-6732,ACTIVE,Website Signup
+mia.singh384@enterprise.org,Mia,Singh,+1-697-549-1612,UNSUBSCRIBED,Cold Outreach
+sofia.li385@growixa.io,Sofia,Li,+1-764-867-6778,ACTIVE,Import CSV
+amit.kumar386@enterprise.org,Amit,Kumar,+1-444-453-4284,BOUNCED,API
+camila.park387@innovate.net,Camila,Park,+1-770-238-1674,ACTIVE,Website Signup
+emerson.miller388@growixa.io,Emerson,Miller,+1-439-563-7151,UNSUBSCRIBED,Referral
+peyton.brown389@acme.co,Peyton,Brown,+1-977-499-2527,UNSUBSCRIBED,Cold Outreach
+jordan.park390@innovate.net,Jordan,Park,+1-809-679-1770,BOUNCED,Referral
+diego.shah391@outlook.com,Diego,Shah,+1-728-453-8199,ACTIVE,Cold Outreach
+isabella.liu392@cloudworks.io,Isabella,Liu,+1-923-127-7596,ACTIVE,Import CSV
+aarav.kumar393@outlook.com,Aarav,Kumar,+1-843-278-3560,ACTIVE,LinkedIn Lead
+amit.gupta394@acme.co,Amit,Gupta,+1-913-342-9340,UNSUBSCRIBED,Webinar
+sanjay.wilson395@techcorp.com,Sanjay,Wilson,+1-346-800-8799,ACTIVE,Import CSV
+vikram.wang396@outlook.com,Vikram,Wang,+1-983-555-9768,ACTIVE,Cold Outreach
+neha.smith397@acme.co,Neha,Smith,+1-524-780-8200,ACTIVE,LinkedIn Lead
+cameron.martin398@cloudworks.io,Cameron,Martin,+1-297-372-6583,ARCHIVED,Import CSV
+chris.garcia399@yahoo.com,Chris,Garcia,+1-295-735-1214,ACTIVE,Cold Outreach
+diego.singh400@techcorp.com,Diego,Singh,+1-677-566-9787,ACTIVE,Cold Outreach
+pat.jones401@yahoo.com,Pat,Jones,+1-952-845-4877,ARCHIVED,Website Signup
+siddharth.thomas402@innovate.net,Siddharth,Thomas,+1-756-548-8417,ARCHIVED,Referral
+logan.williams403@outlook.com,Logan,Williams,+1-998-797-9738,ARCHIVED,Webinar
+rahul.park404@cloudworks.io,Rahul,Park,+1-243-735-2718,ACTIVE,Webinar
+skyler.smith405@enterprise.org,Skyler,Smith,+1-267-392-5244,ACTIVE,API
+siddharth.garcia406@gmail.com,Siddharth,Garcia,+1-769-510-5478,ACTIVE,Import CSV
+aditya.shah407@growixa.io,Aditya,Shah,+1-743-327-5322,ACTIVE,Referral
+deepak.hernandez408@growixa.io,Deepak,Hernandez,+1-781-633-1549,ACTIVE,Import CSV
+aditya.miller409@techcorp.com,Aditya,Miller,+1-796-567-8251,UNSUBSCRIBED,Referral
+taylor.martin410@startup.ai,Taylor,Martin,+1-246-996-2365,ACTIVE,Website Signup
+camila.kim411@cloudworks.io,Camila,Kim,+1-895-493-9474,UNSUBSCRIBED,Referral
+priya.martin412@outlook.com,Priya,Martin,+1-286-298-7412,ACTIVE,Webinar
+siddharth.smith413@acme.co,Siddharth,Smith,+1-529-240-2476,ACTIVE,API
+rowan.jackson414@techcorp.com,Rowan,Jackson,+1-855-885-9814,ACTIVE,Webinar
+rowan.martin415@growixa.io,Rowan,Martin,+1-719-639-9405,BOUNCED,LinkedIn Lead
+pat.verma416@growixa.io,Pat,Verma,+1-434-740-6906,ACTIVE,Cold Outreach
+quinn.anderson417@innovate.net,Quinn,Anderson,+1-691-343-7181,ARCHIVED,LinkedIn Lead
+camila.verma418@yahoo.com,Camila,Verma,+1-480-375-6378,ACTIVE,Import CSV
+amit.shah419@startup.ai,Amit,Shah,+1-213-195-3419,ACTIVE,Referral
+dakota.park420@yahoo.com,Dakota,Park,+1-295-818-1947,ACTIVE,Cold Outreach
+anushka.pham421@outlook.com,Anushka,Pham,+1-903-196-6372,ACTIVE,API
+jordan.smith422@enterprise.org,Jordan,Smith,+1-733-585-2848,UNSUBSCRIBED,Cold Outreach
+cameron.moore423@outlook.com,Cameron,Moore,+1-711-267-9895,ACTIVE,Website Signup
+sofia.jackson424@growixa.io,Sofia,Jackson,+1-686-933-3379,ACTIVE,Webinar
+isabella.liu425@techcorp.com,Isabella,Liu,+1-203-729-5634,ACTIVE,Referral
+meera.wang426@enterprise.org,Meera,Wang,+1-458-519-8042,ARCHIVED,Import CSV
+amit.sharma427@cloudworks.io,Amit,Sharma,+1-316-464-5508,ACTIVE,Cold Outreach
+anushka.zhang428@yahoo.com,Anushka,Zhang,+1-769-532-8032,ACTIVE,LinkedIn Lead
+pat.zhang429@enterprise.org,Pat,Zhang,+1-326-500-1634,ACTIVE,Cold Outreach
+pat.kumar430@yahoo.com,Pat,Kumar,+1-264-988-9542,ACTIVE,Cold Outreach
+aarav.martin431@enterprise.org,Aarav,Martin,+1-821-696-7412,ACTIVE,Webinar
+leo.chen432@enterprise.org,Leo,Chen,+1-334-850-8326,UNSUBSCRIBED,Referral
+vikram.mehta433@startup.ai,Vikram,Mehta,+1-897-612-7053,ACTIVE,Website Signup
+peyton.nguyen434@acme.co,Peyton,Nguyen,+1-701-369-4270,ACTIVE,Import CSV
+riley.wilson435@gmail.com,Riley,Wilson,+1-941-642-2777,ACTIVE,Cold Outreach
+deepak.shah436@outlook.com,Deepak,Shah,+1-207-285-1426,ACTIVE,Website Signup
+skyler.lopez437@techcorp.com,Skyler,Lopez,+1-353-579-9543,ACTIVE,LinkedIn Lead
+ravi.gonzalez438@enterprise.org,Ravi,Gonzalez,+1-655-749-3969,BOUNCED,API
+lucas.rodriguez439@techcorp.com,Lucas,Rodriguez,+1-317-873-1044,ARCHIVED,Referral
+aarav.shah440@gmail.com,Aarav,Shah,+1-847-885-8954,ACTIVE,Referral
+pat.anderson441@gmail.com,Pat,Anderson,+1-361-134-6053,ACTIVE,Webinar
+morgan.li442@cloudworks.io,Morgan,Li,+1-819-178-8482,ACTIVE,API
+chris.davis443@enterprise.org,Chris,Davis,+1-654-409-2441,ARCHIVED,Referral
+finley.jones444@growixa.io,Finley,Jones,+1-526-467-6302,ACTIVE,API
+leo.joshi445@cloudworks.io,Leo,Joshi,+1-248-682-7237,ARCHIVED,Website Signup
+deepak.jones446@startup.ai,Deepak,Jones,+1-990-322-4539,ARCHIVED,Website Signup
+ravi.kim447@techcorp.com,Ravi,Kim,+1-987-894-1927,ACTIVE,API
+gabriel.mehta448@growixa.io,Gabriel,Mehta,+1-629-483-9357,ARCHIVED,Referral
+vikram.wang449@cloudworks.io,Vikram,Wang,+1-676-599-1194,ACTIVE,API
+vikram.kumar450@enterprise.org,Vikram,Kumar,+1-894-492-1083,ACTIVE,Website Signup
+neha.zhang451@outlook.com,Neha,Zhang,+1-547-246-7672,ACTIVE,Import CSV
+rahul.singh452@enterprise.org,Rahul,Singh,+1-940-475-9924,ACTIVE,Referral
+elena.wang453@enterprise.org,Elena,Wang,+1-754-272-7419,ACTIVE,LinkedIn Lead
+pooja.shah454@outlook.com,Pooja,Shah,+1-921-429-4236,ACTIVE,Webinar
+pat.liu455@startup.ai,Pat,Liu,+1-616-393-5628,ACTIVE,LinkedIn Lead
+kavya.liu456@yahoo.com,Kavya,Liu,+1-588-526-4528,BOUNCED,LinkedIn Lead
+anushka.li457@startup.ai,Anushka,Li,+1-951-761-2010,ACTIVE,Cold Outreach
+diego.li458@startup.ai,Diego,Li,+1-586-955-8527,ARCHIVED,Import CSV
+skyler.anderson459@innovate.net,Skyler,Anderson,+1-608-771-4206,ACTIVE,Website Signup
+siddharth.jones460@innovate.net,Siddharth,Jones,+1-507-234-4970,ACTIVE,API
+karan.chen461@gmail.com,Karan,Chen,+1-349-720-1658,ACTIVE,API
+taylor.park462@yahoo.com,Taylor,Park,+1-231-436-3289,UNSUBSCRIBED,Cold Outreach
+amit.johnson463@innovate.net,Amit,Johnson,+1-831-251-3298,UNSUBSCRIBED,Import CSV
+rahul.jackson464@yahoo.com,Rahul,Jackson,+1-788-435-9438,ACTIVE,API
+amit.smith465@techcorp.com,Amit,Smith,+1-388-837-9799,ACTIVE,Import CSV
+morgan.miller466@yahoo.com,Morgan,Miller,+1-438-445-5988,ACTIVE,Import CSV
+finley.park467@growixa.io,Finley,Park,+1-852-255-3847,ACTIVE,Import CSV
+alex.smith468@startup.ai,Alex,Smith,+1-734-657-7648,ACTIVE,LinkedIn Lead
+isabella.gupta469@cloudworks.io,Isabella,Gupta,+1-988-325-9608,UNSUBSCRIBED,Referral
+deepak.jones470@growixa.io,Deepak,Jones,+1-353-990-9546,ACTIVE,API
+hayden.verma471@techcorp.com,Hayden,Verma,+1-267-266-7560,UNSUBSCRIBED,API
+cameron.davis472@startup.ai,Cameron,Davis,+1-430-943-5257,ACTIVE,Import CSV
+mateo.hernandez473@techcorp.com,Mateo,Hernandez,+1-707-281-6739,ACTIVE,API
+chris.jackson474@yahoo.com,Chris,Jackson,+1-666-621-3116,ACTIVE,Import CSV
+sam.yadav475@techcorp.com,Sam,Yadav,+1-897-336-3906,ACTIVE,Referral
+avery.davis476@techcorp.com,Avery,Davis,+1-488-750-3667,UNSUBSCRIBED,Import CSV
+divya.martinez477@yahoo.com,Divya,Martinez,+1-629-747-4976,ACTIVE,Webinar
+rowan.johnson478@gmail.com,Rowan,Johnson,+1-487-508-5174,ACTIVE,Webinar
+vikram.kumar479@techcorp.com,Vikram,Kumar,+1-902-554-4605,ACTIVE,Website Signup
+ravi.kim480@enterprise.org,Ravi,Kim,+1-390-398-2380,ARCHIVED,Cold Outreach
+emerson.moore481@outlook.com,Emerson,Moore,+1-356-105-9884,BOUNCED,Website Signup
+rahul.gonzalez482@acme.co,Rahul,Gonzalez,+1-495-421-7722,ACTIVE,Webinar
+logan.williams483@enterprise.org,Logan,Williams,+1-841-182-2750,ACTIVE,Webinar
+camila.kumar484@enterprise.org,Camila,Kumar,+1-661-713-4525,ACTIVE,Import CSV
+emerson.shah485@techcorp.com,Emerson,Shah,+1-388-517-3409,ACTIVE,API
+camila.tran486@gmail.com,Camila,Tran,+1-957-853-7024,ACTIVE,Import CSV
+diego.mehta487@acme.co,Diego,Mehta,+1-888-868-8763,ACTIVE,Website Signup
+lucas.zhang488@growixa.io,Lucas,Zhang,+1-431-482-3865,BOUNCED,LinkedIn Lead
+jordan.davis489@enterprise.org,Jordan,Davis,+1-706-211-2646,UNSUBSCRIBED,Webinar
+peyton.pham490@yahoo.com,Peyton,Pham,+1-215-720-7182,BOUNCED,Import CSV
+aditya.tran491@acme.co,Aditya,Tran,+1-864-688-7928,BOUNCED,Import CSV
+pat.thomas492@growixa.io,Pat,Thomas,+1-966-989-8862,ACTIVE,Import CSV
+alex.kim493@innovate.net,Alex,Kim,+1-738-235-9202,ACTIVE,Cold Outreach
+karan.johnson494@outlook.com,Karan,Johnson,+1-452-526-4356,ACTIVE,Website Signup
+gabriel.verma495@techcorp.com,Gabriel,Verma,+1-595-293-8232,ACTIVE,Webinar
+aditya.miller496@cloudworks.io,Aditya,Miller,+1-444-456-6385,ACTIVE,LinkedIn Lead
+rowan.lopez497@growixa.io,Rowan,Lopez,+1-840-500-9855,ACTIVE,Webinar
+sam.davis498@gmail.com,Sam,Davis,+1-863-552-8383,ACTIVE,Webinar
+ananya.wilson499@techcorp.com,Ananya,Wilson,+1-440-902-4959,ARCHIVED,Website Signup
+leo.mehta500@growixa.io,Leo,Mehta,+1-978-214-6716,ACTIVE,Cold Outreach
+riley.davis501@growixa.io,Riley,Davis,+1-515-533-1860,ACTIVE,Referral
+anushka.rodriguez502@techcorp.com,Anushka,Rodriguez,+1-546-968-1889,ACTIVE,Referral
+ananya.li503@startup.ai,Ananya,Li,+1-418-390-9065,ACTIVE,Cold Outreach
+sneha.taylor504@outlook.com,Sneha,Taylor,+1-851-571-2546,ACTIVE,API
+ananya.moore505@acme.co,Ananya,Moore,+1-410-112-5237,ACTIVE,API
+amit.taylor506@gmail.com,Amit,Taylor,+1-872-511-9499,ACTIVE,API
+pooja.taylor507@growixa.io,Pooja,Taylor,+1-665-289-1178,ACTIVE,Website Signup
+rowan.jackson508@gmail.com,Rowan,Jackson,+1-726-211-8657,UNSUBSCRIBED,LinkedIn Lead
+finley.rodriguez509@techcorp.com,Finley,Rodriguez,+1-474-472-8561,ACTIVE,Cold Outreach
+neha.davis510@startup.ai,Neha,Davis,+1-408-345-4803,ACTIVE,API
+peyton.sharma511@enterprise.org,Peyton,Sharma,+1-213-703-7817,ACTIVE,Referral
+riley.sharma512@enterprise.org,Riley,Sharma,+1-446-368-1016,UNSUBSCRIBED,Import CSV
+pat.park513@growixa.io,Pat,Park,+1-634-654-1191,ACTIVE,Import CSV
+vikram.chen514@innovate.net,Vikram,Chen,+1-652-867-2061,ACTIVE,Webinar
+sam.liu515@yahoo.com,Sam,Liu,+1-407-144-1147,ACTIVE,LinkedIn Lead
+morgan.pham516@techcorp.com,Morgan,Pham,+1-356-889-3361,ACTIVE,Website Signup
+ravi.liu517@innovate.net,Ravi,Liu,+1-819-195-2441,ACTIVE,API
+meera.gonzalez518@innovate.net,Meera,Gonzalez,+1-546-916-6161,ACTIVE,Cold Outreach
+isabella.wilson519@growixa.io,Isabella,Wilson,+1-484-837-2549,ARCHIVED,Webinar
+mia.garcia520@innovate.net,Mia,Garcia,+1-342-363-3409,ACTIVE,LinkedIn Lead
+diego.wang521@cloudworks.io,Diego,Wang,+1-358-941-3601,UNSUBSCRIBED,LinkedIn Lead
+cameron.tran522@gmail.com,Cameron,Tran,+1-840-528-3901,ACTIVE,LinkedIn Lead
+gabriel.patel523@startup.ai,Gabriel,Patel,+1-725-596-6756,ACTIVE,Webinar
+elena.jackson524@growixa.io,Elena,Jackson,+1-369-969-4857,UNSUBSCRIBED,Website Signup
+mia.yadav525@yahoo.com,Mia,Yadav,+1-307-351-3305,ACTIVE,LinkedIn Lead
+pat.miller526@cloudworks.io,Pat,Miller,+1-938-840-9277,UNSUBSCRIBED,Cold Outreach
+sneha.moore527@enterprise.org,Sneha,Moore,+1-521-147-4177,ACTIVE,Webinar
+divya.davis528@innovate.net,Divya,Davis,+1-259-923-9019,ACTIVE,Webinar
+sofia.wilson529@yahoo.com,Sofia,Wilson,+1-505-456-2676,ACTIVE,Referral
+cameron.lopez530@outlook.com,Cameron,Lopez,+1-891-842-6893,ACTIVE,Website Signup
+rahul.hernandez531@growixa.io,Rahul,Hernandez,+1-477-321-8622,BOUNCED,Import CSV
+avery.kim532@innovate.net,Avery,Kim,+1-399-790-2989,ACTIVE,Cold Outreach
+morgan.davis533@acme.co,Morgan,Davis,+1-765-905-2200,ACTIVE,LinkedIn Lead
+chris.brown534@cloudworks.io,Chris,Brown,+1-792-199-7231,ACTIVE,Cold Outreach
+siddharth.miller535@yahoo.com,Siddharth,Miller,+1-258-493-8069,UNSUBSCRIBED,Website Signup
+deepak.williams536@cloudworks.io,Deepak,Williams,+1-543-347-1000,ACTIVE,Import CSV
+mateo.jones537@startup.ai,Mateo,Jones,+1-649-211-6109,ACTIVE,Cold Outreach
+camila.liu538@techcorp.com,Camila,Liu,+1-340-120-3574,ACTIVE,LinkedIn Lead
+reese.zhang539@outlook.com,Reese,Zhang,+1-426-568-3021,ACTIVE,Website Signup
+logan.williams540@gmail.com,Logan,Williams,+1-608-233-9220,ACTIVE,Cold Outreach
+morgan.wilson541@techcorp.com,Morgan,Wilson,+1-241-561-6897,ACTIVE,Webinar
+neha.jackson542@growixa.io,Neha,Jackson,+1-316-696-4377,ACTIVE,API
+emerson.davis543@innovate.net,Emerson,Davis,+1-536-708-1241,ACTIVE,Referral
+aarav.gupta544@gmail.com,Aarav,Gupta,+1-681-683-4458,ACTIVE,Referral
+peyton.shah545@cloudworks.io,Peyton,Shah,+1-833-464-8508,ACTIVE,Import CSV
+skyler.shah546@cloudworks.io,Skyler,Shah,+1-245-111-2759,ACTIVE,Import CSV
+ravi.martinez547@acme.co,Ravi,Martinez,+1-991-821-7687,ACTIVE,Website Signup
+riley.rodriguez548@techcorp.com,Riley,Rodriguez,+1-355-975-5694,ACTIVE,Website Signup
+dakota.nguyen549@growixa.io,Dakota,Nguyen,+1-768-748-8628,ACTIVE,Website Signup
+chris.rodriguez550@outlook.com,Chris,Rodriguez,+1-981-324-5199,ACTIVE,Website Signup
+mia.verma551@enterprise.org,Mia,Verma,+1-520-310-5682,ACTIVE,API
+isabella.sharma552@outlook.com,Isabella,Sharma,+1-602-479-6108,ACTIVE,Referral
+mia.jackson553@innovate.net,Mia,Jackson,+1-849-429-7150,ACTIVE,Cold Outreach
+anushka.gonzalez554@cloudworks.io,Anushka,Gonzalez,+1-590-325-6751,UNSUBSCRIBED,LinkedIn Lead
+rahul.verma555@gmail.com,Rahul,Verma,+1-421-718-8126,ACTIVE,Import CSV
+ananya.joshi556@cloudworks.io,Ananya,Joshi,+1-704-775-6618,ACTIVE,Cold Outreach
+morgan.davis557@outlook.com,Morgan,Davis,+1-305-605-3225,ACTIVE,Website Signup
+divya.lopez558@innovate.net,Divya,Lopez,+1-953-334-2785,ACTIVE,Referral
+reese.brown559@acme.co,Reese,Brown,+1-955-170-7858,ACTIVE,LinkedIn Lead
+karan.miller560@growixa.io,Karan,Miller,+1-328-753-6607,ACTIVE,API
+quinn.davis561@innovate.net,Quinn,Davis,+1-667-422-7027,UNSUBSCRIBED,LinkedIn Lead
+amit.hernandez562@cloudworks.io,Amit,Hernandez,+1-420-221-2761,ACTIVE,Webinar
+skyler.verma563@innovate.net,Skyler,Verma,+1-609-788-8394,BOUNCED,Referral
+pat.verma564@cloudworks.io,Pat,Verma,+1-784-402-7475,ACTIVE,Import CSV
+priya.singh565@gmail.com,Priya,Singh,+1-791-302-7986,UNSUBSCRIBED,LinkedIn Lead
+ananya.jackson566@yahoo.com,Ananya,Jackson,+1-550-440-9074,UNSUBSCRIBED,Website Signup
+rohan.li567@enterprise.org,Rohan,Li,+1-608-844-4754,ACTIVE,Website Signup
+camila.anderson568@techcorp.com,Camila,Anderson,+1-351-106-4235,ACTIVE,Webinar
+rahul.joshi569@yahoo.com,Rahul,Joshi,+1-320-867-5014,ACTIVE,Cold Outreach
+chris.johnson570@startup.ai,Chris,Johnson,+1-235-148-1709,ACTIVE,API
+amit.johnson571@cloudworks.io,Amit,Johnson,+1-817-129-3602,ACTIVE,Website Signup
+quinn.brown572@innovate.net,Quinn,Brown,+1-630-928-8405,ACTIVE,Website Signup
+ananya.williams573@growixa.io,Ananya,Williams,+1-596-160-3190,ACTIVE,Import CSV
+dakota.martinez574@techcorp.com,Dakota,Martinez,+1-797-649-3275,ACTIVE,Cold Outreach
+taylor.wilson575@yahoo.com,Taylor,Wilson,+1-738-204-2313,ACTIVE,Import CSV
+camila.gupta576@cloudworks.io,Camila,Gupta,+1-892-778-2787,ACTIVE,Cold Outreach
+morgan.rodriguez577@startup.ai,Morgan,Rodriguez,+1-926-603-4865,ACTIVE,Website Signup
+deepak.chen578@startup.ai,Deepak,Chen,+1-378-830-7872,ACTIVE,Cold Outreach
+ravi.kumar579@innovate.net,Ravi,Kumar,+1-528-962-1595,ACTIVE,Import CSV
+pooja.kim580@enterprise.org,Pooja,Kim,+1-360-406-5044,ACTIVE,API
+alex.anderson581@outlook.com,Alex,Anderson,+1-957-324-3928,ACTIVE,Webinar
+logan.brown582@enterprise.org,Logan,Brown,+1-664-787-4015,ACTIVE,Cold Outreach
+avery.smith583@enterprise.org,Avery,Smith,+1-544-966-3626,UNSUBSCRIBED,Webinar
+ananya.chen584@gmail.com,Ananya,Chen,+1-469-384-4748,ARCHIVED,Referral
+pat.gonzalez585@outlook.com,Pat,Gonzalez,+1-380-181-3460,ACTIVE,Webinar
+aarav.liu586@yahoo.com,Aarav,Liu,+1-225-658-1329,ACTIVE,LinkedIn Lead
+gabriel.martin587@acme.co,Gabriel,Martin,+1-213-729-9318,ACTIVE,Cold Outreach
+cameron.chen588@gmail.com,Cameron,Chen,+1-557-673-5263,ACTIVE,Referral
+quinn.jackson589@outlook.com,Quinn,Jackson,+1-953-612-9953,ACTIVE,LinkedIn Lead
+hayden.jackson590@acme.co,Hayden,Jackson,+1-544-709-9514,BOUNCED,API
+rowan.kim591@innovate.net,Rowan,Kim,+1-242-146-6028,ACTIVE,API
+amit.davis592@growixa.io,Amit,Davis,+1-794-432-7243,ACTIVE,Cold Outreach
+anushka.zhang593@growixa.io,Anushka,Zhang,+1-739-555-2019,BOUNCED,LinkedIn Lead
+sanjay.shah594@growixa.io,Sanjay,Shah,+1-317-712-3241,ACTIVE,LinkedIn Lead
+rahul.liu595@innovate.net,Rahul,Liu,+1-352-198-5406,UNSUBSCRIBED,Import CSV
+rahul.davis596@startup.ai,Rahul,Davis,+1-665-772-9518,UNSUBSCRIBED,API
+mia.miller597@enterprise.org,Mia,Miller,+1-800-856-2743,ACTIVE,Webinar
+aarav.smith598@yahoo.com,Aarav,Smith,+1-975-492-9439,ACTIVE,Referral
+rahul.rodriguez599@cloudworks.io,Rahul,Rodriguez,+1-257-614-4008,ACTIVE,Website Signup
+sam.lopez600@outlook.com,Sam,Lopez,+1-332-700-3722,ACTIVE,API
+camila.johnson601@gmail.com,Camila,Johnson,+1-438-501-2927,ACTIVE,Webinar
+cameron.taylor602@growixa.io,Cameron,Taylor,+1-517-633-1984,ACTIVE,Webinar
+rohan.li603@growixa.io,Rohan,Li,+1-295-912-4897,ARCHIVED,Cold Outreach
+rowan.hernandez604@cloudworks.io,Rowan,Hernandez,+1-278-469-7985,BOUNCED,LinkedIn Lead
+gabriel.martinez605@outlook.com,Gabriel,Martinez,+1-549-387-3787,ACTIVE,Webinar
+meera.joshi606@startup.ai,Meera,Joshi,+1-536-762-1277,ACTIVE,Website Signup
+taylor.verma607@cloudworks.io,Taylor,Verma,+1-963-666-3086,UNSUBSCRIBED,Webinar
+sam.tran608@yahoo.com,Sam,Tran,+1-674-200-7319,ACTIVE,API
+ravi.zhang609@gmail.com,Ravi,Zhang,+1-533-683-5117,UNSUBSCRIBED,Webinar
+logan.yadav610@enterprise.org,Logan,Yadav,+1-750-838-7977,BOUNCED,API
+sanjay.gonzalez611@enterprise.org,Sanjay,Gonzalez,+1-426-510-8262,ACTIVE,Referral
+priya.martinez612@cloudworks.io,Priya,Martinez,+1-395-696-9020,ACTIVE,Referral
+isabella.johnson613@innovate.net,Isabella,Johnson,+1-629-591-9259,ACTIVE,Import CSV
+anushka.shah614@outlook.com,Anushka,Shah,+1-906-433-6187,ACTIVE,Import CSV
+divya.garcia615@innovate.net,Divya,Garcia,+1-790-416-6665,ACTIVE,API
+aarav.kim616@yahoo.com,Aarav,Kim,+1-294-204-9742,ACTIVE,Import CSV
+avery.hernandez617@startup.ai,Avery,Hernandez,+1-324-163-8539,ACTIVE,Referral
+riley.anderson618@cloudworks.io,Riley,Anderson,+1-507-807-5054,ACTIVE,Cold Outreach
+kavya.moore619@yahoo.com,Kavya,Moore,+1-694-181-7588,ACTIVE,API
+dakota.taylor620@startup.ai,Dakota,Taylor,+1-624-669-6422,ACTIVE,Cold Outreach
+hayden.park621@innovate.net,Hayden,Park,+1-838-998-7276,ACTIVE,Webinar
+anushka.yadav622@techcorp.com,Anushka,Yadav,+1-540-888-8224,BOUNCED,Website Signup
+sam.martinez623@acme.co,Sam,Martinez,+1-282-791-8109,BOUNCED,Cold Outreach
+finley.hernandez624@growixa.io,Finley,Hernandez,+1-205-925-1017,ACTIVE,Website Signup
+elena.taylor625@techcorp.com,Elena,Taylor,+1-306-397-2816,ACTIVE,Referral
+alex.pham626@growixa.io,Alex,Pham,+1-544-613-7206,ACTIVE,Referral
+quinn.kumar627@startup.ai,Quinn,Kumar,+1-453-661-9045,ACTIVE,Import CSV
+ravi.verma628@outlook.com,Ravi,Verma,+1-750-361-8422,ARCHIVED,Cold Outreach
+riley.wang629@outlook.com,Riley,Wang,+1-385-707-5870,ACTIVE,Webinar
+peyton.pham630@yahoo.com,Peyton,Pham,+1-897-336-1444,UNSUBSCRIBED,LinkedIn Lead
+taylor.gonzalez631@cloudworks.io,Taylor,Gonzalez,+1-592-905-2028,ACTIVE,API
+deepak.shah632@yahoo.com,Deepak,Shah,+1-855-700-2478,ACTIVE,LinkedIn Lead
+sofia.tran633@gmail.com,Sofia,Tran,+1-296-430-4961,ACTIVE,LinkedIn Lead
+aditya.brown634@startup.ai,Aditya,Brown,+1-371-181-6548,ACTIVE,Referral
+amit.gupta635@acme.co,Amit,Gupta,+1-815-179-5372,ACTIVE,Import CSV
+vikram.zhang636@gmail.com,Vikram,Zhang,+1-803-215-7504,ACTIVE,LinkedIn Lead
+rahul.thomas637@cloudworks.io,Rahul,Thomas,+1-237-202-8107,ACTIVE,Webinar
+emerson.garcia638@startup.ai,Emerson,Garcia,+1-694-874-6004,ACTIVE,Referral
+isabella.chen639@cloudworks.io,Isabella,Chen,+1-536-681-5499,UNSUBSCRIBED,Cold Outreach
+meera.rodriguez640@acme.co,Meera,Rodriguez,+1-992-880-2264,ACTIVE,Webinar
+sam.patel641@yahoo.com,Sam,Patel,+1-915-652-8295,ACTIVE,Import CSV
+cameron.park642@outlook.com,Cameron,Park,+1-567-795-2032,UNSUBSCRIBED,LinkedIn Lead
+morgan.jones643@cloudworks.io,Morgan,Jones,+1-388-935-6195,ACTIVE,Webinar
+leo.patel644@gmail.com,Leo,Patel,+1-837-474-9295,UNSUBSCRIBED,API
+jordan.hernandez645@yahoo.com,Jordan,Hernandez,+1-857-580-6610,ACTIVE,API
+hayden.rodriguez646@cloudworks.io,Hayden,Rodriguez,+1-269-573-8683,ACTIVE,Cold Outreach
+rowan.patel647@growixa.io,Rowan,Patel,+1-603-707-9774,ACTIVE,Referral
+priya.patel648@innovate.net,Priya,Patel,+1-473-751-3884,ACTIVE,LinkedIn Lead
+mia.liu649@gmail.com,Mia,Liu,+1-891-263-3157,UNSUBSCRIBED,LinkedIn Lead
+isabella.lopez650@outlook.com,Isabella,Lopez,+1-623-836-4212,UNSUBSCRIBED,API
+peyton.chen651@yahoo.com,Peyton,Chen,+1-496-629-1436,ACTIVE,Referral
+aarav.jackson652@innovate.net,Aarav,Jackson,+1-437-869-1686,ACTIVE,API
+karan.zhang653@outlook.com,Karan,Zhang,+1-477-526-5614,ACTIVE,API
+kavya.garcia654@outlook.com,Kavya,Garcia,+1-211-784-2761,ACTIVE,Webinar
+siddharth.gupta655@yahoo.com,Siddharth,Gupta,+1-491-107-8286,ACTIVE,Webinar
+skyler.garcia656@startup.ai,Skyler,Garcia,+1-711-656-5173,UNSUBSCRIBED,Cold Outreach
+sanjay.williams657@outlook.com,Sanjay,Williams,+1-223-813-2055,ACTIVE,LinkedIn Lead
+finley.martin658@enterprise.org,Finley,Martin,+1-810-511-4863,ACTIVE,Referral
+cameron.wilson659@innovate.net,Cameron,Wilson,+1-850-172-4165,ACTIVE,API
+sneha.rodriguez660@innovate.net,Sneha,Rodriguez,+1-645-611-7093,ACTIVE,Cold Outreach
+meera.martinez661@cloudworks.io,Meera,Martinez,+1-278-865-9869,ACTIVE,Cold Outreach
+sofia.moore662@cloudworks.io,Sofia,Moore,+1-471-160-4072,ACTIVE,Cold Outreach
+diego.liu663@techcorp.com,Diego,Liu,+1-490-288-4011,ACTIVE,Import CSV
+siddharth.jackson664@acme.co,Siddharth,Jackson,+1-260-328-6481,ACTIVE,Webinar
+isabella.tran665@techcorp.com,Isabella,Tran,+1-235-990-7773,ACTIVE,LinkedIn Lead
+camila.kumar666@techcorp.com,Camila,Kumar,+1-871-908-5814,UNSUBSCRIBED,Cold Outreach
+chris.johnson667@innovate.net,Chris,Johnson,+1-832-155-2699,ACTIVE,Referral
+meera.anderson668@enterprise.org,Meera,Anderson,+1-298-457-2757,ACTIVE,LinkedIn Lead
+aditya.taylor669@startup.ai,Aditya,Taylor,+1-987-205-1235,ACTIVE,LinkedIn Lead
+sofia.gonzalez670@gmail.com,Sofia,Gonzalez,+1-246-719-4587,ACTIVE,Import CSV
+priya.kumar671@acme.co,Priya,Kumar,+1-344-801-7437,ACTIVE,LinkedIn Lead
+neha.singh672@techcorp.com,Neha,Singh,+1-326-687-1286,BOUNCED,Referral
+peyton.park673@acme.co,Peyton,Park,+1-439-474-5147,ACTIVE,LinkedIn Lead
+kavya.patel674@innovate.net,Kavya,Patel,+1-835-989-9408,ACTIVE,Referral
+jordan.nguyen675@outlook.com,Jordan,Nguyen,+1-755-879-7722,ACTIVE,Webinar
+siddharth.yadav676@enterprise.org,Siddharth,Yadav,+1-652-213-9644,ACTIVE,LinkedIn Lead
+taylor.joshi677@growixa.io,Taylor,Joshi,+1-815-891-4828,ACTIVE,API
+mia.park678@growixa.io,Mia,Park,+1-420-149-9884,ACTIVE,Import CSV
+mia.thomas679@startup.ai,Mia,Thomas,+1-890-718-1482,ACTIVE,API
+pooja.tran680@cloudworks.io,Pooja,Tran,+1-489-584-7245,ACTIVE,Website Signup
+jordan.jones681@acme.co,Jordan,Jones,+1-266-421-3463,ACTIVE,LinkedIn Lead
+ananya.verma682@yahoo.com,Ananya,Verma,+1-712-985-6335,ACTIVE,API
+peyton.mehta683@enterprise.org,Peyton,Mehta,+1-220-160-5689,ACTIVE,Webinar
+priya.verma684@growixa.io,Priya,Verma,+1-473-324-8758,ACTIVE,Website Signup
+neha.zhang685@gmail.com,Neha,Zhang,+1-694-153-9897,ACTIVE,Referral
+kavya.sharma686@yahoo.com,Kavya,Sharma,+1-398-309-2512,ACTIVE,Import CSV
+sneha.jones687@techcorp.com,Sneha,Jones,+1-673-357-5669,ACTIVE,LinkedIn Lead
+elena.johnson688@gmail.com,Elena,Johnson,+1-724-785-6368,ARCHIVED,Import CSV
+peyton.jackson689@yahoo.com,Peyton,Jackson,+1-455-454-1696,ACTIVE,LinkedIn Lead
+reese.yadav690@enterprise.org,Reese,Yadav,+1-488-561-5208,ACTIVE,Webinar
+leo.hernandez691@gmail.com,Leo,Hernandez,+1-545-612-9451,ACTIVE,LinkedIn Lead
+avery.verma692@outlook.com,Avery,Verma,+1-897-329-3708,ACTIVE,LinkedIn Lead
+alex.moore693@enterprise.org,Alex,Moore,+1-695-502-1543,UNSUBSCRIBED,LinkedIn Lead
+skyler.wilson694@acme.co,Skyler,Wilson,+1-909-877-1392,ACTIVE,LinkedIn Lead
+diego.joshi695@techcorp.com,Diego,Joshi,+1-735-332-6248,ARCHIVED,Website Signup
+karan.rodriguez696@startup.ai,Karan,Rodriguez,+1-991-291-9111,ACTIVE,API
+hayden.nguyen697@cloudworks.io,Hayden,Nguyen,+1-872-889-9312,ACTIVE,Import CSV
+rohan.martin698@startup.ai,Rohan,Martin,+1-809-494-4364,UNSUBSCRIBED,Referral
+rahul.zhang699@acme.co,Rahul,Zhang,+1-359-993-5908,ACTIVE,LinkedIn Lead
+mateo.li700@yahoo.com,Mateo,Li,+1-919-310-9932,ACTIVE,Webinar
+alex.hernandez701@gmail.com,Alex,Hernandez,+1-277-725-8555,UNSUBSCRIBED,Cold Outreach
+ravi.kumar702@startup.ai,Ravi,Kumar,+1-370-478-4145,ACTIVE,Referral
+karan.liu703@startup.ai,Karan,Liu,+1-793-475-2414,ACTIVE,LinkedIn Lead
+alex.joshi704@cloudworks.io,Alex,Joshi,+1-361-449-5754,ACTIVE,Website Signup
+sofia.jones705@gmail.com,Sofia,Jones,+1-351-543-2975,BOUNCED,API
+dakota.martinez706@enterprise.org,Dakota,Martinez,+1-461-342-3402,ACTIVE,LinkedIn Lead
+leo.brown707@outlook.com,Leo,Brown,+1-753-404-3778,ACTIVE,Cold Outreach
+sofia.pham708@yahoo.com,Sofia,Pham,+1-434-375-4448,ACTIVE,API
+vikram.hernandez709@yahoo.com,Vikram,Hernandez,+1-320-698-7658,ACTIVE,LinkedIn Lead
+amit.brown710@enterprise.org,Amit,Brown,+1-548-232-3676,ACTIVE,LinkedIn Lead
+rahul.joshi711@techcorp.com,Rahul,Joshi,+1-548-733-3576,ACTIVE,Import CSV
+aditya.wang712@enterprise.org,Aditya,Wang,+1-894-213-8688,ACTIVE,Website Signup
+rowan.pham713@gmail.com,Rowan,Pham,+1-285-377-9462,ACTIVE,Cold Outreach
+quinn.shah714@techcorp.com,Quinn,Shah,+1-474-485-6994,UNSUBSCRIBED,Referral
+taylor.brown715@acme.co,Taylor,Brown,+1-397-702-5676,ACTIVE,LinkedIn Lead
+gabriel.kim716@yahoo.com,Gabriel,Kim,+1-295-541-4702,ACTIVE,Import CSV
+isabella.johnson717@innovate.net,Isabella,Johnson,+1-648-688-7410,ACTIVE,Webinar
+rowan.pham718@innovate.net,Rowan,Pham,+1-245-441-9454,ACTIVE,Website Signup
+rowan.taylor719@acme.co,Rowan,Taylor,+1-423-180-7976,ACTIVE,API
+emerson.miller720@cloudworks.io,Emerson,Miller,+1-488-429-9406,ARCHIVED,LinkedIn Lead
+camila.tran721@innovate.net,Camila,Tran,+1-616-358-3145,ACTIVE,Cold Outreach
+alex.patel722@innovate.net,Alex,Patel,+1-277-566-7446,BOUNCED,LinkedIn Lead
+pooja.kumar723@startup.ai,Pooja,Kumar,+1-316-642-6330,ACTIVE,Cold Outreach
+mateo.singh724@enterprise.org,Mateo,Singh,+1-380-358-1666,ACTIVE,LinkedIn Lead
+peyton.mehta725@growixa.io,Peyton,Mehta,+1-352-216-9386,UNSUBSCRIBED,Cold Outreach
+logan.joshi726@startup.ai,Logan,Joshi,+1-677-851-9015,ACTIVE,Import CSV
+sam.lopez727@techcorp.com,Sam,Lopez,+1-434-883-8583,ACTIVE,Webinar
+reese.liu728@cloudworks.io,Reese,Liu,+1-631-395-3339,ACTIVE,API
+logan.johnson729@innovate.net,Logan,Johnson,+1-985-382-8248,ACTIVE,Import CSV
+anushka.johnson730@acme.co,Anushka,Johnson,+1-644-153-2570,ACTIVE,Webinar
+hayden.johnson731@enterprise.org,Hayden,Johnson,+1-921-251-3831,ACTIVE,API
+mia.patel732@enterprise.org,Mia,Patel,+1-766-974-8574,ARCHIVED,Referral
+quinn.johnson733@acme.co,Quinn,Johnson,+1-464-732-1646,ACTIVE,Import CSV
+rohan.jackson734@acme.co,Rohan,Jackson,+1-828-906-8340,ARCHIVED,Import CSV
+alex.martin735@growixa.io,Alex,Martin,+1-428-183-7915,ACTIVE,API
+peyton.garcia736@techcorp.com,Peyton,Garcia,+1-540-691-8697,UNSUBSCRIBED,Referral
+sofia.mehta737@innovate.net,Sofia,Mehta,+1-316-632-5837,ACTIVE,Cold Outreach
+amit.verma738@acme.co,Amit,Verma,+1-274-998-4297,ARCHIVED,Webinar
+cameron.smith739@acme.co,Cameron,Smith,+1-660-733-6243,ARCHIVED,Webinar
+leo.pham740@growixa.io,Leo,Pham,+1-585-336-6434,UNSUBSCRIBED,Webinar
+rowan.martin741@cloudworks.io,Rowan,Martin,+1-213-186-6477,ACTIVE,Cold Outreach
+amit.mehta742@acme.co,Amit,Mehta,+1-642-170-5453,BOUNCED,Webinar
+gabriel.patel743@innovate.net,Gabriel,Patel,+1-278-608-7196,ACTIVE,Cold Outreach
+kavya.davis744@yahoo.com,Kavya,Davis,+1-496-616-3277,BOUNCED,LinkedIn Lead
+priya.patel745@yahoo.com,Priya,Patel,+1-693-780-5258,BOUNCED,API
+peyton.singh746@startup.ai,Peyton,Singh,+1-320-742-3126,ACTIVE,Import CSV
+sofia.rodriguez747@gmail.com,Sofia,Rodriguez,+1-346-145-2678,UNSUBSCRIBED,Webinar
+aditya.anderson748@techcorp.com,Aditya,Anderson,+1-643-751-5495,ACTIVE,Webinar
+jordan.jackson749@yahoo.com,Jordan,Jackson,+1-864-806-4422,ACTIVE,Website Signup
+sam.mehta750@cloudworks.io,Sam,Mehta,+1-208-387-9179,ACTIVE,Website Signup
+alex.anderson751@gmail.com,Alex,Anderson,+1-422-364-5323,ACTIVE,API
+diego.shah752@techcorp.com,Diego,Shah,+1-267-920-4442,ACTIVE,Import CSV
+dakota.brown753@growixa.io,Dakota,Brown,+1-882-854-9265,UNSUBSCRIBED,LinkedIn Lead
+cameron.yadav754@yahoo.com,Cameron,Yadav,+1-901-834-9987,ACTIVE,API
+hayden.williams755@innovate.net,Hayden,Williams,+1-985-819-9808,ARCHIVED,LinkedIn Lead
+meera.mehta756@outlook.com,Meera,Mehta,+1-889-693-1997,ACTIVE,API
+leo.gonzalez757@outlook.com,Leo,Gonzalez,+1-845-976-5130,ACTIVE,API
+elena.nguyen758@gmail.com,Elena,Nguyen,+1-253-231-6662,ARCHIVED,LinkedIn Lead
+rahul.miller759@enterprise.org,Rahul,Miller,+1-496-515-9141,ACTIVE,Cold Outreach
+ananya.gonzalez760@outlook.com,Ananya,Gonzalez,+1-983-678-5734,ACTIVE,API
+reese.joshi761@gmail.com,Reese,Joshi,+1-734-396-9447,ACTIVE,Website Signup
+riley.liu762@startup.ai,Riley,Liu,+1-777-248-3101,ACTIVE,Referral
+dakota.martinez763@outlook.com,Dakota,Martinez,+1-298-304-6270,ACTIVE,Website Signup
+pooja.miller764@outlook.com,Pooja,Miller,+1-933-549-4712,UNSUBSCRIBED,Webinar
+sneha.garcia765@yahoo.com,Sneha,Garcia,+1-529-336-3130,ACTIVE,Webinar
+sofia.taylor766@innovate.net,Sofia,Taylor,+1-575-491-1632,ACTIVE,Cold Outreach
+rohan.lopez767@techcorp.com,Rohan,Lopez,+1-923-819-9240,ACTIVE,Website Signup
+rohan.zhang768@gmail.com,Rohan,Zhang,+1-962-997-2059,ACTIVE,Import CSV
+rowan.gupta769@growixa.io,Rowan,Gupta,+1-715-503-3333,ACTIVE,Cold Outreach
+taylor.patel770@startup.ai,Taylor,Patel,+1-638-833-9290,ACTIVE,LinkedIn Lead
+pat.verma771@yahoo.com,Pat,Verma,+1-736-391-3881,ACTIVE,API
+isabella.johnson772@techcorp.com,Isabella,Johnson,+1-274-950-2269,UNSUBSCRIBED,Website Signup
+chris.wang773@techcorp.com,Chris,Wang,+1-569-491-6041,ACTIVE,Cold Outreach
+rohan.lopez774@startup.ai,Rohan,Lopez,+1-947-361-4517,ACTIVE,Cold Outreach
+deepak.mehta775@growixa.io,Deepak,Mehta,+1-658-271-3219,UNSUBSCRIBED,API
+kavya.lopez776@innovate.net,Kavya,Lopez,+1-200-927-1895,ACTIVE,Referral
+neha.moore777@cloudworks.io,Neha,Moore,+1-994-742-7188,ACTIVE,API
+camila.sharma778@innovate.net,Camila,Sharma,+1-210-862-7097,UNSUBSCRIBED,Import CSV
+anushka.taylor779@growixa.io,Anushka,Taylor,+1-972-468-6732,ACTIVE,API
+finley.wilson780@acme.co,Finley,Wilson,+1-431-675-1186,ACTIVE,Website Signup
+aditya.liu781@cloudworks.io,Aditya,Liu,+1-259-333-2468,BOUNCED,Website Signup
+karan.chen782@techcorp.com,Karan,Chen,+1-276-882-6649,UNSUBSCRIBED,LinkedIn Lead
+quinn.verma783@cloudworks.io,Quinn,Verma,+1-245-529-5389,ACTIVE,API
+logan.garcia784@techcorp.com,Logan,Garcia,+1-673-609-8933,ACTIVE,Website Signup
+ananya.lopez785@outlook.com,Ananya,Lopez,+1-992-962-6795,ACTIVE,Cold Outreach
+peyton.mehta786@gmail.com,Peyton,Mehta,+1-330-518-5495,ACTIVE,LinkedIn Lead
+amit.davis787@cloudworks.io,Amit,Davis,+1-712-997-4448,ACTIVE,LinkedIn Lead
+leo.chen788@gmail.com,Leo,Chen,+1-817-890-6780,ACTIVE,API
+chris.smith789@outlook.com,Chris,Smith,+1-460-330-9409,ACTIVE,Webinar
+amit.singh790@cloudworks.io,Amit,Singh,+1-295-157-9385,ARCHIVED,Webinar
+reese.liu791@outlook.com,Reese,Liu,+1-338-543-4559,BOUNCED,API
+sneha.wilson792@cloudworks.io,Sneha,Wilson,+1-542-915-2939,BOUNCED,LinkedIn Lead
+mia.patel793@startup.ai,Mia,Patel,+1-632-259-4326,ACTIVE,Cold Outreach
+deepak.li794@enterprise.org,Deepak,Li,+1-741-932-5040,BOUNCED,API
+logan.wilson795@outlook.com,Logan,Wilson,+1-580-451-3812,ACTIVE,Website Signup
+finley.sharma796@growixa.io,Finley,Sharma,+1-978-214-2740,ACTIVE,Website Signup
+karan.gupta797@cloudworks.io,Karan,Gupta,+1-504-517-2685,ACTIVE,LinkedIn Lead
+sanjay.joshi798@yahoo.com,Sanjay,Joshi,+1-920-868-7636,BOUNCED,Import CSV
+ravi.moore799@acme.co,Ravi,Moore,+1-519-839-6430,ACTIVE,Cold Outreach
+vikram.miller800@gmail.com,Vikram,Miller,+1-361-577-6515,UNSUBSCRIBED,Cold Outreach
+anushka.brown801@cloudworks.io,Anushka,Brown,+1-385-527-9115,ARCHIVED,Cold Outreach
+divya.williams802@yahoo.com,Divya,Williams,+1-380-766-6942,ACTIVE,Import CSV
+skyler.davis803@outlook.com,Skyler,Davis,+1-480-565-1338,ACTIVE,Website Signup
+leo.johnson804@gmail.com,Leo,Johnson,+1-924-608-6870,UNSUBSCRIBED,Webinar
+pat.johnson805@gmail.com,Pat,Johnson,+1-386-362-9703,BOUNCED,LinkedIn Lead
+logan.jones806@enterprise.org,Logan,Jones,+1-591-529-4918,ACTIVE,Webinar
+divya.yadav807@enterprise.org,Divya,Yadav,+1-306-486-1198,ACTIVE,Webinar
+aarav.miller808@growixa.io,Aarav,Miller,+1-692-843-3285,ACTIVE,Website Signup
+neha.mehta809@growixa.io,Neha,Mehta,+1-394-166-8718,ACTIVE,API
+aditya.smith810@innovate.net,Aditya,Smith,+1-959-689-3715,ACTIVE,API
+jordan.brown811@growixa.io,Jordan,Brown,+1-706-297-2718,ACTIVE,Referral
+elena.wilson812@acme.co,Elena,Wilson,+1-886-716-3183,UNSUBSCRIBED,API
+morgan.yadav813@techcorp.com,Morgan,Yadav,+1-357-879-1998,ACTIVE,Website Signup
+dakota.williams814@gmail.com,Dakota,Williams,+1-971-808-8267,ACTIVE,API
+quinn.tran815@enterprise.org,Quinn,Tran,+1-713-268-5288,ACTIVE,Referral
+kavya.martin816@growixa.io,Kavya,Martin,+1-937-196-7256,ACTIVE,Webinar
+priya.lopez817@techcorp.com,Priya,Lopez,+1-972-308-5046,ACTIVE,Webinar
+sanjay.brown818@techcorp.com,Sanjay,Brown,+1-673-736-3749,ACTIVE,Cold Outreach
+camila.davis819@acme.co,Camila,Davis,+1-972-733-1577,BOUNCED,API
+peyton.wang820@outlook.com,Peyton,Wang,+1-755-217-9009,BOUNCED,LinkedIn Lead
+anushka.nguyen821@enterprise.org,Anushka,Nguyen,+1-337-512-9058,ACTIVE,API
+avery.garcia822@acme.co,Avery,Garcia,+1-460-144-7430,UNSUBSCRIBED,Referral
+elena.li823@outlook.com,Elena,Li,+1-454-674-5871,BOUNCED,API
+isabella.park824@yahoo.com,Isabella,Park,+1-900-141-1929,ACTIVE,LinkedIn Lead
+morgan.martinez825@techcorp.com,Morgan,Martinez,+1-425-366-3030,ACTIVE,Website Signup
+sneha.mehta826@yahoo.com,Sneha,Mehta,+1-566-679-7868,ACTIVE,Import CSV
+leo.brown827@growixa.io,Leo,Brown,+1-963-240-4172,ACTIVE,LinkedIn Lead
+emerson.liu828@enterprise.org,Emerson,Liu,+1-326-311-1412,UNSUBSCRIBED,LinkedIn Lead
+quinn.pham829@gmail.com,Quinn,Pham,+1-716-933-6507,BOUNCED,Import CSV
+ravi.gupta830@cloudworks.io,Ravi,Gupta,+1-854-560-4931,UNSUBSCRIBED,Webinar
+avery.jones831@gmail.com,Avery,Jones,+1-922-487-3218,ACTIVE,Import CSV
+rohan.martin832@acme.co,Rohan,Martin,+1-413-131-3254,UNSUBSCRIBED,Import CSV
+priya.zhang833@startup.ai,Priya,Zhang,+1-529-922-5574,UNSUBSCRIBED,Cold Outreach
+morgan.sharma834@gmail.com,Morgan,Sharma,+1-851-532-9804,ACTIVE,LinkedIn Lead
+anushka.patel835@techcorp.com,Anushka,Patel,+1-438-668-8243,ACTIVE,Referral
+gabriel.jones836@yahoo.com,Gabriel,Jones,+1-865-202-2845,ACTIVE,LinkedIn Lead
+elena.pham837@innovate.net,Elena,Pham,+1-895-838-6445,ACTIVE,LinkedIn Lead
+pat.garcia838@techcorp.com,Pat,Garcia,+1-350-377-9647,BOUNCED,Cold Outreach
+sam.martin839@growixa.io,Sam,Martin,+1-239-609-6421,ACTIVE,Webinar
+siddharth.sharma840@techcorp.com,Siddharth,Sharma,+1-756-863-9883,ACTIVE,Webinar
+sneha.gonzalez841@growixa.io,Sneha,Gonzalez,+1-967-100-7077,BOUNCED,Webinar
+camila.anderson842@growixa.io,Camila,Anderson,+1-854-264-2191,ACTIVE,Import CSV
+gabriel.miller843@gmail.com,Gabriel,Miller,+1-825-923-8397,ACTIVE,Webinar
+skyler.kumar844@innovate.net,Skyler,Kumar,+1-941-410-7869,ACTIVE,Import CSV
+rohan.davis845@growixa.io,Rohan,Davis,+1-440-468-9784,UNSUBSCRIBED,Cold Outreach
+elena.park846@acme.co,Elena,Park,+1-251-661-2781,UNSUBSCRIBED,Referral
+rohan.moore847@startup.ai,Rohan,Moore,+1-323-875-5178,UNSUBSCRIBED,Website Signup
+ravi.miller848@techcorp.com,Ravi,Miller,+1-764-262-7934,ACTIVE,Referral
+ravi.rodriguez849@techcorp.com,Ravi,Rodriguez,+1-707-751-8045,ACTIVE,Website Signup
+neha.shah850@cloudworks.io,Neha,Shah,+1-415-822-3087,ACTIVE,Referral
+taylor.sharma851@cloudworks.io,Taylor,Sharma,+1-955-992-6838,ACTIVE,LinkedIn Lead
+riley.rodriguez852@gmail.com,Riley,Rodriguez,+1-909-545-9180,UNSUBSCRIBED,Import CSV
+amit.tran853@yahoo.com,Amit,Tran,+1-350-919-1831,UNSUBSCRIBED,LinkedIn Lead
+skyler.liu854@startup.ai,Skyler,Liu,+1-525-678-1856,ACTIVE,Cold Outreach
+pooja.joshi855@growixa.io,Pooja,Joshi,+1-288-955-4302,ACTIVE,Import CSV
+sofia.johnson856@innovate.net,Sofia,Johnson,+1-409-995-4490,ACTIVE,LinkedIn Lead
+skyler.mehta857@techcorp.com,Skyler,Mehta,+1-527-249-5148,ACTIVE,Website Signup
+deepak.tran858@acme.co,Deepak,Tran,+1-729-978-2244,ACTIVE,Import CSV
+taylor.moore859@yahoo.com,Taylor,Moore,+1-453-897-8728,ACTIVE,LinkedIn Lead
+gabriel.jones860@yahoo.com,Gabriel,Jones,+1-603-209-7867,ACTIVE,API
+logan.park861@outlook.com,Logan,Park,+1-804-889-9192,ACTIVE,Cold Outreach
+diego.johnson862@innovate.net,Diego,Johnson,+1-521-452-7342,UNSUBSCRIBED,LinkedIn Lead
+rahul.liu863@acme.co,Rahul,Liu,+1-527-845-6508,ACTIVE,Referral
+reese.park864@techcorp.com,Reese,Park,+1-820-352-9812,ACTIVE,Website Signup
+ravi.chen865@enterprise.org,Ravi,Chen,+1-406-730-5024,UNSUBSCRIBED,Referral
+reese.mehta866@enterprise.org,Reese,Mehta,+1-965-528-5362,BOUNCED,LinkedIn Lead
+isabella.martin867@yahoo.com,Isabella,Martin,+1-451-420-9919,BOUNCED,Cold Outreach
+ravi.wang868@enterprise.org,Ravi,Wang,+1-608-338-2680,ACTIVE,Import CSV
+ananya.thomas869@growixa.io,Ananya,Thomas,+1-661-787-4423,UNSUBSCRIBED,API
+alex.liu870@yahoo.com,Alex,Liu,+1-427-341-6772,ACTIVE,Cold Outreach
+hayden.verma871@cloudworks.io,Hayden,Verma,+1-604-405-8741,ACTIVE,Referral
+cameron.smith872@cloudworks.io,Cameron,Smith,+1-828-658-4083,ACTIVE,Webinar
+sneha.miller873@startup.ai,Sneha,Miller,+1-662-232-6745,UNSUBSCRIBED,Referral
+vikram.lopez874@techcorp.com,Vikram,Lopez,+1-778-519-3364,ACTIVE,LinkedIn Lead
+riley.tran875@gmail.com,Riley,Tran,+1-942-865-2059,ACTIVE,API
+ananya.martinez876@cloudworks.io,Ananya,Martinez,+1-890-873-9866,ACTIVE,Cold Outreach
+aditya.miller877@acme.co,Aditya,Miller,+1-968-800-2852,ACTIVE,Cold Outreach
+rowan.wilson878@startup.ai,Rowan,Wilson,+1-438-503-3125,ACTIVE,Cold Outreach
+elena.nguyen879@growixa.io,Elena,Nguyen,+1-354-147-7043,ACTIVE,Import CSV
+vikram.park880@techcorp.com,Vikram,Park,+1-894-264-6058,UNSUBSCRIBED,Import CSV
+logan.verma881@techcorp.com,Logan,Verma,+1-520-923-9489,ACTIVE,Cold Outreach
+divya.smith882@enterprise.org,Divya,Smith,+1-237-480-3904,ACTIVE,Website Signup
+avery.rodriguez883@startup.ai,Avery,Rodriguez,+1-409-509-5308,ACTIVE,Import CSV
+peyton.liu884@yahoo.com,Peyton,Liu,+1-760-368-9457,UNSUBSCRIBED,API
+pooja.nguyen885@innovate.net,Pooja,Nguyen,+1-321-771-3041,UNSUBSCRIBED,Referral
+alex.patel886@yahoo.com,Alex,Patel,+1-998-512-6593,BOUNCED,Referral
+jordan.park887@growixa.io,Jordan,Park,+1-858-441-1859,BOUNCED,Website Signup
+leo.gupta888@startup.ai,Leo,Gupta,+1-448-417-6318,ACTIVE,API
+lucas.patel889@growixa.io,Lucas,Patel,+1-289-517-5925,BOUNCED,LinkedIn Lead
+ravi.singh890@growixa.io,Ravi,Singh,+1-622-400-9412,UNSUBSCRIBED,API
+isabella.lopez891@yahoo.com,Isabella,Lopez,+1-921-897-7276,ACTIVE,Referral
+anushka.rodriguez892@cloudworks.io,Anushka,Rodriguez,+1-200-888-6942,ACTIVE,Cold Outreach
+mateo.sharma893@startup.ai,Mateo,Sharma,+1-288-268-8351,BOUNCED,Website Signup
+mia.mehta894@outlook.com,Mia,Mehta,+1-575-570-3581,UNSUBSCRIBED,Webinar
+priya.shah895@outlook.com,Priya,Shah,+1-543-391-5123,UNSUBSCRIBED,LinkedIn Lead
+ravi.johnson896@innovate.net,Ravi,Johnson,+1-773-209-2470,ACTIVE,Import CSV
+kavya.hernandez897@startup.ai,Kavya,Hernandez,+1-404-601-9337,UNSUBSCRIBED,Import CSV
+hayden.park898@startup.ai,Hayden,Park,+1-604-705-9567,ACTIVE,Website Signup
+riley.thomas899@gmail.com,Riley,Thomas,+1-346-263-2445,ACTIVE,Referral
+quinn.johnson900@enterprise.org,Quinn,Johnson,+1-257-835-9292,ACTIVE,LinkedIn Lead
+rahul.jackson901@acme.co,Rahul,Jackson,+1-812-317-1153,ACTIVE,Cold Outreach
+logan.martinez902@yahoo.com,Logan,Martinez,+1-726-142-5874,BOUNCED,Import CSV
+gabriel.martinez903@techcorp.com,Gabriel,Martinez,+1-377-151-7897,ARCHIVED,Webinar
+alex.martinez904@innovate.net,Alex,Martinez,+1-816-191-6829,ACTIVE,Import CSV
+ravi.verma905@innovate.net,Ravi,Verma,+1-751-241-7901,UNSUBSCRIBED,API
+divya.taylor906@outlook.com,Divya,Taylor,+1-791-273-8450,ACTIVE,Referral
+aarav.davis907@acme.co,Aarav,Davis,+1-271-548-7943,ACTIVE,LinkedIn Lead
+skyler.singh908@startup.ai,Skyler,Singh,+1-688-447-4438,ACTIVE,Webinar
+neha.nguyen909@enterprise.org,Neha,Nguyen,+1-556-365-5834,ACTIVE,LinkedIn Lead
+isabella.gupta910@gmail.com,Isabella,Gupta,+1-757-382-1736,ACTIVE,LinkedIn Lead
+dakota.jackson911@growixa.io,Dakota,Jackson,+1-919-416-2495,BOUNCED,Referral
+gabriel.sharma912@techcorp.com,Gabriel,Sharma,+1-510-476-1040,ACTIVE,Webinar
+skyler.johnson913@yahoo.com,Skyler,Johnson,+1-451-465-5775,ACTIVE,LinkedIn Lead
+kavya.wilson914@gmail.com,Kavya,Wilson,+1-579-311-4495,ARCHIVED,Cold Outreach
+logan.nguyen915@outlook.com,Logan,Nguyen,+1-664-521-9262,ACTIVE,Import CSV
+taylor.hernandez916@acme.co,Taylor,Hernandez,+1-412-311-6774,ARCHIVED,Webinar
+meera.verma917@startup.ai,Meera,Verma,+1-399-492-2498,ACTIVE,Webinar
+dakota.taylor918@outlook.com,Dakota,Taylor,+1-416-381-4990,ACTIVE,Import CSV
+camila.garcia919@yahoo.com,Camila,Garcia,+1-602-428-7533,UNSUBSCRIBED,API
+finley.smith920@yahoo.com,Finley,Smith,+1-551-755-1348,ACTIVE,LinkedIn Lead
+hayden.anderson921@growixa.io,Hayden,Anderson,+1-560-418-8915,ACTIVE,Cold Outreach
+neha.verma922@techcorp.com,Neha,Verma,+1-234-440-7676,BOUNCED,Website Signup
+morgan.li923@outlook.com,Morgan,Li,+1-684-332-3533,BOUNCED,Cold Outreach
+sam.gonzalez924@startup.ai,Sam,Gonzalez,+1-205-186-5798,ACTIVE,Cold Outreach
+siddharth.johnson925@techcorp.com,Siddharth,Johnson,+1-475-594-5605,ACTIVE,Website Signup
+gabriel.singh926@yahoo.com,Gabriel,Singh,+1-964-559-3343,ARCHIVED,Import CSV
+finley.garcia927@startup.ai,Finley,Garcia,+1-979-482-1479,ACTIVE,Website Signup
+rowan.verma928@innovate.net,Rowan,Verma,+1-711-819-8754,ACTIVE,Website Signup
+logan.smith929@startup.ai,Logan,Smith,+1-464-701-6820,ACTIVE,Website Signup
+karan.garcia930@acme.co,Karan,Garcia,+1-462-528-4937,ACTIVE,Webinar
+pat.taylor931@innovate.net,Pat,Taylor,+1-703-424-3979,ACTIVE,Referral
+alex.davis932@startup.ai,Alex,Davis,+1-583-352-2878,ACTIVE,LinkedIn Lead
+camila.liu933@growixa.io,Camila,Liu,+1-612-572-6538,ACTIVE,Webinar
+emerson.liu934@outlook.com,Emerson,Liu,+1-884-523-4853,ACTIVE,Import CSV
+finley.rodriguez935@yahoo.com,Finley,Rodriguez,+1-298-836-4093,BOUNCED,Webinar
+ravi.chen936@outlook.com,Ravi,Chen,+1-408-468-9926,ACTIVE,LinkedIn Lead
+isabella.joshi937@startup.ai,Isabella,Joshi,+1-750-121-3929,ACTIVE,Import CSV
+riley.gonzalez938@outlook.com,Riley,Gonzalez,+1-429-479-5243,UNSUBSCRIBED,Website Signup
+anushka.hernandez939@cloudworks.io,Anushka,Hernandez,+1-335-512-1230,ACTIVE,Cold Outreach
+aditya.joshi940@cloudworks.io,Aditya,Joshi,+1-416-323-4154,ACTIVE,Webinar
+quinn.davis941@cloudworks.io,Quinn,Davis,+1-564-326-3236,ACTIVE,Import CSV
+finley.li942@yahoo.com,Finley,Li,+1-964-949-3428,ACTIVE,Cold Outreach
+leo.brown943@enterprise.org,Leo,Brown,+1-684-426-7346,UNSUBSCRIBED,Webinar
+morgan.joshi944@gmail.com,Morgan,Joshi,+1-914-128-9801,ACTIVE,Webinar
+morgan.chen945@techcorp.com,Morgan,Chen,+1-698-195-8845,ACTIVE,Website Signup
+sanjay.williams946@innovate.net,Sanjay,Williams,+1-702-944-7969,ACTIVE,LinkedIn Lead
+amit.patel947@innovate.net,Amit,Patel,+1-907-802-3028,ACTIVE,API
+rohan.brown948@acme.co,Rohan,Brown,+1-744-187-9438,ACTIVE,Cold Outreach
+rahul.lopez949@techcorp.com,Rahul,Lopez,+1-675-557-2337,ACTIVE,Website Signup
+jordan.smith950@cloudworks.io,Jordan,Smith,+1-467-998-4423,UNSUBSCRIBED,Import CSV
+gabriel.gonzalez951@innovate.net,Gabriel,Gonzalez,+1-311-513-6061,ACTIVE,Webinar
+diego.martin952@cloudworks.io,Diego,Martin,+1-990-862-4132,ACTIVE,Cold Outreach
+divya.jackson953@enterprise.org,Divya,Jackson,+1-380-223-7734,ACTIVE,Referral
+emerson.jones954@techcorp.com,Emerson,Jones,+1-434-100-1037,ACTIVE,Cold Outreach
+isabella.verma955@techcorp.com,Isabella,Verma,+1-676-650-8474,ARCHIVED,Cold Outreach
+sneha.joshi956@gmail.com,Sneha,Joshi,+1-755-513-3856,ACTIVE,Webinar
+diego.zhang957@startup.ai,Diego,Zhang,+1-320-587-5799,ACTIVE,API
+sam.kim958@techcorp.com,Sam,Kim,+1-527-938-3774,ACTIVE,LinkedIn Lead
+aarav.tran959@startup.ai,Aarav,Tran,+1-585-196-7125,UNSUBSCRIBED,Import CSV
+jordan.patel960@acme.co,Jordan,Patel,+1-403-635-5495,ACTIVE,Webinar
+rahul.park961@startup.ai,Rahul,Park,+1-381-126-3758,ACTIVE,Import CSV
+quinn.tran962@innovate.net,Quinn,Tran,+1-382-805-4328,ACTIVE,Website Signup
+aditya.davis963@enterprise.org,Aditya,Davis,+1-815-515-8079,ACTIVE,LinkedIn Lead
+cameron.liu964@outlook.com,Cameron,Liu,+1-572-920-2623,ACTIVE,LinkedIn Lead
+avery.chen965@innovate.net,Avery,Chen,+1-962-603-3575,ARCHIVED,Website Signup
+rohan.taylor966@gmail.com,Rohan,Taylor,+1-584-732-8386,BOUNCED,API
+anushka.chen967@techcorp.com,Anushka,Chen,+1-930-593-3136,UNSUBSCRIBED,API
+kavya.singh968@yahoo.com,Kavya,Singh,+1-603-940-5641,ACTIVE,Cold Outreach
+camila.tran969@outlook.com,Camila,Tran,+1-562-421-5581,UNSUBSCRIBED,LinkedIn Lead
+mia.li970@growixa.io,Mia,Li,+1-332-374-5923,ACTIVE,Website Signup
+dakota.singh971@acme.co,Dakota,Singh,+1-370-229-8969,ACTIVE,Cold Outreach
+amit.pham972@acme.co,Amit,Pham,+1-493-601-6008,ACTIVE,Website Signup
+priya.taylor973@gmail.com,Priya,Taylor,+1-622-809-4642,ACTIVE,Webinar
+leo.anderson974@cloudworks.io,Leo,Anderson,+1-942-856-9521,ACTIVE,Referral
+elena.joshi975@cloudworks.io,Elena,Joshi,+1-950-725-3684,ACTIVE,API
+mia.anderson976@outlook.com,Mia,Anderson,+1-786-907-5013,ACTIVE,LinkedIn Lead
+rohan.rodriguez977@yahoo.com,Rohan,Rodriguez,+1-316-749-2295,ACTIVE,Referral
+isabella.shah978@innovate.net,Isabella,Shah,+1-644-478-5624,ACTIVE,LinkedIn Lead
+siddharth.pham979@gmail.com,Siddharth,Pham,+1-543-124-3428,UNSUBSCRIBED,LinkedIn Lead
+lucas.wang980@outlook.com,Lucas,Wang,+1-457-268-4473,BOUNCED,Referral
+ravi.wang981@outlook.com,Ravi,Wang,+1-261-282-7007,BOUNCED,Website Signup
+anushka.singh982@acme.co,Anushka,Singh,+1-882-661-2912,ACTIVE,Webinar
+reese.hernandez983@techcorp.com,Reese,Hernandez,+1-435-999-4323,BOUNCED,Cold Outreach
+skyler.williams984@innovate.net,Skyler,Williams,+1-355-809-9303,ACTIVE,Webinar
+leo.hernandez985@innovate.net,Leo,Hernandez,+1-239-977-7133,BOUNCED,API
+karan.garcia986@startup.ai,Karan,Garcia,+1-202-377-5510,ACTIVE,LinkedIn Lead
+emerson.tran987@cloudworks.io,Emerson,Tran,+1-850-800-5940,UNSUBSCRIBED,LinkedIn Lead
+vikram.jones988@cloudworks.io,Vikram,Jones,+1-404-642-3590,UNSUBSCRIBED,Referral
+quinn.yadav989@yahoo.com,Quinn,Yadav,+1-592-675-1875,UNSUBSCRIBED,Cold Outreach
+rowan.patel990@growixa.io,Rowan,Patel,+1-875-165-5104,ACTIVE,LinkedIn Lead
+deepak.anderson991@techcorp.com,Deepak,Anderson,+1-469-446-7189,ACTIVE,Referral
+skyler.thomas992@acme.co,Skyler,Thomas,+1-642-479-6648,ACTIVE,LinkedIn Lead
+divya.lopez993@gmail.com,Divya,Lopez,+1-945-440-6413,UNSUBSCRIBED,Webinar
+rowan.wang994@enterprise.org,Rowan,Wang,+1-639-196-8456,ACTIVE,Referral
+lucas.davis995@startup.ai,Lucas,Davis,+1-258-215-5680,ACTIVE,Webinar
+quinn.chen996@startup.ai,Quinn,Chen,+1-790-934-6389,ACTIVE,API
+logan.jones997@innovate.net,Logan,Jones,+1-580-105-9123,UNSUBSCRIBED,Referral
+ravi.brown998@gmail.com,Ravi,Brown,+1-288-921-7789,ACTIVE,LinkedIn Lead
+morgan.williams999@enterprise.org,Morgan,Williams,+1-922-296-4955,ACTIVE,Webinar
+peyton.moore1000@yahoo.com,Peyton,Moore,+1-427-449-7804,ACTIVE,Webinar

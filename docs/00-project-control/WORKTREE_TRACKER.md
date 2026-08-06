@@ -8,7 +8,7 @@ This document maintains a real-time record of all parallel Git worktrees, active
 
 | Worktree Path | Branch Name | Feature / Task | Preview URL | Status | Created |
 |---|---|---|---|---|---|
-| *(No active worktrees)* | — | — | — | — | — |
+| `.worktrees/grx-templates-page-redesign` | `feature/FRONTEND/GRX-TEMPLATES-PAGE-REDESIGN` | Email Templates Page Redesign (Hero Showcase, Visual Card Grid, Metric Summary Cards, View Switcher & Live Preview Drawer) | `http://localhost:3001` | 🟡 `IN_PROGRESS` | 2026-08-06 |
 
 ---
 
