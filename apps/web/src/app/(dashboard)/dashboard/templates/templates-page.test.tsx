@@ -144,7 +144,7 @@ describe("TemplatesPage", () => {
     expect(frame).toBeInTheDocument();
     expect(frame.srcdoc).toBe(TEMPLATE.current_version!.body_html);
 
-    await user.click(screen.getByRole("button", { name: "Hide preview" }));
+    await user.click(screen.getByRole("button", { name: "Close preview" }));
     expect(screen.queryByTitle("Template preview")).not.toBeInTheDocument();
   });
 

@@ -25,9 +25,77 @@ function formatDate(iso: string): string {
 // sandbox="" (no allow-scripts, no allow-same-origin) renders the markup/inline styles
 // a template author would see in an email client, without letting any script content
 // run against this app's origin.
-function TemplatePreview({ html }: { html: string }) {
+function TemplatePreviewModal({
+  template,
+  onClose,
+}: {
+  template: EmailTemplate;
+  onClose: () => void;
+}) {
+  const [deviceMode, setDeviceMode] = useState<"desktop" | "mobile">("desktop");
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
+  if (!template.current_version) return null;
+
   return (
-    <iframe title="Template preview" className={styles.previewFrame} sandbox="" srcDoc={html} />
+    <div className={styles.modalBackdrop} onClick={onClose} role="dialog" aria-modal="true">
+      <div className={styles.modalCard} onClick={(e) => e.stopPropagation()}>
+        <div className={styles.modalHeader}>
+          <div className={styles.modalTitleGroup}>
+            <h3 className={styles.modalTitle}>{template.name}</h3>
+            <span className={styles.modalSubject}>Subject: {template.current_version.subject}</span>
+          </div>
+
+          <div className={styles.deviceToggleGroup}>
+            <button
+              type="button"
+              className={`${styles.deviceButton} ${
+                deviceMode === "desktop" ? styles.deviceButtonActive : ""
+              }`}
+              onClick={() => setDeviceMode("desktop")}
+            >
+              🖥️ Desktop
+            </button>
+            <button
+              type="button"
+              className={`${styles.deviceButton} ${
+                deviceMode === "mobile" ? styles.deviceButtonActive : ""
+              }`}
+              onClick={() => setDeviceMode("mobile")}
+            >
+              📱 Mobile
+            </button>
+          </div>
+
+          <button
+            type="button"
+            className={styles.closeButton}
+            onClick={onClose}
+            aria-label="Close preview"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className={styles.modalBody}>
+          <iframe
+            title="Template preview"
+            className={
+              deviceMode === "desktop" ? styles.modalIframeDesktop : styles.modalIframeMobile
+            }
+            sandbox=""
+            srcDoc={template.current_version.body_html}
+          />
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -39,7 +107,7 @@ export function TemplatesPage() {
   const [canManage, setCanManage] = useState(false);
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
 
-  const [previewingTemplateId, setPreviewingTemplateId] = useState<string | null>(null);
+  const [previewingTemplate, setPreviewingTemplate] = useState<EmailTemplate | null>(null);
   const [deletingTemplateId, setDeletingTemplateId] = useState<string | null>(null);
 
   const [search, setSearch] = useState("");
@@ -53,9 +121,6 @@ export function TemplatesPage() {
         setCanView(hasView);
         setCanManage(me.permissions.includes(MANAGE_PERMISSION));
 
-        // /templates is itself campaigns.view-gated on the backend, so a user without
-        // it would get a 403 here rather than an empty list — skip the fetch entirely
-        // for them, matching the pattern established in the integrations page.
         if (hasView) {
           const list = await apiFetch<EmailTemplate[]>("/templates");
           setTemplates(list);
@@ -80,16 +145,13 @@ export function TemplatesPage() {
       setTemplates((current) => current.filter((t) => t.id !== template.id));
       showToast("success", "Template deleted.");
     } catch (error) {
-      // Same reasoning as the SMTP test-connection button: show the backend's real
-      // detail (e.g. "referenced by a campaign") rather than a canned message, since
-      // that's the one piece of information the user actually needs here.
       let detail = "Could not delete that template.";
       if (error instanceof ApiError) {
         try {
           const parsed = JSON.parse(error.message) as { detail?: string };
           if (parsed.detail) detail = parsed.detail;
         } catch {
-          // Not JSON — keep the generic message.
+          // Keep generic message
         }
       }
       showToast("error", detail);
@@ -204,13 +266,9 @@ export function TemplatesPage() {
                     <button
                       type="button"
                       className={styles.secondaryButton}
-                      onClick={() =>
-                        setPreviewingTemplateId(
-                          previewingTemplateId === template.id ? null : template.id,
-                        )
-                      }
+                      onClick={() => setPreviewingTemplate(template)}
                     >
-                      {previewingTemplateId === template.id ? "Hide preview" : "Preview"}
+                      Preview
                     </button>
                   )}
                   {canManage && (
@@ -241,14 +299,17 @@ export function TemplatesPage() {
                   )}
                 </div>
               </div>
-
-              {previewingTemplateId === template.id && template.current_version && (
-                <TemplatePreview html={template.current_version.body_html} />
-              )}
             </div>
           ))}
         </div>
       </div>
+
+      {previewingTemplate && (
+        <TemplatePreviewModal
+          template={previewingTemplate}
+          onClose={() => setPreviewingTemplate(null)}
+        />
+      )}
     </div>
   );
 }

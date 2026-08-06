@@ -7,6 +7,7 @@ import { type FormEvent, useEffect, useState } from "react";
 import { useToast } from "@/components/toast/toast-context";
 import { apiFetch } from "@/lib/api-client";
 
+import { TEMPLATE_PRESETS } from "./presets";
 import styles from "./template-form-page.module.css";
 import type { EmailTemplate, MeResponse } from "./types";
 
@@ -186,6 +187,20 @@ export function TemplateFormPage({ mode, templateId }: TemplateFormPageProps) {
     }
   }
 
+  function handleSelectPreset(presetId: string) {
+    if (!presetId) return;
+    const preset = TEMPLATE_PRESETS.find((p) => p.id === presetId);
+    if (preset) {
+      setForm({
+        name: form.name || preset.name,
+        subject: preset.subject,
+        body_html: preset.body_html,
+        body_text: preset.body_text,
+      });
+      showToast("success", `Loaded "${preset.name}" starter template.`);
+    }
+  }
+
   if (loading) {
     return (
       <div className={styles.page}>
@@ -221,10 +236,31 @@ export function TemplateFormPage({ mode, templateId }: TemplateFormPageProps) {
       <div className={styles.split}>
         <form className={styles.formCard} onSubmit={handleSubmit}>
           <h2 className={styles.heading}>{mode === "create" ? "New template" : "Edit template"}</h2>
-          {mode === "edit" && (
+          {mode === "edit" ? (
             <p className={styles.hint}>
               Saving appends a new version — the template name can&apos;t be changed here.
             </p>
+          ) : (
+            <div className={styles.field} style={{ marginBottom: "20px" }}>
+              <label className={styles.label} htmlFor="preset-select">
+                ⚡ Load a Starter Template (Optional)
+              </label>
+              <select
+                id="preset-select"
+                className={styles.input}
+                defaultValue=""
+                onChange={(e) => handleSelectPreset(e.target.value)}
+              >
+                <option value="" disabled>
+                  -- Select a pre-built template to auto-fill --
+                </option>
+                {TEMPLATE_PRESETS.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name} ({p.category})
+                  </option>
+                ))}
+              </select>
+            </div>
           )}
 
           <div className={styles.field}>
