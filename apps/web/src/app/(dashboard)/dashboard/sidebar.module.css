@@ -55,17 +55,17 @@
 }
 
 .brandName {
-  font-size: 16px;
+  font-size: 17px;
   font-weight: 800;
   color: #fff;
   line-height: 1.1;
 }
 
 .brandCaption {
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  color: var(--color-nav-inactive);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: rgba(255, 255, 255, 0.6);
 }
 
 .sectionHeader {
@@ -73,9 +73,9 @@
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  padding: 0 8px;
-  margin-top: 16px;
-  margin-bottom: 6px;
+  padding: 4px 8px;
+  margin-top: 18px;
+  margin-bottom: 8px;
   background: none;
   border: none;
   cursor: pointer;
@@ -84,15 +84,15 @@
 }
 
 .sectionLabel {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  color: rgba(255, 255, 255, 0.5);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.7);
 }
 
 .chevron,
 .chevronExpanded {
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.6);
   flex-shrink: 0;
   transition: transform 0.15s ease;
 }
@@ -105,19 +105,19 @@
 .navItemActive {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 9px 12px;
-  margin-bottom: 2px;
+  gap: 12px;
+  padding: 10px 14px;
+  margin-bottom: 3px;
   border-radius: 10px;
-  font-size: 13.5px;
+  font-size: 14px;
   font-weight: 600;
   text-decoration: none;
   transition: all 0.15s ease;
 }
 
 .navIcon {
-  font-size: 15px;
-  width: 20px;
+  font-size: 17px;
+  width: 22px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
