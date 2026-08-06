@@ -16,6 +16,7 @@ This document maintains a real-time record of all parallel Git worktrees, active
 
 | Worktree Directory | Branch | Feature Delivered | Merged Commit | Merged Date |
 |---|---|---|---|---|
+| `.worktrees/grx-contacts-page-redesign` | `feature/FRONTEND/GRX-CONTACTS-PAGE-REDESIGN` | Contacts Page Redesign (Metric Cards, Search & Filter Toolbar, Table Grid Header, CSV Export, Frosted Glass Modal View) | `a11d261` | 2026-08-06 |
 | `.worktrees/grx-sidebar-redesign` | `feature/FRONTEND/GRX-SIDEBAR-REDESIGN` | Sidebar Nav Redesign (Icons for all items, AUDIENCE/CAMPAIGNS/SETTINGS hierarchy, auto-expand active parent section) | `eda4dba` | 2026-08-06 |
 | `.worktrees/grx-frontend-imports-redesign` | `feature/FRONTEND/GRX-CONTACTS-IMPORTS-REDESIGN` | Drag & Drop CSV dropzone, 3-step progress, column mapping, metrics, status pills, CSV export downloader | `635f434` | 2026-08-06 |
 | `.worktrees/grx-sprint4-scheduler` | `feature/BACKEND/GRX-SCHED-001` | Campaign schedule/cancel schema (`scheduled_at`, `cancelled_at`, `idempotency_key`), migration `4a92b8107c12`, schedule/cancel API endpoints + 8 unit tests | `1757538` | 2026-08-06 |
