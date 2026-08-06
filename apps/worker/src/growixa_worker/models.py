@@ -148,7 +148,9 @@ class Campaign(Base):
             name="ck_campaigns_recipient_type",
         ),
         CheckConstraint(
-            "status IN ('DRAFT', 'SENDING', 'SENT', 'FAILED')", name="ck_campaigns_status"
+            "status IN ('DRAFT', 'SCHEDULED', 'DISPATCHING', 'SENDING', 'SENT', 'CANCELLED', "
+            "'FAILED')",
+            name="ck_campaigns_status",
         ),
     )
 

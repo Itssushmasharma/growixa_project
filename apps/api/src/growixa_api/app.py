@@ -1,5 +1,6 @@
 import asyncio
 import contextlib
+import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -41,6 +42,12 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 
 def create_app() -> FastAPI:
+    # No prior module configured a handler for the "growixa_api" logger namespace (unlike
+    # apps/worker's main.py) — without this, the scheduler ticker's logger.info/.exception
+    # calls in campaigns/scheduler.py silently go nowhere, since uvicorn only configures its
+    # own "uvicorn"/"uvicorn.access"/"uvicorn.error" loggers, not application-level ones.
+    logging.basicConfig(level=get_settings().log_level.upper())
+
     app = FastAPI(title="Growixa API", version=__version__, lifespan=lifespan)
     app.add_middleware(
         CORSMiddleware,

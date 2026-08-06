@@ -10,6 +10,12 @@ class Settings(BaseSettings):
     log_level: str = "info"
     rabbitmq_url: str
     database_url: str
+    # Backs the dispatch handler's post-success idempotency marker (GRX-SCHED-003) — a
+    # fast-path guard against reprocessing a scheduled-campaign dispatch job redelivered
+    # after a worker restart. Same instance growixa_api already runs; the DB-level
+    # CampaignVersion-existence check in handle_send_campaign remains the authoritative
+    # guard regardless, so this is an optimization, not a correctness requirement.
+    redis_url: str
     # Fernet key for decrypting SMTP credentials written by growixa_api's integrations
     # module (DEC-GRX-009) — must match that service's `encryption_key` setting exactly,
     # since both apps encrypt/decrypt the same `email_provider_connections` rows. Same
