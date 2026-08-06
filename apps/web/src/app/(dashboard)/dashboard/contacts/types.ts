@@ -92,6 +92,6 @@ export interface Contact {
   created_at: string;
   updated_at: string;
   custom_fields: Record<string, string>;
-  tags: string[];
+  tags: (Tag | string)[];
   is_suppressed: boolean;
 }
