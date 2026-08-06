@@ -3,7 +3,7 @@
 - Document ID: DOC-AGENT-HANDOFF
 - Status: ACTIVE (updated at the end of every work session)
 - Version: 1.0
-- Last updated: 2026-08-05
+- Last updated: 2026-08-06
 - Owner: Coding agent
 - Related documents: [MASTER_TASK_TRACKER](MASTER_TASK_TRACKER.md), [PROJECT_STATUS](PROJECT_STATUS.md), [CHANGELOG](CHANGELOG.md), [FEATURE_STATUS_MATRIX](FEATURE_STATUS_MATRIX.md)
 
@@ -409,6 +409,145 @@ create and edit a template, a view-only user cannot. See
 `MASTER_TASK_TRACKER.md`'s row for exact acceptance criteria and required
 tests.
 
-## Latest commit
+## Latest commit (superseded — see GRX-EMAIL-008 section below)
 
 `aa83974` — feat(integrations): add SMTP "test connection" endpoint + button (GRX-EMAIL-012)
+
+## Work completed (GRX-EMAIL-008, email templates frontend)
+
+- New `templates` dashboard page (`campaigns.view`-gated, new "CAMPAIGNS"
+  sidebar section) plus two dedicated routes — `/dashboard/templates/new` and
+  `/dashboard/templates/[id]/edit` — sharing one `TemplateFormPage` client
+  component parameterized by `mode: "create" | "edit"`.
+- New `DELETE /templates/{id}`: 404 if missing, 409 (`TemplateInUseError`,
+  catching `sqlalchemy.exc.IntegrityError`) if a campaign still references it
+  via `campaigns.template_id`'s FK (no `ON DELETE` clause — a campaign copies
+  a template's content at creation time, the FK only preserves the
+  "created from" link). Duplicate has no dedicated endpoint: the create page
+  reads `?duplicateFrom={id}` and pre-fills from that template's current
+  version, client-side, reviewable before saving.
+- Live HTML preview via `<iframe sandbox="">` (no `allow-scripts`/
+  `allow-same-origin`) — verified with a template containing both a
+  `<style>` block and an embedded `<script>` tag: CSS rendered, script did
+  not execute.
+- Search (name/subject) and sort (last-updated/name) on the list — pure
+  client-side filters, no backend change.
+- **Architecture changed mid-task, twice, both directly from live user
+  feedback against reference screenshots**: (1) create/edit started as an
+  inline expand-in-place form on the list page; the user found it confusing
+  (a native "Please fill in this field" tooltip on the wrong page state made
+  this concrete) and pointed at a two-pane "New Template" mockup, so it moved
+  to the dedicated pages above; (2) a card-grid-with-thumbnails reference was
+  also raised, but scoped down via `AskUserQuestion` to "keep the list
+  layout, add real search/sort, full CRUD" — thumbnails and categories/tags
+  were deferred since categories need a real schema decision, not just UI.
+- **Follow-up fixes from live feedback, after the page was first built**:
+  1. Both this page's and Company Settings' cards were capped at a fixed
+     `max-width` (760px / 640px) — changed both to `width: 100%`.
+  2. A second look found the *fields inside* those now-wider cards still
+     capped (`.input` at 480px, `.textarea` at 720px, deliberately at the
+     time) — removed those caps too on explicit "why not use 100%" feedback;
+     every field in both forms now stretches to the card's full width.
+  3. The HTML body textarea was flagged as too short, with no way to copy or
+     clean up the HTML — `min-height` raised 260px → 460px, and a **Format**
+     button (a small dependency-free HTML re-indenter — void/self-closing
+     elements don't nest, everything else does; no library added, since
+     `apps/web`'s only dependencies are `next`/`react`) and a **Copy** button
+     (`navigator.clipboard.writeText`) were added above the field.
+
+## Real bugs found and fixed
+
+- **Foreign-key-blocked delete surfaced as a raw 500**: before this task,
+  nothing in the codebase caught `IntegrityError` from a delete blocked by a
+  FK constraint — confirmed by reading `campaigns/models.py` (`template_id`
+  has no `ON DELETE` behavior, defaults to Postgres `RESTRICT`) and then
+  writing an integration test that builds the exact referencing chain
+  (connection → sender identity → campaign) to prove it. Fixed with
+  `TemplateInUseError`, caught in `api.py` and returned as a clean 409.
+- No other functional bugs; the three follow-up fixes above were live UX
+  feedback, not defects the tests had missed.
+
+## Files changed
+
+- `apps/web/src/app/(dashboard)/dashboard/templates/` (new:
+  `templates-page.tsx`, `templates-page.module.css`,
+  `templates-page.test.tsx`, `template-form-page.tsx`,
+  `template-form-page.module.css`, `template-form-page.test.tsx`,
+  `new/page.tsx`, `[id]/edit/page.tsx`, `types.ts`)
+- `apps/web/src/app/(dashboard)/dashboard/sidebar.tsx` (new "CAMPAIGNS"
+  section, "Templates" item)
+- `apps/web/src/app/(dashboard)/dashboard/page-title.tsx` (new page titles)
+- `apps/web/src/app/(dashboard)/dashboard/company-settings/company-settings-form.module.css`
+  (width fixes, both rounds)
+- `apps/api/src/growixa_api/templates/{repositories.py,services.py,api.py}`
+  (extended: `DELETE /templates/{id}`)
+- `apps/api/tests/test_templates.py` (extended: 4 new delete tests)
+- `docs/00-project-control/{MASTER_TASK_TRACKER.md,PROJECT_STATUS.md,CHANGELOG.md,AGENT_HANDOFF.md}`
+
+## Commands executed
+
+- `ruff check`/`ruff format --check`/`mypy`/`alembic check` — clean
+- `apps/api` `pytest` (targeted: `test_templates.py` +
+  `test_protected_routes_audit.py`, not the full suite, to avoid
+  `GRX-EMAIL-011`'s DB-wipe quirk) — 11 passed
+- `eslint`/`tsc --noEmit`/`prettier --check`/`next build` — clean
+- `vitest run` (full `apps/web` suite): 79 passed
+- Live verification against Compose end-to-end: created a real template via
+  the dedicated create page (typed HTML, watched the live preview update,
+  submitted, landed back on the list); opened Edit — name field correctly
+  disabled and pre-filled; opened Duplicate on a real template non-
+  destructively (pre-filled form + correct live preview, then cancelled);
+  deleted the disposable template via direct `curl` calls (the browser
+  automation environment auto-dismisses native `confirm()` dialogs, so the
+  accept-path was verified via `curl` — 204, gone from `GET /templates` —
+  while the decline-path was confirmed directly in the browser, since it
+  doesn't require the dialog to be accepted). Used ref-based clicks after
+  raw screenshot-coordinate clicks intermittently hit the wrong list row
+  once the page reflowed (a recurrence of an earlier-session lesson).
+- The two follow-up width/format/copy fixes were verified via the Vitest
+  suite (including two new tests: "formats the HTML body when Format is
+  clicked", "copies the HTML body to the clipboard when Copy is clicked")
+  plus a direct screenshot of `/dashboard/templates/new` showing the taller
+  textarea. Further live re-checks in the browser pane were abandoned after
+  discovering the pane is shared with the user's own live navigation — each
+  automated re-check kept getting overtaken by the user clicking to a
+  different page (Company Settings, Team) in real time. A second, isolated
+  browser tab showed the same content as the shared one, confirming this
+  rather than tool flakiness.
+
+## Blockers
+
+None.
+
+## Known issues / evidence gaps
+
+None new. Same outstanding items as `GRX-EMAIL-011`'s entry (expired cert on
+the user's own mail server; `send_campaign` retry/backoff unimplemented).
+
+## Current state
+
+Sprint 3 backend, the multi-provider addition, "test connection", and email
+templates frontend are all `DONE`. `GRX-EMAIL-009`–`010` (campaign builder +
+report frontend) remain `BACKLOG` and are the next Sprint-3-shaped work.
+
+## Exact next task
+
+`GRX-EMAIL-009` — Campaign builder + send frontend. Draft creation/editing,
+targeting, test send, immediate send, under
+`apps/web/src/app/(dashboard)/dashboard/campaigns/`. See
+`MASTER_TASK_TRACKER.md`'s row for exact acceptance criteria and required
+tests.
+
+## Resume commands
+
+```bash
+cd /Users/ravi/Documents/projects/growixa
+git log --oneline -5
+cat docs/00-project-control/MASTER_TASK_TRACKER.md
+cat docs/14-sprints/SPRINT_03_EMAIL_CAMPAIGN.md
+podman compose up -d
+```
+
+## Latest commit
+
+`e2a7529` — feat(web): email templates frontend — list, create/edit, delete/duplicate (GRX-EMAIL-008)

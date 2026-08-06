@@ -10,6 +10,39 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
+## 2026-08-06 — GRX-EMAIL-008: Email templates frontend
+
+- New `templates` dashboard page (`campaigns.view`-gated, under a new "CAMPAIGNS"
+  sidebar section) plus two dedicated routes: `/dashboard/templates/new` and
+  `/dashboard/templates/[id]/edit`, sharing one `TemplateFormPage` component. Moved
+  off an inline-on-the-list-page form after live user feedback found it confusing,
+  and to match a two-pane reference (breadcrumb, form + sticky live-preview panel).
+- Search (name/subject) and sort (last-updated/name) on the list — pure client-side
+  filters over the already-fetched list, no backend change.
+- Live HTML preview via a `<iframe sandbox="">` (no `allow-scripts`/
+  `allow-same-origin`) — verified with a template containing both a `<style>` block
+  and an embedded `<script>` tag: the CSS rendered, the script did not execute.
+- **Delete + Duplicate**, added as a scoped-down follow-up to a fuller design
+  reference (categories/tags and thumbnail cards deferred — no schema for them yet).
+  New `DELETE /templates/{id}`; blocked with a 409 (not a raw 500) when a campaign
+  still references the template, since `campaigns.template_id`'s FK has no `ON
+  DELETE` behavior. Duplicate has no dedicated endpoint — the create page reads a
+  `?duplicateFrom={id}` query param and pre-fills from that template's current
+  version.
+- **Also fixed**: both this page's and Company Settings' cards were capped at a
+  fixed `max-width` (760px / 640px), leaving large empty space on wide viewports —
+  changed both to `width: 100%`. Inputs/textareas were initially left capped at a
+  readable width inside the now-wider cards; live user feedback on both pages asked
+  for full-width fields instead, so that cap was removed too — every field in both
+  forms now stretches to the card's full width.
+- **Also fixed** (live feedback on the create/edit form): the HTML body textarea
+  was too short (`min-height` 260px → 460px), and there was no way to copy the HTML
+  or clean up its indentation. Added **Format** (a small dependency-free HTML
+  re-indenter — void/self-closing elements don't nest, everything else does) and
+  **Copy** (`navigator.clipboard.writeText`) buttons above the HTML body field.
+- `apps/api` `pytest` (targeted): 11 passed. `apps/web`: `eslint`/`tsc --noEmit`/
+  `prettier`/`next build` clean; `vitest` 79 passed.
+
 ## 2026-08-06 — GRX-EMAIL-012: "Test connection" button for SMTP provider setup
 
 - New `POST /integrations/email-providers/test` — connects and authenticates via SMTP
