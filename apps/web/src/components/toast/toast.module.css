@@ -23,21 +23,21 @@
 }
 
 .success {
-  background: rgba(34, 160, 107, 0.12);
-  border: 1px solid rgba(34, 160, 107, 0.35);
+  background: #ffffff;
+  border: 1px solid #22a06b;
   color: #15754d;
 }
 
 .error {
-  background: rgba(244, 63, 94, 0.1);
-  border: 1px solid rgba(244, 63, 94, 0.35);
+  background: #ffffff;
+  border: 1px solid #f43f5e;
   color: #b3123a;
 }
 
 .info {
-  background: rgba(20, 87, 230, 0.1);
-  border: 1px solid rgba(20, 87, 230, 0.35);
-  color: #0b3fa0;
+  background: #ffffff;
+  border: 1px solid #2563eb;
+  color: #1d4ed8;
 }
 
 .dismiss {
