@@ -1,5 +1,6 @@
 import uuid
 from collections.abc import Sequence
+from datetime import UTC, datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -12,7 +13,7 @@ from growixa_api.campaigns.repositories import (
     list_campaigns,
     update_campaign_fields,
 )
-from growixa_api.campaigns.schemas import CampaignIn, CampaignUpdateIn
+from growixa_api.campaigns.schemas import CampaignIn, CampaignUpdateIn, ScheduleCampaignIn
 from growixa_api.contacts.repositories import get_contact_list_by_id, get_segment_by_id
 from growixa_api.integrations.repositories import get_sender_identity
 from growixa_api.templates.repositories import get_template
@@ -39,6 +40,14 @@ class TemplateNotFoundError(Exception):
 class CampaignNotEditableError(Exception):
     """Raised when attempting to edit a campaign whose status has left DRAFT — draft
     content is only mutable up until sending starts, per DATA_MODEL.md."""
+
+
+class CampaignAlreadyScheduledError(Exception):
+    """Raised when scheduling a campaign that is not in DRAFT status."""
+
+
+class CampaignNotCancellableError(Exception):
+    """Raised when cancelling a campaign that is not in DRAFT or SCHEDULED status."""
 
 
 async def _validate_recipient_target(
@@ -149,5 +158,68 @@ async def update_campaign(
     await session.commit()
     # `updated_at`'s server-side onupdate expires the attribute after an UPDATE commit;
     # refresh explicitly while still inside an awaited call (see contacts/services.py).
+    await session.refresh(campaign)
+    return campaign
+
+
+async def schedule_campaign(
+    session: AsyncSession, campaign_id: uuid.UUID, data: ScheduleCampaignIn
+) -> Campaign:
+    """Move a DRAFT campaign to SCHEDULED status.
+
+    Only campaigns in DRAFT may be scheduled — calling this on a campaign
+    that has already been scheduled, is currently dispatching, sent, cancelled,
+    or failed raises ``CampaignAlreadyScheduledError``.
+
+    ``data.scheduled_at`` must be strictly in the future (UTC); a past or
+    present value raises ``ValueError``.
+    """
+    campaign = await get_campaign(session, campaign_id)
+    if campaign is None:
+        raise CampaignNotFoundError
+    if campaign.status != "DRAFT":
+        raise CampaignAlreadyScheduledError(
+            f"Campaign is in status '{campaign.status}' and cannot be scheduled"
+        )
+    if data.scheduled_at.astimezone(UTC) <= datetime.now(UTC):
+        raise ValueError("scheduled_at must be a future datetime")
+
+    campaign = await update_campaign_fields(
+        session,
+        campaign,
+        {
+            "status": "SCHEDULED",
+            "scheduled_at": data.scheduled_at,
+        },
+    )
+    await session.commit()
+    await session.refresh(campaign)
+    return campaign
+
+
+async def cancel_campaign(session: AsyncSession, campaign_id: uuid.UUID) -> Campaign:
+    """Cancel a DRAFT or SCHEDULED campaign before it is dispatched.
+
+    Campaigns that are already DISPATCHING, SENDING, SENT, or FAILED cannot be
+    cancelled (they are either mid-flight or complete) — raises
+    ``CampaignNotCancellableError``.
+    """
+    campaign = await get_campaign(session, campaign_id)
+    if campaign is None:
+        raise CampaignNotFoundError
+    if campaign.status not in {"DRAFT", "SCHEDULED"}:
+        raise CampaignNotCancellableError(
+            f"Campaign is in status '{campaign.status}' and cannot be cancelled"
+        )
+
+    campaign = await update_campaign_fields(
+        session,
+        campaign,
+        {
+            "status": "CANCELLED",
+            "cancelled_at": datetime.now(UTC),
+        },
+    )
+    await session.commit()
     await session.refresh(campaign)
     return campaign

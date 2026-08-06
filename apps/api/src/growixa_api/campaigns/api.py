@@ -3,16 +3,25 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from growixa_api.campaigns.schemas import CampaignIn, CampaignOut, CampaignUpdateIn
+from growixa_api.campaigns.schemas import (
+    CampaignIn,
+    CampaignOut,
+    CampaignUpdateIn,
+    ScheduleCampaignIn,
+)
 from growixa_api.campaigns.services import (
+    CampaignAlreadyScheduledError,
+    CampaignNotCancellableError,
     CampaignNotEditableError,
     CampaignNotFoundError,
     InvalidRecipientTargetError,
     SenderIdentityNotFoundError,
     TemplateNotFoundError,
+    cancel_campaign,
     create_campaign,
     get_campaign_or_raise,
     list_all_campaigns,
+    schedule_campaign,
     update_campaign,
 )
 from growixa_api.db import get_session
@@ -85,4 +94,51 @@ async def update_campaign_route(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Template not found") from exc
     except InvalidRecipientTargetError as exc:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
+    return CampaignOut.model_validate(campaign)
+
+
+@router.post("/{campaign_id}/schedule", response_model=CampaignOut)
+async def schedule_campaign_route(
+    campaign_id: uuid.UUID,
+    payload: ScheduleCampaignIn,
+    _actor_id: uuid.UUID = Depends(_require_manage),
+    session: AsyncSession = Depends(get_session),
+) -> CampaignOut:
+    """Schedule a DRAFT campaign to be dispatched at a future datetime.
+
+    Returns the updated campaign with status=SCHEDULED and scheduled_at set.
+    """
+    try:
+        campaign = await schedule_campaign(session, campaign_id, payload)
+    except CampaignNotFoundError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Campaign not found") from exc
+    except CampaignAlreadyScheduledError as exc:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Campaign cannot be scheduled in its current status",
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc)) from exc
+    return CampaignOut.model_validate(campaign)
+
+
+@router.post("/{campaign_id}/cancel", response_model=CampaignOut)
+async def cancel_campaign_route(
+    campaign_id: uuid.UUID,
+    _actor_id: uuid.UUID = Depends(_require_manage),
+    session: AsyncSession = Depends(get_session),
+) -> CampaignOut:
+    """Cancel a DRAFT or SCHEDULED campaign before it is dispatched.
+
+    Returns the updated campaign with status=CANCELLED and cancelled_at set.
+    """
+    try:
+        campaign = await cancel_campaign(session, campaign_id)
+    except CampaignNotFoundError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Campaign not found") from exc
+    except CampaignNotCancellableError as exc:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Campaign cannot be cancelled in its current status",
+        ) from exc
     return CampaignOut.model_validate(campaign)

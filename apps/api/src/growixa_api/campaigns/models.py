@@ -1,10 +1,9 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, Integer, Text
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, Integer, Text, func
 from sqlalchemy.dialects.postgresql import CITEXT, UUID
 from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy.sql import func
 
 from growixa_api.db import Base
 
@@ -17,7 +16,16 @@ class Campaign(Base):
             name="ck_campaigns_recipient_type",
         ),
         CheckConstraint(
-            "status IN ('DRAFT', 'SENDING', 'SENT', 'FAILED')", name="ck_campaigns_status"
+            "status IN ("
+            "'DRAFT', 'SCHEDULED', 'DISPATCHING', 'SENDING', 'SENT', 'CANCELLED', 'FAILED'"
+            ")",
+            name="ck_campaigns_status",
+        ),
+        # Composite index for scheduler polling: WHERE status='SCHEDULED' AND scheduled_at <= NOW()
+        Index(
+            "ix_campaigns_status_scheduled_at",
+            "status",
+            "scheduled_at",
         ),
     )
 
@@ -40,6 +48,14 @@ class Campaign(Base):
         UUID(as_uuid=True), ForeignKey("contact_lists.id"), nullable=True
     )
     status: Mapped[str] = mapped_column(Text, nullable=False, server_default="DRAFT")
+    # Scheduling fields (GRX-SCHED-001)
+    scheduled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Idempotency key prevents double-dispatch when the scheduler or worker restarts
+    # between state transitions (set when campaign moves to SCHEDULED).
+    idempotency_key: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), nullable=False, default=uuid.uuid4, unique=True
+    )
     created_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
     )
