@@ -11,13 +11,44 @@ import type { Contact, ContactList, MeResponse } from "../types";
 const VIEW_PERMISSION = "contacts.view";
 const MANAGE_PERMISSION = "contacts.manage";
 
-const LIST_THEMES = [
-  { icon: "📧", bg: "rgba(16, 185, 129, 0.12)", color: "#059669", bar: "#10b981" },
-  { icon: "⭐", bg: "rgba(139, 92, 246, 0.12)", color: "#7c3aed", bar: "#8b5cf6" },
-  { icon: "🎓", bg: "rgba(59, 130, 246, 0.12)", color: "#2563eb", bar: "#3b82f6" },
-  { icon: "🚀", bg: "rgba(236, 72, 153, 0.12)", color: "#db2777", bar: "#ec4899" },
-  { icon: "💼", bg: "rgba(245, 158, 11, 0.12)", color: "#d97706", bar: "#f59e0b" },
-];
+export interface Theme {
+  icon: string;
+  bg: string;
+  color: string;
+  bar: string;
+}
+
+export function getAudienceTheme(name: string): Theme {
+  const n = name.toLowerCase();
+  if (n.includes("vip") || n.includes("enterprise") || n.includes("star")) {
+    return { icon: "⭐", bg: "rgba(139, 92, 246, 0.12)", color: "#7c3aed", bar: "#8b5cf6" };
+  }
+  if (n.includes("news") || n.includes("newsletter") || n.includes("update")) {
+    return { icon: "📰", bg: "rgba(16, 185, 129, 0.12)", color: "#059669", bar: "#10b981" };
+  }
+  if (
+    n.includes("webinar") ||
+    n.includes("lead") ||
+    n.includes("intent") ||
+    n.includes("event") ||
+    n.includes("attendee")
+  ) {
+    return { icon: "🎯", bg: "rgba(236, 72, 153, 0.12)", color: "#db2777", bar: "#ec4899" };
+  }
+  if (n.includes("fresh") || n.includes("new")) {
+    return { icon: "🌱", bg: "rgba(34, 197, 94, 0.12)", color: "#16a34a", bar: "#22c55e" };
+  }
+  if (n.includes("inactive") || n.includes("old") || n.includes("idle") || n.includes("60d")) {
+    return { icon: "⏳", bg: "rgba(245, 158, 11, 0.12)", color: "#d97706", bar: "#f59e0b" };
+  }
+  if (n.includes("churn") || n.includes("risk") || n.includes("warn") || n.includes("bounce")) {
+    return { icon: "⚠️", bg: "rgba(239, 68, 68, 0.12)", color: "#dc2626", bar: "#ef4444" };
+  }
+  if (n.includes("all") || n.includes("subscriber") || n.includes("customer")) {
+    return { icon: "👥", bg: "rgba(59, 130, 246, 0.12)", color: "#2563eb", bar: "#3b82f6" };
+  }
+  return { icon: "📋", bg: "rgba(99, 102, 241, 0.12)", color: "#4f46e5", bar: "#6366f1" };
+}
 
 interface ListFormState {
   name: string;
@@ -220,8 +251,8 @@ export function ListsPage() {
           <div className={styles.emptyState}>No lists yet.</div>
         ) : (
           <div className={styles.segmentGrid}>
-            {lists.map((list, idx) => {
-              const theme = LIST_THEMES[idx % LIST_THEMES.length]!;
+            {lists.map((list) => {
+              const theme = getAudienceTheme(list.name);
               const percentage = Math.min(100, Math.round((list.member_count / maxMembers) * 100));
 
               return (
@@ -261,7 +292,7 @@ export function ListsPage() {
                     </div>
                     <div className={styles.segmentCardFooter}>
                       <span className={styles.countBadge}>{list.member_count} members</span>
-                      <span className={styles.description} style={{ fontSize: 12 }}>
+                      <span className={styles.segmentCardMetaText} title={list.description || ""}>
                         {list.description || "No description"}
                       </span>
                       <button
