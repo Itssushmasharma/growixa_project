@@ -19,11 +19,13 @@ class Settings(BaseSettings):
     rabbitmq_url: str
 
     # Origins the Next.js frontend runs on locally — needed so browser-based fetches from
-    # apps/web can complete the cross-origin, credentialed (cookie-based) requests auth
-    # relies on. 3000 is the Compose `web` container; 3100 is Playwright's e2e webServer
-    # (apps/web/playwright.config.ts), deliberately a different port so e2e runs never
-    # collide with a developer's already-running Compose stack.
-    cors_allowed_origins: list[str] = ["http://localhost:3000", "http://localhost:3100"]
+    # apps/web can complete credentialed (cookie-based) requests.
+    # 3000 is Compose web; 3001 is worktree preview; 3100 is Playwright e2e.
+    cors_allowed_origins: list[str] = [
+        "http://localhost:3000",
+        "http://localhost:3001",
+        "http://localhost:3100",
+    ]
 
     jwt_signing_key: str = "CHANGE_ME_LOCAL_DEV_ONLY"
     # Fernet symmetric key for provider-credential encryption at rest (DEC-GRX-009), e.g.
