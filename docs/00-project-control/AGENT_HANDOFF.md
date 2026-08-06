@@ -686,4 +686,16 @@ podman compose up -d
 
 ## Latest commit
 
-`09ef796` — feat(web): campaign builder + send frontend (GRX-EMAIL-009)
+`79c90fb` — fix(web): campaigns list header layout to match design reference
+
+## Follow-up fix (same session, after GRX-EMAIL-009 shipped)
+
+Live feedback comparing the shipped card grid against the user's reference
+screenshot two more times: (1) tabs were wrapped in a white pill card —
+reference has them flat on the page with only the active tab pill-highlighted
+and a divider line underneath; (2) search had been moved to its own row below
+the tabs — reference keeps it in the same top row as the tabs and the
+"+ New campaign" button, top-right. Fixed both in `campaigns-page.tsx`/`.module.css`.
+`vitest` 97 passed throughout (no test changes needed — these were pure layout
+tweaks). `podman compose restart web` after each change (dev-server
+file-watcher quirk). Commit `79c90fb`.
