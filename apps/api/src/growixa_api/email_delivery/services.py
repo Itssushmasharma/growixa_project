@@ -18,12 +18,12 @@ from growixa_api.email_delivery.repositories import (
     get_message_delivery_by_provider_message_id,
 )
 from growixa_api.email_delivery.schemas import PostmarkWebhookPayload
-from growixa_api.email_delivery.smtp_sender import send_email
 from growixa_api.integrations.repositories import (
     get_active_email_provider_connection,
     get_email_provider_connection,
     get_sender_identity,
 )
+from growixa_api.integrations.smtp_transport import send_email
 from growixa_api.jobs.producer import publish_job
 from growixa_api.jobs.schemas import JobEnvelope
 

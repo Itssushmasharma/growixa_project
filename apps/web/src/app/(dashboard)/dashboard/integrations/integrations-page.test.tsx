@@ -8,9 +8,13 @@ import { ToastProvider } from "@/components/toast/toast-context";
 import { IntegrationsPage } from "./integrations-page";
 import type { EmailProviderConnection, MeResponse, SenderIdentity } from "./types";
 
-vi.mock("@/lib/api-client", () => ({
-  apiFetch: vi.fn(),
-}));
+vi.mock("@/lib/api-client", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/api-client")>();
+  return {
+    ...actual,
+    apiFetch: vi.fn(),
+  };
+});
 
 const mockedApiFetch = vi.mocked(apiFetch);
 
@@ -134,6 +138,63 @@ describe("IntegrationsPage", () => {
     );
     const statuses = screen.getAllByText(/Connected|Unconfigured/);
     expect(statuses.map((el) => el.textContent)).toEqual(["Connected", "Unconfigured"]);
+  });
+
+  it("shows a success toast when the connection test passes", async () => {
+    const user = userEvent.setup();
+    mockedApiFetch.mockImplementation((path: string, init?: RequestInit) => {
+      if (path === "/auth/me") return Promise.resolve(meWithPermissions(["integrations.manage"]));
+      if (path === "/integrations/email-providers") return Promise.resolve([]);
+      if (path === "/integrations/sender-identities") return Promise.resolve([]);
+      if (path === "/integrations/email-providers/test" && init?.method === "POST") {
+        return Promise.resolve(undefined);
+      }
+      throw new Error(`unexpected call: ${path}`);
+    });
+
+    renderIntegrationsPage();
+    await screen.findByText("Postmark");
+
+    const configureButtons = screen.getAllByRole("button", { name: "+ Configure connection" });
+    await user.click(configureButtons[0]!);
+    await user.type(screen.getByLabelText("SMTP username"), "postmark-token");
+    await user.type(screen.getByLabelText("SMTP password / server token"), "server-token");
+    await user.click(screen.getByRole("button", { name: "Test connection" }));
+
+    expect(
+      await screen.findByText("Connection successful — credentials are valid."),
+    ).toBeInTheDocument();
+  });
+
+  it("shows the backend's error detail when the connection test fails", async () => {
+    const user = userEvent.setup();
+    mockedApiFetch.mockImplementation((path: string, init?: RequestInit) => {
+      if (path === "/auth/me") return Promise.resolve(meWithPermissions(["integrations.manage"]));
+      if (path === "/integrations/email-providers") return Promise.resolve([]);
+      if (path === "/integrations/sender-identities") return Promise.resolve([]);
+      if (path === "/integrations/email-providers/test" && init?.method === "POST") {
+        return Promise.reject(
+          new ApiError(
+            502,
+            JSON.stringify({ detail: "Connection test failed: certificate has expired" }),
+          ),
+        );
+      }
+      throw new Error(`unexpected call: ${path}`);
+    });
+
+    renderIntegrationsPage();
+    await screen.findByText("Postmark");
+
+    const configureButtons = screen.getAllByRole("button", { name: "+ Configure connection" });
+    await user.click(configureButtons[0]!);
+    await user.type(screen.getByLabelText("SMTP username"), "postmark-token");
+    await user.type(screen.getByLabelText("SMTP password / server token"), "server-token");
+    await user.click(screen.getByRole("button", { name: "Test connection" }));
+
+    expect(
+      await screen.findByText("Connection test failed: certificate has expired"),
+    ).toBeInTheDocument();
   });
 
   it("renders identities scoped to their own connection's card", async () => {

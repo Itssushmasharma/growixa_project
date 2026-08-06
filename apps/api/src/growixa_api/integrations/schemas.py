@@ -18,6 +18,17 @@ class EmailProviderConnectionIn(BaseModel):
     smtp_password: str
 
 
+class EmailProviderConnectionTestIn(BaseModel):
+    """No `provider` — connecting/authenticating over SMTP doesn't depend on which
+    provider these credentials belong to. Used to validate a connection's fields before
+    they're saved (or resaved)."""
+
+    smtp_host: str
+    smtp_port: int
+    smtp_username: str
+    smtp_password: str
+
+
 class EmailProviderConnectionOut(BaseModel):
     model_config = {"from_attributes": True}
 

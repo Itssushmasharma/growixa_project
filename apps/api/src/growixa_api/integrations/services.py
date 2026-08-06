@@ -16,7 +16,12 @@ from growixa_api.integrations.repositories import (
     list_email_provider_connections,
     list_sender_identities,
 )
-from growixa_api.integrations.schemas import EmailProviderConnectionIn, SenderIdentityIn
+from growixa_api.integrations.schemas import (
+    EmailProviderConnectionIn,
+    EmailProviderConnectionTestIn,
+    SenderIdentityIn,
+)
+from growixa_api.integrations.smtp_transport import test_connection
 
 VALID_VERIFICATION_STATUSES = {"PENDING", "VERIFIED", "FAILED"}
 
@@ -76,6 +81,19 @@ async def create_connection(
         },
     )
     return connection, webhook_password
+
+
+async def test_email_provider_connection(data: EmailProviderConnectionTestIn) -> None:
+    """No session/persistence — validates credentials someone is about to save (or has
+    already saved and wants to re-check), never touching `email_provider_connections`.
+    Raises EmailSendError (from smtp_transport) on any failure; the caller decides how
+    to surface it."""
+    await test_connection(
+        smtp_host=data.smtp_host,
+        smtp_port=data.smtp_port,
+        smtp_username=data.smtp_username,
+        smtp_password=data.smtp_password,
+    )
 
 
 async def list_identities(session: AsyncSession) -> Sequence[SenderIdentity]:

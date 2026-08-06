@@ -3,7 +3,7 @@
 import { type FormEvent, useEffect, useState } from "react";
 
 import { useToast } from "@/components/toast/toast-context";
-import { apiFetch } from "@/lib/api-client";
+import { ApiError, apiFetch } from "@/lib/api-client";
 
 import styles from "./integrations-page.module.css";
 import {
@@ -83,6 +83,7 @@ export function IntegrationsPage() {
   const [connectionFormFor, setConnectionFormFor] = useState<EmailProvider | null>(null);
   const [connectionForm, setConnectionForm] = useState<ConnectionFormState>(BLANK_CONNECTION_FORM);
   const [connectionSaving, setConnectionSaving] = useState(false);
+  const [connectionTesting, setConnectionTesting] = useState(false);
   // The webhook password is only ever returned once, in this response — shown here
   // until the user navigates away, then it's gone for good (matches
   // EmailProviderConnectionOut's documented one-time-reveal convention, same shape as
@@ -136,6 +137,38 @@ export function IntegrationsPage() {
   function openConnectionForm(definition: ProviderDefinition) {
     setConnectionForm(emptyConnectionForm(definition));
     setConnectionFormFor(definition.key);
+  }
+
+  async function handleTestConnection() {
+    setConnectionTesting(true);
+    try {
+      await apiFetch<void>("/integrations/email-providers/test", {
+        method: "POST",
+        body: JSON.stringify({
+          smtp_host: connectionForm.smtp_host,
+          smtp_port: Number(connectionForm.smtp_port),
+          smtp_username: connectionForm.smtp_username,
+          smtp_password: connectionForm.smtp_password,
+        }),
+      });
+      showToast("success", "Connection successful — credentials are valid.");
+    } catch (error) {
+      // Unlike most error handling in this app, show the backend's actual detail
+      // message here rather than a canned one — the whole point of this button is to
+      // surface *which* SMTP failure occurred (timeout, auth, expired certificate...).
+      let detail = "Connection test failed.";
+      if (error instanceof ApiError) {
+        try {
+          const parsed = JSON.parse(error.message) as { detail?: string };
+          if (parsed.detail) detail = parsed.detail;
+        } catch {
+          // Not JSON — keep the generic message.
+        }
+      }
+      showToast("error", detail);
+    } finally {
+      setConnectionTesting(false);
+    }
   }
 
   async function handleConnectionSubmit(event: FormEvent<HTMLFormElement>) {
@@ -381,6 +414,20 @@ export function IntegrationsPage() {
                   />
                 </div>
                 <div className={styles.formActions}>
+                  <button
+                    type="button"
+                    className={styles.secondaryButton}
+                    disabled={
+                      connectionTesting ||
+                      !connectionForm.smtp_host ||
+                      !connectionForm.smtp_port ||
+                      !connectionForm.smtp_username ||
+                      !connectionForm.smtp_password
+                    }
+                    onClick={handleTestConnection}
+                  >
+                    {connectionTesting ? "Testing…" : "Test connection"}
+                  </button>
                   <button type="submit" className={styles.actionButton} disabled={connectionSaving}>
                     {connectionSaving ? "Saving…" : "Save connection"}
                   </button>

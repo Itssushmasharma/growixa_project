@@ -20,7 +20,7 @@ from growixa_api.email_delivery.services import (
     trigger_campaign_send,
     verify_webhook_credentials,
 )
-from growixa_api.email_delivery.smtp_sender import EmailSendError
+from growixa_api.integrations.smtp_transport import EmailSendError
 from growixa_api.permissions.dependencies import require_permission
 
 router = APIRouter(prefix="/campaigns", tags=["campaigns"])

@@ -7,6 +7,7 @@ from growixa_api.db import get_session
 from growixa_api.integrations.schemas import (
     EmailProviderConnectionIn,
     EmailProviderConnectionOut,
+    EmailProviderConnectionTestIn,
     SenderIdentityIn,
     SenderIdentityOut,
     SenderIdentityStatusIn,
@@ -19,8 +20,10 @@ from growixa_api.integrations.services import (
     create_identity,
     list_connections,
     list_identities,
+    test_email_provider_connection,
     update_identity_verification_status,
 )
+from growixa_api.integrations.smtp_transport import EmailSendError
 from growixa_api.permissions.dependencies import require_permission
 
 router = APIRouter(prefix="/integrations", tags=["integrations"])
@@ -38,6 +41,20 @@ async def list_email_provider_connections_route(
     provider and looks up its row here, rather than fetching "the" connection."""
     connections = await list_connections(session)
     return [EmailProviderConnectionOut.model_validate(connection) for connection in connections]
+
+
+@router.post("/email-providers/test", status_code=status.HTTP_204_NO_CONTENT)
+async def test_email_provider_connection_route(
+    payload: EmailProviderConnectionTestIn,
+    _actor_id: uuid.UUID = Depends(_require_manage),
+) -> None:
+    """Validates SMTP host/port/credentials by connecting and authenticating only — no
+    message is sent, and nothing is persisted. Lets the frontend check a connection
+    before (or instead of) saving it."""
+    try:
+        await test_email_provider_connection(payload)
+    except EmailSendError as exc:
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, f"Connection test failed: {exc}") from exc
 
 
 @router.post(

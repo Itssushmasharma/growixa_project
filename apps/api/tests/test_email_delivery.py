@@ -22,8 +22,8 @@ from growixa_api.contacts.models import Contact, SuppressionEntry
 from growixa_api.db import async_session_factory
 from growixa_api.email_delivery import services as email_delivery_services
 from growixa_api.email_delivery.models import EmailEvent, MessageDelivery, UnsubscribeEvent
-from growixa_api.email_delivery.smtp_sender import EmailSendError
 from growixa_api.integrations.models import EmailProviderConnection, SenderIdentity
+from growixa_api.integrations.smtp_transport import EmailSendError
 from growixa_api.jobs.schemas import JobEnvelope
 
 CAMPAIGN_PAYLOAD = {
