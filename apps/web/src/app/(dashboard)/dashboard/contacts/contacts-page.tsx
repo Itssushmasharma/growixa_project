@@ -543,55 +543,59 @@ export function ContactsPage() {
           <div className={styles.emptyState}>No contacts match your criteria.</div>
         ) : (
           <div>
-            {/* Table Header Row */}
-            <div className={styles.tableHeader}>
-              <div>Contact</div>
-              <div>Status</div>
-              <div>Source</div>
-              <div>Created</div>
-              <div style={{ textAlign: "right" }}>Actions</div>
-            </div>
+            <div className={styles.tableScrollContainer}>
+              {/* Table Header Row */}
+              <div className={styles.tableHeader}>
+                <div>Contact</div>
+                <div>Status</div>
+                <div>Source</div>
+                <div>Created</div>
+                <div style={{ textAlign: "right" }}>Actions</div>
+              </div>
 
-            {paginatedContacts.map((contact) => {
-              return (
-                <div key={contact.id} className={styles.contactBlock}>
-                  <div className={styles.row}>
-                    <div className={styles.identity}>
-                      <div className={styles.avatar}>{initialsFor(contact)}</div>
-                      <div>
-                        <div className={styles.name}>{displayName(contact)}</div>
-                        <div className={styles.email}>{contact.email}</div>
+              {paginatedContacts.map((contact) => {
+                return (
+                  <div key={contact.id} className={styles.contactBlock}>
+                    <div className={styles.row}>
+                      <div className={styles.identity}>
+                        <div className={styles.avatar}>{initialsFor(contact)}</div>
+                        <div>
+                          <div className={styles.name}>{displayName(contact)}</div>
+                          <div className={styles.email}>{contact.email}</div>
+                        </div>
+                      </div>
+                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                        <span
+                          className={`${styles.statusBadge} ${
+                            contact.status === "ACTIVE"
+                              ? styles.statusActive
+                              : styles.statusArchived
+                          }`}
+                        >
+                          {capitalize(contact.status)}
+                        </span>
+                        {contact.is_suppressed && (
+                          <span className={styles.suppressedBadge}>Suppressed</span>
+                        )}
+                      </div>
+                      <div className={styles.description}>{contact.source || "—"}</div>
+                      <div className={styles.description}>
+                        {new Date(contact.created_at).toLocaleDateString()}
+                      </div>
+                      <div className={styles.rowActions}>
+                        <button
+                          type="button"
+                          className={styles.viewButton}
+                          onClick={() => openContactModal(contact)}
+                        >
+                          View
+                        </button>
                       </div>
                     </div>
-                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                      <span
-                        className={`${styles.statusBadge} ${
-                          contact.status === "ACTIVE" ? styles.statusActive : styles.statusArchived
-                        }`}
-                      >
-                        {capitalize(contact.status)}
-                      </span>
-                      {contact.is_suppressed && (
-                        <span className={styles.suppressedBadge}>Suppressed</span>
-                      )}
-                    </div>
-                    <div className={styles.description}>{contact.source || "—"}</div>
-                    <div className={styles.description}>
-                      {new Date(contact.created_at).toLocaleDateString()}
-                    </div>
-                    <div className={styles.rowActions}>
-                      <button
-                        type="button"
-                        className={styles.viewButton}
-                        onClick={() => openContactModal(contact)}
-                      >
-                        View
-                      </button>
-                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
 
             {/* Pagination Controls Bar */}
             {visibleContacts.length > 0 && (
