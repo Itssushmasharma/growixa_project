@@ -50,3 +50,6 @@ secrets/
 
 # Prototypes & Scratch
 dummy/
+
+# Linked git worktrees (each is its own checkout; must not be tracked as a gitlink)
+.worktrees/
