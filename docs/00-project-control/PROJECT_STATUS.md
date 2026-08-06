@@ -3,7 +3,7 @@
 - Document ID: DOC-PROJECT-STATUS
 - Status: ACTIVE
 - Version: 1.45
-- Last updated: 2026-08-05
+- Last updated: 2026-08-06
 - Owner: Coding agent (on behalf of product owner)
 - Related documents: [MASTER_TASK_TRACKER](MASTER_TASK_TRACKER.md), [DECISIONS](DECISIONS.md), [DEVELOPMENT_READINESS](DEVELOPMENT_READINESS.md), [FEATURE_STATUS_MATRIX](FEATURE_STATUS_MATRIX.md)
 
@@ -200,7 +200,7 @@ directly by the user mid-session, is `DONE`.
    `GRX-EMAIL-001` → `GRX-EMAIL-002` → `GRX-EMAIL-003` → `GRX-EMAIL-004` → `GRX-EMAIL-005`
    → `GRX-EMAIL-006` → `GRX-EMAIL-007` → `GRX-EMAIL-011` (ad hoc, Custom SMTP as a
    second provider + SMTP TLS fixes) → `GRX-EMAIL-012` (ad hoc, SMTP "test connection"
-   button) → `GRX-EMAIL-008`.
+   button) → `GRX-EMAIL-008` → `GRX-EMAIL-009`.
    **Sprint 1 and Sprint 2 (Contacts) are both fully `DONE`**, including `GRX-DEVOPS-001`
    (user pushed and confirmed a green CI run), `GRX-DOC-003` (Sprint 1 doc/handoff
    update, which filed `GRX-AUDIT-002` for the audit-viewing gap it found), and
@@ -209,11 +209,14 @@ directly by the user mid-session, is `DONE`.
    connection, templates, campaigns CRUD, the send pipeline, the Postmark webhook
    receiver + unsubscribe handling, the campaign report/analytics endpoint, and the
    provider connection + sender identity settings UI) are all `DONE`, along with the ad
-   hoc `GRX-EMAIL-011`/`GRX-EMAIL-012` additions and `GRX-EMAIL-008` (email templates
+   hoc `GRX-EMAIL-011`/`GRX-EMAIL-012` additions, `GRX-EMAIL-008` (email templates
    frontend — a list page plus dedicated create/edit pages at
    `/dashboard/templates/new` and `/dashboard/templates/[id]/edit`, with search, sort,
-   delete, and duplicate); next task is `GRX-EMAIL-009` — the remaining Sprint 3 tasks
-   (`009`–`010`) are both frontend work.
+   delete, and duplicate), and `GRX-EMAIL-009` (campaign builder + send frontend — one
+   shared form/detail component at `/dashboard/campaigns/new` and
+   `/dashboard/campaigns/[id]` covering drafting, recipient targeting, test send, and
+   immediate send, no backend changes needed); next task is `GRX-EMAIL-010` — the last
+   remaining Sprint 3 task, the campaign report frontend.
    `GRX-EMAIL-004` also fixed a real gap found along the way — `usage_records` was
    documented as existing since Sprint 1 (`DEC-GRX-007`) but was never actually built —
    and carries one documented evidence gap: no live Postmark account is available in

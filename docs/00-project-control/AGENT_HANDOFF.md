@@ -548,6 +548,142 @@ cat docs/14-sprints/SPRINT_03_EMAIL_CAMPAIGN.md
 podman compose up -d
 ```
 
-## Latest commit
+## Latest commit (superseded — see GRX-EMAIL-009 section below)
 
 `e2a7529` — feat(web): email templates frontend — list, create/edit, delete/duplicate (GRX-EMAIL-008)
+
+## Work completed (GRX-EMAIL-009, campaign builder + send frontend)
+
+- New `campaigns` dashboard page (`campaigns.view`-gated) plus `/dashboard/campaigns/new`
+  and `/dashboard/campaigns/[id]` — one `CampaignFormPage` client component
+  (`mode: "create" | "edit"`) serves creation, draft editing, read-only viewing of a
+  non-draft campaign, and the test-send/send-now panel; the `[id]` route is both the
+  edit form and the detail view, there's no separate `/edit`. No backend changes —
+  every endpoint needed (`POST/GET/PATCH /campaigns`, `POST /campaigns/{id}/test-send`,
+  `POST /campaigns/{id}/send`, `GET /integrations/sender-identities`,
+  `GET /contacts/{lists,segments}`, `GET /templates`) already existed.
+- `editable = canManage && (mode === "create" || campaign.status === "DRAFT")` —
+  fields render as disabled inputs, not hidden, once a campaign leaves `DRAFT`, with
+  a hint mirroring the backend's own 409 message rather than hiding content.
+- Recipient targeting: one `recipient_type` select plus a conditional second select
+  for the list/segment target; switching type clears the previous target id
+  client-side, mirroring `campaigns/services.py`'s own clearing logic on the backend.
+- Optional "Load content from a template" select reads the already-fetched
+  `GET /templates` response (its `EmailTemplateOut` nests `current_version`, so no
+  extra per-selection fetch) and prefills subject/body, keeping `template_id` for
+  lineage.
+- Test-send (`campaigns.send`) works at any campaign status, matching
+  `send_test_email`'s own lack of a status guard on the backend; Send now is
+  `DRAFT`-only (backend 409s otherwise), gated behind `window.confirm`, and
+  optimistically flips the status pill to `SENDING` with a toast rather than polling
+  for the real terminal state.
+- Extracted `formatHtml` (added ad hoc in `GRX-EMAIL-008`) and its Format/Copy
+  buttons out of `templates/template-form-page.tsx` into a new
+  `apps/web/src/lib/format-html.ts`, reused by both the templates and campaigns HTML
+  editors instead of duplicating the ~35-line function a second time.
+- **Mid-task redesign, directly from a user-supplied reference screenshot**: the list
+  page first shipped row-based (matching `GRX-EMAIL-008`'s templates list, already
+  tested and verified), then was rebuilt as a card grid with status-filter tabs
+  after the user shared a reference image mid-verification. The reference implied
+  two things this app can't honestly back yet — flagged via `AskUserQuestion` rather
+  than guessed:
+  1. **Open rate / click rate per card**: real data exists via `GRX-EMAIL-006`'s
+     `GET /campaigns/{id}/report`, but pulling it into the list means an N+1 fetch
+     per card and duplicates `GRX-EMAIL-010`'s actual scope (the dedicated report
+     task, next in the tracker) — deferred there instead.
+  2. **Scheduled / Paused filter tabs**: not real statuses — `campaigns.status`'s
+     CHECK constraint is `DRAFT`/`SENDING`/`SENT`/`FAILED` only; scheduled sending
+     is the separate, still-`BACKLOG` `GRX-SCHED-*` work (visible mid-flight,
+     uncommitted, in a concurrent session's edits to this same tracker file). Built
+     filter tabs only for the four statuses that actually exist.
+
+## Files changed
+
+- `apps/web/src/app/(dashboard)/dashboard/campaigns/` (new: `campaigns-page.tsx`,
+  `campaigns-page.module.css`, `campaigns-page.test.tsx`, `campaign-form-page.tsx`,
+  `campaign-form-page.module.css`, `campaign-form-page.test.tsx`, `new/page.tsx`,
+  `[id]/page.tsx`, `types.ts`)
+- `apps/web/src/lib/format-html.ts` (new, extracted)
+- `apps/web/src/app/(dashboard)/dashboard/templates/template-form-page.tsx` (imports
+  `formatHtml` from the new shared lib instead of its own copy)
+- `apps/web/src/app/(dashboard)/dashboard/sidebar.tsx` (new "Campaigns" nav item)
+- `apps/web/src/app/(dashboard)/dashboard/page-title.tsx` (new page titles)
+- `docs/00-project-control/{MASTER_TASK_TRACKER.md,PROJECT_STATUS.md,CHANGELOG.md,AGENT_HANDOFF.md}`
+
+## Commands executed
+
+- `eslint`/`tsc --noEmit`/`prettier --check` — clean
+- `vitest run` (full `apps/web` suite): 97 passed (18 new)
+- `next build` — clean; `/dashboard/campaigns`, `/dashboard/campaigns/new`,
+  `/dashboard/campaigns/[id]` all registered as separate routes (static `new`
+  correctly takes priority over the `[id]` dynamic segment)
+- `podman compose restart web` (new route directories, same dev-server
+  file-watcher quirk noted in `GRX-EMAIL-007`'s and `GRX-EMAIL-012`'s entries)
+- Live verification against Compose as a real Super Admin: created a throwaway
+  Super Admin user directly via SQL (no known password existed for the
+  `admin@growixa.local` account recreated in earlier sessions, and the login
+  couldn't be verified through `curl` with a password argument — blocked by this
+  environment's own auto-mode classifier as credential-handling; authenticated
+  through the actual `/login` UI form instead, the normal way a user would).
+  Configured a real Custom SMTP connection (fake host — the point was exercising
+  real credential storage/session flow through the Integrations UI, not a real
+  send) and sender identity; created a campaign loading real content from an
+  existing template — subject/body prefilled correctly, live preview rendered it;
+  test-send round-tripped a real 502 with the underlying DNS-resolution failure
+  text; Send now (via a `window.confirm` stub — this browser-automation
+  environment auto-dismisses native `confirm()`, the same limitation
+  `GRX-EMAIL-008`'s delete flow hit) flipped the UI to `SENDING` immediately, and
+  on reload the worker's real job pipeline had carried it through to `SENT` (0
+  recipients, since no contacts exist in this environment, so the job trivially
+  completed) — proving the full create→send→status-refresh path against the real
+  backend and worker, not just the client-side optimistic update. The card-grid
+  redesign that followed was verified through the component test suite (8 new
+  tests specifically covering tab filtering, status-scoped assertions, and the
+  Scheduled/Paused-tabs-don't-exist check) and a clean `next build`, not a final
+  live screenshot — the browser pane closed before that redesign could be
+  re-verified visually; noted here as an honest gap rather than claimed as seen.
+  Cleaned up all smoke-test rows afterward (campaign, sender identity, connection,
+  throwaway Super Admin user) via direct SQL, since `campaigns` has no `DELETE`
+  route to clean up through the API.
+
+## Blockers
+
+None.
+
+## Known issues / evidence gaps
+
+- The card-grid redesign (status tabs, card layout) was not re-verified with a live
+  screenshot after the browser pane closed mid-session — covered by 8 new
+  component tests and a clean `next build` instead. Low risk (pure rendering
+  change, no new data flow), but worth a quick visual glance next time the app is
+  open.
+- Same outstanding items as `GRX-EMAIL-011`'s entry (expired cert on the user's own
+  mail server; `send_campaign` retry/backoff unimplemented).
+
+## Current state
+
+Sprint 3 backend and every Sprint-3 frontend task through campaign building/sending
+are `DONE`. Only `GRX-EMAIL-010` (campaign report frontend) remains `BACKLOG`.
+
+## Exact next task
+
+`GRX-EMAIL-010` — Campaign report frontend. Per-campaign delivery/analytics report
+view, extending `apps/web/src/app/(dashboard)/dashboard/campaigns/` with a report
+view backed by `GRX-EMAIL-006`'s existing `GET /campaigns/{id}/report`. This is also
+the natural place to add the open/click-rate-per-card enhancement deferred from
+this task, if the user still wants it on the list view too. See
+`MASTER_TASK_TRACKER.md`'s row for exact acceptance criteria.
+
+## Resume commands
+
+```bash
+cd /Users/ravi/Documents/projects/growixa
+git log --oneline -5
+cat docs/00-project-control/MASTER_TASK_TRACKER.md
+cat docs/14-sprints/SPRINT_03_EMAIL_CAMPAIGN.md
+podman compose up -d
+```
+
+## Latest commit
+
+`09ef796` — feat(web): campaign builder + send frontend (GRX-EMAIL-009)

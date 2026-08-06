@@ -10,6 +10,30 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
+## 2026-08-06 — GRX-EMAIL-009: Campaign builder + send frontend
+
+- New `campaigns` dashboard page (`campaigns.view`-gated), plus `/dashboard/campaigns/new`
+  and `/dashboard/campaigns/[id]` — the `[id]` route doubles as both the editable-draft
+  form and the read-only detail/send view once a campaign leaves `DRAFT`. No backend
+  changes: every endpoint needed already existed from `GRX-EMAIL-003`/`004`/`006`/`007`/`008`.
+- Recipient targeting (all contacts / a list / a segment), an optional "load content
+  from a template" prefill, and a **Test & send** panel: test-send works at any
+  status (matching the backend's own lack of a status guard), "Send now" is
+  `DRAFT`-only and confirmed via `window.confirm`, then optimistically flips the
+  status pill to `SENDING` rather than polling.
+- Extracted the HTML re-indenter added ad hoc in `GRX-EMAIL-008` into
+  `apps/web/src/lib/format-html.ts` so both the templates and campaigns HTML editors
+  share one implementation instead of two copies.
+- **Mid-task redesign from a user-supplied reference**: the list started as row-based
+  (matching the templates list), then became a card grid with status-filter tabs.
+  Scoped down from the reference via explicit choice: no open/click-rate per card
+  (real data exists via the `GRX-EMAIL-006` report endpoint, but pulling it in here
+  means N+1 fetches and duplicates `GRX-EMAIL-010`'s actual job) and no
+  Scheduled/Paused tabs (not real statuses yet — `campaigns.status`'s CHECK
+  constraint is `DRAFT`/`SENDING`/`SENT`/`FAILED` only; scheduled sending is the
+  still-`BACKLOG` `GRX-SCHED-*` work).
+- `eslint`/`tsc --noEmit`/`prettier`/`next build` clean; `vitest` 97 passed (18 new).
+
 ## 2026-08-06 — GRX-EMAIL-008: Email templates frontend
 
 - New `templates` dashboard page (`campaigns.view`-gated, under a new "CAMPAIGNS"
