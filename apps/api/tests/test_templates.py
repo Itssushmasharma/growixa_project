@@ -15,8 +15,11 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy import delete
 
 from growixa_api.app import create_app
+from growixa_api.auth.encryption import encrypt_secret
+from growixa_api.campaigns.models import Campaign
 from growixa_api.config import get_settings
 from growixa_api.db import async_session_factory
+from growixa_api.integrations.models import EmailProviderConnection, SenderIdentity
 from growixa_api.templates.models import EmailTemplate, EmailTemplateVersion
 
 TEMPLATE_PAYLOAD = {
@@ -34,8 +37,44 @@ def _access_token_cookie(user_id: uuid.UUID) -> dict[str, str]:
 
 async def _cleanup() -> None:
     async with async_session_factory() as session:
+        await session.execute(delete(Campaign))
+        await session.execute(delete(SenderIdentity))
+        await session.execute(delete(EmailProviderConnection))
         await session.execute(delete(EmailTemplateVersion))
         await session.execute(delete(EmailTemplate))
+        await session.commit()
+
+
+async def _create_campaign_referencing_template(
+    template_id: uuid.UUID, actor_id: uuid.UUID
+) -> None:
+    async with async_session_factory() as session:
+        connection = EmailProviderConnection(
+            provider="POSTMARK",
+            smtp_host="smtp.postmarkapp.com",
+            smtp_port=587,
+            smtp_username="token",
+            smtp_password_encrypted=encrypt_secret("fake-smtp-password"),
+        )
+        session.add(connection)
+        await session.flush()
+        identity = SenderIdentity(
+            email_provider_connection_id=connection.id,
+            from_email="hello@growixa.local",
+            from_name="Growixa",
+        )
+        session.add(identity)
+        await session.flush()
+        campaign = Campaign(
+            name="Uses the template",
+            subject="Hi",
+            body_html="<p>Hi</p>",
+            template_id=template_id,
+            sender_identity_id=identity.id,
+            recipient_type="ALL_CONTACTS",
+            created_by_user_id=actor_id,
+        )
+        session.add(campaign)
         await session.commit()
 
 
@@ -185,3 +224,100 @@ async def test_get_and_edit_unknown_template_returns_404(
     assert get_response.status_code == 404
     assert versions_response.status_code == 404
     assert edit_response.status_code == 404
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_manager_can_delete_an_unused_template(
+    user_factory: Callable[..., Awaitable[uuid.UUID]],
+) -> None:
+    manager_id = await user_factory(full_name="Test Manager", role_name="Marketing Manager")
+    try:
+        cookies = _access_token_cookie(manager_id)
+        transport = ASGITransport(app=create_app())
+        async with AsyncClient(
+            transport=transport, base_url="http://test", cookies=cookies
+        ) as client:
+            create_response = await client.post("/templates", json=TEMPLATE_PAYLOAD)
+            template_id = create_response.json()["id"]
+
+            delete_response = await client.delete(f"/templates/{template_id}")
+            list_response = await client.get("/templates")
+
+        assert delete_response.status_code == 204
+        assert all(t["id"] != template_id for t in list_response.json())
+    finally:
+        await _cleanup()
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_deleting_an_unknown_template_returns_404(
+    user_factory: Callable[..., Awaitable[uuid.UUID]],
+) -> None:
+    manager_id = await user_factory(full_name="Test Manager", role_name="Marketing Manager")
+    cookies = _access_token_cookie(manager_id)
+    transport = ASGITransport(app=create_app())
+    async with AsyncClient(transport=transport, base_url="http://test", cookies=cookies) as client:
+        response = await client.delete(f"/templates/{uuid.uuid4()}")
+
+    assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_view_only_role_cannot_delete(
+    user_factory: Callable[..., Awaitable[uuid.UUID]],
+) -> None:
+    manager_id = await user_factory(full_name="Test Manager", role_name="Marketing Manager")
+    analyst_id = await user_factory(full_name="Test Analyst", role_name="Analyst")
+    try:
+        transport = ASGITransport(app=create_app())
+        async with AsyncClient(
+            transport=transport,
+            base_url="http://test",
+            cookies=_access_token_cookie(manager_id),
+        ) as manager_client:
+            create_response = await manager_client.post("/templates", json=TEMPLATE_PAYLOAD)
+            template_id = create_response.json()["id"]
+
+        async with AsyncClient(
+            transport=transport,
+            base_url="http://test",
+            cookies=_access_token_cookie(analyst_id),
+        ) as analyst_client:
+            delete_attempt = await analyst_client.delete(f"/templates/{template_id}")
+
+        assert delete_attempt.status_code == 403
+    finally:
+        await _cleanup()
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_deleting_a_template_referenced_by_a_campaign_returns_409(
+    user_factory: Callable[..., Awaitable[uuid.UUID]],
+) -> None:
+    """campaigns.template_id has no ON DELETE behavior — a campaign copies a template's
+    content at creation time rather than depending on it, but the FK still exists to
+    preserve the "created from" link, so deleting a referenced template must be blocked
+    with a clean error, not a raw 500."""
+    manager_id = await user_factory(full_name="Test Manager", role_name="Marketing Manager")
+    try:
+        cookies = _access_token_cookie(manager_id)
+        transport = ASGITransport(app=create_app())
+        async with AsyncClient(
+            transport=transport, base_url="http://test", cookies=cookies
+        ) as client:
+            create_response = await client.post("/templates", json=TEMPLATE_PAYLOAD)
+            template_id = create_response.json()["id"]
+
+            await _create_campaign_referencing_template(uuid.UUID(template_id), manager_id)
+
+            delete_response = await client.delete(f"/templates/{template_id}")
+            list_response = await client.get("/templates")
+
+        assert delete_response.status_code == 409
+        assert any(t["id"] == template_id for t in list_response.json())
+    finally:
+        await _cleanup()

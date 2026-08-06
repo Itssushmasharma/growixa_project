@@ -19,6 +19,10 @@ async def get_template(session: AsyncSession, template_id: uuid.UUID) -> EmailTe
     return await session.get(EmailTemplate, template_id)
 
 
+async def delete_template(session: AsyncSession, template: EmailTemplate) -> None:
+    await session.delete(template)
+
+
 async def list_templates(session: AsyncSession) -> Sequence[EmailTemplate]:
     result = await session.execute(select(EmailTemplate).order_by(EmailTemplate.created_at))
     return result.scalars().all()

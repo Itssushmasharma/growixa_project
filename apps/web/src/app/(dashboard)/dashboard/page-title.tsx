@@ -15,9 +15,16 @@ const PAGE_TITLES: Record<string, string> = {
   "/dashboard/team": "Team",
   "/dashboard/audit": "Audit Log",
   "/dashboard/integrations": "Integrations",
+  "/dashboard/templates": "Email Templates",
 };
 
 export function PageTitle() {
   const pathname = usePathname();
-  return <h1 className={styles.title}>{PAGE_TITLES[pathname] ?? "Growixa"}</h1>;
+  let title = PAGE_TITLES[pathname];
+  if (!title && pathname === "/dashboard/templates/new") {
+    title = "New Template";
+  } else if (!title && /^\/dashboard\/templates\/[^/]+\/edit$/.test(pathname)) {
+    title = "Edit Template";
+  }
+  return <h1 className={styles.title}>{title ?? "Growixa"}</h1>;
 }

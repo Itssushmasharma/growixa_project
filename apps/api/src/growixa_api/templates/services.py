@@ -1,6 +1,7 @@
 import uuid
 from collections.abc import Sequence
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from growixa_api.templates.models import EmailTemplate, EmailTemplateVersion
@@ -15,11 +16,23 @@ from growixa_api.templates.repositories import (
     list_templates,
     list_versions,
 )
+from growixa_api.templates.repositories import (
+    delete_template as delete_template_row,
+)
 from growixa_api.templates.schemas import EmailTemplateIn, EmailTemplateVersionIn
 
 
 class TemplateNotFoundError(Exception):
     pass
+
+
+class TemplateInUseError(Exception):
+    """Raised when deleting a template blocked by campaigns.template_id's foreign key —
+    a campaign copies a template's content at creation time (DATA_MODEL.md's "ad hoc
+    content" design), so the FK exists only to preserve the "created from" link, not
+    because the campaign depends on the template still existing. No ON DELETE behavior
+    is set for it, so this is a real DB-enforced block, not a bug — surfaced as a clean
+    409 instead of a raw 500."""
 
 
 async def create_template(
@@ -40,6 +53,18 @@ async def create_template(
         },
     )
     return template, version
+
+
+async def delete_template(session: AsyncSession, template_id: uuid.UUID) -> None:
+    template = await get_template(session, template_id)
+    if template is None:
+        raise TemplateNotFoundError
+    try:
+        await delete_template_row(session, template)
+        await session.flush()
+    except IntegrityError as exc:
+        await session.rollback()
+        raise TemplateInUseError from exc
 
 
 async def get_template_with_current_version(

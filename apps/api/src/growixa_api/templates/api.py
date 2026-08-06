@@ -13,9 +13,11 @@ from growixa_api.templates.schemas import (
     EmailTemplateVersionOut,
 )
 from growixa_api.templates.services import (
+    TemplateInUseError,
     TemplateNotFoundError,
     add_template_version,
     create_template,
+    delete_template,
     get_template_with_current_version,
     list_template_versions,
     list_templates_with_current_version,
@@ -87,6 +89,24 @@ async def list_template_versions_route(
     except TemplateNotFoundError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Template not found") from exc
     return [EmailTemplateVersionOut.model_validate(version) for version in versions]
+
+
+@router.delete("/{template_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_template_route(
+    template_id: uuid.UUID,
+    _actor_id: uuid.UUID = Depends(_require_manage),
+    session: AsyncSession = Depends(get_session),
+) -> None:
+    try:
+        await delete_template(session, template_id)
+    except TemplateNotFoundError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Template not found") from exc
+    except TemplateInUseError as exc:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "This template is referenced by one or more campaigns and cannot be deleted",
+        ) from exc
+    await session.commit()
 
 
 @router.post("/{template_id}/versions", response_model=EmailTemplateOut)
