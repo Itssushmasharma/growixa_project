@@ -1,6 +1,6 @@
 "use client";
 
-import { type FormEvent, useEffect, useState } from "react";
+import { type FormEvent, useEffect, useMemo, useState } from "react";
 
 import { useToast } from "@/components/toast/toast-context";
 import { apiFetch } from "@/lib/api-client";
@@ -10,6 +10,45 @@ import type { Contact, ContactList, MeResponse } from "../types";
 
 const VIEW_PERMISSION = "contacts.view";
 const MANAGE_PERMISSION = "contacts.manage";
+
+export interface Theme {
+  icon: string;
+  bg: string;
+  color: string;
+  bar: string;
+}
+
+export function getAudienceTheme(name: string): Theme {
+  const n = name.toLowerCase();
+  if (n.includes("vip") || n.includes("enterprise") || n.includes("star")) {
+    return { icon: "⭐", bg: "rgba(139, 92, 246, 0.12)", color: "#7c3aed", bar: "#8b5cf6" };
+  }
+  if (n.includes("news") || n.includes("newsletter") || n.includes("update")) {
+    return { icon: "📰", bg: "rgba(16, 185, 129, 0.12)", color: "#059669", bar: "#10b981" };
+  }
+  if (
+    n.includes("webinar") ||
+    n.includes("lead") ||
+    n.includes("intent") ||
+    n.includes("event") ||
+    n.includes("attendee")
+  ) {
+    return { icon: "🎯", bg: "rgba(236, 72, 153, 0.12)", color: "#db2777", bar: "#ec4899" };
+  }
+  if (n.includes("fresh") || n.includes("new")) {
+    return { icon: "🌱", bg: "rgba(34, 197, 94, 0.12)", color: "#16a34a", bar: "#22c55e" };
+  }
+  if (n.includes("inactive") || n.includes("old") || n.includes("idle") || n.includes("60d")) {
+    return { icon: "⏳", bg: "rgba(245, 158, 11, 0.12)", color: "#d97706", bar: "#f59e0b" };
+  }
+  if (n.includes("churn") || n.includes("risk") || n.includes("warn") || n.includes("bounce")) {
+    return { icon: "⚠️", bg: "rgba(239, 68, 68, 0.12)", color: "#dc2626", bar: "#ef4444" };
+  }
+  if (n.includes("all") || n.includes("subscriber") || n.includes("customer")) {
+    return { icon: "👥", bg: "rgba(59, 130, 246, 0.12)", color: "#2563eb", bar: "#3b82f6" };
+  }
+  return { icon: "📋", bg: "rgba(99, 102, 241, 0.12)", color: "#4f46e5", bar: "#6366f1" };
+}
 
 interface ListFormState {
   name: string;
@@ -27,13 +66,14 @@ export function ListsPage() {
   const [lists, setLists] = useState<ContactList[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
 
-  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const [createForm, setCreateForm] = useState<ListFormState>(EMPTY_FORM);
   const [creating, setCreating] = useState(false);
 
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [selectedList, setSelectedList] = useState<ContactList | null>(null);
+  const [listMembers, setListMembers] = useState<Contact[]>([]);
+  const [listMembersLoading, setListMembersLoading] = useState(false);
   const [addContactId, setAddContactId] = useState("");
-  const [removeContactId, setRemoveContactId] = useState("");
   const [memberActionPending, setMemberActionPending] = useState(false);
 
   useEffect(() => {
@@ -58,6 +98,18 @@ export function ListsPage() {
     void load();
   }, []);
 
+  const metrics = useMemo(() => {
+    const totalLists = lists.length;
+    const totalMemberships = lists.reduce((acc, l) => acc + l.member_count, 0);
+    const avgMembers = totalLists > 0 ? Math.round(totalMemberships / totalLists) : 0;
+    return { totalLists, totalMemberships, avgMembers };
+  }, [lists]);
+
+  const maxMembers = useMemo(() => {
+    if (lists.length === 0) return 1;
+    return Math.max(1, ...lists.map((l) => l.member_count));
+  }, [lists]);
+
   async function handleCreateSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setCreating(true);
@@ -71,7 +123,7 @@ export function ListsPage() {
         }),
       });
       setLists((current) => [created, ...current]);
-      setShowCreateForm(false);
+      setShowCreateModal(false);
       setCreateForm(EMPTY_FORM);
       showToast("success", "List created.");
     } catch {
@@ -81,10 +133,23 @@ export function ListsPage() {
     }
   }
 
-  function toggleExpand(list: ContactList) {
-    setExpandedId((current) => (current === list.id ? null : list.id));
+  async function openManageModal(list: ContactList) {
+    setSelectedList(list);
     setAddContactId("");
-    setRemoveContactId("");
+    setListMembersLoading(true);
+    try {
+      const members = await apiFetch<Contact[]>(`/contacts/lists/${list.id}/members`);
+      setListMembers(members);
+    } catch {
+      setListMembers([]);
+    } finally {
+      setListMembersLoading(false);
+    }
+  }
+
+  function closeManageModal() {
+    setSelectedList(null);
+    setListMembers([]);
   }
 
   async function handleAddMember(listId: string) {
@@ -92,41 +157,48 @@ export function ListsPage() {
     setMemberActionPending(true);
 
     try {
-      const updated = await apiFetch<ContactList>(`/contacts/lists/${listId}/members`, {
+      const updatedList = await apiFetch<ContactList>(`/contacts/lists/${listId}/members`, {
         method: "POST",
         body: JSON.stringify({ contact_id: addContactId }),
       });
-      setLists((current) => current.map((l) => (l.id === listId ? updated : l)));
+      setLists((current) => current.map((l) => (l.id === listId ? updatedList : l)));
+      setSelectedList(updatedList);
+      const added = contacts.find((c) => c.id === addContactId);
+      if (added && !listMembers.some((m) => m.id === added.id)) {
+        setListMembers((prev) => [...prev, added]);
+      }
       setAddContactId("");
-      showToast("success", "Contact added to the list.");
+      showToast("success", "Contact added to list.");
     } catch {
-      showToast("error", "Could not add that contact to the list.");
+      showToast("error", "Could not add contact to list.");
     } finally {
       setMemberActionPending(false);
     }
   }
 
-  async function handleRemoveMember(listId: string) {
-    if (!removeContactId) return;
+  async function handleRemoveMember(listId: string, contactId: string) {
     setMemberActionPending(true);
 
     try {
-      const updated = await apiFetch<ContactList>(
-        `/contacts/lists/${listId}/members/${removeContactId}`,
-        { method: "DELETE" },
+      const updatedList = await apiFetch<ContactList>(
+        `/contacts/lists/${listId}/members/${contactId}`,
+        {
+          method: "DELETE",
+        },
       );
-      setLists((current) => current.map((l) => (l.id === listId ? updated : l)));
-      setRemoveContactId("");
-      showToast("success", "Contact removed from the list.");
+      setLists((current) => current.map((l) => (l.id === listId ? updatedList : l)));
+      setSelectedList(updatedList);
+      setListMembers((current) => current.filter((c) => c.id !== contactId));
+      showToast("success", "Contact removed from list.");
     } catch {
-      showToast("error", "Could not remove that contact from the list.");
+      showToast("error", "Could not remove contact from list.");
     } finally {
       setMemberActionPending(false);
     }
   }
 
   if (loading) {
-    return <div className={styles.card}>Loading…</div>;
+    return <div className={styles.card}>Loading lists…</div>;
   }
 
   if (loadError) {
@@ -138,142 +210,290 @@ export function ListsPage() {
   }
 
   return (
-    <div className={styles.card}>
-      <div className={styles.header}>
-        <h2 className={styles.headerTitle}>
-          Lists <span className={styles.headerCount}>· {lists.length}</span>
-        </h2>
-        {canManage && !showCreateForm && (
-          <button
-            type="button"
-            className={styles.addButton}
-            onClick={() => setShowCreateForm(true)}
-          >
-            + Add list
-          </button>
+    <div>
+      {/* Metric Cards */}
+      <div className={styles.metricsGrid}>
+        <div className={styles.metricCard}>
+          <div className={styles.metricLabel}>Total Lists</div>
+          <div className={styles.metricValue}>{metrics.totalLists}</div>
+        </div>
+        <div className={styles.metricCard}>
+          <div className={styles.metricLabel}>Total Memberships</div>
+          <div className={styles.metricValue} style={{ color: "var(--color-primary)" }}>
+            {metrics.totalMemberships}
+          </div>
+        </div>
+        <div className={styles.metricCard}>
+          <div className={styles.metricLabel}>Avg Members / List</div>
+          <div className={styles.metricValue} style={{ color: "var(--color-slate)" }}>
+            {metrics.avgMembers}
+          </div>
+        </div>
+      </div>
+
+      <div className={styles.card}>
+        <div className={styles.header}>
+          <h2 className={styles.headerTitle}>
+            Lists <span className={styles.headerCount}>· {lists.length}</span>
+          </h2>
+          {canManage && (
+            <button
+              type="button"
+              className={styles.addButton}
+              onClick={() => setShowCreateModal(true)}
+            >
+              + Add list
+            </button>
+          )}
+        </div>
+
+        {lists.length === 0 ? (
+          <div className={styles.emptyState}>No lists yet.</div>
+        ) : (
+          <div className={styles.segmentGrid}>
+            {lists.map((list) => {
+              const theme = getAudienceTheme(list.name);
+              const percentage = Math.min(100, Math.round((list.member_count / maxMembers) * 100));
+
+              return (
+                <div
+                  key={list.id}
+                  className={styles.segmentCard}
+                  onClick={() => openManageModal(list)}
+                >
+                  <div className={styles.segmentCardTop}>
+                    <div
+                      className={styles.segmentIconBadge}
+                      style={{ background: theme.bg, color: theme.color }}
+                    >
+                      {theme.icon}
+                    </div>
+                    <span
+                      className={styles.percentageBadge}
+                      style={{ background: theme.bg, color: theme.color }}
+                    >
+                      {percentage}% of max
+                    </span>
+                  </div>
+
+                  <div>
+                    <h3 className={styles.segmentCardTitle}>{list.name}</h3>
+                    <div className={styles.segmentCardCount}>
+                      {list.member_count.toLocaleString()}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className={styles.progressTrack}>
+                      <div
+                        className={styles.progressFill}
+                        style={{ width: `${Math.max(5, percentage)}%`, background: theme.bar }}
+                      />
+                    </div>
+                    <div className={styles.segmentCardFooter}>
+                      <span className={styles.countBadge}>{list.member_count} members</span>
+                      <span className={styles.segmentCardMetaText} title={list.description || ""}>
+                        {list.description || "No description"}
+                      </span>
+                      <button
+                        type="button"
+                        className={styles.viewButton}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void openManageModal(list);
+                        }}
+                      >
+                        Manage
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         )}
       </div>
 
-      {showCreateForm && (
-        <form className={styles.createForm} onSubmit={handleCreateSubmit}>
-          <div className={styles.createField}>
-            <label className={styles.label} htmlFor="list-name">
-              Name
-            </label>
-            <input
-              id="list-name"
-              required
-              className={styles.input}
-              value={createForm.name}
-              onChange={(event) => setCreateForm({ ...createForm, name: event.target.value })}
-            />
-          </div>
-          <div className={styles.createField}>
-            <label className={styles.label} htmlFor="list-description">
-              Description
-            </label>
-            <input
-              id="list-description"
-              className={styles.input}
-              value={createForm.description}
-              onChange={(event) =>
-                setCreateForm({ ...createForm, description: event.target.value })
-              }
-            />
-          </div>
-          <button type="submit" className={styles.submit} disabled={creating}>
-            {creating ? "Creating…" : "Create list"}
-          </button>
-          <button type="button" className={styles.cancel} onClick={() => setShowCreateForm(false)}>
-            Cancel
-          </button>
-        </form>
-      )}
-
-      {lists.length === 0 && <p className={styles.emptyState}>No lists yet.</p>}
-
-      {lists.map((list) => {
-        const isExpanded = expandedId === list.id;
-        return (
-          <div className={styles.contactBlock} key={list.id}>
-            <div className={styles.row}>
-              <div className={styles.identity}>
-                <div className={styles.name}>{list.name}</div>
-                {list.description && <div className={styles.description}>{list.description}</div>}
+      {/* Create List Modal */}
+      {showCreateModal && (
+        <div
+          className={styles.modalBackdrop}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowCreateModal(false);
+          }}
+        >
+          <div className={styles.modalContent} style={{ maxWidth: 520 }}>
+            <div className={styles.modalHeader}>
+              <h3 className={styles.name} style={{ fontSize: 18, margin: 0 }}>
+                Create New List
+              </h3>
+              <button
+                type="button"
+                className={styles.modalCloseButton}
+                onClick={() => setShowCreateModal(false)}
+                aria-label="Close modal"
+              >
+                Close
+              </button>
+            </div>
+            <form className={styles.modalForm} onSubmit={handleCreateSubmit}>
+              <div className={styles.createField} style={{ marginBottom: 16 }}>
+                <label className={styles.label} htmlFor="create-list-name">
+                  Name
+                </label>
+                <input
+                  id="create-list-name"
+                  type="text"
+                  required
+                  className={styles.input}
+                  value={createForm.name}
+                  onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
+                />
               </div>
-              <div className={styles.rowActions}>
-                <span className={styles.countBadge}>{list.member_count} members</span>
+              <div className={styles.createField} style={{ marginBottom: 20 }}>
+                <label className={styles.label} htmlFor="create-list-description">
+                  Description
+                </label>
+                <input
+                  id="create-list-description"
+                  type="text"
+                  className={styles.input}
+                  value={createForm.description}
+                  onChange={(e) => setCreateForm({ ...createForm, description: e.target.value })}
+                />
+              </div>
+              <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
                 <button
                   type="button"
-                  className={styles.viewButton}
-                  onClick={() => toggleExpand(list)}
+                  className={styles.modalCloseButton}
+                  onClick={() => setShowCreateModal(false)}
                 >
-                  {isExpanded ? "Close" : "Manage"}
+                  Cancel
+                </button>
+                <button type="submit" disabled={creating} className={styles.submit}>
+                  {creating ? "Creating..." : "Create list"}
                 </button>
               </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Manage List Members Modal */}
+      {selectedList && (
+        <div
+          className={styles.modalBackdrop}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) closeManageModal();
+          }}
+        >
+          <div className={styles.modalContent}>
+            <div className={styles.modalHeader}>
+              <div>
+                <h3 className={styles.name} style={{ fontSize: 18, margin: "0 0 4px" }}>
+                  {selectedList.name}
+                </h3>
+                <div className={styles.description}>
+                  {selectedList.description || "No description provided."}
+                </div>
+              </div>
+              <button
+                type="button"
+                className={styles.modalCloseButton}
+                onClick={closeManageModal}
+                aria-label="Close modal"
+              >
+                Close
+              </button>
             </div>
 
-            {isExpanded && (
-              <div className={styles.detailPanel}>
-                {canManage ? (
-                  <>
-                    <div className={styles.manageRow}>
-                      <select
-                        className={styles.select}
-                        value={addContactId}
-                        disabled={memberActionPending}
-                        onChange={(event) => setAddContactId(event.target.value)}
-                        aria-label="Contact to add"
-                      >
-                        <option value="">Select a contact to add…</option>
-                        {contacts.map((contact) => (
-                          <option key={contact.id} value={contact.id}>
-                            {contact.email}
-                          </option>
-                        ))}
-                      </select>
+            {!canManage && (
+              <p className={styles.readOnlyNote} style={{ marginBottom: 12 }}>
+                You have view-only access to lists.
+              </p>
+            )}
+
+            <div className={styles.detailMeta}>
+              <span>Members: {selectedList.member_count}</span>
+              <span>Created {new Date(selectedList.created_at).toLocaleDateString()}</span>
+            </div>
+
+            {canManage && (
+              <div className={styles.manageRow} style={{ marginBottom: 20 }}>
+                <select
+                  value={addContactId}
+                  onChange={(e) => setAddContactId(e.target.value)}
+                  className={styles.select}
+                  aria-label="Contact to add"
+                  style={{ flex: 1 }}
+                >
+                  <option value="">Select a contact to add…</option>
+                  {contacts
+                    .filter((c) => !listMembers.some((m) => m.id === c.id))
+                    .map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.email} (
+                        {c.first_name || c.last_name
+                          ? [c.first_name, c.last_name].filter(Boolean).join(" ")
+                          : "No name"}
+                        )
+                      </option>
+                    ))}
+                </select>
+                <button
+                  type="button"
+                  disabled={!addContactId || memberActionPending}
+                  className={styles.submit}
+                  onClick={() => handleAddMember(selectedList.id)}
+                >
+                  Add to list
+                </button>
+              </div>
+            )}
+
+            <h4 style={{ fontSize: 14, fontWeight: 700, margin: "0 0 10px" }}>Current Members</h4>
+            {listMembersLoading ? (
+              <div className={styles.description}>Loading list members…</div>
+            ) : listMembers.length === 0 ? (
+              <div className={styles.description}>No members in this list yet.</div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {listMembers.map((member) => (
+                  <div
+                    key={member.id}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      padding: "8px 12px",
+                      background: "#f8fafc",
+                      borderRadius: 10,
+                    }}
+                  >
+                    <div>
+                      <div className={styles.name} style={{ fontSize: 13 }}>
+                        {[member.first_name, member.last_name].filter(Boolean).join(" ") ||
+                          "No name"}
+                      </div>
+                      <div className={styles.email}>{member.email}</div>
+                    </div>
+                    {canManage && (
                       <button
                         type="button"
-                        className={styles.toggleButton}
-                        disabled={memberActionPending || !addContactId}
-                        onClick={() => handleAddMember(list.id)}
-                      >
-                        Add to list
-                      </button>
-                    </div>
-                    <div className={styles.manageRow}>
-                      <select
-                        className={styles.select}
-                        value={removeContactId}
                         disabled={memberActionPending}
-                        onChange={(event) => setRemoveContactId(event.target.value)}
-                        aria-label="Contact to remove"
+                        className={styles.viewButton}
+                        onClick={() => handleRemoveMember(selectedList.id, member.id)}
                       >
-                        <option value="">Select a contact to remove…</option>
-                        {contacts.map((contact) => (
-                          <option key={contact.id} value={contact.id}>
-                            {contact.email}
-                          </option>
-                        ))}
-                      </select>
-                      <button
-                        type="button"
-                        className={styles.toggleButton}
-                        disabled={memberActionPending || !removeContactId}
-                        onClick={() => handleRemoveMember(list.id)}
-                      >
-                        Remove from list
+                        Remove
                       </button>
-                    </div>
-                  </>
-                ) : (
-                  <p className={styles.readOnlyNote}>You have view-only access to lists.</p>
-                )}
+                    )}
+                  </div>
+                ))}
               </div>
             )}
           </div>
-        );
-      })}
+        </div>
+      )}
     </div>
   );
 }

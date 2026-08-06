@@ -1,9 +1,9 @@
 "use client";
 
-import { type FormEvent, useEffect, useState } from "react";
+import { type FormEvent, useEffect, useMemo, useState } from "react";
 
 import { useToast } from "@/components/toast/toast-context";
-import { ApiError, apiFetch } from "@/lib/api-client";
+import { apiFetch } from "@/lib/api-client";
 
 import styles from "../shared.module.css";
 import type { Contact, MeResponse, Segment } from "../types";
@@ -11,39 +11,69 @@ import type { Contact, MeResponse, Segment } from "../types";
 const VIEW_PERMISSION = "contacts.view";
 const MANAGE_PERMISSION = "contacts.manage";
 
-const FIELD_OPERATORS: Record<string, string[]> = {
-  status: ["equals"],
-  email: ["equals", "contains"],
-  source: ["equals"],
-  tag: ["equals"],
-  created_at: ["before", "after"],
-  custom_field: ["equals", "contains"],
-};
-
 const FIELD_LABELS: Record<string, string> = {
   status: "Status",
-  email: "Email",
   source: "Source",
   tag: "Tag",
-  created_at: "Created at",
-  custom_field: "Custom field",
+  email: "Email",
+  first_name: "First name",
+  last_name: "Last name",
+  phone: "Phone",
 };
 
-interface RuleDraft {
-  field: string;
-  customFieldKey: string;
-  operator: string;
-  value: string;
+export interface Theme {
+  icon: string;
+  bg: string;
+  color: string;
+  bar: string;
 }
 
-function emptyRule(): RuleDraft {
-  return { field: "status", customFieldKey: "", operator: "equals", value: "" };
+export function getAudienceTheme(name: string): Theme {
+  const n = name.toLowerCase();
+  if (n.includes("vip") || n.includes("enterprise") || n.includes("star")) {
+    return { icon: "⭐", bg: "rgba(139, 92, 246, 0.12)", color: "#7c3aed", bar: "#8b5cf6" };
+  }
+  if (n.includes("news") || n.includes("newsletter") || n.includes("update")) {
+    return { icon: "📰", bg: "rgba(16, 185, 129, 0.12)", color: "#059669", bar: "#10b981" };
+  }
+  if (
+    n.includes("webinar") ||
+    n.includes("lead") ||
+    n.includes("intent") ||
+    n.includes("event") ||
+    n.includes("attendee")
+  ) {
+    return { icon: "🎯", bg: "rgba(236, 72, 153, 0.12)", color: "#db2777", bar: "#ec4899" };
+  }
+  if (n.includes("fresh") || n.includes("new")) {
+    return { icon: "🌱", bg: "rgba(34, 197, 94, 0.12)", color: "#16a34a", bar: "#22c55e" };
+  }
+  if (n.includes("inactive") || n.includes("old") || n.includes("idle") || n.includes("60d")) {
+    return { icon: "⏳", bg: "rgba(245, 158, 11, 0.12)", color: "#d97706", bar: "#f59e0b" };
+  }
+  if (n.includes("churn") || n.includes("risk") || n.includes("warn") || n.includes("bounce")) {
+    return { icon: "⚠️", bg: "rgba(239, 68, 68, 0.12)", color: "#dc2626", bar: "#ef4444" };
+  }
+  if (n.includes("all") || n.includes("subscriber") || n.includes("customer")) {
+    return { icon: "👥", bg: "rgba(59, 130, 246, 0.12)", color: "#2563eb", bar: "#3b82f6" };
+  }
+  return { icon: "📋", bg: "rgba(99, 102, 241, 0.12)", color: "#4f46e5", bar: "#6366f1" };
+}
+
+export interface SegmentRuleInput {
+  field: string;
+  operator: string;
+  value: string;
 }
 
 interface SegmentFormState {
   name: string;
   type: "DYNAMIC" | "SAVED";
-  rules: RuleDraft[];
+  rules: SegmentRuleInput[];
+}
+
+function emptyRule(): SegmentRuleInput {
+  return { field: "status", operator: "equals", value: "" };
 }
 
 function emptyForm(): SegmentFormState {
@@ -65,11 +95,11 @@ export function SegmentsPage() {
   const [canManage, setCanManage] = useState(false);
   const [segments, setSegments] = useState<Segment[]>([]);
 
-  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const [createForm, setCreateForm] = useState<SegmentFormState>(emptyForm());
   const [creating, setCreating] = useState(false);
 
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [selectedSegment, setSelectedSegment] = useState<Segment | null>(null);
   const [members, setMembers] = useState<Contact[]>([]);
   const [membersLoading, setMembersLoading] = useState(false);
 
@@ -93,72 +123,84 @@ export function SegmentsPage() {
     void load();
   }, []);
 
-  function updateRule(index: number, patch: Partial<RuleDraft>) {
-    setCreateForm((current) => ({
-      ...current,
-      rules: current.rules.map((rule, i) => (i === index ? { ...rule, ...patch } : rule)),
-    }));
-  }
+  const metrics = useMemo(() => {
+    const totalSegments = segments.length;
+    const dynamicSegments = segments.filter((s) => s.type === "DYNAMIC").length;
+    const totalRules = segments.reduce((acc, s) => acc + s.rules.length, 0);
+    return { totalSegments, dynamicSegments, totalRules };
+  }, [segments]);
 
-  function addRuleRow() {
-    setCreateForm((current) => ({ ...current, rules: [...current.rules, emptyRule()] }));
-  }
-
-  function removeRuleRow(index: number) {
-    setCreateForm((current) => ({
-      ...current,
-      rules: current.rules.filter((_, i) => i !== index),
-    }));
-  }
+  const maxMembers = useMemo(() => {
+    if (segments.length === 0) return 1;
+    return Math.max(1, ...segments.map((s) => s.member_count));
+  }, [segments]);
 
   async function handleCreateSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setCreating(true);
 
     try {
-      const rules = createForm.rules.map((rule) => ({
-        field: rule.field === "custom_field" ? `custom_field:${rule.customFieldKey}` : rule.field,
-        operator: rule.operator,
-        value: rule.value,
-      }));
       const created = await apiFetch<Segment>("/contacts/segments", {
         method: "POST",
-        body: JSON.stringify({ name: createForm.name, type: createForm.type, rules }),
+        body: JSON.stringify({
+          name: createForm.name,
+          type: createForm.type,
+          rules: createForm.rules.filter((r) => r.value.trim() !== ""),
+        }),
       });
       setSegments((current) => [created, ...current]);
-      setShowCreateForm(false);
+      setShowCreateModal(false);
       setCreateForm(emptyForm());
       showToast("success", "Segment created.");
-    } catch (error) {
-      if (error instanceof ApiError && error.status === 400) {
-        showToast("error", "Check your segment rules — one of them isn't valid.");
-      } else {
-        showToast("error", "Could not create the segment.");
-      }
+    } catch {
+      showToast("error", "Could not create segment.");
     } finally {
       setCreating(false);
     }
   }
 
-  async function toggleExpand(segment: Segment) {
-    if (expandedId === segment.id) {
-      setExpandedId(null);
-      return;
-    }
-    setExpandedId(segment.id);
+  async function openMemberModal(segment: Segment) {
+    setSelectedSegment(segment);
     setMembersLoading(true);
     try {
-      const memberList = await apiFetch<Contact[]>(`/contacts/segments/${segment.id}/members`);
-      setMembers(memberList);
+      const result = await apiFetch<Contact[]>(`/contacts/segments/${segment.id}/members`);
+      setMembers(result);
     } catch {
-      showToast("error", "Could not load this segment's members.");
+      setMembers([]);
     } finally {
       setMembersLoading(false);
     }
   }
 
+  function closeMemberModal() {
+    setSelectedSegment(null);
+  }
+
+  function handleRuleChange(index: number, key: keyof SegmentRuleInput, value: string) {
+    setCreateForm((current) => {
+      const updatedRules = [...current.rules];
+      const existing = updatedRules[index] ?? emptyRule();
+      updatedRules[index] = { ...existing, [key]: value };
+      return { ...current, rules: updatedRules };
+    });
+  }
+
+  function handleAddRuleField() {
+    setCreateForm((current) => ({
+      ...current,
+      rules: [...current.rules, emptyRule()],
+    }));
+  }
+
+  function handleRemoveRuleField(index: number) {
+    setCreateForm((current) => ({
+      ...current,
+      rules: current.rules.filter((_, i) => i !== index),
+    }));
+  }
+
   if (loading) {
-    return <div className={styles.card}>Loading…</div>;
+    return <div className={styles.card}>Loading segments…</div>;
   }
 
   if (loadError) {
@@ -170,182 +212,347 @@ export function SegmentsPage() {
   }
 
   return (
-    <div className={styles.card}>
-      <div className={styles.header}>
-        <h2 className={styles.headerTitle}>
-          Segments <span className={styles.headerCount}>· {segments.length}</span>
-        </h2>
-        {canManage && !showCreateForm && (
-          <button
-            type="button"
-            className={styles.addButton}
-            onClick={() => setShowCreateForm(true)}
-          >
-            + Add segment
-          </button>
+    <div>
+      {/* Metric Cards */}
+      <div className={styles.metricsGrid}>
+        <div className={styles.metricCard}>
+          <div className={styles.metricLabel}>Total Segments</div>
+          <div className={styles.metricValue}>{metrics.totalSegments}</div>
+        </div>
+        <div className={styles.metricCard}>
+          <div className={styles.metricLabel}>Dynamic Segments</div>
+          <div className={styles.metricValue} style={{ color: "var(--color-success)" }}>
+            {metrics.dynamicSegments}
+          </div>
+        </div>
+        <div className={styles.metricCard}>
+          <div className={styles.metricLabel}>Rules Configured</div>
+          <div className={styles.metricValue} style={{ color: "var(--color-slate)" }}>
+            {metrics.totalRules}
+          </div>
+        </div>
+      </div>
+
+      <div className={styles.card}>
+        <div className={styles.header}>
+          <h2 className={styles.headerTitle}>
+            Segments <span className={styles.headerCount}>· {segments.length}</span>
+          </h2>
+          {canManage && (
+            <button
+              type="button"
+              className={styles.addButton}
+              onClick={() => setShowCreateModal(true)}
+            >
+              + Add segment
+            </button>
+          )}
+        </div>
+
+        {segments.length === 0 ? (
+          <div className={styles.emptyState}>No segments yet.</div>
+        ) : (
+          <div className={styles.segmentGrid}>
+            {segments.map((segment) => {
+              const theme = getAudienceTheme(segment.name);
+              const percentage = Math.min(
+                100,
+                Math.round((segment.member_count / maxMembers) * 100),
+              );
+
+              return (
+                <div
+                  key={segment.id}
+                  className={styles.segmentCard}
+                  onClick={() => openMemberModal(segment)}
+                >
+                  <div className={styles.segmentCardTop}>
+                    <div
+                      className={styles.segmentIconBadge}
+                      style={{ background: theme.bg, color: theme.color }}
+                    >
+                      {theme.icon}
+                    </div>
+                    <span
+                      className={styles.percentageBadge}
+                      style={{ background: theme.bg, color: theme.color }}
+                    >
+                      {percentage}% of max
+                    </span>
+                  </div>
+
+                  <div>
+                    <h3 className={styles.segmentCardTitle}>{segment.name}</h3>
+                    <div className={styles.segmentCardCount}>
+                      {segment.member_count.toLocaleString()}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className={styles.progressTrack}>
+                      <div
+                        className={styles.progressFill}
+                        style={{ width: `${Math.max(5, percentage)}%`, background: theme.bar }}
+                      />
+                    </div>
+                    <div className={styles.segmentCardFooter}>
+                      <span className={styles.typeBadge}>
+                        {segment.type === "DYNAMIC" ? "Dynamic" : "Saved"}
+                      </span>
+                      <span className={styles.countBadge}>{segment.member_count} members</span>
+                      <span className={styles.segmentCardMetaText} style={{ fontSize: 12 }}>
+                        {segment.rules.length > 0
+                          ? ruleSummary(
+                              segment.rules[0]!.field,
+                              segment.rules[0]!.operator,
+                              segment.rules[0]!.value,
+                            )
+                          : "No filter"}
+                      </span>
+                      <button
+                        type="button"
+                        className={styles.viewButton}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void openMemberModal(segment);
+                        }}
+                      >
+                        View members
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         )}
       </div>
 
-      {showCreateForm && (
-        <form className={styles.createForm} onSubmit={handleCreateSubmit}>
-          <div className={styles.createField}>
-            <label className={styles.label} htmlFor="segment-name">
-              Name
-            </label>
-            <input
-              id="segment-name"
-              required
-              className={styles.input}
-              value={createForm.name}
-              onChange={(event) =>
-                setCreateForm((current) => ({ ...current, name: event.target.value }))
-              }
-            />
-          </div>
-          <div className={styles.createField}>
-            <label className={styles.label} htmlFor="segment-type">
-              Type
-            </label>
-            <select
-              id="segment-type"
-              className={styles.select}
-              value={createForm.type}
-              onChange={(event) =>
-                setCreateForm((current) => ({
-                  ...current,
-                  type: event.target.value as "DYNAMIC" | "SAVED",
-                }))
-              }
-            >
-              <option value="DYNAMIC">Dynamic (live)</option>
-              <option value="SAVED">Saved (frozen)</option>
-            </select>
-          </div>
-
-          <div style={{ flexBasis: "100%" }}>
-            {createForm.rules.map((rule, index) => (
-              <div className={styles.ruleRow} key={index}>
-                <select
-                  className={styles.select}
-                  aria-label={`Rule ${index + 1} field`}
-                  value={rule.field}
-                  onChange={(event) =>
-                    updateRule(index, {
-                      field: event.target.value,
-                      operator: FIELD_OPERATORS[event.target.value]?.[0] ?? "equals",
-                    })
-                  }
-                >
-                  {Object.keys(FIELD_OPERATORS).map((field) => (
-                    <option key={field} value={field}>
-                      {FIELD_LABELS[field]}
-                    </option>
-                  ))}
-                </select>
-                {rule.field === "custom_field" && (
+      {/* Create Segment Modal */}
+      {showCreateModal && (
+        <div
+          className={styles.modalBackdrop}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowCreateModal(false);
+          }}
+        >
+          <div className={styles.modalContent} style={{ maxWidth: 640 }}>
+            <div className={styles.modalHeader}>
+              <h3 className={styles.name} style={{ fontSize: 18, margin: 0 }}>
+                Create Segment
+              </h3>
+              <button
+                type="button"
+                className={styles.modalCloseButton}
+                onClick={() => setShowCreateModal(false)}
+                aria-label="Close modal"
+              >
+                Close
+              </button>
+            </div>
+            <form onSubmit={handleCreateSubmit}>
+              <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
+                <div style={{ flex: 1 }}>
+                  <label className={styles.label} htmlFor="segment-name">
+                    Name
+                  </label>
                   <input
+                    id="segment-name"
+                    type="text"
+                    required
                     className={styles.input}
-                    placeholder="Custom field key"
-                    aria-label={`Rule ${index + 1} custom field key`}
-                    value={rule.customFieldKey}
-                    onChange={(event) => updateRule(index, { customFieldKey: event.target.value })}
+                    value={createForm.name}
+                    onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
                   />
-                )}
-                <select
-                  className={styles.select}
-                  aria-label={`Rule ${index + 1} operator`}
-                  value={rule.operator}
-                  onChange={(event) => updateRule(index, { operator: event.target.value })}
-                >
-                  {(FIELD_OPERATORS[rule.field] ?? []).map((operator) => (
-                    <option key={operator} value={operator}>
-                      {operator}
-                    </option>
-                  ))}
-                </select>
-                <input
-                  className={styles.input}
-                  placeholder="Value"
-                  aria-label={`Rule ${index + 1} value`}
-                  value={rule.value}
-                  onChange={(event) => updateRule(index, { value: event.target.value })}
-                />
-                {createForm.rules.length > 1 && (
-                  <button
-                    type="button"
-                    className={styles.cancel}
-                    onClick={() => removeRuleRow(index)}
+                </div>
+                <div style={{ width: 160 }}>
+                  <label className={styles.label} htmlFor="segment-type">
+                    Type
+                  </label>
+                  <select
+                    id="segment-type"
+                    className={styles.select}
+                    style={{ width: "100%" }}
+                    value={createForm.type}
+                    onChange={(e) =>
+                      setCreateForm({
+                        ...createForm,
+                        type: e.target.value as "DYNAMIC" | "SAVED",
+                      })
+                    }
                   >
-                    Remove
-                  </button>
-                )}
+                    <option value="DYNAMIC">Dynamic (live)</option>
+                    <option value="SAVED">Saved (snapshot)</option>
+                  </select>
+                </div>
               </div>
-            ))}
-            <button type="button" className={styles.toggleButton} onClick={addRuleRow}>
-              + Add rule
-            </button>
-          </div>
 
-          <button type="submit" className={styles.submit} disabled={creating}>
-            {creating ? "Creating…" : "Create segment"}
-          </button>
-          <button type="button" className={styles.cancel} onClick={() => setShowCreateForm(false)}>
-            Cancel
-          </button>
-        </form>
-      )}
+              <h4 style={{ fontSize: 13, fontWeight: 700, margin: "16px 0 8px" }}>Segment Rules</h4>
+              {createForm.rules.map((rule, idx) => (
+                <div key={idx} className={styles.ruleRow} style={{ marginBottom: 10 }}>
+                  <select
+                    value={rule.field}
+                    onChange={(e) => handleRuleChange(idx, "field", e.target.value)}
+                    className={styles.select}
+                    aria-label={`Rule ${idx + 1} field`}
+                  >
+                    <option value="status">Status</option>
+                    <option value="source">Source</option>
+                    <option value="tag">Tag</option>
+                    <option value="email">Email</option>
+                    <option value="first_name">First name</option>
+                    <option value="last_name">Last name</option>
+                    <option value="phone">Phone</option>
+                  </select>
 
-      {segments.length === 0 && <p className={styles.emptyState}>No segments yet.</p>}
+                  <select
+                    value={rule.operator}
+                    onChange={(e) => handleRuleChange(idx, "operator", e.target.value)}
+                    className={styles.select}
+                    aria-label={`Rule ${idx + 1} operator`}
+                  >
+                    <option value="equals">equals</option>
+                    <option value="contains">contains</option>
+                    <option value="starts_with">starts_with</option>
+                    <option value="ends_with">ends_with</option>
+                  </select>
 
-      {segments.map((segment) => {
-        const isExpanded = expandedId === segment.id;
-        return (
-          <div className={styles.contactBlock} key={segment.id}>
-            <div className={styles.row}>
-              <div className={styles.identity}>
-                <div className={styles.name}>{segment.name}</div>
-                <ul className={styles.ruleList}>
-                  {segment.rules.map((rule) => (
-                    <li key={rule.id}>{ruleSummary(rule.field, rule.operator, rule.value)}</li>
-                  ))}
-                </ul>
-              </div>
-              <div className={styles.rowActions}>
-                <span className={styles.typeBadge}>
-                  {segment.type === "DYNAMIC" ? "Dynamic" : "Saved"}
-                </span>
-                <span className={styles.countBadge}>{segment.member_count} members</span>
+                  <input
+                    type="text"
+                    placeholder="Value"
+                    value={rule.value}
+                    onChange={(e) => handleRuleChange(idx, "value", e.target.value)}
+                    className={styles.input}
+                    style={{ flex: 1 }}
+                    aria-label={`Rule ${idx + 1} value`}
+                  />
+
+                  {createForm.rules.length > 1 && (
+                    <button
+                      type="button"
+                      className={styles.viewButton}
+                      onClick={() => handleRemoveRuleField(idx)}
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+              ))}
+
+              <button
+                type="button"
+                className={styles.viewButton}
+                onClick={handleAddRuleField}
+                style={{ marginTop: 4, marginBottom: 20 }}
+              >
+                + Add rule
+              </button>
+
+              <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
                 <button
                   type="button"
-                  className={styles.viewButton}
-                  onClick={() => toggleExpand(segment)}
+                  className={styles.modalCloseButton}
+                  onClick={() => setShowCreateModal(false)}
                 >
-                  {isExpanded ? "Close" : "View members"}
+                  Cancel
+                </button>
+                <button type="submit" disabled={creating} className={styles.submit}>
+                  {creating ? "Creating..." : "Create segment"}
                 </button>
               </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* View Segment Members Modal */}
+      {selectedSegment && (
+        <div
+          className={styles.modalBackdrop}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) closeMemberModal();
+          }}
+        >
+          <div className={styles.modalContent}>
+            <div className={styles.modalHeader}>
+              <div>
+                <h3 className={styles.name} style={{ fontSize: 18, margin: "0 0 4px" }}>
+                  {selectedSegment.name}
+                </h3>
+                <span className={styles.typeBadge}>
+                  {selectedSegment.type === "DYNAMIC" ? "Dynamic Segment" : "Saved Segment"}
+                </span>
+              </div>
+              <button
+                type="button"
+                className={styles.modalCloseButton}
+                onClick={closeMemberModal}
+                aria-label="Close modal"
+              >
+                Close
+              </button>
             </div>
 
-            {isExpanded && (
-              <div className={styles.detailPanel}>
-                {membersLoading && <p className={styles.emptyState}>Loading members…</p>}
-                {!membersLoading && members.length === 0 && (
-                  <p className={styles.emptyState}>No members match this segment.</p>
-                )}
-                {!membersLoading && members.length > 0 && (
-                  <ul className={styles.ruleList}>
-                    {members.map((member) => (
-                      <li key={member.id}>{member.email}</li>
-                    ))}
-                  </ul>
-                )}
-                {!canManage && (
-                  <p className={styles.readOnlyNote}>You have view-only access to segments.</p>
-                )}
+            <div className={styles.detailMeta} style={{ flexDirection: "column", gap: 6 }}>
+              <div style={{ fontWeight: 700, color: "var(--color-dark-text)" }}>Rules:</div>
+              {selectedSegment.rules.length === 0 ? (
+                <div>No rules configured.</div>
+              ) : (
+                selectedSegment.rules.map((rule) => (
+                  <div key={rule.id}>{ruleSummary(rule.field, rule.operator, rule.value)}</div>
+                ))
+              )}
+            </div>
+
+            <h4 style={{ fontSize: 14, fontWeight: 700, margin: "20px 0 10px" }}>
+              Matching Contacts ({members.length})
+            </h4>
+
+            {membersLoading ? (
+              <div className={styles.description}>Loading matching contacts…</div>
+            ) : members.length === 0 ? (
+              <div className={styles.description}>
+                No contacts match this segment rule currently.
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {members.map((contact) => (
+                  <div
+                    key={contact.id}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      padding: "8px 12px",
+                      background: "#f8fafc",
+                      borderRadius: 10,
+                    }}
+                  >
+                    <div>
+                      <div className={styles.name} style={{ fontSize: 13 }}>
+                        {[contact.first_name, contact.last_name].filter(Boolean).join(" ") ||
+                          "No name"}
+                      </div>
+                      <div className={styles.email}>{contact.email}</div>
+                    </div>
+                    <span
+                      className={styles.statusActive}
+                      style={{
+                        padding: "2px 8px",
+                        borderRadius: 999,
+                        fontSize: 11,
+                        fontWeight: 700,
+                      }}
+                    >
+                      {contact.status}
+                    </span>
+                  </div>
+                ))}
               </div>
             )}
           </div>
-        );
-      })}
+        </div>
+      )}
     </div>
   );
 }
