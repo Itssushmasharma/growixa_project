@@ -95,6 +95,12 @@ const NAV_SECTIONS: NavSection[] = [
         icon: "🔌",
         requiresPermission: "integrations.manage",
       },
+      {
+        label: "System Health",
+        href: "/admin",
+        icon: "🩺",
+        requiresPermission: "admin.access",
+      },
     ],
   },
 ];
