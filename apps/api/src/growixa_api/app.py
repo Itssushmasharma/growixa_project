@@ -1,3 +1,8 @@
+import asyncio
+import contextlib
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -7,6 +12,7 @@ from growixa_api.audit.api import router as audit_router
 from growixa_api.auth.api import router as auth_router
 from growixa_api.brand.api import router as brand_router
 from growixa_api.campaigns.api import router as campaigns_router
+from growixa_api.campaigns.scheduler import run_scheduler_loop
 from growixa_api.company.api import router as company_router
 from growixa_api.config import get_settings
 from growixa_api.contacts.api import router as contacts_router
@@ -20,8 +26,22 @@ from growixa_api.templates.api import router as templates_router
 from growixa_api.users.api import router as users_router
 
 
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    # GRX-SCHED-002: only runs under a real ASGI server (uvicorn) — httpx's
+    # ASGITransport used throughout this repo's tests never invokes the lifespan
+    # protocol, so no test accidentally spins up a background ticker.
+    task = asyncio.create_task(run_scheduler_loop(get_settings().scheduler_poll_interval_seconds))
+    try:
+        yield
+    finally:
+        task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await task
+
+
 def create_app() -> FastAPI:
-    app = FastAPI(title="Growixa API", version=__version__)
+    app = FastAPI(title="Growixa API", version=__version__, lifespan=lifespan)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=get_settings().cors_allowed_origins,

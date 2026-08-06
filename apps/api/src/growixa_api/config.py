@@ -45,6 +45,12 @@ class Settings(BaseSettings):
     argon2_memory_cost: int = 65536
     argon2_parallelism: int = 4
 
+    # GRX-SCHED-002: how often the in-process scheduler ticker polls for due campaigns.
+    # 5s keeps scheduled sends responsive in dev/demo without meaningfully loading the
+    # DB (one indexed UPDATE...RETURNING per tick); raise in production if poll load
+    # ever matters more than dispatch latency.
+    scheduler_poll_interval_seconds: float = 5.0
+
 
 @lru_cache
 def get_settings() -> Settings:
