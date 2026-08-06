@@ -1,10 +1,15 @@
+import os
 from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+# When running pytest, ENVIRONMENT is set to "test" via .env.test so
+# we never accidentally connect to the live dev database.
+_env_file = ".env.test" if os.getenv("ENVIRONMENT") == "test" else ".env"
+
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(env_file=_env_file, extra="ignore")
 
     environment: str = "local"
     log_level: str = "info"
