@@ -622,3 +622,62 @@
   font-size: 12px;
   color: var(--color-slate);
 }
+
+/* Pagination Bar */
+.paginationBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-top: 1px solid rgba(15, 42, 86, 0.08);
+  margin-top: 12px;
+  background: #fafbfc;
+  border-radius: 0 0 16px 16px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.paginationInfo {
+  font-size: 13px;
+  color: var(--color-slate);
+  font-weight: 500;
+}
+
+.paginationControls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.paginationButton {
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 8px;
+  border: 1px solid rgba(15, 42, 86, 0.15);
+  background: #fff;
+  color: var(--color-dark-text);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.paginationButton:hover:not(:disabled) {
+  background: var(--color-light-bg);
+  border-color: rgba(58, 108, 214, 0.4);
+  color: var(--color-primary);
+}
+
+.paginationButton:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.pageSizeSelect {
+  padding: 5px 10px;
+  font-size: 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(15, 42, 86, 0.15);
+  background: #fff;
+  color: var(--color-dark-text);
+  cursor: pointer;
+}

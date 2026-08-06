@@ -85,6 +85,9 @@ export function ContactsPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [createForm, setCreateForm] = useState<ContactFormState>(EMPTY_FORM);
   const [creating, setCreating] = useState(false);
@@ -125,6 +128,10 @@ export function ContactsPage() {
     void load();
   }, []);
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, statusFilter, pageSize]);
+
   const visibleContacts = useMemo(() => {
     const query = search.trim().toLowerCase();
     return contacts.filter((c) => {
@@ -138,6 +145,14 @@ export function ContactsPage() {
       return matchesSearch && matchesStatus;
     });
   }, [contacts, search, statusFilter]);
+
+  const totalPages = Math.ceil(visibleContacts.length / pageSize) || 1;
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const startIndex = (safeCurrentPage - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, visibleContacts.length);
+  const paginatedContacts = useMemo(() => {
+    return visibleContacts.slice(startIndex, endIndex);
+  }, [visibleContacts, startIndex, endIndex]);
 
   const metrics = useMemo(() => {
     return {
@@ -537,7 +552,7 @@ export function ContactsPage() {
               <div style={{ textAlign: "right" }}>Actions</div>
             </div>
 
-            {visibleContacts.map((contact) => {
+            {paginatedContacts.map((contact) => {
               return (
                 <div key={contact.id} className={styles.contactBlock}>
                   <div className={styles.row}>
@@ -577,6 +592,80 @@ export function ContactsPage() {
                 </div>
               );
             })}
+
+            {/* Pagination Controls Bar */}
+            {visibleContacts.length > 0 && (
+              <div className={styles.paginationBar}>
+                <div className={styles.paginationInfo}>
+                  Showing <strong>{visibleContacts.length > 0 ? startIndex + 1 : 0}</strong>–
+                  <strong>{endIndex}</strong> of{" "}
+                  <strong>{visibleContacts.length.toLocaleString()}</strong> contacts
+                </div>
+
+                <div className={styles.paginationControls}>
+                  <label
+                    htmlFor="contacts-page-size"
+                    className={styles.paginationInfo}
+                    style={{ marginRight: 4 }}
+                  >
+                    Per page:
+                  </label>
+                  <select
+                    id="contacts-page-size"
+                    value={pageSize}
+                    onChange={(e) => setPageSize(Number(e.target.value))}
+                    className={styles.pageSizeSelect}
+                  >
+                    <option value={10}>10</option>
+                    <option value={25}>25</option>
+                    <option value={50}>50</option>
+                    <option value={100}>100</option>
+                  </select>
+
+                  <button
+                    type="button"
+                    disabled={safeCurrentPage <= 1}
+                    onClick={() => setCurrentPage(1)}
+                    className={styles.paginationButton}
+                    title="First page"
+                  >
+                    ⏮
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={safeCurrentPage <= 1}
+                    onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                    className={styles.paginationButton}
+                  >
+                    ◀ Prev
+                  </button>
+
+                  <span className={styles.paginationInfo} style={{ margin: "0 6px" }}>
+                    Page <strong>{safeCurrentPage}</strong> of <strong>{totalPages}</strong>
+                  </span>
+
+                  <button
+                    type="button"
+                    disabled={safeCurrentPage >= totalPages}
+                    onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                    className={styles.paginationButton}
+                  >
+                    Next ▶
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={safeCurrentPage >= totalPages}
+                    onClick={() => setCurrentPage(totalPages)}
+                    className={styles.paginationButton}
+                    title="Last page"
+                  >
+                    ⏭
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
