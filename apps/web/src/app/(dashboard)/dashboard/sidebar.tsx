@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import iconMark from "@/assets/icon/growixa-icon-mark.png";
 
@@ -12,6 +12,7 @@ import styles from "./sidebar.module.css";
 interface NavItem {
   label: string;
   href: string;
+  icon: string;
   requiresPermission?: string;
 }
 
@@ -20,30 +21,42 @@ interface NavSection {
   items: NavItem[];
 }
 
-// Only nav items that have a real page behind them are wired up (per
-// DESIGN_REFERENCES.md's scope caveat) — every other section from the design brief
-// (Marketing, Automation, Insights, Billing, ...) has no page yet and is omitted
-// entirely rather than shipped as a dead link.
 const NAV_SECTIONS: NavSection[] = [
-  { label: "OVERVIEW", items: [{ label: "Dashboard", href: "/dashboard" }] },
+  {
+    label: "OVERVIEW",
+    items: [{ label: "Dashboard", href: "/dashboard", icon: "📊" }],
+  },
   {
     label: "AUDIENCE",
     items: [
-      { label: "Contacts", href: "/dashboard/contacts", requiresPermission: "contacts.view" },
-      { label: "Lists", href: "/dashboard/contacts/lists", requiresPermission: "contacts.view" },
+      {
+        label: "Contacts",
+        href: "/dashboard/contacts",
+        icon: "👥",
+        requiresPermission: "contacts.view",
+      },
+      {
+        label: "Lists",
+        href: "/dashboard/contacts/lists",
+        icon: "📋",
+        requiresPermission: "contacts.view",
+      },
       {
         label: "Segments",
         href: "/dashboard/contacts/segments",
+        icon: "🎯",
         requiresPermission: "contacts.view",
       },
       {
         label: "Imports",
         href: "/dashboard/contacts/imports",
+        icon: "📥",
         requiresPermission: "contacts.view",
       },
       {
         label: "Suppression",
         href: "/dashboard/contacts/suppression",
+        icon: "🚫",
         requiresPermission: "contacts.view",
       },
     ],
@@ -51,19 +64,35 @@ const NAV_SECTIONS: NavSection[] = [
   {
     label: "CAMPAIGNS",
     items: [
-      { label: "Campaigns", href: "/dashboard/campaigns", requiresPermission: "campaigns.view" },
-      { label: "Templates", href: "/dashboard/templates", requiresPermission: "campaigns.view" },
+      {
+        label: "Campaigns",
+        href: "/dashboard/campaigns",
+        icon: "📧",
+        requiresPermission: "campaigns.view",
+      },
+      {
+        label: "Templates",
+        href: "/dashboard/templates",
+        icon: "🎨",
+        requiresPermission: "campaigns.view",
+      },
     ],
   },
   {
     label: "SETTINGS",
     items: [
-      { label: "Company", href: "/dashboard/company-settings" },
-      { label: "Team", href: "/dashboard/team", requiresPermission: "users.manage" },
-      { label: "Audit Log", href: "/dashboard/audit", requiresPermission: "audit.view" },
+      { label: "Company", href: "/dashboard/company-settings", icon: "🏢" },
+      { label: "Team", href: "/dashboard/team", icon: "👥", requiresPermission: "users.manage" },
+      {
+        label: "Audit Log",
+        href: "/dashboard/audit",
+        icon: "📜",
+        requiresPermission: "audit.view",
+      },
       {
         label: "Integrations",
         href: "/dashboard/integrations",
+        icon: "🔌",
         requiresPermission: "integrations.manage",
       },
     ],
@@ -72,21 +101,26 @@ const NAV_SECTIONS: NavSection[] = [
 
 interface SidebarProps {
   permissions: string[];
-  // Single boolean drives both breakpoints: on desktop it toggles a full-width vs.
-  // zero-width sidebar (content reflows); on mobile it toggles an off-canvas drawer
-  // sliding in over content (see sidebar.module.css's media query for the split).
   open: boolean;
   onClose: () => void;
 }
 
 export function Sidebar({ permissions, open, onClose }: SidebarProps) {
   const pathname = usePathname();
-  // Each section (OVERVIEW/AUDIENCE/SETTINGS) is its own independent accordion,
-  // starting expanded — matches the reference pattern of per-heading expand/collapse
-  // rather than one all-or-nothing toggle for the whole nav.
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(NAV_SECTIONS.map((section) => [section.label, true])),
   );
+
+  // Auto-expand the section containing the current active route
+  useEffect(() => {
+    for (const section of NAV_SECTIONS) {
+      if (
+        section.items.some((item) => pathname === item.href || pathname.startsWith(`${item.href}/`))
+      ) {
+        setExpandedSections((prev) => ({ ...prev, [section.label]: true }));
+      }
+    }
+  }, [pathname]);
 
   function toggleSection(label: string) {
     setExpandedSections((current) => ({ ...current, [label]: !current[label] }));
@@ -123,7 +157,7 @@ export function Sidebar({ permissions, open, onClose }: SidebarProps) {
           }
           const expanded = expandedSections[section.label] ?? true;
           return (
-            <div key={section.label}>
+            <div key={section.label} style={{ marginBottom: 12 }}>
               <button
                 type="button"
                 className={styles.sectionHeader}
@@ -149,15 +183,23 @@ export function Sidebar({ permissions, open, onClose }: SidebarProps) {
                 </svg>
               </button>
               {expanded &&
-                items.map((item) => (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={pathname === item.href ? styles.navItemActive : styles.navItem}
-                  >
-                    {item.label}
-                  </Link>
-                ))}
+                items.map((item) => {
+                  const isActive =
+                    pathname === item.href ||
+                    (item.href !== "/dashboard" && pathname.startsWith(`${item.href}/`));
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={isActive ? styles.navItemActive : styles.navItem}
+                    >
+                      <span className={styles.navIcon} aria-hidden="true">
+                        {item.icon}
+                      </span>
+                      <span>{item.label}</span>
+                    </Link>
+                  );
+                })}
             </div>
           );
         })}

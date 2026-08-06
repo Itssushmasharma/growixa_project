@@ -11,9 +11,6 @@
     transform 0.2s ease;
 }
 
-/* Desktop: collapsing shrinks the sidebar to nothing so content reflows to fill the
-   space. No per-item icons exist yet, so this is a full hide rather than an icon-only
-   rail — see GRX-FOUND-009. */
 .collapsed {
   width: 0;
   padding-left: 0;
@@ -34,8 +31,6 @@
     transform: translateX(-100%);
   }
 
-  /* Mobile default is closed regardless of the collapsed/open class — .mobileOpen is
-     the only thing that slides it into view at this breakpoint. */
   .mobileOpen {
     transform: translateX(0);
   }
@@ -79,8 +74,8 @@
   justify-content: space-between;
   width: 100%;
   padding: 0 8px;
-  margin-top: 20px;
-  margin-bottom: 8px;
+  margin-top: 16px;
+  margin-bottom: 6px;
   background: none;
   border: none;
   cursor: pointer;
@@ -92,12 +87,12 @@
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.06em;
-  color: var(--color-nav-inactive);
+  color: rgba(255, 255, 255, 0.5);
 }
 
 .chevron,
 .chevronExpanded {
-  color: var(--color-nav-inactive);
+  color: rgba(255, 255, 255, 0.5);
   flex-shrink: 0;
   transition: transform 0.15s ease;
 }
@@ -108,19 +103,38 @@
 
 .navItem,
 .navItemActive {
-  display: block;
-  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  margin-bottom: 2px;
   border-radius: 10px;
-  font-size: 14px;
+  font-size: 13.5px;
   font-weight: 600;
   text-decoration: none;
+  transition: all 0.15s ease;
+}
+
+.navIcon {
+  font-size: 15px;
+  width: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
 .navItem {
   color: var(--color-nav-inactive);
 }
 
+.navItem:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+}
+
 .navItemActive {
-  background: rgba(18, 184, 176, 0.16);
+  background: rgba(18, 184, 176, 0.22);
   color: var(--color-mint);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
 }
