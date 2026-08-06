@@ -1,4 +1,4 @@
-# Sprint 05 — Multi-Tenant Platform Foundation
+# Sprint 05 — Customer Account Platform Foundation
 
 - Document ID: DOC-SPRINT-05
 - Status: ACTIVE
@@ -8,12 +8,16 @@
 - Related documents: [MASTER_TASK_TRACKER](../00-project-control/MASTER_TASK_TRACKER.md), [DEVELOPMENT_READINESS](../00-project-control/DEVELOPMENT_READINESS.md), [DECISIONS §DEC-GRX-017](../00-project-control/DECISIONS.md), [FUTURE_SCOPE_PLATFORM_ADMIN](../01-product/FUTURE_SCOPE_PLATFORM_ADMIN.md), [ROADMAP](../01-product/ROADMAP.md)
 
 Sprint 5 turns Growixa from the single-tenant MVP (Slices 1–4, [DEC-GRX-002](../00-project-control/DECISIONS.md),
-now superseded) into a self-service, multi-tenant SaaS product, per
+now superseded) into a self-service SaaS product with isolated customer accounts, per
 [DEC-GRX-017](../00-project-control/DECISIONS.md) and the shape captured in
-[FUTURE_SCOPE_PLATFORM_ADMIN.md](../01-product/FUTURE_SCOPE_PLATFORM_ADMIN.md). Unlike
-every prior sprint, this one is **not additive** — it's a structural retrofit of the
-existing app. Every table, query, and permission check that currently assumes "one
-company, ever" has to be re-derived to assume "one of N isolated customer accounts."
+[FUTURE_SCOPE_PLATFORM_ADMIN.md](../01-product/FUTURE_SCOPE_PLATFORM_ADMIN.md). This is
+**not** the traditional "multi-tenant workspace SaaS" pattern — no visible
+organizations, no workspace switcher, no tenant selector. It's one application, one
+database, and an internal `account_id` ownership key that keeps Customer A's data away
+from Customer B's, invisible to both. Unlike every prior sprint, this one is **not
+additive** — it's a structural retrofit of the existing app. Every table, query, and
+permission check that currently assumes "one company, ever" has to be re-derived to
+assume "one of N isolated customer accounts."
 
 **This is the single largest and highest-risk sprint in the project's history.** A missed
 scoping filter here is a cross-customer data leak, not a cosmetic bug. Nothing in Phases
@@ -39,7 +43,7 @@ they create (accounts, subscriptions, registrations).
 
 ---
 
-## Phase A — Multi-tenant data isolation (`GRX-SAAS-001`)
+## Phase A — Customer account data isolation (`GRX-SAAS-001`)
 
 The foundation. Nothing else in this sprint is safe to build without it.
 

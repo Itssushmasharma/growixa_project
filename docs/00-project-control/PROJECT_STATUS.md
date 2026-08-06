@@ -15,8 +15,11 @@
   content optimization, and integrated growth workflows.
 - Tenancy model: the MVP (Slices 1–4) was built **single-tenant**, one company
   installation, multiple internal users, per the now-superseded `DEC-GRX-002`. As of
-  [DEC-GRX-017](DECISIONS.md) (2026-08-07), Growixa is moving to **self-service,
-  multi-tenant SaaS** — see [Sprint 5](../14-sprints/SPRINT_05_MULTI_TENANT_PLATFORM.md).
+  [DEC-GRX-017](DECISIONS.md) (2026-08-07), Growixa is opening for **self-service
+  customer registration**, with each customer's data isolated by an internal
+  `account_id` key (no visible organizations/workspaces) and a separate IITDEVELOPER
+  Platform Admin control plane above all customer accounts — see
+  [Sprint 5](../14-sprints/SPRINT_05_CUSTOMER_ACCOUNT_PLATFORM.md).
   Slices 1–4's existing data model is correct for what it was built for; Sprint 5 Phase A
   (`GRX-SAAS-001`) retrofits `account_id` isolation across it before any new
   account-facing feature is built.
@@ -188,7 +191,7 @@ directly by the user mid-session, is `DONE`.
 | `docs/00-project-control/RISKS.md`, `BLOCKERS.md` | NOT_STARTED (not required by any `GRX-DOC-*` task yet) |
 | `docs/03-ux-ui/DESIGN_REFERENCES.md` | DONE (reference material only — see its own scope caveat; not a Sprint 1 spec) |
 | `docs/01-product/FUTURE_SCOPE_MULTI_BRAND.md` | DONE (idea capture only — multi-brand profiles + subscription tiers; contradicts DEC-GRX-002/013 as proposed, not scheduled into any release) |
-| `docs/01-product/FUTURE_SCOPE_PLATFORM_ADMIN.md` | DONE (idea capture only — self-service multi-tenant SaaS + IITDEVELOPER platform-admin control plane; requires revisiting DEC-GRX-002/013, not scheduled into any release) |
+| `docs/01-product/FUTURE_SCOPE_PLATFORM_ADMIN.md` | DONE — **approved and scheduled** as of `DEC-GRX-017` (2026-08-07); no longer idea-capture-only. Self-service customer registration + `account_id`-isolated customer accounts + IITDEVELOPER Platform Admin control plane. See [Sprint 5](../14-sprints/SPRINT_05_CUSTOMER_ACCOUNT_PLATFORM.md) |
 | `docs/01-product/FUTURE_SCOPE_LEAD_INTELLIGENCE.md` | DONE (idea capture only — AI voice qualification, licensed audience data, contact enrichment from a reference product; not scheduled into any release) |
 | `docs/03-ux-ui/DESIGN_REFERENCE_REVSPOT.md` | DONE (reference material only — extracted design tokens from a reference product; proposes adopting its token architecture, not its color palette) |
 | Full per-feature specs under `02-features/`, all of `06-api/`, `07-ai/`, `09-integrations/`, `13-business/` | NOT_STARTED |

@@ -1,13 +1,13 @@
-# Future Scope: Multi-Tenant Customer Platform + IITDEVELOPER Platform Admin
+# Future Scope: Customer Account Platform + IITDEVELOPER Platform Admin
 
 - Document ID: DOC-FUTURE-SCOPE-PLATFORM-ADMIN
 - Status: **APPROVED and scheduled** — see [DEC-GRX-017](../00-project-control/DECISIONS.md)
   (2026-08-07). No longer idea-capture-only; this document is now the source design for
-  [SPRINT_05_MULTI_TENANT_PLATFORM.md](../14-sprints/SPRINT_05_MULTI_TENANT_PLATFORM.md).
+  [SPRINT_05_CUSTOMER_ACCOUNT_PLATFORM.md](../14-sprints/SPRINT_05_CUSTOMER_ACCOUNT_PLATFORM.md).
 - Version: 1.1
 - Last updated: 2026-08-07
 - Owner: Product owner (Ravi) via coding agent
-- Related documents: [PRD](PRD.md), [MVP_SCOPE](MVP_SCOPE.md), [ROADMAP](ROADMAP.md), [DECISIONS §DEC-GRX-002, §DEC-GRX-007, §DEC-GRX-013, §DEC-GRX-017](../00-project-control/DECISIONS.md), [SPRINT_05_MULTI_TENANT_PLATFORM](../14-sprints/SPRINT_05_MULTI_TENANT_PLATFORM.md), [FUTURE_SCOPE_MULTI_BRAND](FUTURE_SCOPE_MULTI_BRAND.md), [FUTURE_SCOPE_SEO_AEO_GEO](FUTURE_SCOPE_SEO_AEO_GEO.md)
+- Related documents: [PRD](PRD.md), [MVP_SCOPE](MVP_SCOPE.md), [ROADMAP](ROADMAP.md), [DECISIONS §DEC-GRX-002, §DEC-GRX-007, §DEC-GRX-013, §DEC-GRX-017](../00-project-control/DECISIONS.md), [SPRINT_05_CUSTOMER_ACCOUNT_PLATFORM](../14-sprints/SPRINT_05_CUSTOMER_ACCOUNT_PLATFORM.md), [FUTURE_SCOPE_MULTI_BRAND](FUTURE_SCOPE_MULTI_BRAND.md), [FUTURE_SCOPE_SEO_AEO_GEO](FUTURE_SCOPE_SEO_AEO_GEO.md)
 
 ## Purpose
 
@@ -23,7 +23,7 @@ access into a customer's account.
 [§Before this can be implemented](#before-this-can-be-implemented) was resolved — it now
 has been. [DEC-GRX-017](../00-project-control/DECISIONS.md) formally reverses
 DEC-GRX-002/DEC-GRX-013, and the phased build plan is
-[SPRINT_05_MULTI_TENANT_PLATFORM.md](../14-sprints/SPRINT_05_MULTI_TENANT_PLATFORM.md)
+[SPRINT_05_CUSTOMER_ACCOUNT_PLATFORM.md](../14-sprints/SPRINT_05_CUSTOMER_ACCOUNT_PLATFORM.md)
 (`GRX-SAAS-001` through `GRX-SAAS-010` in `MASTER_TASK_TRACKER.md`). The rest of this
 document is unchanged from its original idea-capture form and remains the source design
 reference — read it alongside the sprint doc, which sequences and scopes what's below.
@@ -159,4 +159,4 @@ no longer "not staged" — it's Sprint 5, staged after Slices 1–4 and ahead of
 still-unscheduled V1.5–V3 SEO/AEO/GEO track per [ROADMAP.md](ROADMAP.md). Task rows
 `GRX-SAAS-001` through `GRX-SAAS-010` exist in `MASTER_TASK_TRACKER.md`; the phased plan
 and dependency order are in
-[SPRINT_05_MULTI_TENANT_PLATFORM.md](../14-sprints/SPRINT_05_MULTI_TENANT_PLATFORM.md).
+[SPRINT_05_CUSTOMER_ACCOUNT_PLATFORM.md](../14-sprints/SPRINT_05_CUSTOMER_ACCOUNT_PLATFORM.md).

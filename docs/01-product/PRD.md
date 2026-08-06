@@ -48,12 +48,17 @@ scattered tools cannot.
 
 ## 6. Target users
 
-Internal employees/contractors of the one company operating Growixa (see
-[DEC-GRX-002](../00-project-control/DECISIONS.md), single-tenant). Not external/customer-facing
-in the MVP. A self-service, multi-tenant, external-customer model with an IITDEVELOPER
-platform-admin control plane has been proposed and captured for later consideration — see
-[FUTURE_SCOPE_PLATFORM_ADMIN.md](FUTURE_SCOPE_PLATFORM_ADMIN.md) — but is not decided and
-is not part of the MVP.
+The original MVP (Slices 1–4) targeted internal employees/contractors of the one company
+operating Growixa (per the now-superseded [DEC-GRX-002](../00-project-control/DECISIONS.md),
+single-tenant). As of [DEC-GRX-017](../00-project-control/DECISIONS.md) (2026-08-07),
+Growixa is opening for self-service registration: any company can sign up and use the
+platform as its own isolated customer account, with an IITDEVELOPER Platform Admin
+control plane operating above all customer accounts — see
+[FUTURE_SCOPE_PLATFORM_ADMIN.md](FUTURE_SCOPE_PLATFORM_ADMIN.md) for the full design and
+[SPRINT_05_CUSTOMER_ACCOUNT_PLATFORM.md](../14-sprints/SPRINT_05_CUSTOMER_ACCOUNT_PLATFORM.md)
+for the phased build plan. This is not the traditional "multi-tenant workspace" pattern —
+customers never see or manage other accounts, an organization concept, or a workspace
+switcher; isolation is an internal `account_id` data-model concern only.
 
 ## 7. Personas
 

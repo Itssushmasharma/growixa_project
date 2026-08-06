@@ -49,7 +49,7 @@ Decision statuses: `PROPOSED`, `UNDER_REVIEW`, `APPROVED`, `REJECTED`, `SUPERSED
 
 ## DEC-GRX-002: Growixa MVP is single-tenant
 
-- Status: SUPERSEDED by [DEC-GRX-017](#dec-grx-017-growixa-becomes-a-self-service-multi-tenant-saas-platform) (2026-08-07)
+- Status: SUPERSEDED by [DEC-GRX-017](#dec-grx-017-customer-account-architecture--platform-admin) (2026-08-07)
 - Date: 2026-07-22
 - Context: Growixa's first customer is one internal marketing team; multi-tenant SaaS
   infrastructure (workspace switching, tenant billing, cross-tenant isolation) adds
@@ -163,7 +163,7 @@ Decision statuses: `PROPOSED`, `UNDER_REVIEW`, `APPROVED`, `REJECTED`, `SUPERSED
 
 ## DEC-GRX-013: Multi-tenancy, customer-facing SaaS signup, and tenant billing are deferred
 
-- Status: SUPERSEDED by [DEC-GRX-017](#dec-grx-017-growixa-becomes-a-self-service-multi-tenant-saas-platform) (2026-08-07) — the business model changed toward external SaaS customers, which this decision itself named as the trigger to revisit
+- Status: SUPERSEDED by [DEC-GRX-017](#dec-grx-017-customer-account-architecture--platform-admin) (2026-08-07) — the business model changed toward external SaaS customers, which this decision itself named as the trigger to revisit
 - Date: 2026-07-22
 - Decision: Not part of MVP or the currently-planned future releases in ROADMAP.md; revisit
   only if Growixa's business model changes toward external SaaS customers.
@@ -302,10 +302,17 @@ Decision statuses: `PROPOSED`, `UNDER_REVIEW`, `APPROVED`, `REJECTED`, `SUPERSED
 
 ---
 
-## DEC-GRX-017: Growixa becomes a self-service, multi-tenant SaaS platform
+## DEC-GRX-017: Customer Account Architecture & Platform Admin
 
 - Status: APPROVED
 - Date: 2026-08-07
+- Naming note: this is a shared-application, `account_id`-isolated architecture —
+  technically a form of what engineers call "multi-tenant" (multiple customers sharing
+  one application/database, isolated by an ownership key), but deliberately **not**
+  named that way in this project's docs, since "multi-tenant" is commonly read as
+  implying visible organizations, workspace switching, or enterprise account
+  hierarchy — none of which this decision includes. See
+  [§Explicitly excluded](#explicitly-excluded-from-this-decision) below.
 - Context: [FUTURE_SCOPE_PLATFORM_ADMIN.md](../01-product/FUTURE_SCOPE_PLATFORM_ADMIN.md)
   captured this as idea-capture in 2026-07-27, explicitly not approved or scheduled,
   gated on "revisit [DEC-GRX-002 and DEC-GRX-013] explicitly" as a deliberate
@@ -319,7 +326,12 @@ Decision statuses: `PROPOSED`, `UNDER_REVIEW`, `APPROVED`, `REJECTED`, `SUPERSED
   one application, one database, `account_id`-scoped data isolation (no visible
   workspace-switcher concept), self-service customer registration, and a separate
   IITDEVELOPER Platform Admin control plane above all customer accounts. Full phased
-  implementation plan: [SPRINT_05_MULTI_TENANT_PLATFORM.md](../14-sprints/SPRINT_05_MULTI_TENANT_PLATFORM.md).
+  implementation plan: [SPRINT_05_CUSTOMER_ACCOUNT_PLATFORM.md](../14-sprints/SPRINT_05_CUSTOMER_ACCOUNT_PLATFORM.md).
+- Explicitly excluded from this decision: user-visible organizations/workspaces,
+  workspace switching, organization invitations, enterprise account hierarchy, tenant
+  selection at login. Customer isolation is an internal data-model concern
+  (`account_id` on every row), invisible to the end user, who only ever sees "their
+  account" — never a concept of other tenants existing.
 - Rationale: This is a business-model decision, not a technical one — the technical shape
   was already scoped in `FUTURE_SCOPE_PLATFORM_ADMIN.md` precisely so that once the
   business decision was made, implementation could start immediately from a concrete
@@ -329,10 +341,10 @@ Decision statuses: `PROPOSED`, `UNDER_REVIEW`, `APPROVED`, `REJECTED`, `SUPERSED
 - Consequences: Supersedes `DEC-GRX-002` and `DEC-GRX-013`. Every table and query built
   under single-tenancy (Slices 1–4) must be retrofitted with `account_id` isolation
   before any new account-facing feature is built on top — see
-  `SPRINT_05_MULTI_TENANT_PLATFORM.md` Phase A, which blocks every later phase. This is
-  the single largest and highest-risk sprint in the project's history: a missed scoping
-  filter is a cross-customer data breach, not a cosmetic bug. Billing requires selecting
-  and integrating a payments vendor (none chosen yet — Stripe is the working
+  `SPRINT_05_CUSTOMER_ACCOUNT_PLATFORM.md` Phase A, which blocks every later phase. This
+  is the single largest and highest-risk sprint in the project's history: a missed
+  scoping filter is a cross-customer data breach, not a cosmetic bug. Billing requires
+  selecting and integrating a payments vendor (none chosen yet — Stripe is the working
   assumption). `ROADMAP.md`'s "Explicitly deferred indefinitely" section and
   `PROJECT_STATUS.md`'s "Deferred indefinitely" framing are both updated to reflect this
   is no longer deferred.
