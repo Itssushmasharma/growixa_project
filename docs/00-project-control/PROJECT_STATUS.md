@@ -200,23 +200,28 @@ directly by the user mid-session, is `DONE`.
    `GRX-EMAIL-001` → `GRX-EMAIL-002` → `GRX-EMAIL-003` → `GRX-EMAIL-004` → `GRX-EMAIL-005`
    → `GRX-EMAIL-006` → `GRX-EMAIL-007` → `GRX-EMAIL-011` (ad hoc, Custom SMTP as a
    second provider + SMTP TLS fixes) → `GRX-EMAIL-012` (ad hoc, SMTP "test connection"
-   button) → `GRX-EMAIL-008` → `GRX-EMAIL-009`.
+   button) → `GRX-EMAIL-008` → `GRX-EMAIL-009` → `GRX-EMAIL-010`.
    **Sprint 1 and Sprint 2 (Contacts) are both fully `DONE`**, including `GRX-DEVOPS-001`
    (user pushed and confirmed a green CI run), `GRX-DOC-003` (Sprint 1 doc/handoff
    update, which filed `GRX-AUDIT-002` for the audit-viewing gap it found), and
    `GRX-AUDIT-002` itself (closed the same session it was filed). **Sprint 3 (Email
-   Marketing) is under way**: `GRX-EMAIL-001` through `GRX-EMAIL-007` (provider
+   Marketing) is now fully `DONE`**: `GRX-EMAIL-001` through `GRX-EMAIL-007` (provider
    connection, templates, campaigns CRUD, the send pipeline, the Postmark webhook
    receiver + unsubscribe handling, the campaign report/analytics endpoint, and the
-   provider connection + sender identity settings UI) are all `DONE`, along with the ad
-   hoc `GRX-EMAIL-011`/`GRX-EMAIL-012` additions, `GRX-EMAIL-008` (email templates
-   frontend — a list page plus dedicated create/edit pages at
-   `/dashboard/templates/new` and `/dashboard/templates/[id]/edit`, with search, sort,
-   delete, and duplicate), and `GRX-EMAIL-009` (campaign builder + send frontend — one
-   shared form/detail component at `/dashboard/campaigns/new` and
-   `/dashboard/campaigns/[id]` covering drafting, recipient targeting, test send, and
-   immediate send, no backend changes needed); next task is `GRX-EMAIL-010` — the last
-   remaining Sprint 3 task, the campaign report frontend.
+   provider connection + sender identity settings UI), the ad hoc `GRX-EMAIL-011`/
+   `GRX-EMAIL-012` additions, `GRX-EMAIL-008` (email templates frontend — a list page
+   plus dedicated create/edit pages at `/dashboard/templates/new` and
+   `/dashboard/templates/[id]/edit`, with search, sort, delete, and duplicate),
+   `GRX-EMAIL-009` (campaign builder + send frontend — one shared form/detail component
+   at `/dashboard/campaigns/new` and `/dashboard/campaigns/[id]` covering drafting,
+   recipient targeting, test send, and immediate send), and `GRX-EMAIL-010` (campaign
+   report frontend — a "Delivery report" card on the same detail page, showing
+   sent/delivered/opened/clicked/bounced/complained counts and rates once a campaign
+   leaves `DRAFT`) are all `DONE`, none needing any backend changes beyond what
+   Sprint 3's backend tasks already shipped. Next up is Sprint 4 (Scheduled Campaigns),
+   already mid-flight in a concurrent session's uncommitted work (`GRX-SCHED-001`
+   through `006` rows visible in `MASTER_TASK_TRACKER.md`, plus
+   `docs/14-sprints/SPRINT_04_SCHEDULED_CAMPAIGN.md`) as of this update.
    `GRX-EMAIL-004` also fixed a real gap found along the way — `usage_records` was
    documented as existing since Sprint 1 (`DEC-GRX-007`) but was never actually built —
    and carries one documented evidence gap: no live Postmark account is available in

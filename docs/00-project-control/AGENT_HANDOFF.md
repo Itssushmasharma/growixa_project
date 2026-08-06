@@ -699,3 +699,104 @@ the tabs — reference keeps it in the same top row as the tabs and the
 `vitest` 97 passed throughout (no test changes needed — these were pure layout
 tweaks). `podman compose restart web` after each change (dev-server
 file-watcher quirk). Commit `79c90fb`.
+
+## Work completed (GRX-EMAIL-010, campaign report frontend — Sprint 3's last task)
+
+- New "Delivery report" card in `CampaignFormPage`'s side column, shown once a
+  campaign leaves `DRAFT`. No backend changes — `GET /campaigns/{id}/report`
+  (`GRX-EMAIL-006`) already returned every count needed.
+- The report fetch happens after the campaign itself loads, wrapped in its
+  own try/catch separate from the campaign-load try/catch that gates the
+  rest of the page: a report-fetch failure now degrades to "no report
+  section" rather than the whole page's `loadError` state, since the report
+  is supplementary to a page whose core content already loaded successfully.
+- `formatMetric(count, denominator)`: `"{count} ({rate}%)"`, or the bare
+  count when the denominator is 0 (no `0%`/`NaN%`). Sent is a plain count;
+  Delivered/Bounced/Complained are rates of `sent`; Opened/Clicked are rates
+  of `delivered` (can't open/click what wasn't delivered) — standard
+  email-marketing rate convention.
+- **Sprint 3 (Email Marketing) is now fully `DONE`** — this was its last
+  remaining task.
+
+## Real bugs found and fixed while writing this
+
+- The original implementation fetched the report inside the *same*
+  try/catch as the campaign load. The existing "shows a sent campaign as
+  read-only" test (from `GRX-EMAIL-009`, unmodified) doesn't mock
+  `/campaigns/{id}/report`, so that fetch would throw — and because it
+  shared the outer try/catch, the whole page would have fallen back to
+  `loadError` ("You don't have access to campaigns.") instead of rendering
+  the campaign it had *already successfully loaded*. Caught by running the
+  existing suite before writing new tests, not by a new test — a real
+  regression the old test suite happened to catch by accident. Fixed by
+  isolating the report fetch in its own try/catch, then added a dedicated
+  test ("still renders the campaign when the report fetch fails") to cover
+  this deliberately going forward.
+
+## Files changed
+
+- `apps/web/src/app/(dashboard)/dashboard/campaigns/{campaign-form-page.tsx,campaign-form-page.module.css,campaign-form-page.test.tsx,types.ts}`
+- `docs/00-project-control/{MASTER_TASK_TRACKER.md,PROJECT_STATUS.md,CHANGELOG.md,AGENT_HANDOFF.md}`
+
+## Commands executed
+
+- `eslint`/`tsc --noEmit`/`prettier --check` — clean
+- `vitest run` (full `apps/web` suite): 101 passed (4 new)
+- `next build` — clean
+
+## Blockers
+
+None for the codebase itself.
+
+## Known issues / evidence gaps
+
+- **No live browser verification this task.** The browser-automation tool
+  that had been used throughout this session became fully unavailable
+  partway through (`navigate` itself denied — not the earlier pattern of
+  racing the user's own tab in the same shared pane). Confidence rests on:
+  the component suite's exact percentage-math assertions running against
+  the real `formatMetric` implementation (not a mock), a clean `next
+  build`, and reuse of `GRX-EMAIL-009`'s fetch/permission/render
+  scaffolding, which *was* already live-verified end-to-end against the
+  real backend earlier in this same session. Worth a quick live glance next
+  time the tool is available — low risk, since this is a small additive
+  render on top of already-proven data flow, but not yet directly seen.
+- A throwaway Super Admin user, Custom SMTP connection, and sender identity
+  from `GRX-EMAIL-009`'s live verification are still sitting in the dev DB
+  (cleanup deferred since they were reused for this task's attempted live
+  check). Should be cleaned up via direct SQL next session if not done by
+  the end of this one.
+- Same outstanding items as `GRX-EMAIL-011`'s entry (expired cert on the
+  user's own mail server; `send_campaign` retry/backoff unimplemented).
+
+## Current state
+
+**Sprint 3 (Email Marketing) is fully `DONE`.** Sprint 1, 2, and 3 are all
+complete. Next up is Sprint 4 (Scheduled Campaigns) — already mid-flight in
+a concurrent session's uncommitted work as of this update (`GRX-SCHED-001`
+through `006` rows visible, still `READY`/`BACKLOG`, in
+`MASTER_TASK_TRACKER.md`, plus an untracked
+`docs/14-sprints/SPRINT_04_SCHEDULED_CAMPAIGN.md`).
+
+## Exact next task
+
+None assigned by this session — Sprint 3 is complete and Sprint 4 planning
+belongs to whichever session is already carrying the `GRX-SCHED-*` work
+forward. If picking this codebase up fresh, check
+`MASTER_TASK_TRACKER.md`'s `GRX-SCHED-*` rows and
+`docs/14-sprints/SPRINT_04_SCHEDULED_CAMPAIGN.md` for where that work
+currently stands before starting anything new.
+
+## Resume commands
+
+```bash
+cd /Users/ravi/Documents/projects/growixa
+git log --oneline -5
+cat docs/00-project-control/MASTER_TASK_TRACKER.md
+cat docs/14-sprints/SPRINT_04_SCHEDULED_CAMPAIGN.md
+podman compose up -d
+```
+
+## Latest commit
+
+`20dba50` — feat(web): campaign delivery report card (GRX-EMAIL-010)

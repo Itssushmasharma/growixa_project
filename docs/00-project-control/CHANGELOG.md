@@ -10,6 +10,25 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
+## 2026-08-06 — GRX-EMAIL-010: Campaign report frontend (Sprint 3 complete)
+
+- New "Delivery report" card on the campaign detail page, shown once a campaign
+  leaves `DRAFT`. No backend changes — `GET /campaigns/{id}/report`
+  (`GRX-EMAIL-006`) already returned everything needed.
+- Sent shown as a raw count; Delivered/Bounced/Complained as rates of sent;
+  Opened/Clicked as rates of delivered (can't open/click what wasn't
+  delivered) — falls back to a bare count instead of a misleading `0%`/`NaN%`
+  when the denominator is 0.
+- The report fetch is isolated in its own try/catch so a report failure
+  degrades to "no report section," not a full-page error — the campaign
+  itself already loaded successfully by that point.
+- `eslint`/`tsc --noEmit`/`prettier`/`next build` clean; `vitest` 101 passed
+  (4 new). **Evidence gap**: the browser-automation tool became unavailable
+  partway through this task, so no live screenshot was possible — verified
+  instead via the component suite's exact percentage-math assertions and
+  reuse of `GRX-EMAIL-009`'s already-live-verified fetch/render scaffolding.
+- **Sprint 3 (Email Marketing) is now fully `DONE`.**
+
 ## 2026-08-06 — GRX-EMAIL-009: Campaign builder + send frontend
 
 - New `campaigns` dashboard page (`campaigns.view`-gated), plus `/dashboard/campaigns/new`
