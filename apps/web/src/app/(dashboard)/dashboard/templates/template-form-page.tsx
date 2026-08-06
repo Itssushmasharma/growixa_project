@@ -119,6 +119,8 @@ export function TemplateFormPage({ mode, templateId }: TemplateFormPageProps) {
     }
   }
 
+  const [editorMode, setEditorMode] = useState<"visual" | "html">("visual");
+
   function handleFormatHtml() {
     if (!form.body_html.trim()) return;
     setForm((prev) => ({ ...prev, body_html: formatHtml(prev.body_html) }));
@@ -145,6 +147,14 @@ export function TemplateFormPage({ mode, templateId }: TemplateFormPageProps) {
       });
       showToast("success", `Loaded "${preset.name}" starter template.`);
     }
+  }
+
+  function handleInsertToken(token: string) {
+    setForm((prev) => ({
+      ...prev,
+      body_html: prev.body_html ? `${prev.body_html} ${token}` : token,
+    }));
+    showToast("info", `Inserted token ${token}`);
   }
 
   if (loading) {
@@ -241,18 +251,85 @@ export function TemplateFormPage({ mode, templateId }: TemplateFormPageProps) {
               <label className={styles.label} htmlFor="template-body-html">
                 HTML body
               </label>
-              <div className={styles.fieldActions}>
-                <button type="button" className={styles.miniButton} onClick={handleFormatHtml}>
-                  Format
-                </button>
-                <button type="button" className={styles.miniButton} onClick={handleCopyHtml}>
-                  Copy
-                </button>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <div className={styles.fieldActions}>
+                  <button type="button" className={styles.miniButton} onClick={handleFormatHtml}>
+                    Format
+                  </button>
+                  <button type="button" className={styles.miniButton} onClick={handleCopyHtml}>
+                    Copy
+                  </button>
+                </div>
+                <div className={styles.modeToggleGroup}>
+                  <button
+                    type="button"
+                    className={`${styles.modeButton} ${
+                      editorMode === "visual" ? styles.modeButtonActive : ""
+                    }`}
+                    onClick={() => setEditorMode("visual")}
+                  >
+                    🎨 Visual Mode
+                  </button>
+                  <button
+                    type="button"
+                    className={`${styles.modeButton} ${
+                      editorMode === "html" ? styles.modeButtonActive : ""
+                    }`}
+                    onClick={() => setEditorMode("html")}
+                  >
+                    💻 HTML Code
+                  </button>
+                </div>
               </div>
             </div>
+
+            <div className={styles.tokenToolbar}>
+              <span className={styles.tokenLabel}>Insert Personalization Token:</span>
+              <button
+                type="button"
+                className={styles.tokenPill}
+                onClick={() => handleInsertToken("{{first_name}}")}
+              >
+                + First Name
+              </button>
+              <button
+                type="button"
+                className={styles.tokenPill}
+                onClick={() => handleInsertToken("{{last_name}}")}
+              >
+                + Last Name
+              </button>
+              <button
+                type="button"
+                className={styles.tokenPill}
+                onClick={() => handleInsertToken("{{company_name}}")}
+              >
+                + Company Name
+              </button>
+            </div>
+
+            {editorMode === "visual" ? (
+              <div className={styles.visualEditorContainer}>
+                <div
+                  role="textbox"
+                  aria-label="Visual Editor"
+                  className={styles.visualEditable}
+                  contentEditable
+                  suppressContentEditableWarning
+                  onInput={(e) =>
+                    setForm({ ...form, body_html: (e.target as HTMLDivElement).innerHTML })
+                  }
+                  dangerouslySetInnerHTML={{
+                    __html: form.body_html || "<p>Click to start editing content visually…</p>",
+                  }}
+                />
+              </div>
+            ) : null}
+
             <textarea
               id="template-body-html"
               className={styles.codeTextarea}
+              style={{ display: editorMode === "html" ? "block" : "none" }}
               required
               value={form.body_html}
               onChange={(event) => setForm({ ...form, body_html: event.target.value })}
