@@ -1,0 +1,260 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.breadcrumb {
+  font-size: 13px;
+  color: var(--color-slate);
+}
+
+.breadcrumb a {
+  color: var(--color-slate);
+  text-decoration: none;
+}
+
+.breadcrumb a:hover {
+  text-decoration: underline;
+}
+
+.card {
+  background: #fff;
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
+  padding: 24px;
+  width: 100%;
+}
+
+.split {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .split {
+    grid-template-columns: 1fr;
+  }
+}
+
+.formCard {
+  background: #fff;
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
+  padding: 24px;
+}
+
+.sideColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  position: sticky;
+  top: 20px;
+}
+
+.previewCard,
+.sendCard {
+  background: #fff;
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
+  padding: 24px;
+}
+
+.heading {
+  margin: 0 0 8px;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.previewHeading {
+  margin: 0 0 12px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-slate);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.hint {
+  margin: 0 0 16px;
+  font-size: 12px;
+  color: var(--color-slate-light);
+}
+
+.field {
+  margin-bottom: 16px;
+}
+
+.label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-slate);
+  margin-bottom: 6px;
+}
+
+.fieldHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.fieldHeader .label {
+  margin-bottom: 0;
+}
+
+.fieldActions {
+  display: flex;
+  gap: 6px;
+}
+
+.miniButton {
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 42, 86, 0.14);
+  background: #fff;
+  color: var(--color-slate);
+  font-weight: 600;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.miniButton:hover {
+  color: var(--color-dark-text);
+  border-color: rgba(15, 42, 86, 0.28);
+}
+
+.input,
+.textarea,
+.codeTextarea {
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(15, 42, 86, 0.14);
+  font-size: 14px;
+  font-family: inherit;
+  color: var(--color-dark-text);
+  background: #fff;
+}
+
+.input:disabled,
+.textarea:disabled,
+.codeTextarea:disabled {
+  background: #f4f6fb;
+  color: var(--color-slate);
+}
+
+.textarea {
+  min-height: 100px;
+  resize: vertical;
+}
+
+.codeTextarea {
+  min-height: 380px;
+  resize: vertical;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 13px;
+  background: #0f172a;
+  color: #e2e8f0;
+  border-color: #1e293b;
+}
+
+.codeTextarea:disabled {
+  background: #1e293b;
+  color: #94a3b8;
+}
+
+.formActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.actionButton {
+  padding: 9px 16px;
+  border: none;
+  border-radius: var(--pill-radius);
+  background: var(--gradient-primary);
+  color: #fff;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.actionButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.secondaryButton {
+  padding: 9px 16px;
+  border-radius: var(--pill-radius);
+  border: 1px solid rgba(15, 42, 86, 0.14);
+  background: #fff;
+  color: var(--color-dark-text);
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.secondaryButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.previewFrame {
+  width: 100%;
+  height: 420px;
+  border: 1px solid rgba(15, 42, 86, 0.14);
+  border-radius: 10px;
+  background: #fff;
+}
+
+.statusBadge {
+  display: inline-block;
+  margin-bottom: 16px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.statusDRAFT {
+  background: rgba(148, 163, 184, 0.18);
+  color: var(--color-slate);
+}
+
+.statusSENDING {
+  background: rgba(217, 158, 30, 0.12);
+  color: #a16207;
+}
+
+.statusSENT {
+  background: rgba(34, 160, 107, 0.12);
+  color: var(--color-success);
+}
+
+.statusFAILED {
+  background: rgba(244, 63, 94, 0.1);
+  color: #b91c1c;
+}
+
+.testSendForm {
+  margin-bottom: 16px;
+}
+
+.testSendRow {
+  display: flex;
+  gap: 8px;
+}
+
+.testSendRow .input {
+  flex: 1;
+}

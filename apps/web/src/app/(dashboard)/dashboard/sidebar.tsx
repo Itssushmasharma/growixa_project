@@ -51,6 +51,7 @@ const NAV_SECTIONS: NavSection[] = [
   {
     label: "CAMPAIGNS",
     items: [
+      { label: "Campaigns", href: "/dashboard/campaigns", requiresPermission: "campaigns.view" },
       { label: "Templates", href: "/dashboard/templates", requiresPermission: "campaigns.view" },
     ],
   },
