@@ -167,4 +167,28 @@ describe("ImportsPage", () => {
       expect(screen.getByText(/Row 1: alice@example.com — IMPORTED/)).toBeInTheDocument(),
     );
   });
+
+  it("exports import history to CSV when clicking Export CSV button", async () => {
+    mockedApiFetch.mockImplementation((path: string) => {
+      if (path === "/auth/me") {
+        return Promise.resolve(meWithPermissions(["contacts.view", "contacts.manage"]));
+      }
+      if (path === "/contacts/imports") return Promise.resolve([PAST_IMPORT]);
+      if (path === "/contacts/custom-fields") return Promise.resolve([]);
+      throw new Error(`unexpected path: ${path}`);
+    });
+
+    const user = userEvent.setup();
+    renderImportsPage();
+
+    await screen.findByText("contacts.csv");
+    const exportBtn = screen.getByRole("button", { name: "📥 Export CSV" });
+    expect(exportBtn).toBeInTheDocument();
+
+    const appendChildSpy = vi.spyOn(document.body, "appendChild");
+    await user.click(exportBtn);
+
+    expect(appendChildSpy).toHaveBeenCalled();
+    appendChildSpy.mockRestore();
+  });
 });

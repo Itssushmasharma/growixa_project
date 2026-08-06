@@ -5,7 +5,7 @@ import { type ChangeEvent, type FormEvent, useEffect, useState } from "react";
 import { useToast } from "@/components/toast/toast-context";
 import { ApiError, apiFetch } from "@/lib/api-client";
 
-import styles from "../shared.module.css";
+import styles from "./imports-page.module.css";
 import type { ContactImport, ContactImportRow, CustomField, MeResponse } from "../types";
 
 const VIEW_PERMISSION = "contacts.view";
@@ -50,6 +50,19 @@ function readFileAsText(file: File): Promise<string> {
   });
 }
 
+function getStatusStyle(status: ContactImport["status"]): string {
+  switch (status) {
+    case "COMPLETED":
+      return `${styles.statusBadge} ${styles.statusCompleted}`;
+    case "PROCESSING":
+      return `${styles.statusBadge} ${styles.statusProcessing}`;
+    case "FAILED":
+      return `${styles.statusBadge} ${styles.statusFailed}`;
+    default:
+      return `${styles.statusBadge} ${styles.statusPending}`;
+  }
+}
+
 function statusLabel(status: ContactImport["status"]): string {
   switch (status) {
     case "COMPLETED":
@@ -61,6 +74,12 @@ function statusLabel(status: ContactImport["status"]): string {
     default:
       return "Pending";
   }
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 export function ImportsPage() {
@@ -77,6 +96,7 @@ export function ImportsPage() {
   const [mapping, setMapping] = useState<Record<string, string>>({});
   const [uploading, setUploading] = useState(false);
   const [lastResult, setLastResult] = useState<ContactImport | null>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
 
   const [expandedImportId, setExpandedImportId] = useState<string | null>(null);
   const [rows, setRows] = useState<ContactImportRow[]>([]);
@@ -112,8 +132,7 @@ export function ImportsPage() {
     void load();
   }, []);
 
-  async function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
-    const selected = event.target.files?.[0] ?? null;
+  async function processSelectedFile(selected: File | null) {
     setFile(selected);
     setLastResult(null);
 
@@ -132,6 +151,34 @@ export function ImportsPage() {
       showToast("error", "Could not read that file.");
       setHeaders([]);
       setMapping({});
+    }
+  }
+
+  async function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
+    const selected = event.target.files?.[0] ?? null;
+    await processSelectedFile(selected);
+  }
+
+  function handleDragOver(e: React.DragEvent) {
+    e.preventDefault();
+    setIsDragOver(true);
+  }
+
+  function handleDragLeave(e: React.DragEvent) {
+    e.preventDefault();
+    setIsDragOver(false);
+  }
+
+  async function handleDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setIsDragOver(false);
+    const droppedFile = e.dataTransfer.files?.[0] ?? null;
+    if (droppedFile) {
+      if (droppedFile.name.toLowerCase().endsWith(".csv")) {
+        await processSelectedFile(droppedFile);
+      } else {
+        showToast("error", "Please upload a valid .csv file.");
+      }
     }
   }
 
@@ -188,132 +235,296 @@ export function ImportsPage() {
     }
   }
 
+  function handleExportCsv() {
+    if (imports.length === 0) {
+      showToast("error", "No import history available to export.");
+      return;
+    }
+    const csvHeaders = [
+      "Import ID",
+      "Filename",
+      "Status",
+      "Total Rows",
+      "Imported",
+      "Updated",
+      "Skipped",
+      "Errors",
+      "Created At",
+    ];
+    const csvRows = imports.map((item) => [
+      item.id,
+      `"${item.filename.replace(/"/g, '""')}"`,
+      item.status,
+      item.total_rows,
+      item.imported_count,
+      item.updated_count,
+      item.skipped_count,
+      item.error_count,
+      `"${new Date(item.created_at).toLocaleString()}"`,
+    ]);
+    const csvContent = [csvHeaders.join(","), ...csvRows.map((r) => r.join(","))].join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute(
+      "download",
+      `growixa_import_history_${new Date().toISOString().slice(0, 10)}.csv`,
+    );
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast("success", "Exported import history to CSV.");
+  }
+
   const hasEmailMapping = headers.some((header) => mapping[header] === "email");
+  const totalImportedCount = imports.reduce((acc, item) => acc + item.imported_count, 0);
+  const totalUpdatedCount = imports.reduce((acc, item) => acc + item.updated_count, 0);
 
   if (loading) {
-    return <div className={styles.card}>Loading…</div>;
+    return (
+      <div className={styles.page}>
+        <div className={styles.card}>Loading…</div>
+      </div>
+    );
   }
 
   if (loadError) {
-    return <div className={styles.card}>{loadError}</div>;
+    return (
+      <div className={styles.page}>
+        <div className={styles.card}>{loadError}</div>
+      </div>
+    );
   }
 
   if (!canView) {
-    return <div className={styles.card}>You don&apos;t have access to view imports.</div>;
+    return (
+      <div className={styles.page}>
+        <div className={styles.card}>You don&apos;t have access to view imports.</div>
+      </div>
+    );
   }
 
+  const step = !file ? 1 : headers.length > 0 && !hasEmailMapping ? 2 : 3;
+
   return (
-    <>
+    <div className={styles.page}>
       {canManage && (
-        <div className={styles.card} style={{ marginBottom: 24 }}>
-          <div className={styles.header}>
-            <h2 className={styles.headerTitle}>Import contacts from CSV</h2>
+        <div className={styles.card}>
+          <div className={styles.headerRow}>
+            <div>
+              <h2 className={styles.headerTitle}>Import contacts from CSV</h2>
+              <p className={styles.headerSubtitle}>
+                Upload a CSV file to bulk import or update contacts and custom fields in Growixa.
+              </p>
+            </div>
+          </div>
+
+          {/* 3-Step Progress Indicator */}
+          <div className={styles.stepBar}>
+            <div className={`${styles.stepItem} ${step >= 1 ? styles.stepItemActive : ""}`}>
+              <span className={styles.stepNumber}>1</span> Select CSV File
+            </div>
+            <div className={styles.stepDivider} />
+            <div className={`${styles.stepItem} ${step >= 2 ? styles.stepItemActive : ""}`}>
+              <span className={styles.stepNumber}>2</span> Map Columns
+            </div>
+            <div className={styles.stepDivider} />
+            <div className={`${styles.stepItem} ${step >= 3 ? styles.stepItemActive : ""}`}>
+              <span className={styles.stepNumber}>3</span> Import Contacts
+            </div>
           </div>
 
           <form onSubmit={handleUploadSubmit}>
-            <div className={styles.createField} style={{ marginBottom: 16 }}>
-              <label className={styles.label} htmlFor="import-file">
-                CSV file
-              </label>
-              <input id="import-file" type="file" accept=".csv" onChange={handleFileChange} />
-            </div>
-
-            {headers.length > 0 && (
-              <div style={{ marginBottom: 16 }}>
-                {headers.map((header) => (
-                  <div className={styles.ruleRow} key={header}>
-                    <span className={styles.typeBadge}>{header}</span>
-                    <select
-                      className={styles.select}
-                      aria-label={`Map column ${header}`}
-                      value={mapping[header] ?? ""}
-                      onChange={(event) =>
-                        setMapping((current) => ({ ...current, [header]: event.target.value }))
-                      }
-                    >
-                      {targetOptions.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                ))}
+            {!file ? (
+              <div
+                className={`${styles.dropzone} ${isDragOver ? styles.dropzoneActive : ""}`}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                onClick={() => document.getElementById("import-file")?.click()}
+              >
+                <div className={styles.dropzoneIcon}>📄</div>
+                <div className={styles.dropzoneTitle}>Drag and drop your CSV file here</div>
+                <div className={styles.dropzoneSubtitle}>
+                  Supports .csv files up to 10MB (columns auto-detected)
+                </div>
+                <span className={styles.browseButton}>Browse file</span>
+                <input
+                  id="import-file"
+                  type="file"
+                  accept=".csv"
+                  aria-label="CSV file"
+                  style={{ display: "none" }}
+                  onChange={handleFileChange}
+                />
+              </div>
+            ) : (
+              <div className={styles.fileCard}>
+                <div>
+                  <div className={styles.fileName}>{file.name}</div>
+                  <div className={styles.fileSize}>{formatBytes(file.size)}</div>
+                </div>
+                <button
+                  type="button"
+                  className={styles.removeFile}
+                  onClick={() => processSelectedFile(null)}
+                >
+                  Remove file
+                </button>
               </div>
             )}
 
-            <button
-              type="submit"
-              className={styles.submit}
-              disabled={!file || headers.length === 0 || !hasEmailMapping || uploading}
-            >
-              {uploading ? "Importing…" : "Import contacts"}
-            </button>
+            {headers.length > 0 && (
+              <div style={{ marginTop: 20 }}>
+                <h4 style={{ margin: "0 0 10px", fontSize: 14, fontWeight: 700 }}>
+                  Map CSV Columns to Contact Fields
+                </h4>
+                <div className={styles.mappingGrid}>
+                  {headers.map((header) => (
+                    <div className={styles.mappingRow} key={header}>
+                      <div className={styles.mappingHeader}>
+                        <span>🏷️ {header}</span>
+                        {mapping[header] && (
+                          <span
+                            style={{
+                              fontSize: 11,
+                              background: "#e0e7ff",
+                              color: "#4338ca",
+                              padding: "2px 6px",
+                              borderRadius: 4,
+                            }}
+                          >
+                            Auto-matched
+                          </span>
+                        )}
+                      </div>
+                      <select
+                        className={styles.select}
+                        aria-label={`Map column ${header}`}
+                        value={mapping[header] ?? ""}
+                        onChange={(event) =>
+                          setMapping((current) => ({ ...current, [header]: event.target.value }))
+                        }
+                      >
+                        {targetOptions.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {file && (
+              <div style={{ marginTop: 20, textAlign: "right" }}>
+                <button
+                  type="submit"
+                  className={styles.submitButton}
+                  disabled={!file || headers.length === 0 || !hasEmailMapping || uploading}
+                >
+                  {uploading ? "Importing…" : "Import contacts"}
+                </button>
+              </div>
+            )}
           </form>
 
           {lastResult && (
-            <p className={styles.readOnlyNote} style={{ marginTop: 16 }}>
-              Imported {lastResult.imported_count}, updated {lastResult.updated_count}, skipped{" "}
-              {lastResult.skipped_count}, errors {lastResult.error_count} (of{" "}
+            <p className={styles.headerSubtitle} style={{ marginTop: 12, color: "#16a34a" }}>
+              ✅ Last import result: {lastResult.imported_count} created, {lastResult.updated_count}{" "}
+              updated, {lastResult.skipped_count} skipped, {lastResult.error_count} errors (of{" "}
               {lastResult.total_rows} rows).
             </p>
           )}
         </div>
       )}
 
+      {/* Import Metrics Summary */}
+      {imports.length > 0 && (
+        <div className={styles.metricsGrid}>
+          <div className={styles.metricCard}>
+            <span className={styles.metricValue}>{imports.length}</span>
+            <span className={styles.metricLabel}>Total Imports</span>
+          </div>
+          <div className={styles.metricCard}>
+            <span className={styles.metricValue}>{totalImportedCount}</span>
+            <span className={styles.metricLabel}>New Contacts Added</span>
+          </div>
+          <div className={styles.metricCard}>
+            <span className={styles.metricValue}>{totalUpdatedCount}</span>
+            <span className={styles.metricLabel}>Contacts Updated</span>
+          </div>
+        </div>
+      )}
+
+      {/* History Card */}
       <div className={styles.card}>
-        <div className={styles.header}>
-          <h2 className={styles.headerTitle}>
-            Import history <span className={styles.headerCount}>· {imports.length}</span>
-          </h2>
+        <div className={styles.headerRow}>
+          <div>
+            <h2 className={styles.headerTitle}>
+              Import history <span className={styles.headerSubtitle}>· {imports.length}</span>
+            </h2>
+          </div>
+          {imports.length > 0 && (
+            <button type="button" className={styles.exportButton} onClick={handleExportCsv}>
+              📥 Export CSV
+            </button>
+          )}
         </div>
 
-        {imports.length === 0 && <p className={styles.emptyState}>No imports yet.</p>}
+        {imports.length === 0 && <p className={styles.headerSubtitle}>No imports yet.</p>}
 
-        {imports.map((contactImport) => {
-          const isExpanded = expandedImportId === contactImport.id;
-          return (
-            <div className={styles.contactBlock} key={contactImport.id}>
-              <div className={styles.row}>
-                <div className={styles.identity}>
-                  <div className={styles.name}>{contactImport.filename}</div>
-                  <div className={styles.description}>
-                    {new Date(contactImport.created_at).toLocaleString()} · Imported{" "}
-                    {contactImport.imported_count}, updated {contactImport.updated_count}, skipped{" "}
-                    {contactImport.skipped_count}, errors {contactImport.error_count}
+        <div className={styles.historyList}>
+          {imports.map((contactImport) => {
+            const isExpanded = expandedImportId === contactImport.id;
+            return (
+              <div className={styles.historyRow} key={contactImport.id}>
+                <div className={styles.historySummary}>
+                  <div>
+                    <div className={styles.fileName}>{contactImport.filename}</div>
+                    <div className={styles.headerSubtitle}>
+                      {new Date(contactImport.created_at).toLocaleString()} · Imported{" "}
+                      {contactImport.imported_count}, updated {contactImport.updated_count}, skipped{" "}
+                      {contactImport.skipped_count}, errors {contactImport.error_count}
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <span className={getStatusStyle(contactImport.status)}>
+                      {statusLabel(contactImport.status)}
+                    </span>
+                    <button
+                      type="button"
+                      className={styles.secondaryButton}
+                      onClick={() => toggleExpandImport(contactImport)}
+                    >
+                      {isExpanded ? "Close" : "View rows"}
+                    </button>
                   </div>
                 </div>
-                <div className={styles.rowActions}>
-                  <span className={styles.typeBadge}>{statusLabel(contactImport.status)}</span>
-                  <button
-                    type="button"
-                    className={styles.viewButton}
-                    onClick={() => toggleExpandImport(contactImport)}
-                  >
-                    {isExpanded ? "Close" : "View rows"}
-                  </button>
-                </div>
-              </div>
 
-              {isExpanded && (
-                <div className={styles.detailPanel}>
-                  {rowsLoading && <p className={styles.emptyState}>Loading rows…</p>}
-                  {!rowsLoading && (
-                    <ul className={styles.ruleList}>
-                      {rows.map((row) => (
-                        <li key={row.id}>
-                          Row {row.row_number}: {row.email ?? "(no email)"} — {row.status}
-                          {row.error_message ? ` (${row.error_message})` : ""}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              )}
-            </div>
-          );
-        })}
+                {isExpanded && (
+                  <div className={styles.detailPanel}>
+                    {rowsLoading && <p className={styles.headerSubtitle}>Loading rows…</p>}
+                    {!rowsLoading && (
+                      <ul style={{ margin: 0, paddingLeft: 18 }}>
+                        {rows.map((row) => (
+                          <li key={row.id} style={{ marginBottom: 4 }}>
+                            Row {row.row_number}: {row.email ?? "(no email)"} — {row.status}
+                            {row.error_message ? ` (${row.error_message})` : ""}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
-    </>
+    </div>
   );
 }
