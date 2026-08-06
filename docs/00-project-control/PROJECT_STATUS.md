@@ -102,6 +102,13 @@ indefinitely; and TLS/certificate errors weren't caught by the sender's exceptio
 wrapper, surfacing as an unhandled 500 instead of a clean error. The user's own server
 has an expired certificate — an external blocker on their end, unrelated to this fix.
 
+`GRX-EMAIL-012` (a "Test connection" button, requested directly by the user right after
+`GRX-EMAIL-011`'s live testing) is also `DONE` — validates SMTP credentials via a real
+connect+login before a connection is saved. Building it required moving
+`smtp_sender.py` from `email_delivery` into `integrations` as `smtp_transport.py`, since
+`MODULE_BOUNDARIES.md` only allows `email_delivery` to depend on `integrations`, not the
+reverse.
+
 **Ad hoc UX addition (not tied to a sprint plan):** `GRX-FOUND-009` (collapsible/
 responsive sidebar navigation — hamburger toggle for desktop collapse + mobile overlay
 drawer, plus an independent per-section accordion for each nav heading), requested

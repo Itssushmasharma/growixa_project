@@ -10,6 +10,28 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
+## 2026-08-06 — GRX-EMAIL-012: "Test connection" button for SMTP provider setup
+
+- New `POST /integrations/email-providers/test` — connects and authenticates via SMTP
+  only (no message sent, nothing persisted), returning 204 on success or 502 with the
+  real underlying error on failure. Gated by the existing `integrations.manage`
+  permission.
+- New "Test connection" button in the connection form, using the current (unsaved)
+  field values — lets a user validate credentials before committing to Save.
+- **Moved `smtp_sender.py` from `email_delivery` to `integrations/smtp_transport.py`**:
+  `MODULE_BOUNDARIES.md` only allows `email_delivery` to depend on `integrations`, not
+  the reverse, and this new endpoint belongs to `integrations` (connection setup).
+  `email_delivery/services.py` and `api.py` updated to import from the new location.
+- Factored the port-465-vs-STARTTLS decision out of `send_email` into a shared
+  `_tls_kwargs()` helper, reused by the new `test_connection()` — avoids duplicating
+  `GRX-EMAIL-011`'s TLS-mode fix in two places.
+- `apps/api` targeted tests (not the full suite, to avoid `GRX-EMAIL-011`'s DB-wipe
+  quirk): 40 passed. `vitest`: 62 passed (2 new). `ruff`/`mypy`/`alembic
+  check`/`eslint`/`tsc --noEmit`/`prettier`/`next build` clean.
+- Live-verified against Postmark's real SMTP relay with bad credentials: the button
+  showed a real `535 authentication failed` response in the toast, not a canned
+  message.
+
 ## 2026-08-06 — GRX-EMAIL-011: Custom SMTP as a second provider + SMTP TLS fixes
 
 - `email_provider_connections` now allows one active connection *per provider*

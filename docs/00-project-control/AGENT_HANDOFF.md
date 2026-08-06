@@ -316,22 +316,99 @@ run in full.
 None for this codebase. The user's own mail server certificate being
 expired blocks *their* real sends, not further work here.
 
+## Work completed (GRX-EMAIL-012, ad hoc addition — "Test connection" button)
+
+Direct user follow-up, requested immediately after watching `GRX-EMAIL-011`'s
+live testing hit the certificate-expiry error the hard way (via a real
+test-send round trip). Wanted a faster, non-destructive way to check SMTP
+credentials during setup.
+
+- **Architecture fix needed first**: the new endpoint logically belongs to
+  `integrations` (connection setup), but the SMTP transport code
+  (`send_email`, `EmailSendError`) lived in `email_delivery/smtp_sender.py`.
+  `MODULE_BOUNDARIES.md` only allows `email_delivery` to depend on
+  `integrations`, not the reverse — so `integrations` importing from
+  `email_delivery` would have gone the wrong way. Fixed properly: `git mv`'d
+  `smtp_sender.py` to `integrations/smtp_transport.py` (and its test file to
+  `test_smtp_transport.py`), updated `email_delivery/services.py` and
+  `api.py`'s imports. This is the direction `MODULE_BOUNDARIES.md` already
+  documented — the file was just in the wrong place.
+- Added `test_connection()` to `smtp_transport.py`: opens
+  `aiosmtplib.SMTP(...)` and calls `.login()` only, no message built or
+  sent. Factored the port-465-vs-STARTTLS decision out of `send_email` into
+  a shared `_tls_kwargs()` `TypedDict`-returning helper (mypy rejected a
+  plain `dict[str, bool]` unpacked as kwargs — couldn't verify the two keys
+  against `aiosmtplib.send`'s overloaded signature), reused by both
+  functions so `GRX-EMAIL-011`'s TLS fix isn't duplicated.
+- New `EmailProviderConnectionTestIn` schema (no `provider` — connecting
+  doesn't depend on which provider these credentials belong to) and
+  `POST /integrations/email-providers/test` (204 on success, 502 with the
+  real underlying error on failure — reuses `integrations.manage`, no new
+  permission). Persists nothing.
+- Frontend: "Test connection" button in the connection form, disabled until
+  all four fields are filled, using the *current unsaved* form values. On
+  failure, parses and shows the backend's actual `detail` message in the
+  toast rather than a canned one — a deliberate exception to this
+  codebase's usual error-handling convention (switch on status, show a
+  fixed message), since the whole point of this feature is showing *which*
+  SMTP failure occurred.
+- **Test-only bug found and fixed while writing the frontend tests**: the
+  page's own `import { ApiError }` (needed to parse the failure detail)
+  resolved to `undefined` under Vitest, because the existing
+  `vi.mock("@/lib/api-client", () => ({ apiFetch: vi.fn() }))` factory fully
+  replaces the module — anything not explicitly returned is gone, and
+  Vitest throws a distinct "use importOriginal" error the moment it's
+  accessed, rather than silently passing `undefined` through. Fixed by
+  switching to `vi.mock(path, async (importOriginal) => ({
+  ...(await importOriginal()), apiFetch: vi.fn() }))`, preserving real
+  exports like `ApiError` while still mocking `apiFetch`.
+
+## Commands executed (GRX-EMAIL-012)
+
+- `ruff check`/`ruff format --check`/`mypy` — clean
+- `apps/api` targeted tests (deliberately not the full suite, to avoid
+  re-triggering `GRX-EMAIL-011`'s DB-wipe quirk):
+  `pytest tests/test_smtp_transport.py tests/test_integrations.py
+  tests/test_email_delivery.py tests/test_campaigns.py
+  tests/test_protected_routes_audit.py` — 40 passed
+- `eslint`/`tsc --noEmit`/`prettier --check` — clean
+- `vitest run`: 62 passed (2 new)
+- `next build` — clean
+- `podman compose restart api` (bind-mounted source, `uvicorn --reload`
+  didn't pick up the module move fast enough on its own)
+- `podman compose restart web` (dev-server file-watcher quirk, same as
+  `GRX-EMAIL-007`'s entry — didn't need a rebuild, just a restart)
+- Live verification: `curl` against `POST
+  /integrations/email-providers/test` with bad Postmark credentials
+  returned a real `535 authentication failed` wrapped in a clean 502; same
+  check repeated through the actual browser UI (typed bad credentials into
+  Postmark's card, clicked "Test connection") — toast showed the identical
+  real Postmark error text, confirmed via network-request inspection.
+  Nothing persists from this endpoint, so no smoke-test cleanup was needed.
+
+## Known issues / evidence gaps (GRX-EMAIL-012)
+
+- No success-path live verification was possible: no valid Postmark
+  credentials exist in this environment, and the user's own Custom SMTP
+  server's certificate is still expired (per `GRX-EMAIL-011`). The success
+  path is covered by the unit test
+  (`test_test_connection_uses_correct_tls_kwargs_and_logs_in`) and the
+  frontend component test instead. Revisit once either becomes available.
+
 ## Current state
 
-Sprint 3 backend + this ad hoc multi-provider addition are `DONE`.
-`GRX-EMAIL-008`–`010` (templates/campaigns/report frontend) remain
-`BACKLOG` and are the next Sprint-3-shaped work, whenever picked up. A
-"test connection" button (validate SMTP credentials during configuration,
-before saving) was requested by the user as a follow-up — not yet scoped or
-built.
+Sprint 3 backend, the multi-provider addition, and this "test connection"
+button are all `DONE`. `GRX-EMAIL-008`–`010` (templates/campaigns/report
+frontend) remain `BACKLOG` and are the next Sprint-3-shaped work.
 
 ## Exact next task
 
-Unassigned — `GRX-EMAIL-008` (email templates frontend) is next in the
-original Sprint 3 backlog order, or the user may prioritize the "test
-connection" button follow-up first. See `MASTER_TASK_TRACKER.md` for exact
-acceptance criteria.
+`GRX-EMAIL-008` — Email templates frontend. Template list/create/edit UI
+under `apps/web/src/app/dashboard/templates/`; a `campaigns.manage` user can
+create and edit a template, a view-only user cannot. See
+`MASTER_TASK_TRACKER.md`'s row for exact acceptance criteria and required
+tests.
 
 ## Latest commit
 
-`447001c` — feat(email): add Custom SMTP as a second provider + fix SMTP TLS bugs (GRX-EMAIL-011)
+`aa83974` — feat(integrations): add SMTP "test connection" endpoint + button (GRX-EMAIL-012)
