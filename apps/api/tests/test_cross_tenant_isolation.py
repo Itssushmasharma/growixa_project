@@ -1,4 +1,4 @@
-"""Cross-tenant isolation tests (GRX-SAAS-001 Phase A, users/auth slice).
+"""Cross-tenant isolation tests (GRX-SAAS-001 Phase A).
 
 Two real accounts, two real users, real Postgres. Proves account A can never see or act
 on account B's data — not "should not", but actually cannot, via the real API surface —
@@ -6,7 +6,10 @@ and that a cross-account guess 404s (indistinguishable from "does not exist") ra
 403ing (which would leak that the id exists in some other account) or leaking data.
 
 This is the regression guard for GRX-SAAS-001: if a future change ever drops an
-account_id scoping filter from a users/auth query, one of these tests fails.
+account_id scoping filter anywhere, one of these tests fails. Kept as one file, organized
+by module, rather than scattered across every module's own test file — this is the single
+place to see everything this app currently guarantees about account isolation. Grows one
+section per Phase A checkpoint (users/auth done; company/brand, contacts, email next).
 """
 
 import uuid
@@ -19,6 +22,8 @@ from sqlalchemy import delete
 
 from growixa_api.app import create_app
 from growixa_api.audit.models import AuditLog
+from growixa_api.brand.models import BrandProfile
+from growixa_api.company.models import CompanyProfile
 from growixa_api.config import get_settings
 from growixa_api.db import async_session_factory
 from growixa_api.users.models import User
@@ -37,6 +42,16 @@ async def _cleanup_invited_user(user_id: str) -> None:
         await session.execute(delete(AuditLog).where(AuditLog.actor_user_id == uuid.UUID(user_id)))
         await session.execute(delete(User).where(User.id == uuid.UUID(user_id)))
         await session.commit()
+
+
+async def _clear_company_and_brand() -> None:
+    async with async_session_factory() as session:
+        await session.execute(delete(BrandProfile))
+        await session.execute(delete(CompanyProfile))
+        await session.commit()
+
+
+# --- users/auth (GRX-SAAS-001 users/auth slice) ---
 
 
 @pytest.mark.asyncio
@@ -156,3 +171,85 @@ async def test_invited_user_joins_the_inviting_admins_account(
     assert new_user_id in ids
 
     await _cleanup_invited_user(new_user_id)
+
+
+# --- company/brand (GRX-SAAS-001 company/brand slice) ---
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_admin_cannot_see_another_accounts_company_profile(
+    user_factory: Callable[..., Awaitable[uuid.UUID]],
+    account_factory: Callable[..., Awaitable[uuid.UUID]],
+) -> None:
+    account_a = await account_factory()
+    account_b = await account_factory()
+    admin_a = await user_factory(
+        full_name="Account A Admin", role_name="Admin", account_id=account_a
+    )
+    admin_b = await user_factory(
+        full_name="Account B Admin", role_name="Admin", account_id=account_b
+    )
+
+    transport = ASGITransport(app=create_app())
+    try:
+        async with AsyncClient(
+            transport=transport, base_url="http://test", cookies=_access_token_cookie(admin_b)
+        ) as client_b:
+            put_response = await client_b.put("/company/profile", json={"name": "Account B Co"})
+            assert put_response.status_code == 200
+
+        async with AsyncClient(
+            transport=transport, base_url="http://test", cookies=_access_token_cookie(admin_a)
+        ) as client_a:
+            get_response = await client_a.get("/company/profile")
+
+        # Account A has no company profile of its own -- must see null, never B's row.
+        assert get_response.status_code == 200
+        assert get_response.json() is None
+    finally:
+        await _clear_company_and_brand()
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_admin_cannot_see_another_accounts_brand_profile(
+    user_factory: Callable[..., Awaitable[uuid.UUID]],
+    account_factory: Callable[..., Awaitable[uuid.UUID]],
+) -> None:
+    account_a = await account_factory()
+    account_b = await account_factory()
+    admin_a = await user_factory(
+        full_name="Account A Admin", role_name="Admin", account_id=account_a
+    )
+    admin_b = await user_factory(
+        full_name="Account B Admin", role_name="Admin", account_id=account_b
+    )
+
+    transport = ASGITransport(app=create_app())
+    try:
+        async with AsyncClient(
+            transport=transport, base_url="http://test", cookies=_access_token_cookie(admin_b)
+        ) as client_b:
+            await client_b.put("/company/profile", json={"name": "Account B Co"})
+            brand_response = await client_b.put(
+                "/brand/profile", json={"brand_voice": "Account B's own voice"}
+            )
+            assert brand_response.status_code == 200
+
+        async with AsyncClient(
+            transport=transport, base_url="http://test", cookies=_access_token_cookie(admin_a)
+        ) as client_a:
+            # Account A has no company profile yet -- brand requires one first, per the
+            # existing CompanyProfileRequiredError guard, proving this isn't accidentally
+            # falling through to account B's company row.
+            get_response = await client_a.get("/brand/profile")
+            put_response = await client_a.put(
+                "/brand/profile", json={"brand_voice": "Should not attach to B's company"}
+            )
+
+        assert get_response.status_code == 200
+        assert get_response.json() is None
+        assert put_response.status_code == 400
+    finally:
+        await _clear_company_and_brand()

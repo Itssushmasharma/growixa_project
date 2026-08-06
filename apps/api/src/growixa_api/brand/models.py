@@ -14,6 +14,14 @@ class BrandProfile(Base):
     __tablename__ = "brand_profiles"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    # Denormalized from company_id's own account_id (GRX-SAAS-001, defense-in-depth) --
+    # queries scope by this directly rather than joining through company_profile.
+    account_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("accounts.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     company_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("company_profile.id", ondelete="CASCADE"), nullable=False
     )

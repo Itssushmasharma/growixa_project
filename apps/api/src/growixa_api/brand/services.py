@@ -1,3 +1,5 @@
+import uuid
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from growixa_api.brand.models import BrandProfile
@@ -15,16 +17,18 @@ class CompanyProfileRequiredError(Exception):
     """
 
 
-async def get_profile(session: AsyncSession) -> BrandProfile | None:
-    company = await get_company_profile(session)
+async def get_profile(session: AsyncSession, account_id: uuid.UUID) -> BrandProfile | None:
+    company = await get_company_profile(session, account_id)
     if company is None:
         return None
-    return await get_brand_profile(session, company.id)
+    return await get_brand_profile(session, account_id)
 
 
-async def save_profile(session: AsyncSession, data: BrandProfileIn) -> BrandProfile:
-    company = await get_company_profile(session)
+async def save_profile(
+    session: AsyncSession, account_id: uuid.UUID, data: BrandProfileIn
+) -> BrandProfile:
+    company = await get_company_profile(session, account_id)
     if company is None:
         raise CompanyProfileRequiredError
-    existing = await get_brand_profile(session, company.id)
-    return await upsert_brand_profile(session, existing, company.id, data.model_dump())
+    existing = await get_brand_profile(session, account_id)
+    return await upsert_brand_profile(session, existing, account_id, company.id, data.model_dump())
