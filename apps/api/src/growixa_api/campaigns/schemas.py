@@ -28,6 +28,13 @@ class CampaignUpdateIn(BaseModel):
     recipient_list_id: uuid.UUID | None = None
 
 
+class ScheduleCampaignIn(BaseModel):
+    """Body for POST /campaigns/{id}/schedule."""
+
+    scheduled_at: datetime
+    """UTC datetime for when to dispatch this campaign. Must be in the future."""
+
+
 class CampaignOut(BaseModel):
     model_config = {"from_attributes": True}
 
@@ -42,6 +49,9 @@ class CampaignOut(BaseModel):
     recipient_segment_id: uuid.UUID | None
     recipient_list_id: uuid.UUID | None
     status: str
+    scheduled_at: datetime | None
+    cancelled_at: datetime | None
+    idempotency_key: uuid.UUID
     created_at: datetime
     updated_at: datetime
     sent_at: datetime | None
