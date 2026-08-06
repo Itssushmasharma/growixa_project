@@ -165,14 +165,16 @@ export function CampaignsPage() {
           ))}
         </div>
         <div className={styles.topActions}>
-          <input
-            type="search"
-            className={styles.searchInput}
-            placeholder="Search by name or subject…"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            aria-label="Search campaigns"
-          />
+          {campaigns.length > 0 && (
+            <input
+              type="search"
+              className={styles.searchInput}
+              placeholder="Search by name or subject…"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              aria-label="Search campaigns"
+            />
+          )}
           {canManage && (
             <Link href="/dashboard/campaigns/new" className={styles.actionButton}>
               + New campaign

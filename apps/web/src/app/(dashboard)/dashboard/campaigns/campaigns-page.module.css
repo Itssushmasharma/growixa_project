@@ -10,15 +10,14 @@
   justify-content: space-between;
   gap: 16px;
   flex-wrap: wrap;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(15, 42, 86, 0.08);
 }
 
 .tabs {
   display: flex;
+  align-items: center;
   gap: 4px;
-  background: #fff;
-  border-radius: var(--pill-radius);
-  padding: 4px;
-  box-shadow: var(--card-shadow);
 }
 
 .tab,
@@ -26,10 +25,10 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 7px 14px;
+  padding: 8px 16px;
   border: none;
   border-radius: var(--pill-radius);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   cursor: pointer;
   background: transparent;
