@@ -49,7 +49,7 @@ Decision statuses: `PROPOSED`, `UNDER_REVIEW`, `APPROVED`, `REJECTED`, `SUPERSED
 
 ## DEC-GRX-002: Growixa MVP is single-tenant
 
-- Status: APPROVED
+- Status: SUPERSEDED by [DEC-GRX-017](#dec-grx-017-growixa-becomes-a-self-service-multi-tenant-saas-platform) (2026-08-07)
 - Date: 2026-07-22
 - Context: Growixa's first customer is one internal marketing team; multi-tenant SaaS
   infrastructure (workspace switching, tenant billing, cross-tenant isolation) adds
@@ -59,6 +59,10 @@ Decision statuses: `PROPOSED`, `UNDER_REVIEW`, `APPROVED`, `REJECTED`, `SUPERSED
   fields (`created_by_user_id`, etc.) are sufficient. Architecture stays modular enough to
   add multi-tenancy later without a rewrite.
 - Consequences: No tenant model, no workspace switcher, no tenant-scoped billing in MVP.
+  **Historical note (accurate as of 2026-07-22 through 2026-08-07):** this decision governed
+  Slices 1–4 (Sprints 1–4) — every table/query built during that window correctly assumed
+  single-tenancy per this decision. It does not retroactively make those tables wrong; it
+  means Sprint 5 (`GRX-SAAS-001`) must retrofit them, per DEC-GRX-017.
 - Related tasks: Slice 1 (Foundation).
 - Supersedes: none.
 
@@ -159,7 +163,7 @@ Decision statuses: `PROPOSED`, `UNDER_REVIEW`, `APPROVED`, `REJECTED`, `SUPERSED
 
 ## DEC-GRX-013: Multi-tenancy, customer-facing SaaS signup, and tenant billing are deferred
 
-- Status: APPROVED
+- Status: SUPERSEDED by [DEC-GRX-017](#dec-grx-017-growixa-becomes-a-self-service-multi-tenant-saas-platform) (2026-08-07) — the business model changed toward external SaaS customers, which this decision itself named as the trigger to revisit
 - Date: 2026-07-22
 - Decision: Not part of MVP or the currently-planned future releases in ROADMAP.md; revisit
   only if Growixa's business model changes toward external SaaS customers.
@@ -298,5 +302,44 @@ Decision statuses: `PROPOSED`, `UNDER_REVIEW`, `APPROVED`, `REJECTED`, `SUPERSED
 
 ---
 
-*Decisions DEC-GRX-017 onward will be logged as they are made — e.g., resolutions to
+## DEC-GRX-017: Growixa becomes a self-service, multi-tenant SaaS platform
+
+- Status: APPROVED
+- Date: 2026-08-07
+- Context: [FUTURE_SCOPE_PLATFORM_ADMIN.md](../01-product/FUTURE_SCOPE_PLATFORM_ADMIN.md)
+  captured this as idea-capture in 2026-07-27, explicitly not approved or scheduled,
+  gated on "revisit [DEC-GRX-002 and DEC-GRX-013] explicitly" as a deliberate
+  business-model decision. The product owner confirmed the business model is changing:
+  Growixa opens for self-service registration — any company can sign up and use the
+  platform — rather than remaining IITDEVELOPER's single internal-install tool. This is
+  exactly the trigger DEC-GRX-013 itself named ("revisit only if Growixa's business
+  model changes toward external SaaS customers").
+- Decision: Adopt the model described in
+  [FUTURE_SCOPE_PLATFORM_ADMIN.md](../01-product/FUTURE_SCOPE_PLATFORM_ADMIN.md#proposed-model-summary-as-given):
+  one application, one database, `account_id`-scoped data isolation (no visible
+  workspace-switcher concept), self-service customer registration, and a separate
+  IITDEVELOPER Platform Admin control plane above all customer accounts. Full phased
+  implementation plan: [SPRINT_05_MULTI_TENANT_PLATFORM.md](../14-sprints/SPRINT_05_MULTI_TENANT_PLATFORM.md).
+- Rationale: This is a business-model decision, not a technical one — the technical shape
+  was already scoped in `FUTURE_SCOPE_PLATFORM_ADMIN.md` precisely so that once the
+  business decision was made, implementation could start immediately from a concrete
+  plan rather than a blank page. `DEC-GRX-007`'s usage-metering-from-the-start decision
+  and `PRD.md` §10 Goal 7's "modular enough to add... multi-tenancy later without a
+  rewrite" both already anticipated this could happen.
+- Consequences: Supersedes `DEC-GRX-002` and `DEC-GRX-013`. Every table and query built
+  under single-tenancy (Slices 1–4) must be retrofitted with `account_id` isolation
+  before any new account-facing feature is built on top — see
+  `SPRINT_05_MULTI_TENANT_PLATFORM.md` Phase A, which blocks every later phase. This is
+  the single largest and highest-risk sprint in the project's history: a missed scoping
+  filter is a cross-customer data breach, not a cosmetic bug. Billing requires selecting
+  and integrating a payments vendor (none chosen yet — Stripe is the working
+  assumption). `ROADMAP.md`'s "Explicitly deferred indefinitely" section and
+  `PROJECT_STATUS.md`'s "Deferred indefinitely" framing are both updated to reflect this
+  is no longer deferred.
+- Related tasks: `GRX-SAAS-001` through `GRX-SAAS-010` in `MASTER_TASK_TRACKER.md`.
+- Supersedes: `DEC-GRX-002`, `DEC-GRX-013`.
+
+---
+
+*Decisions DEC-GRX-018 onward will be logged as they are made — e.g., resolutions to
 OQ-003 through OQ-011 in [OPEN_QUESTIONS.md](OPEN_QUESTIONS.md).*

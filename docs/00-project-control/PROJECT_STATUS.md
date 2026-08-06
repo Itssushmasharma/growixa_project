@@ -13,7 +13,13 @@
 - Product type: **AI-powered growth and marketing automation platform.** It begins with
   email and social media automation, then expands into SEO, AEO, GEO, website intelligence,
   content optimization, and integrated growth workflows.
-- Tenancy model: MVP is **single-tenant**, one company installation, multiple internal users
+- Tenancy model: the MVP (Slices 1–4) was built **single-tenant**, one company
+  installation, multiple internal users, per the now-superseded `DEC-GRX-002`. As of
+  [DEC-GRX-017](DECISIONS.md) (2026-08-07), Growixa is moving to **self-service,
+  multi-tenant SaaS** — see [Sprint 5](../14-sprints/SPRINT_05_MULTI_TENANT_PLATFORM.md).
+  Slices 1–4's existing data model is correct for what it was built for; Sprint 5 Phase A
+  (`GRX-SAAS-001`) retrofits `account_id` isolation across it before any new
+  account-facing feature is built.
 - MVP focus (this release only): contact management, email marketing, one social platform,
   AI content assistant with mandatory human approval, campaign scheduling, basic analytics
 - **Deferred to future releases (V1.5–V3), not cancelled:** SEO automation, AEO, GEO,
@@ -21,8 +27,10 @@
   integration, Search Console integration, content optimization agents, website improvement
   workflows, full multi-agent growth system. See
   [FUTURE_SCOPE_SEO_AEO_GEO.md](../01-product/FUTURE_SCOPE_SEO_AEO_GEO.md).
-- **Deferred indefinitely** (not currently roadmapped at all): full multi-tenancy,
-  customer-facing SaaS signup, tenant billing, white-label platform.
+- **No longer deferred:** full multi-tenancy, customer-facing SaaS signup, and tenant
+  billing — formerly deferred indefinitely under `DEC-GRX-013`, now superseded by
+  `DEC-GRX-017`. Staged as Sprint 5. White-label platform remains deferred indefinitely
+  (no trigger condition named).
 
 The original SEO/AEO/GEO discovery document (`docs/archive/source-prd-seo-aeo-geo-website-intelligence/`)
 is **not** a different or cancelled product — it is valid source material for those future

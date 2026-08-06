@@ -1,11 +1,13 @@
 # Future Scope: Multi-Tenant Customer Platform + IITDEVELOPER Platform Admin
 
 - Document ID: DOC-FUTURE-SCOPE-PLATFORM-ADMIN
-- Status: ACTIVE (idea capture only — not approved, not scheduled into any release)
-- Version: 1.0
-- Last updated: 2026-07-27
+- Status: **APPROVED and scheduled** — see [DEC-GRX-017](../00-project-control/DECISIONS.md)
+  (2026-08-07). No longer idea-capture-only; this document is now the source design for
+  [SPRINT_05_MULTI_TENANT_PLATFORM.md](../14-sprints/SPRINT_05_MULTI_TENANT_PLATFORM.md).
+- Version: 1.1
+- Last updated: 2026-08-07
 - Owner: Product owner (Ravi) via coding agent
-- Related documents: [PRD](PRD.md), [MVP_SCOPE](MVP_SCOPE.md), [ROADMAP](ROADMAP.md), [DECISIONS §DEC-GRX-002, §DEC-GRX-007, §DEC-GRX-013](../00-project-control/DECISIONS.md), [FUTURE_SCOPE_MULTI_BRAND](FUTURE_SCOPE_MULTI_BRAND.md), [FUTURE_SCOPE_SEO_AEO_GEO](FUTURE_SCOPE_SEO_AEO_GEO.md)
+- Related documents: [PRD](PRD.md), [MVP_SCOPE](MVP_SCOPE.md), [ROADMAP](ROADMAP.md), [DECISIONS §DEC-GRX-002, §DEC-GRX-007, §DEC-GRX-013, §DEC-GRX-017](../00-project-control/DECISIONS.md), [SPRINT_05_MULTI_TENANT_PLATFORM](../14-sprints/SPRINT_05_MULTI_TENANT_PLATFORM.md), [FUTURE_SCOPE_MULTI_BRAND](FUTURE_SCOPE_MULTI_BRAND.md), [FUTURE_SCOPE_SEO_AEO_GEO](FUTURE_SCOPE_SEO_AEO_GEO.md)
 
 ## Purpose
 
@@ -17,9 +19,14 @@ covering user/subscription/provider management, usage tracking, campaign oversig
 infrastructure monitoring, a financial dashboard, and audited "secure support session"
 access into a customer's account.
 
-This is idea capture, not a plan. No `GRX-*` task should be created for it, and it must not
-enter `MASTER_TASK_TRACKER.md` or any `docs/14-sprints/` file, until
-[§Before this can be implemented](#before-this-can-be-implemented) is resolved.
+**Status update (2026-08-07):** this was idea capture only until
+[§Before this can be implemented](#before-this-can-be-implemented) was resolved — it now
+has been. [DEC-GRX-017](../00-project-control/DECISIONS.md) formally reverses
+DEC-GRX-002/DEC-GRX-013, and the phased build plan is
+[SPRINT_05_MULTI_TENANT_PLATFORM.md](../14-sprints/SPRINT_05_MULTI_TENANT_PLATFORM.md)
+(`GRX-SAAS-001` through `GRX-SAAS-010` in `MASTER_TASK_TRACKER.md`). The rest of this
+document is unchanged from its original idea-capture form and remains the source design
+reference — read it alongside the sprint doc, which sequences and scopes what's below.
 
 ## Relationship to current architecture decisions
 
@@ -145,7 +152,11 @@ providers, adding "platform default + optional customer override" later.
   surface area; today the only way into the system is an admin-issued invitation
   (`GRX-USER-001`), which assumes the inviter is already inside a trusted single company.
 
-## Explicitly not staged into any release
+## Staging status
 
-Not in the MVP (Slices 1–6), not in V1.5–V3 per [ROADMAP.md](ROADMAP.md). No `GRX-*` task
-exists for any part of this proposal.
+**Superseded by [DEC-GRX-017](../00-project-control/DECISIONS.md) (2026-08-07).** This is
+no longer "not staged" — it's Sprint 5, staged after Slices 1–4 and ahead of the
+still-unscheduled V1.5–V3 SEO/AEO/GEO track per [ROADMAP.md](ROADMAP.md). Task rows
+`GRX-SAAS-001` through `GRX-SAAS-010` exist in `MASTER_TASK_TRACKER.md`; the phased plan
+and dependency order are in
+[SPRINT_05_MULTI_TENANT_PLATFORM.md](../14-sprints/SPRINT_05_MULTI_TENANT_PLATFORM.md).

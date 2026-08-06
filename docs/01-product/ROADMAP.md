@@ -52,8 +52,18 @@ AI-visibility observation, the continuous-improvement/next-best-action engine, a
 multi-agent orchestration (Growth Strategist coordinating all specialists across both the
 marketing and SEO/AEO/GEO tracks).
 
+## Sprint 5 — Multi-Tenant Platform Foundation
+
+**No longer deferred.** Per [DEC-GRX-017](../00-project-control/DECISIONS.md)
+(2026-08-07, supersedes `DEC-GRX-002`/`DEC-GRX-013`), Growixa is becoming a self-service,
+multi-tenant SaaS product. This is staged as its own sprint after Slices 1–4 (the
+single-tenant MVP) and ahead of the still-unscheduled V1.5–V3 SEO/AEO/GEO track below — it's
+a foundational retrofit (data isolation, platform auth, registration, billing, platform
+admin panel), not a feature in the Slice 1–6 sense. Full phased plan:
+[SPRINT_05_MULTI_TENANT_PLATFORM.md](../14-sprints/SPRINT_05_MULTI_TENANT_PLATFORM.md),
+design source: [FUTURE_SCOPE_PLATFORM_ADMIN.md](FUTURE_SCOPE_PLATFORM_ADMIN.md).
+
 ## Explicitly deferred indefinitely (not on this roadmap)
 
-Full multi-tenancy, customer-facing SaaS signup, tenant billing, white-label platform,
-enterprise workflow builder, multi-region deployment — revisit only if the business model
-changes toward external SaaS customers ([DEC-GRX-013](../00-project-control/DECISIONS.md)).
+White-label platform, enterprise workflow builder, multi-region deployment — no trigger
+condition named yet; revisit if/when a concrete need arises.
