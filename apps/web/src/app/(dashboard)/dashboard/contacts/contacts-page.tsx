@@ -89,7 +89,7 @@ export function ContactsPage() {
   const [createForm, setCreateForm] = useState<ContactFormState>(EMPTY_FORM);
   const [creating, setCreating] = useState(false);
 
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [editForm, setEditForm] = useState<ContactFormState>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [statusPendingId, setStatusPendingId] = useState<string | null>(null);
@@ -218,12 +218,8 @@ export function ContactsPage() {
     }
   }
 
-  async function toggleExpand(contact: Contact) {
-    if (expandedId === contact.id) {
-      setExpandedId(null);
-      return;
-    }
-    setExpandedId(contact.id);
+  async function openContactModal(contact: Contact) {
+    setSelectedContact(contact);
     setEditForm({
       email: contact.email,
       first_name: contact.first_name ?? "",
@@ -246,6 +242,10 @@ export function ContactsPage() {
     }
   }
 
+  function closeContactModal() {
+    setSelectedContact(null);
+  }
+
   async function handleSaveEdit(event: FormEvent<HTMLFormElement>, contactId: string) {
     event.preventDefault();
     setSaving(true);
@@ -261,6 +261,7 @@ export function ContactsPage() {
         }),
       });
       setContacts((current) => current.map((c) => (c.id === contactId ? updated : c)));
+      setSelectedContact(updated);
       showToast("success", "Contact updated.");
     } catch {
       showToast("error", "Could not update contact.");
@@ -277,6 +278,7 @@ export function ContactsPage() {
         body: JSON.stringify({ status: nextStatus }),
       });
       setContacts((current) => current.map((c) => (c.id === contactId ? updated : c)));
+      setSelectedContact(updated);
       showToast("success", `Status changed to ${nextStatus}.`);
     } catch {
       showToast("error", "Could not change status.");
@@ -294,6 +296,7 @@ export function ContactsPage() {
         body: JSON.stringify({ tag_id: attachTagId }),
       });
       setContacts((current) => current.map((c) => (c.id === contactId ? updated : c)));
+      setSelectedContact(updated);
       setAttachTagId("");
       showToast("success", "Tag attached.");
     } catch {
@@ -317,6 +320,7 @@ export function ContactsPage() {
         body: JSON.stringify({ tag_id: newTag.id }),
       });
       setContacts((current) => current.map((c) => (c.id === contactId ? updated : c)));
+      setSelectedContact(updated);
       setNewTagName("");
       showToast("success", "Tag created and attached.");
     } catch {
@@ -334,6 +338,7 @@ export function ContactsPage() {
         method: "DELETE",
       });
       setContacts((current) => current.map((c) => (c.id === contactId ? updated : c)));
+      setSelectedContact(updated);
       showToast("success", "Tag removed.");
     } catch {
       showToast("error", "Could not remove tag.");
@@ -533,8 +538,6 @@ export function ContactsPage() {
             </div>
 
             {visibleContacts.map((contact) => {
-              const isExpanded = expandedId === contact.id;
-
               return (
                 <div key={contact.id} className={styles.contactBlock}>
                   <div className={styles.row}>
@@ -565,296 +568,328 @@ export function ContactsPage() {
                       <button
                         type="button"
                         className={styles.viewButton}
-                        onClick={() => toggleExpand(contact)}
+                        onClick={() => openContactModal(contact)}
                       >
-                        {isExpanded ? "Close" : "View"}
+                        View
                       </button>
                     </div>
                   </div>
-
-                  {isExpanded && (
-                    <div className={styles.detailPanel}>
-                      {!canManage && (
-                        <p className={styles.readOnlyNote} style={{ marginBottom: 12 }}>
-                          You have view-only access to contacts.
-                        </p>
-                      )}
-
-                      <div className={styles.detailMeta}>
-                        <span>Created {new Date(contact.created_at).toLocaleString()}</span>
-                        <span>Updated {new Date(contact.updated_at).toLocaleString()}</span>
-                      </div>
-
-                      {/* Tag management */}
-                      <div className={styles.tagList}>
-                        {contact.tags.map((tagItem) => {
-                          const tag = getTagInfo(tagItem);
-                          return (
-                            <span key={tag.id} className={styles.tagChip}>
-                              <span>{tag.name}</span>
-                              {canManage && (
-                                <button
-                                  type="button"
-                                  disabled={tagActionPending}
-                                  className={styles.tagRemoveButton}
-                                  onClick={() => handleDetachTag(contact.id, tagItem)}
-                                  aria-label={`Remove tag ${tag.name}`}
-                                >
-                                  ×
-                                </button>
-                              )}
-                            </span>
-                          );
-                        })}
-                      </div>
-
-                      {canManage && (
-                        <div className={styles.attachTagRow}>
-                          <select
-                            value={attachTagId}
-                            onChange={(e) => setAttachTagId(e.target.value)}
-                            className={styles.select}
-                            aria-label="Attach an existing tag"
-                          >
-                            <option value="">Attach a tag...</option>
-                            {tags
-                              .filter(
-                                (t) =>
-                                  !contact.tags.some((ct) => {
-                                    const info = getTagInfo(ct);
-                                    return info.id === t.id || info.name === t.name;
-                                  }),
-                              )
-                              .map((t) => (
-                                <option key={t.id} value={t.id}>
-                                  {t.name}
-                                </option>
-                              ))}
-                          </select>
-                          <button
-                            type="button"
-                            disabled={!attachTagId || tagActionPending}
-                            className={styles.viewButton}
-                            onClick={() => handleAttachExistingTag(contact.id)}
-                          >
-                            Attach
-                          </button>
-
-                          <div className={styles.newTagForm}>
-                            <input
-                              type="text"
-                              placeholder="New tag name"
-                              value={newTagName}
-                              onChange={(e) => setNewTagName(e.target.value)}
-                              className={styles.input}
-                              style={{ width: 160 }}
-                              aria-label="New tag name"
-                            />
-                            <button
-                              type="button"
-                              disabled={!newTagName.trim() || tagActionPending}
-                              className={styles.viewButton}
-                              onClick={() => handleCreateAndAttachTag(contact.id)}
-                            >
-                              + New tag
-                            </button>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Consent section */}
-                      <div style={{ margin: "16px 0" }}>
-                        <h4
-                          style={{
-                            fontSize: 13,
-                            fontWeight: 700,
-                            margin: "0 0 8px",
-                            color: "var(--color-dark-text)",
-                          }}
-                        >
-                          Consent history
-                        </h4>
-                        {consentLoading ? (
-                          <div className={styles.description}>Loading consent history…</div>
-                        ) : consentHistory.length === 0 ? (
-                          <div className={styles.description}>No consent recorded yet.</div>
-                        ) : (
-                          <ul style={{ paddingLeft: 18, margin: "0 0 12px", fontSize: 12 }}>
-                            {consentHistory.map((rec) => (
-                              <li key={rec.id}>
-                                {rec.channel}: {rec.status} ({rec.source ?? "n/a"}) at{" "}
-                                {new Date(rec.recorded_at).toLocaleString()}
-                              </li>
-                            ))}
-                          </ul>
-                        )}
-
-                        {canManage && (
-                          <form
-                            onSubmit={(e) => handleRecordConsent(e, contact.id)}
-                            style={{
-                              display: "flex",
-                              gap: 8,
-                              flexWrap: "wrap",
-                              alignItems: "center",
-                            }}
-                          >
-                            <select
-                              value={consentForm.channel}
-                              onChange={(e) =>
-                                setConsentForm({
-                                  ...consentForm,
-                                  channel: e.target.value as "EMAIL" | "SMS",
-                                })
-                              }
-                              className={styles.select}
-                              aria-label="Consent channel"
-                            >
-                              <option value="EMAIL">Email</option>
-                              <option value="SMS">SMS</option>
-                            </select>
-
-                            <select
-                              value={consentForm.status}
-                              onChange={(e) =>
-                                setConsentForm({
-                                  ...consentForm,
-                                  status: e.target.value as "GRANTED" | "WITHDRAWN" | "UNKNOWN",
-                                })
-                              }
-                              className={styles.select}
-                              aria-label="Consent status"
-                            >
-                              <option value="GRANTED">Granted</option>
-                              <option value="WITHDRAWN">Withdrawn</option>
-                              <option value="UNKNOWN">Unknown</option>
-                            </select>
-
-                            <input
-                              type="text"
-                              placeholder="Source (optional)"
-                              value={consentForm.source}
-                              onChange={(e) =>
-                                setConsentForm({ ...consentForm, source: e.target.value })
-                              }
-                              className={styles.input}
-                              style={{ width: 180 }}
-                              aria-label="Consent source"
-                            />
-
-                            <button
-                              type="submit"
-                              disabled={consentSubmitting}
-                              className={styles.viewButton}
-                            >
-                              Record consent
-                            </button>
-                          </form>
-                        )}
-                      </div>
-
-                      {/* Edit contact form */}
-                      {canManage && (
-                        <form
-                          className={styles.editForm}
-                          onSubmit={(e) => handleSaveEdit(e, contact.id)}
-                        >
-                          <div className={styles.createField}>
-                            <label className={styles.label} htmlFor={`edit-email-${contact.id}`}>
-                              Email
-                            </label>
-                            <input
-                              id={`edit-email-${contact.id}`}
-                              type="email"
-                              required
-                              className={styles.input}
-                              value={editForm.email}
-                              onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
-                            />
-                          </div>
-
-                          <div className={styles.createField}>
-                            <label
-                              className={styles.label}
-                              htmlFor={`edit-first-name-${contact.id}`}
-                            >
-                              First name
-                            </label>
-                            <input
-                              id={`edit-first-name-${contact.id}`}
-                              type="text"
-                              className={styles.input}
-                              value={editForm.first_name}
-                              onChange={(e) =>
-                                setEditForm({ ...editForm, first_name: e.target.value })
-                              }
-                            />
-                          </div>
-
-                          <div className={styles.createField}>
-                            <label
-                              className={styles.label}
-                              htmlFor={`edit-last-name-${contact.id}`}
-                            >
-                              Last name
-                            </label>
-                            <input
-                              id={`edit-last-name-${contact.id}`}
-                              type="text"
-                              className={styles.input}
-                              value={editForm.last_name}
-                              onChange={(e) =>
-                                setEditForm({ ...editForm, last_name: e.target.value })
-                              }
-                            />
-                          </div>
-
-                          <div className={styles.createField}>
-                            <label className={styles.label} htmlFor={`edit-phone-${contact.id}`}>
-                              Phone
-                            </label>
-                            <input
-                              id={`edit-phone-${contact.id}`}
-                              type="text"
-                              className={styles.input}
-                              value={editForm.phone}
-                              onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
-                            />
-                          </div>
-
-                          <button type="submit" disabled={saving} className={styles.submit}>
-                            {saving ? "Saving..." : "Save changes"}
-                          </button>
-
-                          {contact.status === "ACTIVE" ? (
-                            <button
-                              type="button"
-                              disabled={statusPendingId === contact.id}
-                              className={styles.cancel}
-                              onClick={() => setStatus(contact.id, "ARCHIVED")}
-                            >
-                              Archive
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              disabled={statusPendingId === contact.id}
-                              className={styles.viewButton}
-                              onClick={() => setStatus(contact.id, "ACTIVE")}
-                            >
-                              Unarchive
-                            </button>
-                          )}
-                        </form>
-                      )}
-                    </div>
-                  )}
                 </div>
               );
             })}
           </div>
         )}
       </div>
+
+      {/* Contact Details & Edit Modal Overlay */}
+      {selectedContact && (
+        <div
+          className={styles.modalBackdrop}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) closeContactModal();
+          }}
+        >
+          <div className={styles.modalContent}>
+            <div className={styles.modalHeader}>
+              <div className={styles.identity}>
+                <div className={styles.avatar} style={{ width: 44, height: 44, fontSize: 16 }}>
+                  {initialsFor(selectedContact)}
+                </div>
+                <div>
+                  <h3 className={styles.name} style={{ fontSize: 18 }}>
+                    {displayName(selectedContact)}
+                  </h3>
+                  <div className={styles.email} style={{ fontSize: 14 }}>
+                    {selectedContact.email}
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                className={styles.modalCloseButton}
+                onClick={closeContactModal}
+                aria-label="Close modal"
+              >
+                Close
+              </button>
+            </div>
+
+            <div
+              className={styles.detailPanel}
+              style={{ margin: 0, padding: 0, background: "transparent" }}
+            >
+              {!canManage && (
+                <p className={styles.readOnlyNote} style={{ marginBottom: 12 }}>
+                  You have view-only access to contacts.
+                </p>
+              )}
+
+              <div className={styles.detailMeta}>
+                <span>Created {new Date(selectedContact.created_at).toLocaleString()}</span>
+                <span>Updated {new Date(selectedContact.updated_at).toLocaleString()}</span>
+              </div>
+
+              {/* Tag management */}
+              <div className={styles.tagList}>
+                {selectedContact.tags.map((tagItem) => {
+                  const tag = getTagInfo(tagItem);
+                  return (
+                    <span key={tag.id} className={styles.tagChip}>
+                      <span>{tag.name}</span>
+                      {canManage && (
+                        <button
+                          type="button"
+                          disabled={tagActionPending}
+                          className={styles.tagRemoveButton}
+                          onClick={() => handleDetachTag(selectedContact.id, tagItem)}
+                          aria-label={`Remove tag ${tag.name}`}
+                        >
+                          ×
+                        </button>
+                      )}
+                    </span>
+                  );
+                })}
+              </div>
+
+              {canManage && (
+                <div className={styles.attachTagRow}>
+                  <select
+                    value={attachTagId}
+                    onChange={(e) => setAttachTagId(e.target.value)}
+                    className={styles.select}
+                    aria-label="Attach an existing tag"
+                  >
+                    <option value="">Attach a tag...</option>
+                    {tags
+                      .filter(
+                        (t) =>
+                          !selectedContact.tags.some((ct) => {
+                            const info = getTagInfo(ct);
+                            return info.id === t.id || info.name === t.name;
+                          }),
+                      )
+                      .map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.name}
+                        </option>
+                      ))}
+                  </select>
+                  <button
+                    type="button"
+                    disabled={!attachTagId || tagActionPending}
+                    className={styles.viewButton}
+                    onClick={() => handleAttachExistingTag(selectedContact.id)}
+                  >
+                    Attach
+                  </button>
+
+                  <div className={styles.newTagForm}>
+                    <input
+                      type="text"
+                      placeholder="New tag name"
+                      value={newTagName}
+                      onChange={(e) => setNewTagName(e.target.value)}
+                      className={styles.input}
+                      style={{ width: 160 }}
+                      aria-label="New tag name"
+                    />
+                    <button
+                      type="button"
+                      disabled={!newTagName.trim() || tagActionPending}
+                      className={styles.viewButton}
+                      onClick={() => handleCreateAndAttachTag(selectedContact.id)}
+                    >
+                      + New tag
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Consent section */}
+              <div style={{ margin: "20px 0" }}>
+                <h4
+                  style={{
+                    fontSize: 14,
+                    fontWeight: 700,
+                    margin: "0 0 10px",
+                    color: "var(--color-dark-text)",
+                  }}
+                >
+                  Consent history
+                </h4>
+                {consentLoading ? (
+                  <div className={styles.description}>Loading consent history…</div>
+                ) : consentHistory.length === 0 ? (
+                  <div className={styles.description}>No consent recorded yet.</div>
+                ) : (
+                  <ul style={{ paddingLeft: 18, margin: "0 0 14px", fontSize: 13 }}>
+                    {consentHistory.map((rec) => (
+                      <li key={rec.id}>
+                        {rec.channel}: {rec.status} ({rec.source ?? "n/a"}) at{" "}
+                        {new Date(rec.recorded_at).toLocaleString()}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+
+                {canManage && (
+                  <form
+                    onSubmit={(e) => handleRecordConsent(e, selectedContact.id)}
+                    style={{
+                      display: "flex",
+                      gap: 8,
+                      flexWrap: "wrap",
+                      alignItems: "center",
+                    }}
+                  >
+                    <select
+                      value={consentForm.channel}
+                      onChange={(e) =>
+                        setConsentForm({
+                          ...consentForm,
+                          channel: e.target.value as "EMAIL" | "SMS",
+                        })
+                      }
+                      className={styles.select}
+                      aria-label="Consent channel"
+                    >
+                      <option value="EMAIL">Email</option>
+                      <option value="SMS">SMS</option>
+                    </select>
+
+                    <select
+                      value={consentForm.status}
+                      onChange={(e) =>
+                        setConsentForm({
+                          ...consentForm,
+                          status: e.target.value as "GRANTED" | "WITHDRAWN" | "UNKNOWN",
+                        })
+                      }
+                      className={styles.select}
+                      aria-label="Consent status"
+                    >
+                      <option value="GRANTED">Granted</option>
+                      <option value="WITHDRAWN">Withdrawn</option>
+                      <option value="UNKNOWN">Unknown</option>
+                    </select>
+
+                    <input
+                      type="text"
+                      placeholder="Source (optional)"
+                      value={consentForm.source}
+                      onChange={(e) => setConsentForm({ ...consentForm, source: e.target.value })}
+                      className={styles.input}
+                      style={{ width: 180 }}
+                      aria-label="Consent source"
+                    />
+
+                    <button
+                      type="submit"
+                      disabled={consentSubmitting}
+                      className={styles.viewButton}
+                    >
+                      Record consent
+                    </button>
+                  </form>
+                )}
+              </div>
+
+              {/* Edit contact form */}
+              {canManage && (
+                <form
+                  className={styles.editForm}
+                  onSubmit={(e) => handleSaveEdit(e, selectedContact.id)}
+                  style={{ marginTop: 20 }}
+                >
+                  <div className={styles.createField}>
+                    <label className={styles.label} htmlFor={`edit-email-${selectedContact.id}`}>
+                      Email
+                    </label>
+                    <input
+                      id={`edit-email-${selectedContact.id}`}
+                      type="email"
+                      required
+                      className={styles.input}
+                      value={editForm.email}
+                      onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                    />
+                  </div>
+
+                  <div className={styles.createField}>
+                    <label
+                      className={styles.label}
+                      htmlFor={`edit-first-name-${selectedContact.id}`}
+                    >
+                      First name
+                    </label>
+                    <input
+                      id={`edit-first-name-${selectedContact.id}`}
+                      type="text"
+                      className={styles.input}
+                      value={editForm.first_name}
+                      onChange={(e) => setEditForm({ ...editForm, first_name: e.target.value })}
+                    />
+                  </div>
+
+                  <div className={styles.createField}>
+                    <label
+                      className={styles.label}
+                      htmlFor={`edit-last-name-${selectedContact.id}`}
+                    >
+                      Last name
+                    </label>
+                    <input
+                      id={`edit-last-name-${selectedContact.id}`}
+                      type="text"
+                      className={styles.input}
+                      value={editForm.last_name}
+                      onChange={(e) => setEditForm({ ...editForm, last_name: e.target.value })}
+                    />
+                  </div>
+
+                  <div className={styles.createField}>
+                    <label className={styles.label} htmlFor={`edit-phone-${selectedContact.id}`}>
+                      Phone
+                    </label>
+                    <input
+                      id={`edit-phone-${selectedContact.id}`}
+                      type="text"
+                      className={styles.input}
+                      value={editForm.phone}
+                      onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                    />
+                  </div>
+
+                  <button type="submit" disabled={saving} className={styles.submit}>
+                    {saving ? "Saving..." : "Save changes"}
+                  </button>
+
+                  {selectedContact.status === "ACTIVE" ? (
+                    <button
+                      type="button"
+                      disabled={statusPendingId === selectedContact.id}
+                      className={styles.cancel}
+                      onClick={() => setStatus(selectedContact.id, "ARCHIVED")}
+                    >
+                      Archive
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={statusPendingId === selectedContact.id}
+                      className={styles.viewButton}
+                      onClick={() => setStatus(selectedContact.id, "ACTIVE")}
+                    >
+                      Unarchive
+                    </button>
+                  )}
+                </form>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

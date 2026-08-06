@@ -364,10 +364,7 @@
 }
 
 .detailPanel {
-  padding: 16px 20px 24px 20px;
-  background: #f8fafc;
-  border-radius: 12px;
-  margin: 8px 16px 16px 16px;
+  padding: 0;
 }
 
 .detailMeta {
@@ -375,7 +372,7 @@
   gap: 16px;
   font-size: 12px;
   color: var(--color-slate);
-  margin-bottom: 12px;
+  margin-bottom: 16px;
 }
 
 .tagList {
@@ -460,4 +457,67 @@
   color: var(--color-slate);
   font-size: 13px;
   margin: 0;
+}
+
+/* Modal Overlay Styling */
+.modalBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(11, 27, 51, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  overflow-y: auto;
+}
+
+.modalContent {
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+  width: 100%;
+  max-width: 680px;
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 28px;
+  position: relative;
+  animation: modalFadeIn 0.2s ease;
+}
+
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.modalHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(15, 42, 86, 0.08);
+}
+
+.modalCloseButton {
+  background: none;
+  border: 1px solid rgba(15, 42, 86, 0.14);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--color-dark-text);
+  transition: all 0.15s ease;
+}
+
+.modalCloseButton:hover {
+  background: #f8fafc;
 }
