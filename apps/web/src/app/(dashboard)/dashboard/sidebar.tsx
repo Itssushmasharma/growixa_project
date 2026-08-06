@@ -185,8 +185,10 @@ export function Sidebar({ permissions, open, onClose }: SidebarProps) {
               {expanded &&
                 items.map((item) => {
                   const isActive =
-                    pathname === item.href ||
-                    (item.href !== "/dashboard" && pathname.startsWith(`${item.href}/`));
+                    item.href === "/dashboard/contacts" || item.href === "/dashboard/campaigns"
+                      ? pathname === item.href
+                      : pathname === item.href ||
+                        (item.href !== "/dashboard" && pathname.startsWith(`${item.href}/`));
                   return (
                     <Link
                       key={item.href}
