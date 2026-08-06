@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from growixa_api.db import get_session
-from growixa_api.permissions.dependencies import require_permission
+from growixa_api.permissions.dependencies import get_current_account_id, require_permission
 from growixa_api.users.models import User
 from growixa_api.users.schemas import (
     AcceptInvitationIn,
@@ -48,11 +48,13 @@ def _to_list_item(user: User, roles: list[str]) -> UserListItemOut:
 async def create_invitation_route(
     payload: InviteUserIn,
     actor_id: uuid.UUID = Depends(_require_manage),
+    account_id: uuid.UUID = Depends(get_current_account_id),
     session: AsyncSession = Depends(get_session),
 ) -> InviteUserOut:
     try:
         invitation, raw_token = await invite_user_service(
             session,
+            account_id=account_id,
             email=payload.email,
             role_name=payload.role_name,
             invited_by_user_id=actor_id,
@@ -97,9 +99,10 @@ async def accept_invitation_route(
 @router.get("", response_model=list[UserListItemOut])
 async def list_users_route(
     _actor_id: uuid.UUID = Depends(_require_manage),
+    account_id: uuid.UUID = Depends(get_current_account_id),
     session: AsyncSession = Depends(get_session),
 ) -> list[UserListItemOut]:
-    users_with_roles = await list_users_with_roles_service(session)
+    users_with_roles = await list_users_with_roles_service(session, account_id=account_id)
     return [_to_list_item(user, roles) for user, roles in users_with_roles]
 
 
@@ -108,11 +111,16 @@ async def update_user_status_route(
     user_id: uuid.UUID,
     payload: UpdateUserStatusIn,
     actor_id: uuid.UUID = Depends(_require_manage),
+    account_id: uuid.UUID = Depends(get_current_account_id),
     session: AsyncSession = Depends(get_session),
 ) -> UserListItemOut:
     try:
         user, roles = await update_user_status_service(
-            session, actor_id=actor_id, user_id=user_id, status=payload.status
+            session,
+            account_id=account_id,
+            actor_id=actor_id,
+            user_id=user_id,
+            status=payload.status,
         )
     except UserNotFoundError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found") from exc
@@ -129,11 +137,16 @@ async def update_user_role_route(
     user_id: uuid.UUID,
     payload: UpdateUserRoleIn,
     actor_id: uuid.UUID = Depends(_require_manage),
+    account_id: uuid.UUID = Depends(get_current_account_id),
     session: AsyncSession = Depends(get_session),
 ) -> UserListItemOut:
     try:
         user, roles = await update_user_role_service(
-            session, actor_id=actor_id, user_id=user_id, role_name=payload.role_name
+            session,
+            account_id=account_id,
+            actor_id=actor_id,
+            user_id=user_id,
+            role_name=payload.role_name,
         )
     except UserNotFoundError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found") from exc

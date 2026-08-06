@@ -14,6 +14,16 @@ class User(Base):
     __table_args__ = (CheckConstraint("status IN ('ACTIVE', 'DISABLED')", name="ck_users_status"),)
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    # GRX-SAAS-001: which customer account this user belongs to. email stays GLOBALLY
+    # unique (not per-account) deliberately -- login resolves a user by email alone before
+    # any account is known, per SPRINT_05's Phase C default ("one email = one platform
+    # identity"). A composite (account_id, email) unique would make login ambiguous.
+    account_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("accounts.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     email: Mapped[str] = mapped_column(CITEXT, unique=True, nullable=False)
     password_hash: Mapped[str] = mapped_column(Text, nullable=False)
     full_name: Mapped[str] = mapped_column(Text, nullable=False)
@@ -30,6 +40,15 @@ class User(Base):
 class UserRole(Base):
     __tablename__ = "user_roles"
 
+    # Denormalized from user_id's own account_id (defense-in-depth, per SPRINT_05 Phase A
+    # -- every account-owned table carries account_id directly rather than relying solely
+    # on a join to prove isolation).
+    account_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("accounts.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
     )
@@ -58,6 +77,14 @@ class UserInvitation(Base):
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    # The account the invited user will join on acceptance -- set from the inviting
+    # actor's own account_id at creation time (GRX-SAAS-001).
+    account_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("accounts.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     email: Mapped[str] = mapped_column(CITEXT, nullable=False, index=True)
     token_hash: Mapped[str] = mapped_column(Text, unique=True, nullable=False)
     role_id: Mapped[uuid.UUID] = mapped_column(

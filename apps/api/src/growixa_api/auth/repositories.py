@@ -11,6 +11,7 @@ from growixa_api.auth.models import PasswordResetToken, RefreshToken
 async def create_refresh_token(
     session: AsyncSession,
     *,
+    account_id: uuid.UUID,
     user_id: uuid.UUID,
     token_hash: str,
     expires_at: datetime,
@@ -18,6 +19,7 @@ async def create_refresh_token(
     ip_address: str | None,
 ) -> RefreshToken:
     token = RefreshToken(
+        account_id=account_id,
         user_id=user_id,
         token_hash=token_hash,
         expires_at=expires_at,
@@ -50,11 +52,14 @@ async def list_active_refresh_tokens_for_user(
 async def create_password_reset_token(
     session: AsyncSession,
     *,
+    account_id: uuid.UUID,
     user_id: uuid.UUID,
     token_hash: str,
     expires_at: datetime,
 ) -> PasswordResetToken:
-    token = PasswordResetToken(user_id=user_id, token_hash=token_hash, expires_at=expires_at)
+    token = PasswordResetToken(
+        account_id=account_id, user_id=user_id, token_hash=token_hash, expires_at=expires_at
+    )
     session.add(token)
     await session.flush()
     return token

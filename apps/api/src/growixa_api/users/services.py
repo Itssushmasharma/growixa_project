@@ -52,6 +52,7 @@ class SelfActionNotAllowedError(Exception):
 async def invite_user(
     session: AsyncSession,
     *,
+    account_id: uuid.UUID,
     email: str,
     role_name: str,
     invited_by_user_id: uuid.UUID,
@@ -67,6 +68,7 @@ async def invite_user(
     expires_at = datetime.now(UTC) + timedelta(days=get_settings().invitation_ttl_days)
     invitation = await create_invitation(
         session,
+        account_id=account_id,
         email=email,
         token_hash=hash_token(raw_token),
         role_id=role.id,
@@ -98,12 +100,14 @@ async def accept_invitation(
 
     user = await create_user(
         session,
+        account_id=invitation.account_id,
         email=invitation.email,
         password_hash=hash_password(password),
         full_name=full_name,
     )
     session.add(
         UserRole(
+            account_id=invitation.account_id,
             user_id=user.id,
             role_id=invitation.role_id,
             assigned_by_user_id=invitation.invited_by_user_id,
@@ -124,15 +128,18 @@ async def accept_invitation(
     return user
 
 
-async def list_users_with_roles(session: AsyncSession) -> list[tuple[User, list[str]]]:
-    users = await list_users(session)
-    role_map = await list_role_names_by_user_id(session)
+async def list_users_with_roles(
+    session: AsyncSession, *, account_id: uuid.UUID
+) -> list[tuple[User, list[str]]]:
+    users = await list_users(session, account_id=account_id)
+    role_map = await list_role_names_by_user_id(session, account_id=account_id)
     return [(user, role_map.get(user.id, [])) for user in users]
 
 
 async def update_user_status(
     session: AsyncSession,
     *,
+    account_id: uuid.UUID,
     actor_id: uuid.UUID,
     user_id: uuid.UUID,
     status: str,
@@ -140,7 +147,7 @@ async def update_user_status(
     if user_id == actor_id and status == "DISABLED":
         raise SelfActionNotAllowedError
 
-    user = await get_user_by_id(session, user_id)
+    user = await get_user_by_id(session, user_id, account_id=account_id)
     if user is None:
         raise UserNotFoundError
 
@@ -159,11 +166,12 @@ async def update_user_status(
 async def update_user_role(
     session: AsyncSession,
     *,
+    account_id: uuid.UUID,
     actor_id: uuid.UUID,
     user_id: uuid.UUID,
     role_name: str,
 ) -> tuple[User, list[str]]:
-    user = await get_user_by_id(session, user_id)
+    user = await get_user_by_id(session, user_id, account_id=account_id)
     if user is None:
         raise UserNotFoundError
 
@@ -172,7 +180,13 @@ async def update_user_role(
         raise RoleNotFoundError
 
     old_roles = await list_role_names_for_user(session, user_id)
-    await replace_user_role(session, user_id=user_id, role_id=role.id, assigned_by_user_id=actor_id)
+    await replace_user_role(
+        session,
+        account_id=account_id,
+        user_id=user_id,
+        role_id=role.id,
+        assigned_by_user_id=actor_id,
+    )
 
     await record_event(
         session,

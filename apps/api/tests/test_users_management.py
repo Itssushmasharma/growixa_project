@@ -49,9 +49,17 @@ async def _cleanup(*user_ids: uuid.UUID) -> None:
 @pytest.mark.integration
 async def test_admin_can_list_users_with_roles_and_status(
     user_factory: Callable[..., Awaitable[uuid.UUID]],
+    account_factory: Callable[..., Awaitable[uuid.UUID]],
 ) -> None:
-    admin_id = await user_factory(full_name="Listing Admin", role_name="Admin")
-    viewer_id = await user_factory(full_name="Listed Viewer", role_name="Viewer")
+    # Same account (GRX-SAAS-001): the admin must only see colleagues in their own
+    # account, so both users need to share one explicitly, not two auto-created ones.
+    account_id = await account_factory()
+    admin_id = await user_factory(
+        full_name="Listing Admin", role_name="Admin", account_id=account_id
+    )
+    viewer_id = await user_factory(
+        full_name="Listed Viewer", role_name="Viewer", account_id=account_id
+    )
 
     transport = ASGITransport(app=create_app())
     async with AsyncClient(
@@ -92,15 +100,22 @@ async def test_non_admin_cannot_list_users(
 @pytest.mark.integration
 async def test_admin_can_disable_a_user_which_revokes_their_sessions(
     user_factory: Callable[..., Awaitable[uuid.UUID]],
+    account_factory: Callable[..., Awaitable[uuid.UUID]],
 ) -> None:
-    admin_id = await user_factory(full_name="Disabling Admin", role_name="Admin")
-    target_id = await user_factory(full_name="Target User", role_name="Viewer")
+    account_id = await account_factory()
+    admin_id = await user_factory(
+        full_name="Disabling Admin", role_name="Admin", account_id=account_id
+    )
+    target_id = await user_factory(
+        full_name="Target User", role_name="Viewer", account_id=account_id
+    )
 
     # give the target user an active session to prove disabling revokes it
     raw_refresh = generate_refresh_token()
     async with async_session_factory() as session:
         session.add(
             RefreshToken(
+                account_id=account_id,
                 user_id=target_id,
                 token_hash=hash_refresh_token(raw_refresh),
                 expires_at=refresh_token_expiry(),
@@ -182,9 +197,13 @@ async def test_disabling_an_unknown_user_is_404(
 @pytest.mark.integration
 async def test_admin_can_change_a_users_role(
     user_factory: Callable[..., Awaitable[uuid.UUID]],
+    account_factory: Callable[..., Awaitable[uuid.UUID]],
 ) -> None:
-    admin_id = await user_factory(full_name="Role Admin", role_name="Admin")
-    target_id = await user_factory(full_name="Role Target", role_name="Viewer")
+    account_id = await account_factory()
+    admin_id = await user_factory(full_name="Role Admin", role_name="Admin", account_id=account_id)
+    target_id = await user_factory(
+        full_name="Role Target", role_name="Viewer", account_id=account_id
+    )
 
     transport = ASGITransport(app=create_app())
     async with AsyncClient(
@@ -216,9 +235,13 @@ async def test_admin_can_change_a_users_role(
 @pytest.mark.integration
 async def test_changing_to_an_unknown_role_is_rejected(
     user_factory: Callable[..., Awaitable[uuid.UUID]],
+    account_factory: Callable[..., Awaitable[uuid.UUID]],
 ) -> None:
-    admin_id = await user_factory(full_name="Role Admin", role_name="Admin")
-    target_id = await user_factory(full_name="Role Target", role_name="Viewer")
+    account_id = await account_factory()
+    admin_id = await user_factory(full_name="Role Admin", role_name="Admin", account_id=account_id)
+    target_id = await user_factory(
+        full_name="Role Target", role_name="Viewer", account_id=account_id
+    )
 
     transport = ASGITransport(app=create_app())
     async with AsyncClient(

@@ -81,6 +81,7 @@ async def login(
     raw_refresh_token = generate_token()
     await create_refresh_token(
         session,
+        account_id=user.account_id,
         user_id=user.id,
         token_hash=hash_token(raw_refresh_token),
         expires_at=refresh_token_expiry(),
@@ -192,6 +193,7 @@ async def refresh(
     raw_new_refresh_token = generate_token()
     new_token = await create_refresh_token(
         session,
+        account_id=user.account_id,
         user_id=user.id,
         token_hash=hash_token(raw_new_refresh_token),
         expires_at=refresh_token_expiry(),
@@ -247,6 +249,7 @@ async def request_password_reset(session: AsyncSession, *, email: str) -> str | 
     raw_token = generate_token()
     await create_password_reset_token(
         session,
+        account_id=user.account_id,
         user_id=user.id,
         token_hash=hash_token(raw_token),
         expires_at=datetime.now(UTC) + timedelta(minutes=get_settings().password_reset_ttl_minutes),
