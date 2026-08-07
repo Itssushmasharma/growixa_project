@@ -14,6 +14,7 @@ from starlette.routing import BaseRoute
 
 from growixa_api.app import create_app
 from growixa_api.permissions.dependencies import RequirePermission
+from growixa_api.platform_auth.dependencies import RequirePlatformPermission
 
 # FastAPI's own /docs, /redoc, /openapi.json routes are plain Starlette Routes, not
 # APIRoute, so they're already excluded by the isinstance check below and don't need to be
@@ -33,6 +34,9 @@ from growixa_api.permissions.dependencies import RequirePermission
 # fully public by design: the recipient clicking it has no account, identified only by
 # the unguessable campaign_recipient_id UUID in the link itself (same shape as the
 # invitation-accept token).
+# /platform/auth/login, /platform/auth/logout, /platform/auth/me are the platform-admin
+# analogues of the /auth/* routes above, for the exact same reasons — see
+# RequirePlatformPermission's own coverage below (GRX-SAAS-002 Phase B).
 PUBLIC_ROUTE_PATHS = {
     "/health",
     "/auth/login",
@@ -45,6 +49,9 @@ PUBLIC_ROUTE_PATHS = {
     "/users/invitations/accept",
     "/webhooks/postmark",
     "/unsubscribe/{campaign_recipient_id}",
+    "/platform/auth/login",
+    "/platform/auth/logout",
+    "/platform/auth/me",
 }
 
 
@@ -83,4 +90,41 @@ def test_every_non_public_route_requires_a_permission() -> None:
         assert _is_permission_protected(route.dependant), (
             f"{route.path} is neither guarded by require_permission() nor listed in "
             "PUBLIC_ROUTE_PATHS"
+        )
+
+
+def _is_platform_permission_protected(dependant: Dependant) -> bool:
+    for dependency in dependant.dependencies:
+        if isinstance(dependency.call, RequirePlatformPermission):
+            return True
+        if _is_platform_permission_protected(dependency):
+            return True
+    return False
+
+
+def test_require_permission_and_require_platform_permission_are_distinct_classes() -> None:
+    """GRX-SAAS-002 Phase B's own acceptance criterion: the two dependency classes must
+    be structurally separate, not the same function with a flag — accidentally using
+    the wrong one on a route must be a type error waiting to happen, not a runtime
+    footgun. See RBAC.md's Sprint 5 Phase B section and THREAT_MODEL.md's T21."""
+    assert not issubclass(RequirePlatformPermission, RequirePermission)
+    assert not issubclass(RequirePermission, RequirePlatformPermission)
+
+
+def test_no_route_is_guarded_by_both_permission_classes_at_once() -> None:
+    """No route may accidentally mix an account-scoped permission check with a
+    platform-scoped one — that combination would mean a route is reachable by whichever
+    identity class satisfies either check, defeating the whole point of the boundary."""
+    app = create_app()
+
+    routes = list(_iter_api_routes(app.routes))
+    assert routes, "expected at least one APIRoute to audit"
+
+    for route in routes:
+        account_scoped = _is_permission_protected(route.dependant)
+        platform_scoped = _is_platform_permission_protected(route.dependant)
+        assert not (account_scoped and platform_scoped), (
+            f"{route.path} is guarded by both require_permission() and "
+            "require_platform_permission() — a route must use exactly one identity "
+            "class's dependency, never both"
         )

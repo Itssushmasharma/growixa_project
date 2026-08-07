@@ -20,6 +20,7 @@ from growixa_api.db import Base
 from growixa_api.email_delivery import models as email_delivery_models  # noqa: F401
 from growixa_api.integrations import models as integrations_models  # noqa: F401
 from growixa_api.permissions import models as permissions_models  # noqa: F401
+from growixa_api.platform_auth import models as platform_auth_models  # noqa: F401
 from growixa_api.roles import models as roles_models  # noqa: F401
 from growixa_api.templates import models as templates_models  # noqa: F401
 from growixa_api.usage import models as usage_models  # noqa: F401

@@ -23,6 +23,7 @@ from growixa_api.email_delivery.api import router as email_delivery_router
 from growixa_api.health import router as health_router
 from growixa_api.integrations.api import router as integrations_router
 from growixa_api.jobs.api import router as jobs_router
+from growixa_api.platform_auth.api import router as platform_auth_router
 from growixa_api.roles.api import router as roles_router
 from growixa_api.templates.api import router as templates_router
 from growixa_api.users.api import router as users_router
@@ -59,6 +60,7 @@ def create_app() -> FastAPI:
     )
     app.include_router(health_router)
     app.include_router(auth_router)
+    app.include_router(platform_auth_router)
     app.include_router(company_router)
     app.include_router(brand_router)
     app.include_router(users_router)

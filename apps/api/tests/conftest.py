@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from growixa_api.accounts.models import Account
 from growixa_api.auth.security import hash_password
 from growixa_api.db import async_session_factory
+from growixa_api.platform_auth.models import PlatformAdmin
 from growixa_api.roles.models import Role
 from growixa_api.users.models import User, UserRole
 
@@ -130,4 +131,41 @@ async def user_factory() -> AsyncGenerator[Callable[..., Awaitable[uuid.UUID]], 
         await session.commit()
         for account_id in auto_created_account_ids:
             await session.execute(delete(Account).where(Account.id == account_id))
+        await session.commit()
+
+
+@pytest.fixture
+async def platform_admin_factory() -> AsyncGenerator[Callable[..., Awaitable[uuid.UUID]], None]:
+    """Creates a real platform_admins row (GRX-SAAS-002) with a real Argon2 hash of
+    DEFAULT_TEST_PASSWORD unless overridden; deletes every row it created when the test
+    ends. No account_id -- platform admins are structurally outside the accounts/users
+    hierarchy, see DEC-GRX-018."""
+    created_ids: list[uuid.UUID] = []
+
+    async def factory(
+        *,
+        full_name: str = "Test Platform Admin",
+        role: str = "platform.admin",
+        password: str = DEFAULT_TEST_PASSWORD,
+        email: str | None = None,
+        status: str = "ACTIVE",
+    ) -> uuid.UUID:
+        async with async_session_factory() as session:
+            admin = PlatformAdmin(
+                email=email or f"{uuid.uuid4()}@iitdeveloper.com",
+                password_hash=hash_password(password),
+                full_name=full_name,
+                role=role,
+                status=status,
+            )
+            session.add(admin)
+            await session.commit()
+            created_ids.append(admin.id)
+            return admin.id
+
+    yield factory
+
+    async with async_session_factory() as session:
+        for admin_id in created_ids:
+            await session.execute(delete(PlatformAdmin).where(PlatformAdmin.id == admin_id))
         await session.commit()
