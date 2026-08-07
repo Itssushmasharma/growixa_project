@@ -4,6 +4,11 @@ Per TEST_STRATEGY.md's RBAC section: a dedicated test proves require_permission(
 actually attached to every non-public route, so a future route can't accidentally ship
 unprotected. Currently trivial (the only route is the public /health check) — it starts
 doing real work the moment the first protected route is added.
+
+Since GRX-SAAS-005 (the first real feature route under require_platform_permission()),
+"protected" means guarded by either permission class — the two-classes-never-both
+invariant is enforced separately below by
+test_no_route_is_guarded_by_both_permission_classes_at_once.
 """
 
 from collections.abc import Iterator
@@ -83,6 +88,15 @@ def _is_permission_protected(dependant: Dependant) -> bool:
     return False
 
 
+def _is_platform_permission_protected(dependant: Dependant) -> bool:
+    for dependency in dependant.dependencies:
+        if isinstance(dependency.call, RequirePlatformPermission):
+            return True
+        if _is_platform_permission_protected(dependency):
+            return True
+    return False
+
+
 def test_every_non_public_route_requires_a_permission() -> None:
     app = create_app()
 
@@ -92,19 +106,13 @@ def test_every_non_public_route_requires_a_permission() -> None:
     for route in routes:
         if route.path in PUBLIC_ROUTE_PATHS:
             continue
-        assert _is_permission_protected(route.dependant), (
-            f"{route.path} is neither guarded by require_permission() nor listed in "
-            "PUBLIC_ROUTE_PATHS"
+        protected = _is_permission_protected(route.dependant) or _is_platform_permission_protected(
+            route.dependant
         )
-
-
-def _is_platform_permission_protected(dependant: Dependant) -> bool:
-    for dependency in dependant.dependencies:
-        if isinstance(dependency.call, RequirePlatformPermission):
-            return True
-        if _is_platform_permission_protected(dependency):
-            return True
-    return False
+        assert protected, (
+            f"{route.path} is neither guarded by require_permission() nor "
+            "require_platform_permission(), nor listed in PUBLIC_ROUTE_PATHS"
+        )
 
 
 def test_require_permission_and_require_platform_permission_are_distinct_classes() -> None:

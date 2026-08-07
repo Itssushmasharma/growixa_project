@@ -3,6 +3,7 @@ from datetime import UTC, datetime, timedelta
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from growixa_api.accounts.models import Account
 from growixa_api.audit.services import record_event
 from growixa_api.auth.repositories import (
     create_password_reset_token,
@@ -54,9 +55,16 @@ async def login(
     ip_address: str | None,
 ) -> LoginResult:
     user = await get_user_by_email(session, email)
+    # GRX-SAAS-005 / DEC-GRX-020: accounts.status has existed since Phase A but was never
+    # read here -- a SUSPENDED/CLOSED account's users could log in normally until this
+    # check was added. Folded into the same generic `valid` failure as user.status, never
+    # a distinguishable error (THREAT_MODEL.md T11).
+    account = await session.get(Account, user.account_id) if user is not None else None
     valid = (
         user is not None
         and user.status == "ACTIVE"
+        and account is not None
+        and account.status == "ACTIVE"
         and verify_password(password, user.password_hash)
     )
 
@@ -193,6 +201,12 @@ async def refresh(
 
     user = await session.get(User, token.user_id)
     if user is None or user.status != "ACTIVE":
+        raise InvalidRefreshTokenError
+
+    # GRX-SAAS-005 / DEC-GRX-020: same accounts.status enforcement as login() -- a
+    # suspend/close takes effect on this user's very next refresh, not just at new logins.
+    account = await session.get(Account, user.account_id)
+    if account is None or account.status != "ACTIVE":
         raise InvalidRefreshTokenError
 
     new_access_token = create_access_token(user.id)

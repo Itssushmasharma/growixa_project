@@ -1,0 +1,90 @@
+.page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--gradient-login-bg);
+  padding: 24px;
+}
+
+.card {
+  width: 100%;
+  max-width: 400px;
+  padding: 40px 36px;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 32px;
+}
+
+.brandName {
+  font-size: 20px;
+  font-weight: 800;
+  color: #fff;
+  line-height: 1.1;
+}
+
+.brandCaption {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--color-nav-inactive);
+}
+
+.field {
+  margin-bottom: 18px;
+}
+
+.label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-nav-inactive);
+  margin-bottom: 6px;
+}
+
+.input {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  font-size: 14px;
+}
+
+.input:focus {
+  outline: 2px solid var(--color-mint);
+  outline-offset: 1px;
+}
+
+.input::placeholder {
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.submit {
+  width: 100%;
+  padding: 13px 16px;
+  border: none;
+  border-radius: var(--pill-radius);
+  background: var(--gradient-primary);
+  color: #fff;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  margin-top: 8px;
+}
+
+.submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

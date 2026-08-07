@@ -36,3 +36,39 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
     return null;
   }
 }
+
+export interface CurrentPlatformAdmin {
+  id: string;
+  email: string;
+  full_name: string;
+  role: string;
+  permissions: string[];
+}
+
+/**
+ * Same shape as getCurrentUser, but against the platform-admin boundary (GRX-SAAS-005) --
+ * a separate cookie (platform_access_token) and a separate identity class entirely, never
+ * mixed with the customer session above.
+ */
+export async function getCurrentPlatformAdmin(): Promise<CurrentPlatformAdmin | null> {
+  try {
+    const cookieStore = await cookies();
+    const cookieHeader = cookieStore
+      .getAll()
+      .map((cookie) => `${cookie.name}=${cookie.value}`)
+      .join("; ");
+
+    const response = await fetch(`${getServerApiUrl()}/platform/auth/me`, {
+      headers: { Cookie: cookieHeader },
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    return (await response.json()) as CurrentPlatformAdmin;
+  } catch {
+    return null;
+  }
+}

@@ -1,0 +1,76 @@
+.card {
+  background: #fff;
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
+  padding: 32px;
+}
+
+.headerTitle {
+  margin: 0 0 20px;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.headerCount {
+  font-weight: 400;
+  color: var(--color-slate);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table th {
+  text-align: left;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--color-slate);
+  padding: 0 0 10px;
+  border-bottom: 1px solid rgba(15, 42, 86, 0.1);
+}
+
+.table td {
+  padding: 14px 0;
+  border-top: 1px solid rgba(15, 42, 86, 0.08);
+  font-size: 14px;
+}
+
+.nameLink {
+  font-weight: 600;
+  color: var(--color-dark-text);
+  text-decoration: none;
+}
+
+.nameLink:hover {
+  text-decoration: underline;
+}
+
+.statusBadge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.statusActive {
+  background: rgba(34, 160, 107, 0.12);
+  color: var(--color-success);
+}
+
+.statusSuspended {
+  background: rgba(217, 119, 6, 0.12);
+  color: #b45309;
+}
+
+.statusClosed {
+  background: rgba(148, 163, 184, 0.2);
+  color: var(--color-slate);
+}
+
+.planCell {
+  color: var(--color-slate);
+  text-transform: capitalize;
+}

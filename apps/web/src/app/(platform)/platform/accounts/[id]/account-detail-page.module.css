@@ -1,0 +1,145 @@
+.card {
+  background: #fff;
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
+  padding: 32px;
+  margin-bottom: 20px;
+}
+
+.backLink {
+  display: inline-block;
+  margin-bottom: 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-slate);
+  text-decoration: none;
+}
+
+.backLink:hover {
+  text-decoration: underline;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+
+.headerTitle {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.meta {
+  color: var(--color-slate);
+  font-size: 13px;
+  margin-bottom: 20px;
+}
+
+.statusBadge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.statusActive {
+  background: rgba(34, 160, 107, 0.12);
+  color: var(--color-success);
+}
+
+.statusSuspended {
+  background: rgba(217, 119, 6, 0.12);
+  color: #b45309;
+}
+
+.statusClosed {
+  background: rgba(148, 163, 184, 0.2);
+  color: var(--color-slate);
+}
+
+.statusActions {
+  display: flex;
+  gap: 10px;
+}
+
+.statusButton {
+  padding: 8px 16px;
+  border-radius: var(--pill-radius);
+  border: 1px solid rgba(15, 42, 86, 0.14);
+  background: #fff;
+  color: var(--color-dark-text);
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.statusButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.sectionTitle {
+  margin: 0 0 14px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid rgba(15, 42, 86, 0.08);
+  font-size: 14px;
+}
+
+.row:first-of-type {
+  border-top: none;
+}
+
+.identity {
+  flex: 1;
+  min-width: 0;
+}
+
+.name {
+  font-weight: 600;
+}
+
+.email {
+  font-size: 13px;
+  color: var(--color-slate);
+}
+
+.activityRow {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 10px 0;
+  border-top: 1px solid rgba(15, 42, 86, 0.08);
+  font-size: 13px;
+}
+
+.activityRow:first-of-type {
+  border-top: none;
+}
+
+.activityAction {
+  font-weight: 600;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+.activityTime {
+  color: var(--color-slate);
+  white-space: nowrap;
+}
+
+.empty {
+  color: var(--color-slate);
+  font-size: 13px;
+}
