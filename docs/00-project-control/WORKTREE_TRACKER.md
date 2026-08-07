@@ -16,6 +16,7 @@ This document maintains a real-time record of all parallel Git worktrees, active
 
 | Worktree Directory | Branch | Feature Delivered | Merged Commit | Merged Date |
 |---|---|---|---|---|
+| `.worktrees/grx-cicd-deployment` | `feature/BACKEND/GRX-CICD-DEPLOYMENT` | Deployment CI/CD Workflows (Hugging Face Spaces API+Worker, Netlify Web Frontend, Release Orchestration) | `f146b98` | 2026-08-07 |
 | `.worktrees/grx-admin-health-panel` | `feature/FRONTEND/GRX-ADMIN-001-HEALTH-PANEL` | System Health Panel (`/admin`, real auth gate, live Postgres/Redis/RabbitMQ status, healthcheck-job trigger) | `c93af62` | 2026-08-06 |
 | `.worktrees/grx-sched-frontend` | `feature/FRONTEND/GRX-SCHED-UI` | Scheduled Campaigns UI (Send Mode selector, datetime picker, Cancel button, status badges, Scheduled tab) | `211e81d` | 2026-08-06 |
 | `.worktrees/grx-contacts-page-redesign` | `feature/FRONTEND/GRX-CONTACTS-PAGE-REDESIGN` | Contacts Page Redesign (Metric Cards, Search & Filter Toolbar, Table Grid Header, CSV Export, Frosted Glass Modal View) | `a11d261` | 2026-08-06 |
