@@ -258,25 +258,6 @@ export function TemplatesPage() {
         </div>
       </div>
 
-      {/* Hero Showcase Spotlight */}
-      <div className={styles.heroShowcase}>
-        <div className={styles.heroContent}>
-          <span className={styles.heroBadge}>✨ Featured Studio Spotlight</span>
-          <h3 className={styles.heroTitle}>High-Converting Email Templates</h3>
-          <p className={styles.heroSubtitle}>
-            Build, personalize, and test HTML email templates with version tracking. Editing saves a
-            new version — past versions are never overwritten.
-          </p>
-          {canManage && (
-            <div className={styles.heroActions}>
-              <Link href="/dashboard/templates/new" className={styles.heroPrimaryBtn}>
-                + Create New Template
-              </Link>
-            </div>
-          )}
-        </div>
-      </div>
-
       {/* Main Templates Workspace */}
       <div className={styles.card}>
         <div className={styles.headerRow}>
