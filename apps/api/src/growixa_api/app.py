@@ -8,6 +8,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from growixa_api import __version__
+from growixa_api.accounts import models as accounts_models  # noqa: F401
 from growixa_api.analytics.api import router as analytics_router
 from growixa_api.audit.api import router as audit_router
 from growixa_api.auth.api import router as auth_router
