@@ -631,3 +631,9 @@ seeds one `platform_permissions` row (`platform.accounts.manage`) and grants it 
 `platform.owner`/`platform.admin` in `platform_role_permissions`. Depends on Phase B's
 tables existing. See [DATA_MODEL.md §Sprint 5 Phase E entities](DATA_MODEL.md#sprint-5-phase-e-entities-customer-account-platform--accountuser-management-grx-saas-005)
 and [DECISIONS.md §DEC-GRX-020](../00-project-control/DECISIONS.md).
+
+Sprint 5 Phase E (`GRX-SAAS-008`): also no new tables or columns — a second data-only
+migration seeds `platform_permissions.code = 'platform.usage.manage'`, granted to
+`platform.owner`/`platform.admin`/`platform.support`. Reads existing `usage_records` and
+`campaigns` tables (see [DATA_MODEL.md §Sprint 5 Phase E entities (usage/campaign oversight)](DATA_MODEL.md#sprint-5-phase-e-entities-customer-account-platform--usage--campaign-oversight-grx-saas-008))
+and [DECISIONS.md §DEC-GRX-021](../00-project-control/DECISIONS.md).

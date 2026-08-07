@@ -524,5 +524,68 @@ Decision statuses: `PROPOSED`, `UNDER_REVIEW`, `APPROVED`, `REJECTED`, `SUPERSED
 
 ---
 
+## DEC-GRX-021: Phase E usage/campaign oversight shape — permission scope, "pause" as reused cancellation (not a new resumable state), and an aggregated (not raw) usage view
+
+- Status: APPROVED
+- Date: 2026-08-07
+- Context: `GRX-SAAS-008` (`SPRINT_05_CUSTOMER_ACCOUNT_PLATFORM.md` §Phase E) says "Per-account
+  `usage_records` view across all accounts; queued/failed campaigns across all accounts;
+  abuse controls (pause suspicious sending)." Three things left unspecified: which
+  `platform.*` role(s) get the new permission, what "pause" actually does to a campaign's
+  state machine (`campaigns.status` has no `PAUSED` value, and the only existing
+  transition mechanism — `campaigns/services.py`'s `cancel_campaign` — is terminal), and
+  whether "usage view" means a raw cross-account `usage_records` dump or something
+  smaller.
+- Decisions:
+  1. **Permission code and role grant**: one new code, `platform.usage.manage`, granted
+     to `platform.owner`, `platform.admin`, and `platform.support` — matching the
+     tracker's own stated actor ("A `platform.support`/`platform.admin` user can see any
+     account's usage and pause a suspicious campaign"); `platform.owner` gets it too per
+     its "full platform control" scope. `platform.finance`/`platform.operations` get
+     nothing from this task — usage/campaign oversight is support-facing, not
+     billing/infra-facing, per `RBAC.md`'s own role-scope table.
+  2. **"Pause" reuses the existing `CANCELLED` terminal state — it is not a new,
+     resumable `PAUSED` status.** `campaigns/services.py`'s `cancel_campaign` already
+     does exactly the "abuse control" job the tracker describes: it stops a `DRAFT` or
+     `SCHEDULED` campaign before the worker ever claims it, which is the only point at
+     which stopping a campaign is actually safe — once a campaign is `DISPATCHING` or
+     `SENDING`, the worker has already claimed and is actively processing it, and no
+     existing mechanism (in `apps/worker`'s dispatch consumer or anywhere else) checks
+     campaign status mid-send, so there is nothing today for a `PAUSED` status to
+     interrupt. Building genuine send-interruption would mean adding a status re-check
+     into the worker's active send loop — a real, separate piece of infrastructure the
+     tracker's own wording doesn't ask for and Phase E's own "trim further if a
+     capability turns out to be bigger than expected... do not silently expand scope"
+     instruction argues against speculatively building now. The platform-admin `pause`
+     endpoint therefore calls the exact same `cancel_campaign` function customers
+     already use, with the exact same `DRAFT`/`SCHEDULED`-only constraint — a platform
+     admin's "pause" and a customer's "cancel" are the same action, just invoked by a
+     different, higher-trust actor.
+  3. **Usage view is a per-account aggregate, not a raw cross-account row dump.** A
+     literal cross-account `SELECT * FROM usage_records` would return every individual
+     send event across every account with no ceiling, which is neither what "usage
+     tracking per customer" (the source language in
+     `FUTURE_SCOPE_PLATFORM_ADMIN.md#proposed-iitdeveloper-platform-admin-capabilities`)
+     asks for nor useful to look at. `GET /platform/usage` instead returns one row per
+     `(account_id, operation_type)` pair with a summed `quantity` — a single grouped
+     query, extensible to future `operation_type` values (AI credits, SMS, etc.) without
+     any schema or query-shape change, since nothing about the grouping is hardcoded to
+     `email.sent` (`usage_records`' only real writer today, per `GRX-EMAIL-004`).
+  4. **Platform-admin campaign audit attribution follows the exact `DEC-GRX-020` pattern**:
+     `audit_logs.actor_user_id` cannot reference a `platform_admins.id`, so a pause
+     records `actor_user_id=None` with the acting admin's id/email in `metadata` — no new
+     reasoning needed here, this is `DEC-GRX-020` point 3 applied to a second action type.
+- Consequences: If a genuine mid-send interruption capability is ever required (e.g. a
+  compliance mandate to stop an in-flight send), that is a real, separate piece of worker
+  infrastructure — a status re-check inside the active send loop plus a new `PAUSED`
+  status — and this decision does not foreclose it, it only declines to build it
+  speculatively now. The usage aggregate's `GROUP BY` shape will need a `created_at`
+  range filter once `usage_records` volume grows enough that an unbounded per-account sum
+  stops being cheap; not needed yet at this project's current data volume.
+- Related tasks: `GRX-SAAS-008` in `MASTER_TASK_TRACKER.md`.
+- Supersedes: none.
+
+---
+
 *Decisions DEC-GRX-020 onward will be logged as they are made — e.g., resolutions to
 OQ-003 through OQ-011 in [OPEN_QUESTIONS.md](OPEN_QUESTIONS.md).*

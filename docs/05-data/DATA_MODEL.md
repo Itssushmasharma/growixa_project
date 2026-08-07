@@ -531,6 +531,20 @@ allow-list), and a platform admin's own suspend/activate/close action is recorde
 too, with the acting admin's id/email in `event_metadata` rather than `actor_user_id`
 (which stays a `users.id` FK and cannot reference `platform_admins`).
 
+## Sprint 5 Phase E entities (Customer Account Platform — Usage & campaign oversight, `GRX-SAAS-008`)
+
+No new tables. Adds one seed row (`platform_permissions.code =
+'platform.usage.manage'`, granted to `platform.owner`/`platform.admin`/`platform.support`
+in `platform_role_permissions`). Per [DECISIONS.md §DEC-GRX-021](../00-project-control/DECISIONS.md):
+the per-account usage view is a `GROUP BY account_id, operation_type` aggregate over the
+existing `usage_records` table (no new column, no new query surface beyond the grouping);
+the cross-account campaign oversight view reads the existing `campaigns` table filtered to
+in-flight (`SCHEDULED`/`DISPATCHING`/`SENDING`) or `FAILED` status, without the usual
+`account_id` scoping (a deliberate, narrow exception — see `THREAT_MODEL.md` T36/T37 for
+why the response shape stays metadata-only); "pausing" a campaign reuses the existing
+`cancel_campaign` state transition (`DRAFT`/`SCHEDULED` → `CANCELLED`) rather than adding a
+new `PAUSED` status.
+
 ## Full MVP entity landscape (target slice)
 
 Entities beyond Slice 3 are named here for continuity with `docs/02-features/` and future

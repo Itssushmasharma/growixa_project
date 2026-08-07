@@ -154,9 +154,30 @@ deliberately shipped none ("the frontend arrives naturally with Phase E's actual
 so this task's frontend scope includes the platform login page and a minimal shell
 alongside the accounts list/detail pages themselves, not just the accounts feature.
 
+## Readiness gate — Sprint 5 Phase E, Usage & campaign oversight (`GRX-SAAS-008`)
+
+| Readiness item | Required | Status | Evidence |
+|---|---|---|---|
+| Phase B dependency | Yes — `GRX-SAAS-008` depends on `GRX-SAAS-002`, not billing (`GRX-SAAS-004`) | PASS | `GRX-SAAS-002` marked `DONE` in [MASTER_TASK_TRACKER.md](MASTER_TASK_TRACKER.md) |
+| Permission scope / pause-semantics / usage-view-shape design decisions | Yes — the tracker's own wording ("abuse controls (pause suspicious sending)", "usage view") left the permission grant, what "pause" does to a campaign, and whether usage is a raw or aggregated view all unspecified | PASS | [DECISIONS.md §DEC-GRX-021](DECISIONS.md) |
+| Data model additions | No new tables/columns — a data-only permission seed plus read/aggregate queries over existing `usage_records`/`campaigns` | PASS (LIGHT) | [DATA_MODEL.md §Sprint 5 Phase E entities (usage/campaign oversight)](../05-data/DATA_MODEL.md#sprint-5-phase-e-entities-customer-account-platform--usage--campaign-oversight-grx-saas-008), [DATABASE_SCHEMA.md's Phase E migration-order note](../05-data/DATABASE_SCHEMA.md#migration-order-alembic) |
+| RBAC additions | Yes | PASS | [RBAC.md §Sprint 5 Phase E permission codes](../08-security/RBAC.md#sprint-5-phase-e-permission-codes-grx-saas-005-grx-saas-008) — `platform.usage.manage`, granted to `platform.owner`/`platform.admin`/`platform.support` |
+| Threat model addendum | Yes (second cross-account reach: read access to every account's usage/campaigns, plus one mutating action) | PASS | [THREAT_MODEL.md §Sprint 5 Phase E — Usage & campaign oversight](../08-security/THREAT_MODEL.md#sprint-5-phase-e--usage--campaign-oversight-grx-saas-008-scope) — T34–T37 |
+| Sprint plan | Yes | PASS | [SPRINT_05_CUSTOMER_ACCOUNT_PLATFORM.md §Phase E](../14-sprints/SPRINT_05_CUSTOMER_ACCOUNT_PLATFORM.md#phase-e--platform-admin-panel-grx-saas-005-through-grx-saas-009) |
+| Feature specs | No (written per-task, not upfront — same practice as every prior slice/sprint) | DEFERRED TO EACH TASK | — |
+| Project tracker row | Yes | PASS | [MASTER_TASK_TRACKER.md](MASTER_TASK_TRACKER.md) — `GRX-SAAS-008` |
+| AI safety baseline | No (no AI feature in this task) | N/A FOR GRX-SAAS-008 | — |
+| Billing/provider decisions | No (out of this task's scope — `GRX-SAAS-004`/`006`/`007`) | N/A FOR GRX-SAAS-008 | [OPEN_QUESTIONS.md](OPEN_QUESTIONS.md) |
+
+**Overall status: READY — `GRX-SAAS-008` cleared to `READY` in `MASTER_TASK_TRACKER.md`.**
+The genuinely new prerequisite versus GRX-SAAS-005's gate was the pause-semantics
+decision (reusing `cancel_campaign`'s existing terminal state rather than inventing a
+resumable one) — everything else follows the same per-task pattern this document already
+establishes.
+
 ## Gate for later slices/phases
 
 Slice 4 (Scheduled Email) onward, and Sprint 5 Phase D and the remaining Phase E rows
-(`GRX-SAAS-006` through `GRX-SAAS-010`), will each need their own readiness pass (data
-model additions, feature specs, etc.) before becoming `READY` — this table will be
-extended per slice/phase rather than re-litigated from scratch.
+(`GRX-SAAS-006`, `GRX-SAAS-007`, `GRX-SAAS-009`, `GRX-SAAS-010`), will each need their own
+readiness pass (data model additions, feature specs, etc.) before becoming `READY` — this
+table will be extended per slice/phase rather than re-litigated from scratch.

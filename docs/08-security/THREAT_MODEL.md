@@ -110,6 +110,20 @@ account it does not belong to — a new kind of cross-account reach, deliberatel
 | T32 | Untraceable platform-admin action | `audit_logs.actor_user_id` FKs to `users.id`, not `platform_admins.id` — a naive implementation could leave a status change with no recorded actor at all | Per `DEC-GRX-020`, the acting platform admin's id/email is recorded in the audit event's `metadata` JSON (same `actor_user_id=None` shape `login()` already uses for an unresolvable actor), not silently dropped |
 | T33 | Cross-account activity leakage via the security-activity view | The account-detail read accidentally returns another account's audit rows, or non-security business events (contact edits, campaign sends) that weren't meant to be platform-admin-visible | The read is scoped by `account_id` through the existing `list_events(account_id=...)` path (same isolation guarantee as every other account-scoped query) and filtered to a fixed security-action allow-list (`DEC-GRX-020` point 4) — not a raw dump of the account's full audit trail |
 
+## Sprint 5 Phase E — Usage & campaign oversight (`GRX-SAAS-008`) scope
+
+Scope: a second cross-account reach for platform admins — read access to every
+account's usage totals and in-flight/failed campaigns, plus one mutating action
+(pausing a campaign) reusing an existing, already-tested state transition rather than
+new machinery.
+
+| # | Threat | Vector | Mitigation |
+|---|---|---|---|
+| T34 | Pause as a denial-of-service lever | A compromised or rogue platform-admin credential pauses (cancels) a legitimate customer's campaign with no valid abuse reason | Gated by `platform.usage.manage` (`DEC-GRX-021`); the action is audited (see T35); `pause` reuses `campaigns/services.py`'s existing `cancel_campaign` state-machine constraint (`DRAFT`/`SCHEDULED` only), so a campaign already `SENDING`/`SENT` cannot be touched by this path at all — bounding the damage to campaigns that have not yet left the building |
+| T35 | Untraceable platform-admin pause | Same class of gap as T32 — `audit_logs.actor_user_id` cannot reference a `platform_admins.id` | Same `DEC-GRX-020`/`DEC-GRX-021` pattern: `actor_user_id=None`, acting admin's id/email in `metadata` |
+| T36 | Usage-data cross-account leakage | The per-account usage aggregate accidentally attributes one account's `usage_records` rows to another, or exposes more than the aggregate (e.g. individual contact-level send targets) | The aggregate is a `GROUP BY account_id, operation_type` query with no per-record detail in the response — a compromised platform-admin session learns "how much," never "to whom" |
+| T37 | Cross-account campaign-oversight leakage | The queued/failed campaign list exposes campaign body content (subject/HTML) across accounts, beyond what oversight requires | The oversight list returns only status/scheduling metadata (name, status, account, timestamps) — never `subject`/`body_html`/`body_text`, which stay reachable only through the existing account-scoped customer routes |
+
 ## Explicitly out of scope for Sprint 5 Phase C
 
 Actual plan *enforcement* (contact/send limits, feature gating) has no threat surface
