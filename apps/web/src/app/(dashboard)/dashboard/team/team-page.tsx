@@ -1,6 +1,6 @@
 "use client";
 
-import { type FormEvent, useEffect, useState } from "react";
+import { type FormEvent, useEffect, useMemo, useState } from "react";
 
 import { useToast } from "@/components/toast/toast-context";
 import { apiFetch } from "@/lib/api-client";
@@ -19,6 +19,9 @@ export function TeamPage() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
+
+  const [search, setSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState("All");
 
   const [showInviteForm, setShowInviteForm] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
@@ -63,6 +66,7 @@ export function TeamPage() {
       setInviteResult(result);
       setShowInviteForm(false);
       setInviteEmail("");
+      showToast("success", `Invitation sent to ${result.email}`);
     } catch {
       showToast(
         "error",
@@ -111,132 +115,270 @@ export function TeamPage() {
     }
   }
 
+  const superAdminsCount = useMemo(
+    () => members.filter((m) => m.roles.includes("Super Admin")).length,
+    [members],
+  );
+
+  const adminsCount = useMemo(
+    () => members.filter((m) => m.roles.includes("Admin")).length,
+    [members],
+  );
+
+  const visibleMembers = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    let filtered = query
+      ? members.filter(
+          (m) => m.full_name.toLowerCase().includes(query) || m.email.toLowerCase().includes(query),
+        )
+      : members;
+
+    if (roleFilter !== "All") {
+      filtered = filtered.filter((m) => m.roles.includes(roleFilter));
+    }
+
+    return filtered;
+  }, [members, search, roleFilter]);
+
   if (loading) {
-    return <div className={styles.card}>Loading…</div>;
+    return (
+      <div className={styles.page}>
+        <div className={styles.card}>Loading team…</div>
+      </div>
+    );
   }
 
   if (loadError) {
-    return <div className={styles.card}>{loadError}</div>;
+    return (
+      <div className={styles.page}>
+        <div className={styles.card}>{loadError}</div>
+      </div>
+    );
   }
 
   if (!canManage) {
-    return <div className={styles.card}>You don&apos;t have access to manage the team.</div>;
+    return (
+      <div className={styles.page}>
+        <div className={styles.card}>You don&apos;t have access to manage the team.</div>
+      </div>
+    );
   }
 
   return (
-    <div className={styles.card}>
-      <div className={styles.header}>
-        <h2 className={styles.headerTitle}>
-          Team &amp; roles <span className={styles.headerCount}>· {members.length} members</span>
-        </h2>
-        {!showInviteForm && (
-          <button
-            type="button"
-            className={styles.inviteButton}
-            onClick={() => setShowInviteForm(true)}
-          >
-            + Invite user
-          </button>
-        )}
+    <div className={styles.page}>
+      {/* Metric Summary Cards */}
+      <div className={styles.metricsGrid}>
+        <div className={styles.metricCard}>
+          <div className={styles.metricIcon}>👥</div>
+          <div className={styles.metricContent}>
+            <span className={styles.metricLabel}>Total Members</span>
+            <span className={styles.metricValue}>{members.length}</span>
+          </div>
+        </div>
+
+        <div className={styles.metricCard}>
+          <div className={styles.metricIcon}>👑</div>
+          <div className={styles.metricContent}>
+            <span className={styles.metricLabel}>Super Admins</span>
+            <span className={styles.metricValue}>{superAdminsCount}</span>
+          </div>
+        </div>
+
+        <div className={styles.metricCard}>
+          <div className={styles.metricIcon}>🛡️</div>
+          <div className={styles.metricContent}>
+            <span className={styles.metricLabel}>Admins</span>
+            <span className={styles.metricValue}>{adminsCount}</span>
+          </div>
+        </div>
+
+        <div className={styles.metricCard}>
+          <div className={styles.metricIcon}>✉️</div>
+          <div className={styles.metricContent}>
+            <span className={styles.metricLabel}>Pending Invites</span>
+            <span className={styles.metricValue}>{inviteResult ? 1 : 0}</span>
+          </div>
+        </div>
       </div>
 
-      {inviteResult && (
-        <div className={styles.inviteSuccess}>
-          Invitation sent to {inviteResult.email}. Since there&apos;s no email delivery yet, share
-          this link/token with them directly to finish setting up their account:
-          <code>{inviteResult.token}</code>
-        </div>
-      )}
-
-      {showInviteForm && (
-        <form className={styles.inviteForm} onSubmit={handleInviteSubmit}>
-          <div className={styles.inviteField}>
-            <label className={styles.label} htmlFor="invite-email">
-              Email
-            </label>
-            <input
-              id="invite-email"
-              type="email"
-              required
-              className={styles.input}
-              placeholder="name@company.com"
-              value={inviteEmail}
-              onChange={(event) => setInviteEmail(event.target.value)}
-            />
+      {/* Main Container */}
+      <div className={styles.card}>
+        <div className={styles.header}>
+          <div>
+            <h2 className={styles.headerTitle}>Team &amp; Role Management</h2>
+            <p className={styles.headerSubtitle}>
+              Invite team members, assign RBAC permissions, and manage active status.
+            </p>
           </div>
-          <div className={styles.inviteField}>
-            <label className={styles.label} htmlFor="invite-role">
-              Role
-            </label>
-            <select
-              id="invite-role"
-              className={styles.select}
-              value={inviteRole}
-              onChange={(event) => setInviteRole(event.target.value)}
+
+          {!showInviteForm && (
+            <button
+              type="button"
+              className={styles.inviteButton}
+              onClick={() => setShowInviteForm(true)}
             >
-              {roles.map((role) => (
-                <option key={role.id} value={role.name}>
-                  {role.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <button type="submit" className={styles.submit} disabled={inviteSubmitting}>
-            {inviteSubmitting ? "Sending…" : "Send invite"}
-          </button>
-          <button type="button" className={styles.cancel} onClick={() => setShowInviteForm(false)}>
-            Cancel
-          </button>
-        </form>
-      )}
+              + Invite user
+            </button>
+          )}
+        </div>
 
-      {members.map((member) => {
-        const isSelf = member.id === currentUserId;
-        const isPending = pendingRowId === member.id;
-        return (
-          <div className={styles.row} key={member.id}>
-            <div className={styles.avatar} style={{ background: avatarColorFor(member.email) }}>
-              {initialsFor(member.full_name)}
+        {/* Toolbar */}
+        <div className={styles.toolbar}>
+          <div className={styles.toolbarLeft}>
+            <input
+              type="search"
+              className={styles.searchInput}
+              placeholder="Search team members by name or email…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              aria-label="Search team members"
+            />
+
+            <div className={styles.rolePills}>
+              {["All", "Super Admin", "Admin", "Member"].map((roleName) => (
+                <button
+                  key={roleName}
+                  type="button"
+                  className={`${styles.rolePill} ${
+                    roleFilter === roleName ? styles.rolePillActive : ""
+                  }`}
+                  onClick={() => setRoleFilter(roleName)}
+                >
+                  {roleName}
+                </button>
+              ))}
             </div>
-            <div className={styles.identity}>
-              <div className={styles.name}>
-                {member.full_name}
-                {isSelf && " (you)"}
+          </div>
+        </div>
+
+        {inviteResult && (
+          <div className={styles.inviteSuccess}>
+            <span>
+              ✅ Invitation created for <strong>{inviteResult.email}</strong>. Share this token to
+              complete account setup:
+            </span>
+            <code>{inviteResult.token}</code>
+          </div>
+        )}
+
+        {/* Invite Form Card */}
+        {showInviteForm && (
+          <form className={styles.inviteFormCard} onSubmit={handleInviteSubmit}>
+            <h4 className={styles.inviteFormTitle}>+ Invite New Team Member</h4>
+            <div className={styles.inviteGrid}>
+              <div className={styles.inviteField}>
+                <label className={styles.label} htmlFor="invite-email">
+                  Email
+                </label>
+                <input
+                  id="invite-email"
+                  type="email"
+                  required
+                  className={styles.input}
+                  placeholder="name@company.com"
+                  value={inviteEmail}
+                  onChange={(event) => setInviteEmail(event.target.value)}
+                />
               </div>
-              <div className={styles.email}>{member.email}</div>
-            </div>
-            <div className={styles.rowActions}>
-              <span
-                className={`${styles.statusBadge} ${
-                  member.status === "ACTIVE" ? styles.statusActive : styles.statusDisabled
-                }`}
-              >
-                {member.status === "ACTIVE" ? "Active" : "Disabled"}
-              </span>
-              <select
-                className={styles.roleSelect}
-                value={member.roles[0] ?? ""}
-                disabled={isPending}
-                onChange={(event) => handleRoleChange(member.id, event.target.value)}
-              >
-                {roles.map((role) => (
-                  <option key={role.id} value={role.name}>
-                    {role.name}
-                  </option>
-                ))}
-              </select>
+
+              <div className={styles.inviteField}>
+                <label className={styles.label} htmlFor="invite-role">
+                  Role
+                </label>
+                <select
+                  id="invite-role"
+                  className={styles.select}
+                  value={inviteRole}
+                  onChange={(event) => setInviteRole(event.target.value)}
+                >
+                  {roles.map((role) => (
+                    <option key={role.id} value={role.name}>
+                      {role.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <button type="submit" className={styles.submit} disabled={inviteSubmitting}>
+                {inviteSubmitting ? "Sending…" : "Send invite"}
+              </button>
+
               <button
                 type="button"
-                className={styles.toggleButton}
-                disabled={isPending || (isSelf && member.status === "ACTIVE")}
-                onClick={() => handleToggleStatus(member.id, member.status)}
+                className={styles.cancel}
+                onClick={() => setShowInviteForm(false)}
               >
-                {member.status === "ACTIVE" ? "Disable" : "Enable"}
+                Cancel
               </button>
             </div>
-          </div>
-        );
-      })}
+          </form>
+        )}
+
+        {visibleMembers.length === 0 && (
+          <p className={styles.hint}>No team members match your filters.</p>
+        )}
+
+        {/* Modern Team Member Cards Grid */}
+        <div className={styles.membersGrid}>
+          {visibleMembers.map((member) => {
+            const isSelf = member.id === currentUserId;
+            const isPending = pendingRowId === member.id;
+            return (
+              <div className={styles.memberCard} key={member.id}>
+                <div className={styles.memberHeader}>
+                  <div
+                    className={styles.avatar}
+                    style={{ background: avatarColorFor(member.email) }}
+                  >
+                    {initialsFor(member.full_name)}
+                  </div>
+
+                  <div className={styles.identity}>
+                    <div className={styles.memberName}>
+                      {member.full_name}
+                      {isSelf && " (you)"}
+                    </div>
+                    <div className={styles.memberEmail}>{member.email}</div>
+                  </div>
+
+                  <span
+                    className={
+                      member.status === "ACTIVE" ? styles.statusActive : styles.statusDisabled
+                    }
+                  >
+                    {member.status === "ACTIVE" ? "Active" : "Disabled"}
+                  </span>
+                </div>
+
+                <div className={styles.memberFooter}>
+                  <select
+                    className={styles.roleSelect}
+                    value={member.roles[0] ?? ""}
+                    disabled={isPending}
+                    onChange={(event) => handleRoleChange(member.id, event.target.value)}
+                    aria-label={`Role for ${member.full_name}`}
+                  >
+                    {roles.map((role) => (
+                      <option key={role.id} value={role.name}>
+                        {role.name}
+                      </option>
+                    ))}
+                  </select>
+
+                  <button
+                    type="button"
+                    className={styles.toggleButton}
+                    disabled={isPending || (isSelf && member.status === "ACTIVE")}
+                    onClick={() => handleToggleStatus(member.id, member.status)}
+                  >
+                    {member.status === "ACTIVE" ? "Disable" : "Enable"}
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }
