@@ -1,0 +1,169 @@
+.page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--gradient-login-bg);
+  padding: 24px;
+}
+
+.card {
+  width: 100%;
+  max-width: 440px;
+  padding: 40px 36px;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 32px;
+}
+
+.brandName {
+  font-size: 20px;
+  font-weight: 800;
+  color: #fff;
+  line-height: 1.1;
+}
+
+.brandCaption {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--color-nav-inactive);
+}
+
+.field {
+  margin-bottom: 18px;
+}
+
+.label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-nav-inactive);
+  margin-bottom: 6px;
+}
+
+.input {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  font-size: 14px;
+}
+
+.input:focus {
+  outline: 2px solid var(--color-mint);
+  outline-offset: 1px;
+}
+
+.input::placeholder {
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.planGroup {
+  display: flex;
+  gap: 10px;
+}
+
+.planOption {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.04);
+  cursor: pointer;
+}
+
+/* Visually hidden but still in the accessibility tree and keyboard-focusable, unlike
+   display:none -- the radio's real semantics (role, checked state, label association)
+   must stay reachable to screen readers and testing-library alike; only the native
+   control's appearance is replaced by the styled .planOption label around it. */
+.visuallyHiddenRadio {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.planOptionSelected {
+  border-color: var(--color-mint);
+  background: rgba(52, 211, 153, 0.12);
+}
+
+.planOptionName {
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.planOptionPrice {
+  font-size: 12px;
+  color: var(--color-nav-inactive);
+}
+
+.submit {
+  width: 100%;
+  padding: 13px 16px;
+  border: none;
+  border-radius: var(--pill-radius);
+  background: var(--gradient-primary);
+  color: #fff;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  margin-top: 8px;
+}
+
+.submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.footer {
+  margin-top: 20px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--color-nav-inactive);
+}
+
+.footerLink {
+  color: var(--color-mint);
+  font-weight: 600;
+}
+
+.successIcon {
+  font-size: 40px;
+  margin-bottom: 12px;
+}
+
+.successTitle {
+  font-size: 18px;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 8px;
+}
+
+.successBody {
+  font-size: 14px;
+  color: var(--color-nav-inactive);
+  line-height: 1.6;
+}

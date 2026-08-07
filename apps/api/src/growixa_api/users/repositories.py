@@ -89,9 +89,14 @@ async def create_user(
     email: str,
     password_hash: str,
     full_name: str,
+    status: str = "ACTIVE",
 ) -> User:
     user = User(
-        account_id=account_id, email=email, password_hash=password_hash, full_name=full_name
+        account_id=account_id,
+        email=email,
+        password_hash=password_hash,
+        full_name=full_name,
+        status=status,
     )
     session.add(user)
     await session.flush()

@@ -18,6 +18,7 @@ const plans = [
       "Basic Audience Segmentation",
     ],
     buttonText: "Start Free",
+    href: "/register?plan=starter",
     featured: false,
   },
   {
@@ -35,6 +36,7 @@ const plans = [
       "Postmark SMTP Integration",
     ],
     buttonText: "Start 14-Day Free Trial",
+    href: "/register?plan=growth",
     featured: true,
   },
   {
@@ -51,6 +53,7 @@ const plans = [
       "Dedicated Growth Manager",
     ],
     buttonText: "Contact Sales",
+    href: "/login",
     featured: false,
   },
 ];
@@ -111,7 +114,7 @@ export function PricingSection() {
               </div>
 
               <Link
-                href="/login"
+                href={plan.href}
                 className={plan.featured ? styles.primaryBtn : styles.secondaryBtn}
                 style={{ textAlign: "center", display: "block" }}
               >

@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from growixa_api import __version__
 from growixa_api.accounts import models as accounts_models  # noqa: F401
+from growixa_api.accounts.api import router as accounts_router
 from growixa_api.analytics.api import router as analytics_router
 from growixa_api.audit.api import router as audit_router
 from growixa_api.auth.api import router as auth_router
@@ -61,6 +62,7 @@ def create_app() -> FastAPI:
     app.include_router(health_router)
     app.include_router(auth_router)
     app.include_router(platform_auth_router)
+    app.include_router(accounts_router)
     app.include_router(company_router)
     app.include_router(brand_router)
     app.include_router(users_router)

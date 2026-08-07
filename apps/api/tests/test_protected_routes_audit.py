@@ -37,6 +37,9 @@ from growixa_api.platform_auth.dependencies import RequirePlatformPermission
 # /platform/auth/login, /platform/auth/logout, /platform/auth/me are the platform-admin
 # analogues of the /auth/* routes above, for the exact same reasons — see
 # RequirePlatformPermission's own coverage below (GRX-SAAS-002 Phase B).
+# /accounts/register and /accounts/verify-email are the same shape as
+# /users/invitations/accept: no session exists yet, identity comes from the
+# credential/token in the request itself (GRX-SAAS-003 Phase C).
 PUBLIC_ROUTE_PATHS = {
     "/health",
     "/auth/login",
@@ -52,6 +55,8 @@ PUBLIC_ROUTE_PATHS = {
     "/platform/auth/login",
     "/platform/auth/logout",
     "/platform/auth/me",
+    "/accounts/register",
+    "/accounts/verify-email",
 }
 
 

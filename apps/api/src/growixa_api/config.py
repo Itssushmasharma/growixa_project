@@ -38,6 +38,11 @@ class Settings(BaseSettings):
     refresh_token_ttl_days: int = 30
     invitation_ttl_days: int = 7
     password_reset_ttl_minutes: int = 30
+    # GRX-SAAS-003 Phase C: how long a self-registration's verification link stays
+    # valid. Longer than password_reset_ttl_minutes (a returning user checks their
+    # inbox faster than a brand-new signup might), shorter than invitation_ttl_days
+    # (no existing relationship vouching for the recipient).
+    email_verification_ttl_hours: int = 24
 
     # Redis-backed fixed-window rate limit shared by /auth/login and
     # /auth/password-reset/request (THREAT_MODEL.md T1/T12) — a conservative default per

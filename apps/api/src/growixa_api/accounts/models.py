@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import CheckConstraint, DateTime, Text
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
@@ -17,6 +17,9 @@ class Account(Base):
     __tablename__ = "accounts"
     __table_args__ = (
         CheckConstraint("status IN ('ACTIVE', 'SUSPENDED', 'CLOSED')", name="ck_accounts_status"),
+        CheckConstraint(
+            "selected_plan_slug IN ('starter', 'growth')", name="ck_accounts_selected_plan_slug"
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -26,6 +29,32 @@ class Account(Base):
     # column exists now to match DATABASE_SCHEMA.md's eventual shape, per this codebase's
     # established convention (e.g. refresh_tokens.replaced_by_token_id in GRX-AUTH-002).
     plan_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    # GRX-SAAS-003 Phase C: the self-service plan picked at registration -- recorded
+    # only, no FK (no plans table yet). See DEC-GRX-019.
+    selected_plan_slug: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+
+
+class AccountVerificationToken(Base):
+    """One-time email verification for a self-registered account's first user
+    (GRX-SAAS-003 Phase C) -- structurally identical to `password_reset_tokens`."""
+
+    __tablename__ = "account_verification_tokens"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    account_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("accounts.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    token_hash: Mapped[str] = mapped_column(Text, unique=True, nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, index=True
+    )
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

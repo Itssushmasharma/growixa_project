@@ -11,7 +11,14 @@ from growixa_api.db import Base
 
 class User(Base):
     __tablename__ = "users"
-    __table_args__ = (CheckConstraint("status IN ('ACTIVE', 'DISABLED')", name="ck_users_status"),)
+    __table_args__ = (
+        # PENDING_VERIFICATION: GRX-SAAS-003 Phase C's self-registered owner starts
+        # here; login()'s existing status == "ACTIVE" check already blocks it, see
+        # DEC-GRX-019.
+        CheckConstraint(
+            "status IN ('ACTIVE', 'DISABLED', 'PENDING_VERIFICATION')", name="ck_users_status"
+        ),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     # GRX-SAAS-001: which customer account this user belongs to. email stays GLOBALLY
