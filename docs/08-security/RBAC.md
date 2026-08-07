@@ -176,6 +176,25 @@ yet differentiate what each role can do once inside. That differentiation is exa
 each Phase E feature's own permission code(s) will encode (e.g. a future
 `platform.billing.manage` granted only to `platform.owner`/`platform.finance`).
 
+## Sprint 5 Phase E permission codes (`GRX-SAAS-005`)
+
+| Code | Meaning |
+|---|---|
+| `platform.accounts.manage` | List every customer account, view an account's users and login/security activity, activate/suspend/close an account |
+
+Per [DEC-GRX-020](../00-project-control/DECISIONS.md), this is granted only to
+`platform.owner` and `platform.admin` — matching `platform.admin`'s own stated scope in
+the Phase B role table above ("Account/user management... day-to-day operations"). No
+other Phase E capability (billing, provider config, usage tracking, support sessions)
+gets anything from this code; each adds its own `platform.*` code when its own task
+begins, same convention as Phase B's `platform.access`.
+
+## Sprint 5 Phase E role → permission matrix
+
+| Permission | platform.owner | platform.admin | platform.support | platform.finance | platform.operations |
+|---|---|---|---|---|---|
+| `platform.accounts.manage` | ✅ | ✅ | ❌ | ❌ | ❌ |
+
 ## Enforcement rule
 
 Every API route that isn't explicitly public (login, invitation-acceptance, password-reset

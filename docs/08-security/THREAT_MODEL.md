@@ -97,6 +97,19 @@ accept). Registration has neither.
 | T28 | Unverified-account privilege via a stale access token | A `PENDING_VERIFICATION` user somehow obtains a valid access-token cookie before verifying (e.g. a future bug reusing login's token-issuing code path incorrectly) | `login()`'s existing `status == "ACTIVE"` check (DEC-GRX-019) is the single enforcement point — registration itself never calls `create_access_token`/sets any auth cookie, so there is no code path today that could hand a `PENDING_VERIFICATION` user a session at all |
 | T29 | Plan-slug tampering | A client sends an arbitrary `selected_plan_slug` value outside the two allowed plans | Rejected at both the API boundary (Pydantic `Literal["starter", "growth"]`) and the DB (`CHECK` constraint) — matches this codebase's existing double-validation pattern for `email_provider_connections.provider` |
 
+## Sprint 5 Phase E — Account/user management (`GRX-SAAS-005`) scope
+
+Scope: the first Phase E capability that lets a platform admin act on a customer
+account it does not belong to — a new kind of cross-account reach, deliberately narrow
+(status changes and a read-only activity view, no content editing).
+
+| # | Threat | Vector | Mitigation |
+|---|---|---|---|
+| T30 | `accounts.status` silently unenforced (found during this task, not introduced by it) | `accounts.status` has existed since Phase A but `login()`/`refresh()` never read it — a suspended account's users could log in normally, contradicting `SPRINT_05`'s own stated Phase E acceptance criterion | Closed in this task per [DEC-GRX-020](../00-project-control/DECISIONS.md): both `login()` and `refresh()` now check `account.status == "ACTIVE"`, folded into the same generic failure as the existing `user.status` check (no new distinguishable error, preserving T11's posture); a suspend/close also immediately revokes every active session in the account rather than waiting for a token to expire |
+| T31 | Suspend/close as a denial-of-service lever | A compromised or rogue platform-admin credential suspends/closes accounts it has no legitimate reason to touch | Gated by `platform.accounts.manage`, granted only to `platform.owner`/`platform.admin` (`DEC-GRX-020`); every status change is recorded (see T32) — this task does not add reason/ticket/approval workflow, since that's `GRX-SAAS-010`'s own higher-trust support-session model, deliberately scoped later per the sprint doc |
+| T32 | Untraceable platform-admin action | `audit_logs.actor_user_id` FKs to `users.id`, not `platform_admins.id` — a naive implementation could leave a status change with no recorded actor at all | Per `DEC-GRX-020`, the acting platform admin's id/email is recorded in the audit event's `metadata` JSON (same `actor_user_id=None` shape `login()` already uses for an unresolvable actor), not silently dropped |
+| T33 | Cross-account activity leakage via the security-activity view | The account-detail read accidentally returns another account's audit rows, or non-security business events (contact edits, campaign sends) that weren't meant to be platform-admin-visible | The read is scoped by `account_id` through the existing `list_events(account_id=...)` path (same isolation guarantee as every other account-scoped query) and filtered to a fixed security-action allow-list (`DEC-GRX-020` point 4) — not a raw dump of the account's full audit trail |
+
 ## Explicitly out of scope for Sprint 5 Phase C
 
 Actual plan *enforcement* (contact/send limits, feature gating) has no threat surface

@@ -133,8 +133,30 @@ pattern (data model, RBAC, threat model, sprint plan) this document already esta
 The genuinely new prerequisites versus Phase B's gate were the three schema-shape
 decisions in DEC-GRX-019 — everything else follows the same per-slice pattern.
 
+## Readiness gate — Sprint 5 Phase E, Account/user management (`GRX-SAAS-005`)
+
+| Readiness item | Required | Status | Evidence |
+|---|---|---|---|
+| Phase B dependency | Yes — `GRX-SAAS-005` depends on `GRX-SAAS-002`, not Phase C/D | PASS | `GRX-SAAS-002` marked `DONE` in [MASTER_TASK_TRACKER.md](MASTER_TASK_TRACKER.md) |
+| Permission scope / account-status-enforcement / audit-attribution design decisions | Yes — the tracker's own wording ("activate/suspend/close... view login/security activity") left the permission grant, what suspend/close actually does, and how a platform admin's action gets attributed all unspecified | PASS | [DECISIONS.md §DEC-GRX-020](DECISIONS.md) |
+| Data model additions | No new tables/columns — a data-only permission seed plus enforcing an existing column | PASS (LIGHT) | [DATA_MODEL.md §Sprint 5 Phase E entities](../05-data/DATA_MODEL.md#sprint-5-phase-e-entities-customer-account-platform--accountuser-management-grx-saas-005), [DATABASE_SCHEMA.md's Phase E migration-order note](../05-data/DATABASE_SCHEMA.md#migration-order-alembic) |
+| RBAC additions | Yes | PASS | [RBAC.md §Sprint 5 Phase E permission codes](../08-security/RBAC.md#sprint-5-phase-e-permission-codes-grx-saas-005) — `platform.accounts.manage`, granted only to `platform.owner`/`platform.admin` |
+| Threat model addendum | Yes (first Phase E capability with cross-account reach: a platform admin can now act on accounts it doesn't belong to) | PASS | [THREAT_MODEL.md §Sprint 5 Phase E](../08-security/THREAT_MODEL.md#sprint-5-phase-e--accountuser-management-grx-saas-005-scope) — T30–T33 |
+| Sprint plan | Yes | PASS | [SPRINT_05_CUSTOMER_ACCOUNT_PLATFORM.md §Phase E](../14-sprints/SPRINT_05_CUSTOMER_ACCOUNT_PLATFORM.md#phase-e--platform-admin-panel-grx-saas-005-through-grx-saas-009) |
+| Feature specs | No (written per-task, not upfront — same practice as every prior slice/sprint) | DEFERRED TO EACH TASK | — |
+| Project tracker row | Yes | PASS | [MASTER_TASK_TRACKER.md](MASTER_TASK_TRACKER.md) — `GRX-SAAS-005` |
+| AI safety baseline | No (no AI feature in this task) | N/A FOR GRX-SAAS-005 | — |
+| Billing/provider decisions | No (out of this task's scope — `GRX-SAAS-004`/`006`/`007`) | N/A FOR GRX-SAAS-005 | [OPEN_QUESTIONS.md](OPEN_QUESTIONS.md) |
+
+**Overall status: READY — `GRX-SAAS-005` cleared to `READY` in `MASTER_TASK_TRACKER.md`.**
+This is the first Phase E task to actually need a `(platform)/` frontend — Phase B
+deliberately shipped none ("the frontend arrives naturally with Phase E's actual panel"),
+so this task's frontend scope includes the platform login page and a minimal shell
+alongside the accounts list/detail pages themselves, not just the accounts feature.
+
 ## Gate for later slices/phases
 
-Slice 4 (Scheduled Email) onward, and Sprint 5 Phase D/E, will each need their own
-readiness pass (data model additions, feature specs, etc.) before becoming `READY` — this
-table will be extended per slice/phase rather than re-litigated from scratch.
+Slice 4 (Scheduled Email) onward, and Sprint 5 Phase D and the remaining Phase E rows
+(`GRX-SAAS-006` through `GRX-SAAS-010`), will each need their own readiness pass (data
+model additions, feature specs, etc.) before becoming `READY` — this table will be
+extended per slice/phase rather than re-litigated from scratch.

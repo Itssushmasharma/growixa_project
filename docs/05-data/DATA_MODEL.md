@@ -517,6 +517,20 @@ full Phase A retrospective.
 - Optional fields: `used_at`
 - Sensitive fields: `token_hash`
 
+## Sprint 5 Phase E entities (Customer Account Platform — Account/user management, `GRX-SAAS-005`)
+
+No new tables. `GRX-SAAS-005` adds one seed row (`platform_permissions.code =
+'platform.accounts.manage'`, granted to `platform.owner`/`platform.admin` in
+`platform_role_permissions`) and, per [DECISIONS.md §DEC-GRX-020](../00-project-control/DECISIONS.md),
+finally makes `accounts.status` (documented above since Phase C, existing since Phase A)
+an actually-enforced field: `auth/services.py`'s `login()`/`refresh()` now reject a
+non-`ACTIVE` account the same way they already reject a non-`ACTIVE` user. No schema
+change was needed for "view login/security activity" either — it reads the existing
+`audit_logs` table (scoped by `account_id`, filtered to a fixed security-action
+allow-list), and a platform admin's own suspend/activate/close action is recorded there
+too, with the acting admin's id/email in `event_metadata` rather than `actor_user_id`
+(which stays a `users.id` FK and cannot reference `platform_admins`).
+
 ## Full MVP entity landscape (target slice)
 
 Entities beyond Slice 3 are named here for continuity with `docs/02-features/` and future

@@ -459,5 +459,70 @@ Decision statuses: `PROPOSED`, `UNDER_REVIEW`, `APPROVED`, `REJECTED`, `SUPERSED
 
 ---
 
+## DEC-GRX-020: Phase E account/user management shape — permission scope, enforcing `accounts.status` at login, and auditing a platform admin's actions without an `actor_user_id`
+
+- Status: APPROVED
+- Date: 2026-08-07
+- Context: `GRX-SAAS-005` (`SPRINT_05_CUSTOMER_ACCOUNT_PLATFORM.md` §Phase E) says "Account/user
+  management — list all accounts, activate/suspend/close, view login/security activity."
+  Three things this leaves unspecified: which `platform.*` role(s) get the new permission,
+  what actually happens on suspend/close (`accounts.status` has existed since Phase A but
+  nothing has ever read it), and how a platform admin's action gets recorded given
+  `audit_logs.actor_user_id` is a FK to `users.id` — a `platform_admins.id` cannot go there.
+- Decisions:
+  1. **Permission code and role grant**: one new code, `platform.accounts.manage`, granted
+     only to `platform.owner` and `platform.admin` — matching `platform.admin`'s own
+     stated scope in `RBAC.md`'s Phase B role table ("Account/user management, support
+     session access, day-to-day operations"). `platform.support`/`finance`/`operations`
+     get nothing from this task; `platform.support`'s eventual account visibility, if any,
+     belongs to `GRX-SAAS-010`'s own permission gate, not a side effect of this one.
+  2. **`accounts.status` is now actually enforced, not just stored**: discovered while
+     scoping this task that `auth/services.py`'s `login()` and `refresh()` have only ever
+     checked `user.status == "ACTIVE"` — `accounts.status` (`ACTIVE`/`SUSPENDED`/`CLOSED`,
+     present since Phase A/`DEC-GRX-017`) was written on account creation but never read
+     anywhere. This is a real, pre-existing gap, not new scope creep: `GRX-SAAS-005`'s own
+     acceptance criterion ("a suspended account's users cannot log in") cannot be true
+     without it. Both `login()` and `refresh()` gain an `account.status == "ACTIVE"` check,
+     folded into the same generic failure path as the existing `user.status` check — no new
+     distinguishable error message, preserving `THREAT_MODEL.md` T11's posture. On a
+     transition to `SUSPENDED` or `CLOSED`, every active refresh token for every user in
+     the account is revoked immediately (reusing `auth/services.py`'s existing
+     `revoke_all_active_sessions`, looped per user) — mirroring `GRX-USER-002`'s existing
+     per-user disable behavior, now at the account level, so a suspension takes effect
+     immediately rather than only at a user's next token refresh.
+  3. **Auditing without `actor_user_id`**: rather than adding a nullable
+     `actor_platform_admin_id` column to `audit_logs` (a real schema change, out of this
+     task's scope and not required by its acceptance criteria), a platform admin's
+     `account.suspended`/`account.reactivated`/`account.closed` action is recorded the same
+     way `login()` already records an unresolvable actor (`actor_user_id=None`), with the
+     acting platform admin's id and email placed in the event's `metadata` JSON instead.
+     This keeps a real, queryable trail of who suspended an account and when without
+     touching `audit_logs`' schema — the same trade-off `GRX-SAAS-002`'s own evidence
+     entry already flagged and deferred ("no audit-log entry is written for platform
+     login/logout... extending that schema is out of Phase B's boundary-only scope").
+  4. **"Login/security activity" is a filtered view over the existing `audit_logs` table**,
+     not a new table or a raw dump of every event. `audit_logs` already carries
+     non-security business events (e.g. contact CRUD) for a busy account, which would bury
+     the actual login/security signal a platform admin is looking for. `platform_admin`'s
+     account-detail read filters to a fixed allow-list of security-relevant actions
+     (`user.login`, `user.login_failed`, `user.logout`, `session.revoked`,
+     `user.password_reset_requested`, `user.password_reset_completed`, `role.changed`,
+     `account.registered`, `user.email_verified`, `account.suspended`,
+     `account.reactivated`, `account.closed`), reusing `audit/services.py`'s existing
+     `list_events(account_id=...)` read path unmodified (a neutral read utility, safe to
+     reuse across the platform/customer module boundary per this project's established
+     reuse policy) rather than adding a parallel query path.
+- Consequences: If a future Phase E feature (e.g. `GRX-SAAS-010`'s secure support session)
+  needs to attribute an action to a specific platform admin in a genuinely queryable
+  (not just metadata-JSON) way, that is a real, separate schema decision at that point —
+  this decision does not foreclose it, it only avoids speculatively widening `audit_logs`
+  now for a need only this one task has. The security-activity allow-list in point 4 will
+  need a one-line addition whenever a future action is judged "security-relevant" (e.g. a
+  future MFA event) — a small, expected maintenance cost of filtering rather than dumping.
+- Related tasks: `GRX-SAAS-005` in `MASTER_TASK_TRACKER.md`.
+- Supersedes: none.
+
+---
+
 *Decisions DEC-GRX-020 onward will be logged as they are made — e.g., resolutions to
 OQ-003 through OQ-011 in [OPEN_QUESTIONS.md](OPEN_QUESTIONS.md).*

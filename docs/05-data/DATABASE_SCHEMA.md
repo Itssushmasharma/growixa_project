@@ -625,3 +625,9 @@ merges first per the sprint's own dependency order).
 Sprint 5 Phase C: `users.status` CHECK widened to add `PENDING_VERIFICATION` →
 `accounts.selected_plan_slug` added → `account_verification_tokens`. Depends on
 `GRX-SAAS-001`'s `accounts`/`users` tables existing; independent of Phase B.
+
+Sprint 5 Phase E (`GRX-SAAS-005`): no new tables or columns — a data-only migration
+seeds one `platform_permissions` row (`platform.accounts.manage`) and grants it to
+`platform.owner`/`platform.admin` in `platform_role_permissions`. Depends on Phase B's
+tables existing. See [DATA_MODEL.md §Sprint 5 Phase E entities](DATA_MODEL.md#sprint-5-phase-e-entities-customer-account-platform--accountuser-management-grx-saas-005)
+and [DECISIONS.md §DEC-GRX-020](../00-project-control/DECISIONS.md).
