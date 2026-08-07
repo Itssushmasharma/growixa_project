@@ -1,4 +1,5 @@
 import uuid
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from redis.asyncio import Redis
@@ -27,12 +28,13 @@ def _set_platform_auth_cookie(response: Response, access_token: str) -> None:
     # Same "local"/"test" reasoning as auth/api.py's _set_auth_cookies -- see that
     # function's comment for why ENVIRONMENT=test must be treated like "local" here too.
     secure = settings.environment not in ("local", "test")
+    samesite: Literal["lax", "none"] = "none" if secure else "lax"
     response.set_cookie(
         _PLATFORM_ACCESS_TOKEN_COOKIE,
         access_token,
         httponly=True,
         secure=secure,
-        samesite="lax",
+        samesite=samesite,
         max_age=settings.access_token_ttl_minutes * 60,
     )
 
@@ -67,7 +69,12 @@ async def platform_logout_route(response: Response) -> None:
     # No server-side session to revoke -- Phase B deliberately ships no refresh-token
     # rotation for platform admins (see MASTER_TASK_TRACKER.md's GRX-SAAS-002 evidence),
     # so logout is just clearing the cookie, same shape as a plain access-token-only login.
-    response.delete_cookie(_PLATFORM_ACCESS_TOKEN_COOKIE)
+    settings = get_settings()
+    secure = settings.environment not in ("local", "test")
+    samesite: Literal["lax", "none"] = "none" if secure else "lax"
+    response.delete_cookie(
+        _PLATFORM_ACCESS_TOKEN_COOKIE, secure=secure, samesite=samesite, path="/"
+    )
 
 
 @router.get("/me", response_model=PlatformMeOut)

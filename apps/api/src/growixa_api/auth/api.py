@@ -1,4 +1,5 @@
 import uuid
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from redis.asyncio import Redis
@@ -47,14 +48,15 @@ def _set_auth_cookies(response: Response, access_token: str, refresh_token: str)
     # under either would never be resent by a spec-compliant client (httpx included), so
     # request flows that depend on the cookie coming back would silently no-op instead of
     # exercising the real code path.
-    # HttpOnly + SameSite=Lax apply unconditionally per AUTHENTICATION.md.
+    # SameSite=None is required for cross-domain production cookies (Netlify -> Render).
     secure = settings.environment not in ("local", "test")
+    samesite: Literal["lax", "none"] = "none" if secure else "lax"
     response.set_cookie(
         _ACCESS_TOKEN_COOKIE,
         access_token,
         httponly=True,
         secure=secure,
-        samesite="lax",
+        samesite=samesite,
         max_age=settings.access_token_ttl_minutes * 60,
     )
     response.set_cookie(
@@ -62,7 +64,7 @@ def _set_auth_cookies(response: Response, access_token: str, refresh_token: str)
         refresh_token,
         httponly=True,
         secure=secure,
-        samesite="lax",
+        samesite=samesite,
         max_age=settings.refresh_token_ttl_days * 24 * 60 * 60,
     )
 
@@ -104,10 +106,13 @@ async def logout_route(
     response: Response,
     session: AsyncSession = Depends(get_session),
 ) -> None:
+    settings = get_settings()
+    secure = settings.environment not in ("local", "test")
+    samesite: Literal["lax", "none"] = "none" if secure else "lax"
     raw_refresh_token = request.cookies.get(_REFRESH_TOKEN_COOKIE)
     await logout_service(session, raw_refresh_token=raw_refresh_token)
-    response.delete_cookie(_ACCESS_TOKEN_COOKIE)
-    response.delete_cookie(_REFRESH_TOKEN_COOKIE)
+    response.delete_cookie(_ACCESS_TOKEN_COOKIE, secure=secure, samesite=samesite, path="/")
+    response.delete_cookie(_REFRESH_TOKEN_COOKIE, secure=secure, samesite=samesite, path="/")
 
 
 @router.post("/refresh", response_model=LoginOut)
@@ -139,10 +144,13 @@ async def logout_all_route(
     response: Response,
     session: AsyncSession = Depends(get_session),
 ) -> None:
+    settings = get_settings()
+    secure = settings.environment not in ("local", "test")
+    samesite: Literal["lax", "none"] = "none" if secure else "lax"
     raw_refresh_token = request.cookies.get(_REFRESH_TOKEN_COOKIE)
     await logout_all_service(session, raw_refresh_token=raw_refresh_token)
-    response.delete_cookie(_ACCESS_TOKEN_COOKIE)
-    response.delete_cookie(_REFRESH_TOKEN_COOKIE)
+    response.delete_cookie(_ACCESS_TOKEN_COOKIE, secure=secure, samesite=samesite, path="/")
+    response.delete_cookie(_REFRESH_TOKEN_COOKIE, secure=secure, samesite=samesite, path="/")
 
 
 @router.get("/me", response_model=MeOut)
