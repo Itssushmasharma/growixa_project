@@ -43,3 +43,22 @@ class AccountDetailOut(BaseModel):
 
 class UpdateAccountStatusIn(BaseModel):
     status: Literal["ACTIVE", "SUSPENDED", "CLOSED"]
+
+
+class UsageSummaryItemOut(BaseModel):
+    account_id: uuid.UUID
+    account_name: str
+    operation_type: str
+    total_quantity: float
+    unit: str
+
+
+class CampaignOversightItemOut(BaseModel):
+    id: uuid.UUID
+    account_id: uuid.UUID
+    account_name: str
+    name: str
+    status: str
+    scheduled_at: datetime | None
+    created_at: datetime
+    updated_at: datetime
