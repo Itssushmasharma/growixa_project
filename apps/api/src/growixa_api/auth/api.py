@@ -41,9 +41,14 @@ _REFRESH_TOKEN_COOKIE = "refresh_token"
 
 def _set_auth_cookies(response: Response, access_token: str, refresh_token: str) -> None:
     settings = get_settings()
-    # Secure requires HTTPS to be sent back by the browser; local dev runs over plain HTTP.
+    # Secure requires HTTPS to be sent back by the browser; local dev and the pytest suite
+    # (ASGITransport against a plain "http://test" base_url -- ENVIRONMENT=test, never used
+    # for a real deployment, see compose.yaml) both run over plain HTTP. A Secure cookie set
+    # under either would never be resent by a spec-compliant client (httpx included), so
+    # request flows that depend on the cookie coming back would silently no-op instead of
+    # exercising the real code path.
     # HttpOnly + SameSite=Lax apply unconditionally per AUTHENTICATION.md.
-    secure = settings.environment != "local"
+    secure = settings.environment not in ("local", "test")
     response.set_cookie(
         _ACCESS_TOKEN_COOKIE,
         access_token,
@@ -185,8 +190,10 @@ async def password_reset_request_route(
     raw_token = await request_password_reset_service(session, email=payload.email)
 
     # Response is identical for a known vs. unknown email — per THREAT_MODEL.md T11 — with
-    # the raw token echoed back only in local dev, where no email-delivery channel exists.
-    token = raw_token if get_settings().environment == "local" else None
+    # the raw token echoed back only in local dev and the pytest suite, neither of which has
+    # a real email-delivery channel (same "local" vs. "test" reasoning as _set_auth_cookies'
+    # secure-cookie decision above).
+    token = raw_token if get_settings().environment in ("local", "test") else None
     return PasswordResetRequestOut(message=_PASSWORD_RESET_REQUESTED_MESSAGE, token=token)
 
 
