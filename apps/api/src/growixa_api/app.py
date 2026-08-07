@@ -54,9 +54,14 @@ def create_app() -> FastAPI:
     logging.basicConfig(level=get_settings().log_level.upper())
 
     app = FastAPI(title="Growixa API", version=__version__, lifespan=lifespan)
+    origins = get_settings().cors_allowed_origins
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=get_settings().cors_allowed_origins,
+        allow_origins=origins,
+        allow_origin_regex=(
+            r"https://.*\.netlify\.app|https://.*\.vercel\.app|"
+            r"https://.*\.onrender\.com|http://localhost:.*"
+        ),
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],

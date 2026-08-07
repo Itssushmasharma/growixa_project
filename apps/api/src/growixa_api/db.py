@@ -21,7 +21,9 @@ def _normalize_database_url(url: str) -> str:
     return url
 
 
-engine = create_async_engine(_normalize_database_url(get_settings().database_url), pool_pre_ping=True)
+engine = create_async_engine(
+    _normalize_database_url(get_settings().database_url), pool_pre_ping=True
+)
 async_session_factory = async_sessionmaker(engine, expire_on_commit=False)
 
 
