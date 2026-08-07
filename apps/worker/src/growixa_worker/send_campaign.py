@@ -179,6 +179,7 @@ async def handle_send_campaign(session: AsyncSession, payload: dict[str, Any]) -
 
     session.add(
         UsageRecord(
+            account_id=campaign.account_id,
             operation_type="email.sent",
             quantity=sent_count,
             unit="email",

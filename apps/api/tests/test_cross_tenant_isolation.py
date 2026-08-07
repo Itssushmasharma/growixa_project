@@ -9,8 +9,8 @@ This is the regression guard for GRX-SAAS-001: if a future change ever drops an
 account_id scoping filter anywhere, one of these tests fails. Kept as one file, organized
 by module, rather than scattered across every module's own test file — this is the single
 place to see everything this app currently guarantees about account isolation. Grows one
-section per Phase A checkpoint (users/auth done; company/brand done; contacts done; email
-next).
+section per Phase A checkpoint (users/auth, company/brand, contacts, email/campaigns/
+integrations, and now the cross-cutting group -- audit_logs/usage_records -- all done).
 """
 
 import uuid
@@ -769,3 +769,71 @@ async def test_postmark_webhook_only_updates_the_matching_accounts_own_delivery(
                 assert delivery_after_right.status == "DELIVERED"
     finally:
         await _clear_email_fixtures()
+
+
+# --- cross-cutting: audit_logs (GRX-SAAS-001 cross-cutting slice) ---
+# usage_records has no read/list API at all (no repository/service/api layer exists for
+# it -- see MASTER_TASK_TRACKER.md's GRX-SAAS-001 evidence), so there is no endpoint that
+# could leak one account's usage data to another; nothing to test here beyond the NOT NULL
+# account_id column itself (exercised indirectly by every worker send_campaign test).
+
+
+async def _clear_audit_fixtures() -> None:
+    async with async_session_factory() as session:
+        await session.execute(delete(AuditLog))
+        await session.commit()
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_admin_cannot_list_another_accounts_audit_log_entries(
+    user_factory: Callable[..., Awaitable[uuid.UUID]],
+    account_factory: Callable[..., Awaitable[uuid.UUID]],
+) -> None:
+    account_a = await account_factory()
+    account_b = await account_factory()
+    admin_a = await user_factory(
+        full_name="Account A Admin", role_name="Admin", account_id=account_a
+    )
+    admin_b = await user_factory(
+        full_name="Account B Admin", role_name="Admin", account_id=account_b
+    )
+    viewer_a = await user_factory(
+        full_name="Account A Viewer", role_name="Viewer", account_id=account_a
+    )
+    viewer_b = await user_factory(
+        full_name="Account B Viewer", role_name="Viewer", account_id=account_b
+    )
+
+    transport = ASGITransport(app=create_app())
+    try:
+        # A role change is a real, already-wired audit event (users/services.py's
+        # "role.changed") -- generates one row per account, each carrying that account's
+        # own account_id.
+        async with AsyncClient(
+            transport=transport, base_url="http://test", cookies=_access_token_cookie(admin_a)
+        ) as client_a:
+            role_change_a = await client_a.patch(
+                f"/users/{viewer_a}/role", json={"role_name": "Analyst"}
+            )
+            assert role_change_a.status_code == 200
+
+        async with AsyncClient(
+            transport=transport, base_url="http://test", cookies=_access_token_cookie(admin_b)
+        ) as client_b:
+            role_change_b = await client_b.patch(
+                f"/users/{viewer_b}/role", json={"role_name": "Analyst"}
+            )
+            assert role_change_b.status_code == 200
+
+        async with AsyncClient(
+            transport=transport, base_url="http://test", cookies=_access_token_cookie(admin_a)
+        ) as client_a:
+            audit_response_a = await client_a.get("/audit", params={"entity_type": "user"})
+
+        assert audit_response_a.status_code == 200
+        entity_ids_a = {row["entity_id"] for row in audit_response_a.json()}
+        assert str(viewer_a) in entity_ids_a
+        assert str(viewer_b) not in entity_ids_a
+    finally:
+        await _clear_audit_fixtures()

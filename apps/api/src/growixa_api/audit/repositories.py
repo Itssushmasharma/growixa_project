@@ -11,6 +11,7 @@ from growixa_api.audit.models import AuditLog
 async def create_audit_log(
     session: AsyncSession,
     *,
+    account_id: uuid.UUID | None,
     actor_user_id: uuid.UUID | None,
     action: str,
     entity_type: str,
@@ -20,6 +21,7 @@ async def create_audit_log(
     user_agent: str | None = None,
 ) -> AuditLog:
     audit_log = AuditLog(
+        account_id=account_id,
         actor_user_id=actor_user_id,
         action=action,
         entity_type=entity_type,
@@ -36,12 +38,18 @@ async def create_audit_log(
 async def list_audit_logs(
     session: AsyncSession,
     *,
+    account_id: uuid.UUID,
     entity_type: str | None = None,
     entity_id: uuid.UUID | None = None,
     actor_user_id: uuid.UUID | None = None,
     limit: int = 100,
 ) -> Sequence[AuditLog]:
-    stmt = select(AuditLog).order_by(AuditLog.created_at.desc()).limit(limit)
+    stmt = (
+        select(AuditLog)
+        .where(AuditLog.account_id == account_id)
+        .order_by(AuditLog.created_at.desc())
+        .limit(limit)
+    )
     if entity_type is not None:
         stmt = stmt.where(AuditLog.entity_type == entity_type)
     if entity_id is not None:

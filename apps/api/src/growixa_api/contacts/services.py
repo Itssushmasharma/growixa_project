@@ -189,7 +189,12 @@ async def create_or_update_contact(
         session, account_id=account_id, contact_id=contact.id, custom_fields=custom_fields
     )
     await record_event(
-        session, actor_user_id=actor_id, action=action, entity_type="contact", entity_id=contact.id
+        session,
+        account_id=account_id,
+        actor_user_id=actor_id,
+        action=action,
+        entity_type="contact",
+        entity_id=contact.id,
     )
     await session.commit()
     # `updated_at`'s server-side onupdate expires the attribute after an UPDATE commit;
@@ -238,6 +243,7 @@ async def update_contact(
 
     await record_event(
         session,
+        account_id=account_id,
         actor_user_id=actor_id,
         action="contact.updated",
         entity_type="contact",
@@ -267,6 +273,7 @@ async def update_contact_status(
     action = "contact.archived" if status == "ARCHIVED" else "contact.updated"
     await record_event(
         session,
+        account_id=account_id,
         actor_user_id=actor_id,
         action=action,
         entity_type="contact",
@@ -345,6 +352,7 @@ async def attach_tag_to_contact(
     await attach_tag(session, account_id=account_id, contact_id=contact_id, tag_id=tag_id)
     await record_event(
         session,
+        account_id=account_id,
         actor_user_id=actor_id,
         action="contact.tagged",
         entity_type="contact",
@@ -374,6 +382,7 @@ async def detach_tag_from_contact(
     await detach_tag(session, contact_id=contact_id, tag_id=tag_id)
     await record_event(
         session,
+        account_id=account_id,
         actor_user_id=actor_id,
         action="contact.tagged",
         entity_type="contact",
@@ -439,6 +448,7 @@ async def add_contact_to_list(
     await add_list_member(session, account_id=account_id, list_id=list_id, contact_id=contact_id)
     await record_event(
         session,
+        account_id=account_id,
         actor_user_id=actor_id,
         action="contact.list_added",
         entity_type="contact",
@@ -520,6 +530,7 @@ async def create_segment_with_rules(
 
     await record_event(
         session,
+        account_id=account_id,
         actor_user_id=actor_id,
         action="segment.created",
         entity_type="segment",
@@ -589,6 +600,7 @@ async def remove_contact_from_list(
     await remove_list_member(session, list_id=list_id, contact_id=contact_id)
     await record_event(
         session,
+        account_id=account_id,
         actor_user_id=actor_id,
         action="contact.list_added",
         entity_type="contact",
@@ -732,6 +744,7 @@ async def import_contacts_from_csv(
 
     await record_event(
         session,
+        account_id=account_id,
         actor_user_id=actor_id,
         action="contact_import.completed",
         entity_type="contact_import",
@@ -798,6 +811,7 @@ async def record_consent(
     )
     await record_event(
         session,
+        account_id=account_id,
         actor_user_id=actor_id,
         action="contact.consent_changed",
         entity_type="contact",
@@ -849,6 +863,7 @@ async def suppress_email(
 
     await record_event(
         session,
+        account_id=account_id,
         actor_user_id=actor_id,
         action="contact.suppressed",
         entity_type="suppression_entry",

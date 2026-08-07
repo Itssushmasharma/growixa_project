@@ -117,6 +117,7 @@ async def accept_invitation(
 
     await record_event(
         session,
+        account_id=invitation.account_id,
         actor_user_id=user.id,
         action="invitation.accepted",
         entity_type="user_invitation",
@@ -190,6 +191,7 @@ async def update_user_role(
 
     await record_event(
         session,
+        account_id=account_id,
         actor_user_id=actor_id,
         action="role.changed",
         entity_type="user",

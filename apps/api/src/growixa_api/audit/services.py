@@ -35,6 +35,7 @@ def _redact_metadata(metadata: dict[str, Any]) -> dict[str, Any]:
 async def record_event(
     session: AsyncSession,
     *,
+    account_id: uuid.UUID | None,
     actor_user_id: uuid.UUID | None,
     action: str,
     entity_type: str,
@@ -45,6 +46,7 @@ async def record_event(
 ) -> AuditLog:
     return await create_audit_log(
         session,
+        account_id=account_id,
         actor_user_id=actor_user_id,
         action=action,
         entity_type=entity_type,
@@ -58,6 +60,7 @@ async def record_event(
 async def list_events(
     session: AsyncSession,
     *,
+    account_id: uuid.UUID,
     entity_type: str | None = None,
     entity_id: uuid.UUID | None = None,
     actor_user_id: uuid.UUID | None = None,
@@ -65,6 +68,7 @@ async def list_events(
 ) -> Sequence[AuditLog]:
     return await list_audit_logs(
         session,
+        account_id=account_id,
         entity_type=entity_type,
         entity_id=entity_id,
         actor_user_id=actor_user_id,

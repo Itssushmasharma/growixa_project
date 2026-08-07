@@ -63,6 +63,9 @@ async def login(
     if not valid:
         await record_event(
             session,
+            # user may be None (unknown email) -- no account is resolvable in that case,
+            # same reasoning as the nullable actor_user_id right below.
+            account_id=user.account_id if user is not None else None,
             actor_user_id=None,
             action="user.login_failed",
             entity_type="user",
@@ -91,6 +94,7 @@ async def login(
 
     await record_event(
         session,
+        account_id=user.account_id,
         actor_user_id=user.id,
         action="user.login",
         entity_type="user",
@@ -116,6 +120,7 @@ async def logout(session: AsyncSession, *, raw_refresh_token: str | None) -> Non
 
     await record_event(
         session,
+        account_id=token.account_id,
         actor_user_id=token.user_id,
         action="user.logout",
         entity_type="user",
@@ -146,6 +151,7 @@ async def revoke_all_active_sessions(
 
     await record_event(
         session,
+        account_id=tokens[0].account_id,
         actor_user_id=user_id,
         action="session.revoked",
         entity_type="user",
@@ -235,6 +241,7 @@ async def request_password_reset(session: AsyncSession, *, email: str) -> str | 
 
     await record_event(
         session,
+        account_id=user.account_id if user is not None else None,
         actor_user_id=None,
         action="user.password_reset_requested",
         entity_type="user",
@@ -277,6 +284,7 @@ async def complete_password_reset(
 
     await record_event(
         session,
+        account_id=user.account_id,
         actor_user_id=user.id,
         action="user.password_reset_completed",
         entity_type="user",

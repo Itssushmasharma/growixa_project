@@ -27,13 +27,16 @@ def _access_token_cookie(user_id: uuid.UUID) -> dict[str, str]:
 @pytest.mark.asyncio
 @pytest.mark.integration
 async def test_admin_can_list_audit_logs(
+    account_factory: Callable[..., Awaitable[uuid.UUID]],
     user_factory: Callable[..., Awaitable[uuid.UUID]],
 ) -> None:
-    admin_id = await user_factory(full_name="Audit Admin", role_name="Admin")
+    account_id = await account_factory()
+    admin_id = await user_factory(full_name="Audit Admin", role_name="Admin", account_id=account_id)
     entity_id = uuid.uuid4()
     async with async_session_factory() as session:
         await record_event(
             session,
+            account_id=account_id,
             actor_user_id=admin_id,
             action="contact.created",
             entity_type="contact",
@@ -63,14 +66,17 @@ async def test_admin_can_list_audit_logs(
 @pytest.mark.asyncio
 @pytest.mark.integration
 async def test_admin_can_filter_audit_logs_by_entity_type(
+    account_factory: Callable[..., Awaitable[uuid.UUID]],
     user_factory: Callable[..., Awaitable[uuid.UUID]],
 ) -> None:
-    admin_id = await user_factory(full_name="Audit Admin", role_name="Admin")
+    account_id = await account_factory()
+    admin_id = await user_factory(full_name="Audit Admin", role_name="Admin", account_id=account_id)
     contact_entity_id = uuid.uuid4()
     user_entity_id = uuid.uuid4()
     async with async_session_factory() as session:
         await record_event(
             session,
+            account_id=account_id,
             actor_user_id=admin_id,
             action="contact.created",
             entity_type="contact",
@@ -79,6 +85,7 @@ async def test_admin_can_filter_audit_logs_by_entity_type(
         )
         await record_event(
             session,
+            account_id=account_id,
             actor_user_id=admin_id,
             action="role.changed",
             entity_type="user",

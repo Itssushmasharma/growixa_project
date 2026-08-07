@@ -11,8 +11,8 @@ delivery_attempts, campaign_recipients, campaign_versions, campaigns.status, usa
 `account_id` (GRX-SAAS-001) is declared on every model send_campaign filters or writes by
 it: read-only on `Contact`/`ConsentRecord`/`SuppressionEntry` (so recipient resolution and
 the suppression/consent check can be account-scoped), and written on every table
-send_campaign inserts into (`campaigns` excepted -- read-only here). `usage_records` is
-intentionally excluded (GRX-SAAS-001's still-BACKLOG "cross-cutting" group, not this one).
+send_campaign inserts into, including `usage_records` (`campaigns` excepted -- read-only
+here).
 """
 
 import uuid
@@ -287,6 +287,7 @@ class UsageRecord(Base):
     __tablename__ = "usage_records"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    account_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     operation_type: Mapped[str] = mapped_column(Text, nullable=False)
     quantity: Mapped[float] = mapped_column(Numeric, nullable=False)
     unit: Mapped[str] = mapped_column(Text, nullable=False)
