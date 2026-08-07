@@ -63,6 +63,24 @@ class Settings(BaseSettings):
     # ever matters more than dispatch latency.
     scheduler_poll_interval_seconds: float = 5.0
 
+    # Platform-level transactional email: sends the self-registration verification link.
+    # Deliberately separate from the customer-owned email_provider_connections table
+    # (Postmark/Custom SMTP per account, GRX-EMAIL-011) -- a brand-new account has no
+    # provider of its own yet, so the platform sends this one email on the account's
+    # behalf, the way any SaaS sends its own signup confirmations. An empty host means
+    # "not configured yet" -- registration still succeeds, the email is just skipped
+    # (and logged), so this ships safely before real SMTP credentials are set.
+    platform_smtp_host: str = ""
+    platform_smtp_port: int = 587
+    platform_smtp_username: str = ""
+    platform_smtp_password: str = ""
+    platform_smtp_from_email: str = "noreply@growixa.local"
+    platform_smtp_from_name: str = "Growixa"
+
+    # Base URL of the deployed frontend, used to build the verification link emailed to
+    # a new signup (e.g. https://growixa.netlify.app). Defaults to local dev.
+    frontend_base_url: str = "http://localhost:3000"
+
 
 @lru_cache
 def get_settings() -> Settings:

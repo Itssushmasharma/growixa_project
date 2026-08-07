@@ -19,6 +19,20 @@ services:
       # - RABBITMQ_URL (if using external service)
       # - JWT_SIGNING_KEY (generate a secure key)
       # - ENCRYPTION_KEY (generate using Fernet.generate_key())
+      #
+      # Platform admin seed (one-time; run `python -m growixa_api.cli.seed_platform_admin`
+      # from this service's Shell tab after setting these -- see
+      # docs/11-devops/LOCAL_DEVELOPMENT.md):
+      # - PLATFORM_ADMIN_EMAIL
+      # - PLATFORM_ADMIN_PASSWORD
+      # - PLATFORM_ADMIN_FULL_NAME (optional)
+      #
+      # Self-registration verification email (optional -- registration works without
+      # it, it just won't email the link until these are set):
+      # - PLATFORM_SMTP_HOST / PLATFORM_SMTP_PORT
+      # - PLATFORM_SMTP_USERNAME / PLATFORM_SMTP_PASSWORD
+      # - PLATFORM_SMTP_FROM_EMAIL / PLATFORM_SMTP_FROM_NAME
+      # - FRONTEND_BASE_URL (e.g. https://growixa.netlify.app)
 
   # Uncomment if you have a separate frontend service
   # - type: web

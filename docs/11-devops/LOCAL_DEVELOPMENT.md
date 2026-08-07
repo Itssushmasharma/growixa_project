@@ -116,6 +116,43 @@ docker compose exec api python -m growixa_api.cli.seed_first_admin
 Exact module path is finalized when `GRX-AUTH-001` (users/roles/permissions schema + seed)
 is implemented; this file is updated to match at that point.
 
+### Platform admin seed (GRX-SAAS-005/008 follow-up)
+
+`platform_admins` is a structurally separate identity class from customer users
+(`DEC-GRX-018`) with no self-service signup, so the first one has to be created
+directly. A one-time, idempotent seed command creates a `platform.owner` admin from
+`PLATFORM_ADMIN_EMAIL`/`PLATFORM_ADMIN_PASSWORD` (optionally `PLATFORM_ADMIN_FULL_NAME`)
+env vars — safe to re-run (e.g. on every deploy), it does nothing if that email already
+exists:
+
+```bash
+docker compose exec api python -m growixa_api.cli.seed_platform_admin
+```
+
+On Render, run the same command from the `api` service's Shell tab after setting those
+three env vars in its dashboard. Log into the platform panel at `/platform/login` with
+the seeded credentials, then rotate the password once you're in (no self-service
+password-change exists yet — use the same env-var-and-rerun approach, or update
+`platform_admins.password_hash` directly, until one is built).
+
+### Self-registration verification email (GRX-SAAS-003 follow-up)
+
+`POST /accounts/register` only actually emails the verification link if
+`PLATFORM_SMTP_HOST` is set — otherwise it logs a warning and no-ops (registration still
+succeeds; `ENVIRONMENT=local`/`test` keep returning the raw token in the response body
+for convenience instead). Set on the `api` service:
+
+| Env var | Meaning |
+|---|---|
+| `PLATFORM_SMTP_HOST` / `PLATFORM_SMTP_PORT` | e.g. an SMTP relay endpoint; port 465 is implicit TLS, anything else is STARTTLS |
+| `PLATFORM_SMTP_USERNAME` / `PLATFORM_SMTP_PASSWORD` | Credentials for that relay |
+| `PLATFORM_SMTP_FROM_EMAIL` / `PLATFORM_SMTP_FROM_NAME` | The visible sender on the verification email |
+| `FRONTEND_BASE_URL` | The deployed frontend's origin (e.g. `https://growixa.netlify.app`) — used to build the `/verify-email?token=...` link |
+
+This is deliberately separate from the customer-owned `email_provider_connections`
+table (Postmark/Custom SMTP per account, `GRX-EMAIL-011`) — a brand-new account has no
+provider of its own yet at the moment it registers.
+
 ## Backend commands
 
 ```bash

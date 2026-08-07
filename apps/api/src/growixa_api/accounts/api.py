@@ -9,6 +9,7 @@ from growixa_api.accounts.services import verify_email as verify_email_service
 from growixa_api.auth.rate_limit import RateLimitExceededError, enforce_rate_limit
 from growixa_api.config import get_settings
 from growixa_api.db import get_session
+from growixa_api.notifications.email import send_verification_email
 from growixa_api.redis import get_redis
 
 _RATE_LIMIT_MESSAGE = "Too many attempts. Please try again later."
@@ -44,6 +45,10 @@ async def register_route(
         raise HTTPException(
             status.HTTP_409_CONFLICT, "A user with this email already exists"
         ) from exc
+
+    await send_verification_email(
+        to_email=result.user.email, full_name=result.user.full_name, raw_token=raw_token
+    )
 
     token = raw_token if get_settings().environment in ("local", "test") else None
     return RegisterOut(
