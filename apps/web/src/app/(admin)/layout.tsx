@@ -1,20 +1,53 @@
-import { redirect } from "next/navigation";
-import type { ReactNode } from "react";
+"use client";
+
+import { useRouter } from "next/navigation";
+import { type ReactNode, useEffect, useState } from "react";
 
 import { ToastProvider } from "@/components/toast/toast-context";
-import { getCurrentUser } from "@/lib/auth";
+import { apiFetch } from "@/lib/api-client";
+import type { AuthUser } from "@/lib/client-auth";
 
 import { AdminHeader } from "./admin-header";
 import styles from "./admin-header.module.css";
 
-export default async function AdminLayout({ children }: { children: ReactNode }) {
-  const user = await getCurrentUser();
-  if (!user) {
-    redirect("/login");
-  }
+export default function AdminLayout({ children }: { children: ReactNode }) {
+  const router = useRouter();
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  if (!user.permissions.includes("admin.access")) {
-    redirect("/dashboard");
+  useEffect(() => {
+    apiFetch<AuthUser>("/auth/me")
+      .then((data) => {
+        if (!data.permissions.includes("admin.access")) {
+          router.replace("/dashboard");
+          return;
+        }
+        setUser(data);
+        setLoading(false);
+      })
+      .catch(() => {
+        setLoading(false);
+        router.replace("/login");
+      });
+  }, [router]);
+
+  if (loading || !user) {
+    return (
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          height: "100vh",
+          background: "#0a0e1a",
+          color: "#8b95b0",
+          fontFamily: "Inter, sans-serif",
+          fontSize: "14px",
+        }}
+      >
+        Loading…
+      </div>
+    );
   }
 
   return (

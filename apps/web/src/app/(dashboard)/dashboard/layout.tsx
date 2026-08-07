@@ -1,19 +1,21 @@
-import { redirect } from "next/navigation";
+"use client";
+
 import type { ReactNode } from "react";
 
-import { getCurrentUser } from "@/lib/auth";
+import { ClientAuthGuard } from "@/lib/client-auth";
 
 import { DashboardShell } from "./dashboard-shell";
 
-export default async function DashboardLayout({ children }: { children: ReactNode }) {
-  const user = await getCurrentUser();
-  if (!user) {
-    redirect("/login");
-  }
-
+export default function DashboardLayout({ children }: { children: ReactNode }) {
   return (
-    <DashboardShell permissions={user.permissions} fullName={user.full_name}>
+    <ClientAuthGuard
+      renderShell={(user, inner) => (
+        <DashboardShell permissions={user.permissions} fullName={user.full_name}>
+          {inner}
+        </DashboardShell>
+      )}
+    >
       {children}
-    </DashboardShell>
+    </ClientAuthGuard>
   );
 }
