@@ -210,14 +210,21 @@ async def update_contact(
     session: AsyncSession,
     *,
     account_id: uuid.UUID,
-    actor_id: uuid.UUID,
+    actor_id: uuid.UUID | None,
     contact_id: uuid.UUID,
     email: str | None,
     first_name: str | None,
     last_name: str | None,
     phone: str | None,
     custom_fields: dict[str, str] | None,
+    audit_metadata: dict[str, object] | None = None,
 ) -> ContactSnapshot:
+    """actor_id is Optional and audit_metadata exists for GRX-SAAS-010: a platform admin
+    editing a contact through a support session has no users.id to record as the actor
+    (DEC-GRX-022 point 4) -- it passes actor_id=None and its own identity in
+    audit_metadata instead, the same actor_user_id=None + metadata pattern DEC-GRX-020
+    established. Ordinary customer callers are unaffected -- they keep passing a real
+    actor_id and audit_metadata defaults to None."""
     contact = await get_contact_by_id(session, account_id, contact_id)
     if contact is None:
         raise ContactNotFoundError
@@ -248,6 +255,7 @@ async def update_contact(
         action="contact.updated",
         entity_type="contact",
         entity_id=contact.id,
+        metadata=audit_metadata,
     )
     await session.commit()
     await session.refresh(contact)

@@ -7,6 +7,7 @@ import layoutStyles from "./layout.module.css";
 import { LogoutButton } from "./logout-button";
 import { PageTitle } from "./page-title";
 import { Sidebar } from "./sidebar";
+import { SupportSessionBanner } from "./support-session-banner";
 import topbarStyles from "./topbar.module.css";
 
 const MOBILE_QUERY = "(max-width: 768px)";
@@ -62,6 +63,7 @@ export function DashboardShell({
             <LogoutButton />
           </div>
         </header>
+        <SupportSessionBanner />
         <div className={layoutStyles.content}>{children}</div>
       </div>
     </div>

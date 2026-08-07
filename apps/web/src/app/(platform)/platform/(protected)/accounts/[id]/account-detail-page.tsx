@@ -7,6 +7,7 @@ import { useToast } from "@/components/toast/toast-context";
 import { ApiError, apiFetch } from "@/lib/api-client";
 
 import styles from "./account-detail-page.module.css";
+import { SupportSessionPanel } from "./support-session-panel";
 import type { AccountDetail, AccountStatus } from "../types";
 
 const STATUS_LABELS: Record<AccountStatus, string> = {
@@ -143,6 +144,8 @@ export function AccountDetailPage({ accountId }: { accountId: string }) {
           </div>
         ))}
       </div>
+
+      <SupportSessionPanel accountId={accountId} />
     </>
   );
 }

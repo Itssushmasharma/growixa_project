@@ -1,0 +1,186 @@
+.card {
+  background: #fff;
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
+  padding: 32px;
+  margin-bottom: 20px;
+}
+
+.backLink {
+  display: inline-block;
+  margin-bottom: 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-slate);
+  text-decoration: none;
+}
+
+.backLink:hover {
+  text-decoration: underline;
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.headerTitle {
+  margin: 0 0 6px;
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.meta {
+  color: var(--color-slate);
+  font-size: 13px;
+}
+
+.accessBadge {
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.accessRead {
+  background: rgba(148, 163, 184, 0.2);
+  color: var(--color-slate);
+}
+
+.accessWrite {
+  background: rgba(217, 119, 6, 0.14);
+  color: #b45309;
+}
+
+.endButton {
+  padding: 8px 16px;
+  border-radius: var(--pill-radius);
+  border: 1px solid rgba(244, 63, 94, 0.3);
+  background: #fff;
+  color: var(--color-error);
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.endButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.sectionTitle {
+  margin: 0 0 14px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid rgba(15, 42, 86, 0.08);
+  font-size: 14px;
+}
+
+.row:first-of-type {
+  border-top: none;
+}
+
+.identity {
+  flex: 1;
+  min-width: 0;
+}
+
+.name {
+  font-weight: 600;
+}
+
+.email {
+  font-size: 13px;
+  color: var(--color-slate);
+}
+
+.editButton {
+  padding: 6px 14px;
+  border-radius: var(--pill-radius);
+  border: 1px solid rgba(15, 42, 86, 0.14);
+  background: #fff;
+  font-weight: 600;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.editForm {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.editInput {
+  padding: 7px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(15, 42, 86, 0.14);
+  font-size: 13px;
+  flex: 1;
+  min-width: 100px;
+}
+
+.saveButton {
+  padding: 7px 14px;
+  border-radius: var(--pill-radius);
+  border: none;
+  background: var(--color-primary-blue);
+  color: #fff;
+  font-weight: 600;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.saveButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.cancelButton {
+  padding: 7px 14px;
+  border-radius: var(--pill-radius);
+  border: 1px solid rgba(15, 42, 86, 0.14);
+  background: #fff;
+  font-weight: 600;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.activityRow {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 10px 0;
+  border-top: 1px solid rgba(15, 42, 86, 0.08);
+  font-size: 13px;
+}
+
+.activityRow:first-of-type {
+  border-top: none;
+}
+
+.activityAction {
+  font-weight: 600;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+.activityTime {
+  color: var(--color-slate);
+  white-space: nowrap;
+}
+
+.empty {
+  color: var(--color-slate);
+  font-size: 13px;
+}

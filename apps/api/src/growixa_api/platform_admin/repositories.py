@@ -1,11 +1,13 @@
 import uuid
 from collections.abc import Sequence
+from datetime import datetime
 
 from sqlalchemy import Row, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from growixa_api.accounts.models import Account
 from growixa_api.campaigns.models import Campaign
+from growixa_api.platform_admin.models import SupportSession
 from growixa_api.usage.models import UsageRecord
 from growixa_api.users.models import User
 
@@ -66,3 +68,60 @@ async def list_campaigns_by_status(
 
 async def get_campaign_by_id(session: AsyncSession, campaign_id: uuid.UUID) -> Campaign | None:
     return await session.get(Campaign, campaign_id)
+
+
+async def create_support_session(
+    session: AsyncSession,
+    *,
+    account_id: uuid.UUID,
+    platform_admin_id: uuid.UUID,
+    reason: str,
+    ticket_number: str,
+    access_level: str,
+    expires_at: datetime,
+) -> SupportSession:
+    support_session = SupportSession(
+        account_id=account_id,
+        platform_admin_id=platform_admin_id,
+        reason=reason,
+        ticket_number=ticket_number,
+        access_level=access_level,
+        expires_at=expires_at,
+    )
+    session.add(support_session)
+    await session.flush()
+    return support_session
+
+
+async def get_support_session_by_id(
+    session: AsyncSession, support_session_id: uuid.UUID
+) -> SupportSession | None:
+    return await session.get(SupportSession, support_session_id)
+
+
+async def list_support_sessions_for_account(
+    session: AsyncSession, account_id: uuid.UUID
+) -> Sequence[SupportSession]:
+    result = await session.execute(
+        select(SupportSession)
+        .where(SupportSession.account_id == account_id)
+        .order_by(SupportSession.started_at.desc())
+    )
+    return result.scalars().all()
+
+
+async def get_active_support_session_for_account(
+    session: AsyncSession, account_id: uuid.UUID
+) -> SupportSession | None:
+    """The one query the customer-facing banner check (THREAT_MODEL.md T42) needs --
+    served by the partial (account_id) WHERE ended_at IS NULL index."""
+    result = await session.execute(
+        select(SupportSession)
+        .where(
+            SupportSession.account_id == account_id,
+            SupportSession.ended_at.is_(None),
+            SupportSession.expires_at > func.now(),
+        )
+        .limit(1)
+    )
+    return result.scalar_one_or_none()

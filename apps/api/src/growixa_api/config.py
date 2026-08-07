@@ -81,6 +81,11 @@ class Settings(BaseSettings):
     # a new signup (e.g. https://growixa.netlify.app). Defaults to local dev.
     frontend_base_url: str = "http://localhost:3000"
 
+    # GRX-SAAS-010: how long a support session stays usable after it's opened, before
+    # every read/write action through it starts rejecting (re-checked at call time, not
+    # only at creation — see THREAT_MODEL.md T39).
+    support_session_ttl_minutes: int = 60
+
 
 @lru_cache
 def get_settings() -> Settings:

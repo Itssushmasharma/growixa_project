@@ -8,6 +8,10 @@ import { apiFetch } from "@/lib/api-client";
 import { AccountDetailPage } from "./account-detail-page";
 import type { AccountDetail } from "../types";
 
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn() }),
+}));
+
 vi.mock("@/lib/api-client", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/api-client")>();
   return {
@@ -60,6 +64,8 @@ beforeEach(() => {
 describe("AccountDetailPage", () => {
   it("renders the account's users and security activity", async () => {
     mockedApiFetch.mockResolvedValueOnce(ACTIVE_ACCOUNT);
+    mockedApiFetch.mockResolvedValueOnce([]); // support-session history
+    mockedApiFetch.mockResolvedValueOnce({ permissions: [] }); // /platform/auth/me
 
     renderPage();
 
@@ -72,6 +78,8 @@ describe("AccountDetailPage", () => {
   it("suspends the account via the Suspend button and refetches", async () => {
     const user = userEvent.setup();
     mockedApiFetch.mockResolvedValueOnce(ACTIVE_ACCOUNT);
+    mockedApiFetch.mockResolvedValueOnce([]); // support-session history
+    mockedApiFetch.mockResolvedValueOnce({ permissions: [] }); // /platform/auth/me
     mockedApiFetch.mockResolvedValueOnce({ ...ACTIVE_ACCOUNT, status: "SUSPENDED" });
     mockedApiFetch.mockResolvedValueOnce({ ...ACTIVE_ACCOUNT, status: "SUSPENDED" });
 

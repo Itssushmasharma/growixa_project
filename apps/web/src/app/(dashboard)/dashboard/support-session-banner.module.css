@@ -1,0 +1,14 @@
+.banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 32px;
+  background: rgba(217, 119, 6, 0.12);
+  color: #92400e;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.icon {
+  font-size: 14px;
+}

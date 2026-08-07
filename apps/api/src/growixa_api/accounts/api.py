@@ -1,8 +1,15 @@
+import uuid
+
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from growixa_api.accounts.schemas import RegisterIn, RegisterOut, VerifyEmailIn
+from growixa_api.accounts.schemas import (
+    RegisterIn,
+    RegisterOut,
+    SupportSessionStatusOut,
+    VerifyEmailIn,
+)
 from growixa_api.accounts.services import EmailAlreadyRegisteredError, InvalidVerificationTokenError
 from growixa_api.accounts.services import register as register_service
 from growixa_api.accounts.services import verify_email as verify_email_service
@@ -10,6 +17,8 @@ from growixa_api.auth.rate_limit import RateLimitExceededError, enforce_rate_lim
 from growixa_api.config import get_settings
 from growixa_api.db import get_session
 from growixa_api.notifications.email import send_verification_email
+from growixa_api.permissions.dependencies import get_current_account_id
+from growixa_api.platform_admin.repositories import get_active_support_session_for_account
 from growixa_api.redis import get_redis
 
 _RATE_LIMIT_MESSAGE = "Too many attempts. Please try again later."
@@ -79,3 +88,19 @@ async def verify_email_route(
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST, "Invalid or expired verification token"
         ) from exc
+
+
+@router.get("/support-session-status", response_model=SupportSessionStatusOut)
+async def support_session_status_route(
+    account_id: uuid.UUID = Depends(get_current_account_id),
+    session: AsyncSession = Depends(get_session),
+) -> SupportSessionStatusOut:
+    """No permission code required beyond authentication -- any user of the account
+    should be able to see this (DEC-GRX-022 point 6, THREAT_MODEL.md T42)."""
+    active_session = await get_active_support_session_for_account(session, account_id)
+    if active_session is None:
+        return SupportSessionStatusOut(active=False, started_at=None, reason=None)
+
+    return SupportSessionStatusOut(
+        active=True, started_at=active_session.started_at, reason=active_session.reason
+    )

@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime
 from typing import Literal
 
 from pydantic import BaseModel
@@ -26,3 +27,14 @@ class RegisterOut(BaseModel):
 
 class VerifyEmailIn(BaseModel):
     token: str
+
+
+class SupportSessionStatusOut(BaseModel):
+    """GRX-SAAS-010 / DEC-GRX-022 point 6 -- the only place a support session's
+    existence is visible from the customer side. Deliberately no support_session_id or
+    platform_admin identity here: this is a presence check for the banner, not a way
+    for a customer to enumerate platform-admin activity."""
+
+    active: bool
+    started_at: datetime | None
+    reason: str | None

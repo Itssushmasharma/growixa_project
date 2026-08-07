@@ -35,3 +35,17 @@ export interface AccountDetail {
   users: AccountUser[];
   security_activity: SecurityEvent[];
 }
+
+export type SupportSessionAccessLevel = "READ" | "WRITE";
+
+export interface SupportSession {
+  id: string;
+  account_id: string;
+  platform_admin_id: string;
+  reason: string;
+  ticket_number: string;
+  access_level: SupportSessionAccessLevel;
+  started_at: string;
+  expires_at: string;
+  ended_at: string | null;
+}

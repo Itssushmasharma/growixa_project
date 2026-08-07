@@ -1,5 +1,6 @@
 import uuid
 from collections.abc import Sequence
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import Row
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,15 +12,26 @@ from growixa_api.auth.services import revoke_all_active_sessions
 from growixa_api.campaigns.models import Campaign
 from growixa_api.campaigns.services import CampaignNotCancellableError, cancel_campaign
 from growixa_api.campaigns.services import CampaignNotFoundError as CampaignRowNotFoundError
+from growixa_api.company.models import CompanyProfile
+from growixa_api.company.services import get_profile as get_company_profile
+from growixa_api.config import get_settings
+from growixa_api.contacts.services import ContactSnapshot
+from growixa_api.contacts.services import list_contacts_with_fields as list_contacts_service
+from growixa_api.contacts.services import update_contact as update_contact_service
+from growixa_api.platform_admin.models import SupportSession
 from growixa_api.platform_admin.repositories import (
     count_users_by_account,
+    create_support_session,
     get_account_by_id,
     get_campaign_by_id,
+    get_support_session_by_id,
     list_accounts,
     list_campaigns_by_status,
+    list_support_sessions_for_account,
     list_usage_summary,
 )
 from growixa_api.platform_auth.models import PlatformAdmin
+from growixa_api.platform_auth.repositories import platform_admin_has_permission
 from growixa_api.users.models import User
 from growixa_api.users.repositories import list_users
 
@@ -68,6 +80,31 @@ class CampaignNotPausableError(Exception):
     """The campaign is not in a state that can be paused (DRAFT/SCHEDULED only) --
     mirrors campaigns/services.py's own CampaignNotCancellableError, since pausing
     reuses that exact state transition (DEC-GRX-021 point 2)."""
+
+
+class SupportSessionWriteNotPermittedError(Exception):
+    """Requested access_level=WRITE but the acting admin lacks
+    platform.support_session.write (DEC-GRX-022 point 2 -- the "separate permission
+    gate for write access")."""
+
+
+class SupportSessionNotFoundError(Exception):
+    """The target support_session id doesn't match any existing session."""
+
+
+class SupportSessionAccessDeniedError(Exception):
+    """The session exists but belongs to a different platform admin
+    (THREAT_MODEL.md T38 -- a session id alone is never sufficient)."""
+
+
+class SupportSessionExpiredError(Exception):
+    """The session has ended or its expires_at has passed (THREAT_MODEL.md T39)."""
+
+
+class SupportSessionWriteGateError(Exception):
+    """The write action was attempted through a READ-level session, or by an admin
+    who never held platform.support_session.write (THREAT_MODEL.md T40 -- two
+    independent checks, either one alone blocks it)."""
 
 
 async def list_accounts_with_user_counts(session: AsyncSession) -> list[tuple[Account, int]]:
@@ -181,3 +218,154 @@ async def pause_campaign(
     await session.commit()
 
     return campaign, account_name
+
+
+async def _admin_metadata(session: AsyncSession, platform_admin_id: uuid.UUID) -> dict[str, object]:
+    admin = await session.get(PlatformAdmin, platform_admin_id)
+    return {
+        "platform_admin_id": str(platform_admin_id),
+        "platform_admin_email": admin.email if admin is not None else None,
+    }
+
+
+async def start_support_session(
+    session: AsyncSession,
+    *,
+    account_id: uuid.UUID,
+    platform_admin_id: uuid.UUID,
+    reason: str,
+    ticket_number: str,
+    access_level: str,
+) -> SupportSession:
+    account = await get_account_by_id(session, account_id)
+    if account is None:
+        raise AccountNotFoundError
+
+    if access_level == "WRITE" and not await platform_admin_has_permission(
+        session, platform_admin_id, "platform.support_session.write"
+    ):
+        raise SupportSessionWriteNotPermittedError
+
+    expires_at = datetime.now(UTC) + timedelta(minutes=get_settings().support_session_ttl_minutes)
+    support_session = await create_support_session(
+        session,
+        account_id=account_id,
+        platform_admin_id=platform_admin_id,
+        reason=reason,
+        ticket_number=ticket_number,
+        access_level=access_level,
+        expires_at=expires_at,
+    )
+
+    metadata = await _admin_metadata(session, platform_admin_id)
+    metadata.update(
+        {"reason": reason, "ticket_number": ticket_number, "access_level": access_level}
+    )
+    await record_event(
+        session,
+        account_id=account_id,
+        actor_user_id=None,
+        action="support_session.started",
+        entity_type="support_session",
+        entity_id=support_session.id,
+        metadata=metadata,
+    )
+    await session.commit()
+    await session.refresh(support_session)
+    return support_session
+
+
+async def list_support_sessions_for_account_service(
+    session: AsyncSession, account_id: uuid.UUID
+) -> Sequence[SupportSession]:
+    account = await get_account_by_id(session, account_id)
+    if account is None:
+        raise AccountNotFoundError
+    return await list_support_sessions_for_account(session, account_id)
+
+
+async def _load_owned_active_session(
+    session: AsyncSession, *, support_session_id: uuid.UUID, platform_admin_id: uuid.UUID
+) -> SupportSession:
+    """Shared by every route that acts *through* an existing session (overview read,
+    the gated write action, ending early) -- THREAT_MODEL.md T38/T39 in one place
+    rather than re-checked ad hoc per caller."""
+    support_session = await get_support_session_by_id(session, support_session_id)
+    if support_session is None:
+        raise SupportSessionNotFoundError
+    if support_session.platform_admin_id != platform_admin_id:
+        raise SupportSessionAccessDeniedError
+    if support_session.ended_at is not None or support_session.expires_at <= datetime.now(UTC):
+        raise SupportSessionExpiredError
+    return support_session
+
+
+async def end_support_session(
+    session: AsyncSession, *, support_session_id: uuid.UUID, platform_admin_id: uuid.UUID
+) -> SupportSession:
+    support_session = await _load_owned_active_session(
+        session, support_session_id=support_session_id, platform_admin_id=platform_admin_id
+    )
+    support_session.ended_at = datetime.now(UTC)
+
+    metadata = await _admin_metadata(session, platform_admin_id)
+    await record_event(
+        session,
+        account_id=support_session.account_id,
+        actor_user_id=None,
+        action="support_session.ended",
+        entity_type="support_session",
+        entity_id=support_session.id,
+        metadata=metadata,
+    )
+    await session.commit()
+    await session.refresh(support_session)
+    return support_session
+
+
+async def get_support_session_overview(
+    session: AsyncSession, *, support_session_id: uuid.UUID, platform_admin_id: uuid.UUID
+) -> tuple[SupportSession, CompanyProfile | None, list[ContactSnapshot], Sequence[AuditLog]]:
+    support_session = await _load_owned_active_session(
+        session, support_session_id=support_session_id, platform_admin_id=platform_admin_id
+    )
+    company = await get_company_profile(session, support_session.account_id)
+    contacts = await list_contacts_service(session, support_session.account_id)
+    # Full operational trail, not GRX-SAAS-005's security-action-filtered subset --
+    # support needs day-to-day context, not just security events (DEC-GRX-022 point 3).
+    audit_events = await list_events(session, account_id=support_session.account_id, limit=100)
+    return support_session, company, contacts, audit_events
+
+
+async def update_contact_via_support_session(
+    session: AsyncSession,
+    *,
+    support_session_id: uuid.UUID,
+    platform_admin_id: uuid.UUID,
+    contact_id: uuid.UUID,
+    email: str | None,
+    first_name: str | None,
+    last_name: str | None,
+    phone: str | None,
+) -> ContactSnapshot:
+    support_session = await _load_owned_active_session(
+        session, support_session_id=support_session_id, platform_admin_id=platform_admin_id
+    )
+    if support_session.access_level != "WRITE":
+        raise SupportSessionWriteGateError
+
+    metadata = await _admin_metadata(session, platform_admin_id)
+    metadata["support_session_id"] = str(support_session_id)
+
+    return await update_contact_service(
+        session,
+        account_id=support_session.account_id,
+        actor_id=None,
+        contact_id=contact_id,
+        email=email,
+        first_name=first_name,
+        last_name=last_name,
+        phone=phone,
+        custom_fields=None,
+        audit_metadata=metadata,
+    )

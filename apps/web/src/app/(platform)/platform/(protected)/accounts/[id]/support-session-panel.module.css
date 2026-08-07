@@ -1,0 +1,139 @@
+.card {
+  background: #fff;
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
+  padding: 32px;
+  margin-bottom: 20px;
+}
+
+.sectionTitle {
+  margin: 0 0 14px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-bottom: 20px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid rgba(15, 42, 86, 0.08);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-slate);
+}
+
+.input {
+  padding: 9px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(15, 42, 86, 0.14);
+  font-size: 14px;
+}
+
+.radioGroup {
+  display: flex;
+  gap: 18px;
+}
+
+.radioLabel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.submitButton {
+  align-self: flex-start;
+  padding: 9px 18px;
+  border-radius: var(--pill-radius);
+  border: none;
+  background: var(--color-primary-blue);
+  color: #fff;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.submitButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.history {
+  display: flex;
+  flex-direction: column;
+}
+
+.historyLink {
+  color: inherit;
+  text-decoration: none;
+}
+
+.historyLink:hover .historyRow {
+  background: rgba(20, 87, 230, 0.04);
+}
+
+.historyRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 8px;
+  border-top: 1px solid rgba(15, 42, 86, 0.08);
+  font-size: 13px;
+  border-radius: 6px;
+}
+
+.historyMain {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.historyReason {
+  font-weight: 600;
+}
+
+.historyTicket {
+  color: var(--color-slate);
+  font-size: 12px;
+}
+
+.accessBadge {
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.accessRead {
+  background: rgba(148, 163, 184, 0.2);
+  color: var(--color-slate);
+}
+
+.accessWrite {
+  background: rgba(217, 119, 6, 0.14);
+  color: #b45309;
+}
+
+.historyStatus {
+  color: var(--color-slate);
+  white-space: nowrap;
+}
+
+.empty {
+  color: var(--color-slate);
+  font-size: 13px;
+}

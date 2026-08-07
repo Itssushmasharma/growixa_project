@@ -45,6 +45,10 @@ from growixa_api.platform_auth.dependencies import RequirePlatformPermission
 # /accounts/register and /accounts/verify-email are the same shape as
 # /users/invitations/accept: no session exists yet, identity comes from the
 # credential/token in the request itself (GRX-SAAS-003 Phase C).
+# /accounts/support-session-status is the same shape as /auth/me: identity comes from
+# get_current_account_id() via the access-token cookie, and any authenticated user of
+# the account may know whether support currently has an active session on it -- there's
+# no separate permission to check (GRX-SAAS-010 / DEC-GRX-022 point 6).
 PUBLIC_ROUTE_PATHS = {
     "/health",
     "/auth/login",
@@ -62,6 +66,7 @@ PUBLIC_ROUTE_PATHS = {
     "/platform/auth/me",
     "/accounts/register",
     "/accounts/verify-email",
+    "/accounts/support-session-status",
 }
 
 
