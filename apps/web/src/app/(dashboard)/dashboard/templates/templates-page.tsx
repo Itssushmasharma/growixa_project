@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useToast } from "@/components/toast/toast-context";
 import { ApiError, apiFetch } from "@/lib/api-client";
 
+import { TEMPLATE_PRESETS } from "./presets";
 import styles from "./templates-page.module.css";
 import type { EmailTemplate, MeResponse } from "./types";
 
@@ -13,6 +14,8 @@ const VIEW_PERMISSION = "campaigns.view";
 const MANAGE_PERMISSION = "campaigns.manage";
 
 type SortOption = "updated" | "name";
+type ViewMode = "grid" | "list";
+type CategoryFilter = "All" | "Marketing" | "Onboarding" | "Announcement" | "Newsletter";
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, {
@@ -22,9 +25,6 @@ function formatDate(iso: string): string {
   });
 }
 
-// sandbox="" (no allow-scripts, no allow-same-origin) renders the markup/inline styles
-// a template author would see in an email client, without letting any script content
-// run against this app's origin.
 function TemplatePreviewModal({
   template,
   onClose,
@@ -112,6 +112,8 @@ export function TemplatesPage() {
 
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<SortOption>("updated");
+  const [viewMode, setViewMode] = useState<ViewMode>("grid");
+  const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("All");
 
   useEffect(() => {
     async function load() {
@@ -162,13 +164,22 @@ export function TemplatesPage() {
 
   const visibleTemplates = useMemo(() => {
     const query = search.trim().toLowerCase();
-    const filtered = query
+    let filtered = query
       ? templates.filter(
           (t) =>
             t.name.toLowerCase().includes(query) ||
             (t.current_version?.subject.toLowerCase().includes(query) ?? false),
         )
       : templates;
+
+    if (categoryFilter !== "All") {
+      filtered = filtered.filter((t) => {
+        const nameLower = t.name.toLowerCase();
+        const categoryLower = categoryFilter.toLowerCase();
+        return nameLower.includes(categoryLower);
+      });
+    }
+
     const sorted = [...filtered];
     if (sortBy === "name") {
       sorted.sort((a, b) => a.name.localeCompare(b.name));
@@ -176,7 +187,13 @@ export function TemplatesPage() {
       sorted.sort((a, b) => b.updated_at.localeCompare(a.updated_at));
     }
     return sorted;
-  }, [templates, search, sortBy]);
+  }, [templates, search, sortBy, categoryFilter]);
+
+  const latestUpdatedDate = useMemo(() => {
+    if (templates.length === 0) return "N/A";
+    const sorted = [...templates].sort((a, b) => b.updated_at.localeCompare(a.updated_at));
+    return sorted[0] ? formatDate(sorted[0].updated_at) : "N/A";
+  }, [templates]);
 
   if (loading) {
     return (
@@ -204,13 +221,69 @@ export function TemplatesPage() {
 
   return (
     <div className={styles.page}>
+      {/* Metric Summary Cards */}
+      <div className={styles.metricsGrid}>
+        <div className={styles.metricCard}>
+          <div className={styles.metricIcon}>🎨</div>
+          <div className={styles.metricContent}>
+            <span className={styles.metricLabel}>Total Templates</span>
+            <span className={styles.metricValue}>{templates.length}</span>
+          </div>
+        </div>
+
+        <div className={styles.metricCard}>
+          <div className={styles.metricIcon}>⚡</div>
+          <div className={styles.metricContent}>
+            <span className={styles.metricLabel}>Starter Presets</span>
+            <span className={styles.metricValue}>{TEMPLATE_PRESETS.length}</span>
+          </div>
+        </div>
+
+        <div className={styles.metricCard}>
+          <div className={styles.metricIcon}>🛠️</div>
+          <div className={styles.metricContent}>
+            <span className={styles.metricLabel}>Custom Built</span>
+            <span className={styles.metricValue}>{templates.length}</span>
+          </div>
+        </div>
+
+        <div className={styles.metricCard}>
+          <div className={styles.metricIcon}>⏱️</div>
+          <div className={styles.metricContent}>
+            <span className={styles.metricLabel}>Recently Updated</span>
+            <span className={styles.metricValue} style={{ fontSize: "16px" }}>
+              {latestUpdatedDate}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Hero Showcase Spotlight */}
+      <div className={styles.heroShowcase}>
+        <div className={styles.heroContent}>
+          <span className={styles.heroBadge}>✨ Featured Studio Spotlight</span>
+          <h3 className={styles.heroTitle}>High-Converting Email Templates</h3>
+          <p className={styles.heroSubtitle}>
+            Build, personalize, and test HTML email templates with version tracking. Editing saves a
+            new version — past versions are never overwritten.
+          </p>
+          {canManage && (
+            <div className={styles.heroActions}>
+              <Link href="/dashboard/templates/new" className={styles.heroPrimaryBtn}>
+                + Create New Template
+              </Link>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Main Templates Workspace */}
       <div className={styles.card}>
         <div className={styles.headerRow}>
           <div>
-            <h2 className={styles.headerTitle}>Email templates</h2>
+            <h2 className={styles.headerTitle}>Email Templates</h2>
             <p className={styles.headerSubtitle}>
-              Reusable subject + body content for campaigns. Editing a template saves a new version
-              — past versions are never overwritten.
+              Manage reusable email layouts, subject lines, and personalized tag variables.
             </p>
           </div>
           {canManage && (
@@ -220,25 +293,68 @@ export function TemplatesPage() {
           )}
         </div>
 
+        {/* Toolbar & View Switcher */}
         {templates.length > 0 && (
           <div className={styles.toolbar}>
-            <input
-              type="search"
-              className={styles.searchInput}
-              placeholder="Search by name or subject…"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              aria-label="Search templates"
-            />
-            <select
-              className={styles.sortSelect}
-              value={sortBy}
-              onChange={(event) => setSortBy(event.target.value as SortOption)}
-              aria-label="Sort templates"
-            >
-              <option value="updated">Sort by: Last updated</option>
-              <option value="name">Sort by: Name</option>
-            </select>
+            <div className={styles.toolbarLeft}>
+              <input
+                type="search"
+                className={styles.searchInput}
+                placeholder="Search by name or subject…"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                aria-label="Search templates"
+              />
+              <select
+                className={styles.sortSelect}
+                value={sortBy}
+                onChange={(event) => setSortBy(event.target.value as SortOption)}
+                aria-label="Sort templates"
+              >
+                <option value="updated">Sort by: Last updated</option>
+                <option value="name">Sort by: Name</option>
+              </select>
+
+              <div className={styles.categoryPills}>
+                {(["All", "Marketing", "Onboarding", "Announcement", "Newsletter"] as const).map(
+                  (cat) => (
+                    <button
+                      key={cat}
+                      type="button"
+                      className={`${styles.categoryPill} ${
+                        categoryFilter === cat ? styles.categoryPillActive : ""
+                      }`}
+                      onClick={() => setCategoryFilter(cat)}
+                    >
+                      {cat}
+                    </button>
+                  ),
+                )}
+              </div>
+            </div>
+
+            <div className={styles.viewModeToggle}>
+              <button
+                type="button"
+                className={`${styles.viewModeBtn} ${
+                  viewMode === "grid" ? styles.viewModeBtnActive : ""
+                }`}
+                onClick={() => setViewMode("grid")}
+                aria-label="Grid View"
+              >
+                🎴 Grid
+              </button>
+              <button
+                type="button"
+                className={`${styles.viewModeBtn} ${
+                  viewMode === "list" ? styles.viewModeBtnActive : ""
+                }`}
+                onClick={() => setViewMode("list")}
+                aria-label="List View"
+              >
+                📋 List
+              </button>
+            </div>
           </div>
         )}
 
@@ -247,61 +363,143 @@ export function TemplatesPage() {
           <p className={styles.hint}>No templates match &quot;{search}&quot;.</p>
         )}
 
-        <div className={styles.list}>
-          {visibleTemplates.map((template) => (
-            <div className={styles.templateRow} key={template.id}>
-              <div className={styles.templateSummary}>
-                <div>
-                  <div className={styles.templateName}>{template.name}</div>
-                  <div className={styles.templateSubject}>
-                    {template.current_version?.subject ?? "No content yet"}
+        {/* Visual Card Grid View */}
+        {viewMode === "grid" && visibleTemplates.length > 0 && (
+          <div className={styles.gridContainer}>
+            {visibleTemplates.map((template) => (
+              <div className={styles.templateCard} key={template.id}>
+                <div className={styles.cardPreviewArea}>
+                  {template.current_version ? (
+                    <iframe
+                      title={`Thumbnail for ${template.name}`}
+                      className={styles.cardPreviewIframe}
+                      sandbox=""
+                      srcDoc={template.current_version.body_html}
+                    />
+                  ) : (
+                    <div className={styles.hint} style={{ padding: "20px" }}>
+                      No preview available
+                    </div>
+                  )}
+                </div>
+
+                <div className={styles.cardBody}>
+                  <div className={styles.cardTitleRow}>
+                    <h4 className={styles.cardName}>{template.name}</h4>
+                    <span className={styles.versionBadge}>
+                      v{template.current_version?.version_number ?? 0}
+                    </span>
+                  </div>
+
+                  <p className={styles.cardSubject}>
+                    {template.current_version?.subject ?? "No subject"}
+                  </p>
+
+                  <div className={styles.cardMetaRow}>
+                    <span className={styles.hint}>Updated {formatDate(template.updated_at)}</span>
+
+                    <div className={styles.cardActions}>
+                      {template.current_version && (
+                        <button
+                          type="button"
+                          className={styles.secondaryButton}
+                          onClick={() => setPreviewingTemplate(template)}
+                        >
+                          Preview
+                        </button>
+                      )}
+                      {canManage && (
+                        <Link
+                          href={`/dashboard/templates/${template.id}/edit`}
+                          className={styles.secondaryButton}
+                        >
+                          Edit
+                        </Link>
+                      )}
+                      {canManage && (
+                        <Link
+                          href={`/dashboard/templates/new?duplicateFrom=${template.id}`}
+                          className={styles.secondaryButton}
+                        >
+                          Duplicate
+                        </Link>
+                      )}
+                      {canManage && (
+                        <button
+                          type="button"
+                          className={styles.dangerButton}
+                          disabled={deletingTemplateId === template.id}
+                          onClick={() => handleDelete(template)}
+                        >
+                          {deletingTemplateId === template.id ? "Deleting…" : "Delete"}
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
-                <div className={styles.templateMeta}>
-                  <span className={styles.versionBadge}>
-                    v{template.current_version?.version_number ?? 0}
-                  </span>
-                  <span className={styles.hint}>Updated {formatDate(template.updated_at)}</span>
-                  {template.current_version && (
-                    <button
-                      type="button"
-                      className={styles.secondaryButton}
-                      onClick={() => setPreviewingTemplate(template)}
-                    >
-                      Preview
-                    </button>
-                  )}
-                  {canManage && (
-                    <Link
-                      href={`/dashboard/templates/${template.id}/edit`}
-                      className={styles.secondaryButton}
-                    >
-                      Edit
-                    </Link>
-                  )}
-                  {canManage && (
-                    <Link
-                      href={`/dashboard/templates/new?duplicateFrom=${template.id}`}
-                      className={styles.secondaryButton}
-                    >
-                      Duplicate
-                    </Link>
-                  )}
-                  {canManage && (
-                    <button
-                      type="button"
-                      className={styles.dangerButton}
-                      disabled={deletingTemplateId === template.id}
-                      onClick={() => handleDelete(template)}
-                    >
-                      {deletingTemplateId === template.id ? "Deleting…" : "Delete"}
-                    </button>
-                  )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Table List View */}
+        {viewMode === "list" && visibleTemplates.length > 0 && (
+          <div className={styles.list}>
+            {visibleTemplates.map((template) => (
+              <div className={styles.templateRow} key={template.id}>
+                <div className={styles.templateSummary}>
+                  <div>
+                    <div className={styles.templateName}>{template.name}</div>
+                    <div className={styles.templateSubject}>
+                      {template.current_version?.subject ?? "No content yet"}
+                    </div>
+                  </div>
+                  <div className={styles.templateMeta}>
+                    <span className={styles.versionBadge}>
+                      v{template.current_version?.version_number ?? 0}
+                    </span>
+                    <span className={styles.hint}>Updated {formatDate(template.updated_at)}</span>
+                    {template.current_version && (
+                      <button
+                        type="button"
+                        className={styles.secondaryButton}
+                        onClick={() => setPreviewingTemplate(template)}
+                      >
+                        Preview
+                      </button>
+                    )}
+                    {canManage && (
+                      <Link
+                        href={`/dashboard/templates/${template.id}/edit`}
+                        className={styles.secondaryButton}
+                      >
+                        Edit
+                      </Link>
+                    )}
+                    {canManage && (
+                      <Link
+                        href={`/dashboard/templates/new?duplicateFrom=${template.id}`}
+                        className={styles.secondaryButton}
+                      >
+                        Duplicate
+                      </Link>
+                    )}
+                    {canManage && (
+                      <button
+                        type="button"
+                        className={styles.dangerButton}
+                        disabled={deletingTemplateId === template.id}
+                        onClick={() => handleDelete(template)}
+                      >
+                        {deletingTemplateId === template.id ? "Deleting…" : "Delete"}
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {previewingTemplate && (
