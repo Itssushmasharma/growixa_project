@@ -2,10 +2,10 @@
 
 - Document ID: DOC-DEV-READINESS
 - Status: ACTIVE
-- Version: 5.0
-- Last updated: 2026-08-01
+- Version: 6.0
+- Last updated: 2026-08-07
 - Owner: Coding agent
-- Related documents: [DEFINITION_OF_DONE](DEFINITION_OF_DONE.md), [PROJECT_STATUS](PROJECT_STATUS.md), [MASTER_TASK_TRACKER](MASTER_TASK_TRACKER.md), [SPRINT_01_FOUNDATION](../14-sprints/SPRINT_01_FOUNDATION.md), [SPRINT_02_CONTACTS](../14-sprints/SPRINT_02_CONTACTS.md), [SPRINT_03_EMAIL_CAMPAIGN](../14-sprints/SPRINT_03_EMAIL_CAMPAIGN.md)
+- Related documents: [DEFINITION_OF_DONE](DEFINITION_OF_DONE.md), [PROJECT_STATUS](PROJECT_STATUS.md), [MASTER_TASK_TRACKER](MASTER_TASK_TRACKER.md), [SPRINT_01_FOUNDATION](../14-sprints/SPRINT_01_FOUNDATION.md), [SPRINT_02_CONTACTS](../14-sprints/SPRINT_02_CONTACTS.md), [SPRINT_03_EMAIL_CAMPAIGN](../14-sprints/SPRINT_03_EMAIL_CAMPAIGN.md), [SPRINT_05_CUSTOMER_ACCOUNT_PLATFORM](../14-sprints/SPRINT_05_CUSTOMER_ACCOUNT_PLATFORM.md)
 
 No product feature implementation may begin until every item below is `PASS` for Slice 1
 (Sprint 1 — Foundation).
@@ -94,8 +94,28 @@ sender identity).** The one genuinely new prerequisite versus Slice 1/2's gate s
 was OQ-002 itself — every other item follows the same per-slice pattern (data model,
 RBAC, threat model, sprint plan).
 
-## Gate for later slices
+## Readiness gate — Sprint 5 Phase B (Platform auth boundary, `GRX-SAAS-002`)
 
-Slice 4 (Scheduled Email) onward will each need their own readiness pass (data model
-additions, feature specs, etc.) before becoming `READY` — this table will be extended per
-slice rather than re-litigated from scratch.
+| Readiness item | Required | Status | Evidence |
+|---|---|---|---|
+| Phase A dependency | Yes — nothing in Phases B–E may begin before Phase A is `DONE` and independently verified, per `SPRINT_05_CUSTOMER_ACCOUNT_PLATFORM.md`'s own sequencing rule | PASS | `GRX-SAAS-001` marked `DONE` in [MASTER_TASK_TRACKER.md](MASTER_TASK_TRACKER.md); full apps/api + apps/worker suites green, live-verified against the rebuilt Compose container |
+| Data model additions | Yes | PASS | [DATA_MODEL.md §Sprint 5 Phase B entities](../05-data/DATA_MODEL.md#sprint-5-phase-b-entities-customer-account-platform--platform-auth-boundary-full-detail), [DATABASE_SCHEMA.md §Sprint 5 Phase B](../05-data/DATABASE_SCHEMA.md#sprint-5-phase-b-platform-auth-boundary-tables), [ERD.md §Sprint 5 Phase B additions](../05-data/ERD.md#sprint-5-phase-b-platform-auth-boundary-additions) |
+| Platform admin schema shape decision | Yes — the sprint doc's own wording ("mirrors `users`... a `platform_permissions`/`platform_role_permissions` pair") was intentionally not fully spelled out | PASS | [DECISIONS.md §DEC-GRX-018](DECISIONS.md) — single `role` column on `platform_admins`, not a `platform_roles` many-to-many join |
+| RBAC additions | Yes | PASS | [RBAC.md §Sprint 5 Phase B](../08-security/RBAC.md#sprint-5-phase-b--platform-level-roles-separate-namespace-grx-saas-002) — separate `platform.*` namespace, `platform.access` permission code, `require_platform_permission` enforcement rule |
+| Threat model addendum | Yes (new external surface: a second identity class, a second auth boundary, cross-boundary session-confusion risk) | PASS | [THREAT_MODEL.md §Sprint 5 Phase B](../08-security/THREAT_MODEL.md#sprint-5-phase-b-platform-auth-boundary-scope) — T20–T24 |
+| Sprint plan | Yes | PASS | [SPRINT_05_CUSTOMER_ACCOUNT_PLATFORM.md §Phase B](../14-sprints/SPRINT_05_CUSTOMER_ACCOUNT_PLATFORM.md#phase-b--platform-auth-boundary-grx-saas-002) |
+| Feature specs | No (written per-task, not upfront — same practice as every prior slice/sprint) | DEFERRED TO EACH TASK | — |
+| Project tracker row | Yes | PASS | [MASTER_TASK_TRACKER.md](MASTER_TASK_TRACKER.md) — `GRX-SAAS-002` |
+| AI safety baseline | No (no AI feature in Phase B) | N/A FOR PHASE B | — |
+| Email/social/billing provider decisions | No (not needed until Phase C/D) | N/A FOR PHASE B | [OPEN_QUESTIONS.md](OPEN_QUESTIONS.md) |
+
+**Overall status: READY — `GRX-SAAS-002` cleared to `READY` in `MASTER_TASK_TRACKER.md`.**
+The one genuinely new prerequisite versus Slice 1/2/3's gate structure was the platform
+admin schema shape itself (DEC-GRX-018) — everything else follows the same per-slice
+pattern (data model, RBAC, threat model, sprint plan) this document already establishes.
+
+## Gate for later slices/phases
+
+Slice 4 (Scheduled Email) onward, and Sprint 5 Phases C/D/E, will each need their own
+readiness pass (data model additions, feature specs, etc.) before becoming `READY` — this
+table will be extended per slice/phase rather than re-litigated from scratch.

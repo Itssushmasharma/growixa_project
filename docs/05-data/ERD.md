@@ -2,8 +2,8 @@
 
 - Document ID: DOC-ERD
 - Status: ACTIVE (expanded per slice, not redesigned)
-- Version: 1.2
-- Last updated: 2026-08-01
+- Version: 1.3
+- Last updated: 2026-08-07
 - Owner: Coding agent
 - Related documents: [DATA_MODEL](DATA_MODEL.md), [DATABASE_SCHEMA](DATABASE_SCHEMA.md)
 
@@ -376,3 +376,36 @@ intentionally absent — see [DATA_MODEL.md §Explicitly deferred, not designed 
 Entities for `social` and `ai` are added to this diagram as their owning slice is designed
 (Slice 5, 6 respectively) — see
 [DATA_MODEL.md §Full MVP entity landscape](DATA_MODEL.md#full-mvp-entity-landscape-target-slice).
+
+## Sprint 5 Phase B (Platform auth boundary) additions
+
+Deliberately its own diagram, not merged into the entities above — `platform_admins` has
+no relationship to `accounts`, `users`, or any account-scoped entity by design (see
+[DATA_MODEL.md §Sprint 5 Phase B entities](DATA_MODEL.md#sprint-5-phase-b-entities-customer-account-platform--platform-auth-boundary-full-detail)).
+
+```mermaid
+erDiagram
+    PLATFORM_ADMINS ||--o{ PLATFORM_ROLE_PERMISSIONS : "role grants via"
+    PLATFORM_PERMISSIONS ||--o{ PLATFORM_ROLE_PERMISSIONS : "granted via"
+
+    PLATFORM_ADMINS {
+        uuid id PK
+        string email UK
+        string password_hash
+        string full_name
+        string role
+        string status
+        timestamp last_login_at
+        timestamp created_at
+        timestamp updated_at
+    }
+    PLATFORM_PERMISSIONS {
+        uuid id PK
+        string code UK
+        string description
+    }
+    PLATFORM_ROLE_PERMISSIONS {
+        string role
+        uuid permission_id FK
+    }
+```

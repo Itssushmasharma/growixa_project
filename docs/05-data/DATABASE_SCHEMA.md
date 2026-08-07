@@ -2,8 +2,8 @@
 
 - Document ID: DOC-DB-SCHEMA
 - Status: ACTIVE (extended per slice, not redesigned)
-- Version: 1.2
-- Last updated: 2026-08-01
+- Version: 1.3
+- Last updated: 2026-08-07
 - Owner: Coding agent
 - Related documents: [DATA_MODEL](DATA_MODEL.md), [ERD](ERD.md), [MIGRATION_STRATEGY](MIGRATION_STRATEGY.md)
 
@@ -513,6 +513,49 @@ layer — insert-only, same pattern as `audit_logs`.
 
 Indexes: index on `email`.
 
+## Sprint 5 Phase B (Platform auth boundary) tables
+
+Deliberately not scoped by `account_id` — see [DATA_MODEL.md §Sprint 5 Phase B
+entities](DATA_MODEL.md#sprint-5-phase-b-entities-customer-account-platform--platform-auth-boundary-full-detail)
+and [DEC-GRX-018](../00-project-control/DECISIONS.md).
+
+## `platform_admins`
+
+| Column | Type | Constraints |
+|---|---|---|
+| id | uuid | PK |
+| email | citext | UNIQUE, NOT NULL |
+| password_hash | text | NOT NULL |
+| full_name | text | NOT NULL |
+| role | text | NOT NULL, CHECK IN ('platform.owner','platform.admin','platform.support','platform.finance','platform.operations') |
+| status | text | NOT NULL, CHECK IN ('ACTIVE','DISABLED'), DEFAULT 'ACTIVE' |
+| last_login_at | timestamptz | NULL |
+| created_at | timestamptz | NOT NULL, DEFAULT now() |
+| updated_at | timestamptz | NOT NULL, DEFAULT now() |
+
+Indexes: unique index on `email`. No `account_id` column — platform admins are not
+account-owned data, deliberately outside `GRX-SAAS-001`'s isolation retrofit.
+
+## `platform_permissions`
+
+| Column | Type | Constraints |
+|---|---|---|
+| id | uuid | PK |
+| code | text | UNIQUE, NOT NULL |
+| description | text | NULL |
+
+Seed rows (Phase B minimum): `platform.access`. Additional codes are added per Phase E
+feature as it's built, same convention as `permissions`.
+
+## `platform_role_permissions`
+
+| Column | Type | Constraints |
+|---|---|---|
+| role | text | PK (composite), CHECK IN the same five values as `platform_admins.role` |
+| permission_id | uuid | PK (composite), FK → platform_permissions.id ON DELETE CASCADE |
+
+Seed rows (Phase B minimum): all five roles → `platform.access`.
+
 ## Extensions required
 
 - `pgcrypto` or equivalent for `gen_random_uuid()`.
@@ -539,3 +582,8 @@ a seed migration adding `campaigns.manage` / `campaigns.send` / `campaigns.view`
 a settings addition for `ENCRYPTION_KEY` (Fernet key for
 `email_provider_connections.smtp_password_encrypted`, per
 [DEC-GRX-009](../00-project-control/DECISIONS.md)).
+
+Sprint 5 Phase B: `platform_admins` → `platform_permissions` → `platform_role_permissions`.
+Independent of every `GRX-SAAS-001` migration — no FK to `accounts` or any account-owned
+table, so this can land in any order relative to Phase A's migrations (though Phase A
+merges first per the sprint's own dependency order).

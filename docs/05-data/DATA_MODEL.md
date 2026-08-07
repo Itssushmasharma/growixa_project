@@ -2,8 +2,8 @@
 
 - Document ID: DOC-DATA-MODEL
 - Status: ACTIVE
-- Version: 1.1
-- Last updated: 2026-08-01
+- Version: 1.2
+- Last updated: 2026-08-07
 - Owner: Coding agent
 - Related documents: [ERD](ERD.md), [DATABASE_SCHEMA](DATABASE_SCHEMA.md), [MODULE_BOUNDARIES](../04-architecture/MODULE_BOUNDARIES.md), [AUTHENTICATION](../08-security/AUTHENTICATION.md)
 
@@ -428,6 +428,57 @@ Module ownership follows [MODULE_BOUNDARIES.md](../04-architecture/MODULE_BOUNDA
   me when a send completes"); still just the Slice 1 stub with no writer.
 - `feature_entitlements` — `usage_records` gets its first writer this slice, but no limit
   is enforced against it yet.
+
+## Sprint 5 Phase B entities (Customer Account Platform — Platform auth boundary, full detail)
+
+Deliberately not "Slice 4/5" — those numbers are already used above for Scheduled Email
+and Social Media Automation respectively (the original single-tenant roadmap). This is
+`GRX-SAAS-002` per [SPRINT_05_CUSTOMER_ACCOUNT_PLATFORM.md §Phase B](../14-sprints/SPRINT_05_CUSTOMER_ACCOUNT_PLATFORM.md#phase-b--platform-auth-boundary-grx-saas-002).
+Phase B builds only the identity/auth boundary — no actual platform-admin *features* sit
+behind it yet (that's Phase E) — so these entities are deliberately minimal.
+
+### `platform_admins`
+
+- Purpose: IITDEVELOPER staff identities, structurally separate from `accounts`/`users` —
+  a platform admin is not scoped to, and does not belong to, any customer account.
+- Primary key: `id` (UUID)
+- Required fields: `email` (unique, citext), `password_hash` (Argon2id, same scheme as
+  `users`), `full_name`, `role` (one of the five values below), `status`
+- Status values: `ACTIVE`, `DISABLED` (same shape as `users.status`)
+- Optional fields: `last_login_at`
+- Sensitive fields: `password_hash` — never serialized, never logged (same rule as `users`).
+- Audit fields: `created_at`, `updated_at`
+- Provisioning: seeded/provisioned directly, no self-service signup — mirrors how
+  `admin@growixa.local` is created today. See [DEC-GRX-018](../00-project-control/DECISIONS.md)
+  for why this holds a single `role` value directly rather than the `users`/`roles`/
+  `user_roles` many-to-many shape.
+
+### `platform_permissions`
+
+- Purpose: granular `platform.*`-namespaced permission codes, structurally parallel to
+  `permissions` but never checked by `require_permission()` — only by the separate
+  `require_platform_permission()` dependency, so an account-scoped route can never
+  accidentally accept a platform permission code or vice versa.
+- Primary key: `id` (UUID)
+- Required fields: `code` (unique, always `platform.`-prefixed), `description`
+- Seed data (Phase B minimum): `platform.access` — the minimal gate proving a platform
+  admin session can reach *a* platform-only route at all, structurally analogous to
+  Sprint 1's `admin.access`. Every actual Phase E capability (user management, billing,
+  provider config, etc.) adds its own code here when that feature is built, per the same
+  "extended, not redesigned" convention `RBAC.md` already documents for `permissions`.
+
+### `platform_role_permissions`
+
+- Purpose: role → permission mapping for platform admins. Keyed by the `role` value
+  directly (not a `role_id` FK) since `platform_admins.role` is a plain column, not a row
+  in a separate roles table — see [DEC-GRX-018](../00-project-control/DECISIONS.md).
+- Primary key: composite (`role`, `permission_id`)
+- Foreign keys: `permission_id` → `platform_permissions.id`
+- Seed data (Phase B minimum): all five roles (`platform.owner`, `platform.admin`,
+  `platform.support`, `platform.finance`, `platform.operations`) granted `platform.access`
+  — Phase B proves the boundary works, it doesn't yet differentiate what each role can do
+  once inside; that differentiation arrives with each Phase E feature's own permission
+  code(s).
 
 ## Full MVP entity landscape (target slice)
 

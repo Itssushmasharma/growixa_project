@@ -2,8 +2,8 @@
 
 - Document ID: DOC-DECISIONS
 - Status: ACTIVE
-- Version: 1.1
-- Last updated: 2026-07-22
+- Version: 1.2
+- Last updated: 2026-08-07
 - Owner: Product owner (Ravi) via coding agent
 - Related documents: [OPEN_QUESTIONS](OPEN_QUESTIONS.md), [ASSUMPTIONS](ASSUMPTIONS.md), [ROADMAP](../01-product/ROADMAP.md)
 
@@ -353,5 +353,48 @@ Decision statuses: `PROPOSED`, `UNDER_REVIEW`, `APPROVED`, `REJECTED`, `SUPERSED
 
 ---
 
-*Decisions DEC-GRX-018 onward will be logged as they are made — e.g., resolutions to
+## DEC-GRX-018: Platform admins hold a single `role` column, not a `platform_roles` many-to-many join
+
+- Status: APPROVED
+- Date: 2026-08-07
+- Context: `SPRINT_05_CUSTOMER_ACCOUNT_PLATFORM.md`'s Phase B (`GRX-SAAS-002`) readiness
+  gate needed the exact `platform_admins` schema shape specified before it could be
+  marked `READY`. The sprint doc itself only says "New `platform_admins` table (mirrors
+  `users`...) + a `platform_permissions`/`platform_role_permissions` pair mirroring the
+  existing `permissions`/`role_permissions` shape" — deliberately not fully spelled out,
+  since Phase B's own scope is the auth boundary, not the full feature set.
+- Options considered:
+  1. Mirror the customer-side shape exactly: `platform_admins` ⟷ `platform_admin_roles`
+     ⟷ `platform_roles` ⟷ `platform_role_permissions` ⟷ `platform_permissions` — five
+     tables, supporting a platform admin holding more than one role, symmetrical with
+     `users`/`user_roles`/`roles`/`role_permissions`/`permissions`.
+  2. `platform_admins.role` as a plain column (one of the five proposed values:
+     `platform.owner`/`platform.admin`/`platform.support`/`platform.finance`/
+     `platform.operations`), with `platform_role_permissions` keyed by that role value
+     directly — three tables total (`platform_admins`, `platform_permissions`,
+     `platform_role_permissions`), matching the sprint doc's literal "a ... pair"
+     wording (two new tables beyond `platform_admins` itself).
+- Decision: Option 2 — single `role` column, three tables total.
+- Rationale: `FUTURE_SCOPE_PLATFORM_ADMIN.md`'s proposed platform roles read as mutually
+  exclusive job functions (owner/admin/support/finance/operations), not overlapping
+  grants a person accumulates the way a customer user can hold both "Marketing Manager"
+  and "Analyst." No requirement anywhere in Phase B through Phase E's spec calls for a
+  platform admin holding more than one role at once. Option 1's extra join table and
+  role-catalog table would be speculative complexity for a multi-role need nobody has
+  asked for — this codebase's established practice (RBAC.md's own "extended, not
+  redesigned" convention, `DEC-GRX-016`'s Custom-SMTP-only choice, etc.) is to build the
+  minimum that's actually needed and extend later, not the maximum that's theoretically
+  symmetrical.
+- Consequences: If a genuine multi-role need for platform admins ever arises, migrating
+  from a single `role` column to a full many-to-many join is a real (if mechanical)
+  schema change, not free — accepted, since Phase B's acceptance criteria don't require
+  it and speculative symmetry isn't a substitute for an actual requirement.
+  `platform_role_permissions.role` is a plain `CHECK`-constrained text column, not a
+  foreign key to a `platform_roles` table, since no such table exists.
+- Related tasks: `GRX-SAAS-002` in `MASTER_TASK_TRACKER.md`.
+- Supersedes: none.
+
+---
+
+*Decisions DEC-GRX-019 onward will be logged as they are made — e.g., resolutions to
 OQ-003 through OQ-011 in [OPEN_QUESTIONS.md](OPEN_QUESTIONS.md).*

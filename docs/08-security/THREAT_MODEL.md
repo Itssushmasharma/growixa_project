@@ -2,8 +2,8 @@
 
 - Document ID: DOC-SEC-THREAT
 - Status: ACTIVE (expanded per slice, not redesigned)
-- Version: 1.1
-- Last updated: 2026-08-01
+- Version: 1.2
+- Last updated: 2026-08-07
 - Owner: Coding agent
 - Related documents: [SECURITY_ARCHITECTURE](SECURITY_ARCHITECTURE.md), [AUTHENTICATION](AUTHENTICATION.md), [RBAC](RBAC.md)
 
@@ -57,3 +57,27 @@ Threats involving social/AI/SEO providers, file uploads, or a second email provi
 apply yet. Slice 4's scheduling/cancellation surface (a scheduled job that must not
 execute twice, a cancel race against an in-flight send) gets its own addendum when that
 slice starts.
+
+## Sprint 5 Phase B (Platform auth boundary) scope
+
+Scope: a new external identity class and a second, structurally separate authentication
+boundary — the platform-admin session (`GRX-SAAS-002`) alongside the existing
+customer-account session, per
+[SPRINT_05_CUSTOMER_ACCOUNT_PLATFORM.md §Phase B](../14-sprints/SPRINT_05_CUSTOMER_ACCOUNT_PLATFORM.md#phase-b--platform-auth-boundary-grx-saas-002).
+No customer-facing feature changes in this phase — the new surface is entirely the
+platform-admin login/permission-check path itself.
+
+| # | Threat | Vector | Mitigation |
+|---|---|---|---|
+| T20 | Cross-boundary session confusion | A platform-admin session cookie is accepted by a customer `/auth/*` route, or a customer session cookie is accepted by a `/platform/auth/*` route — either direction would let one identity class act as the other | Separate cookie names and separate login routes (`POST /platform/auth/login` vs `POST /auth/login`); an integration test mints one session type and asserts 401 against the other's routes, both directions — this is Phase B's own stated acceptance criterion, not an aspirational goal |
+| T21 | Wrong-permission-dependency bug | A future platform-only route is accidentally protected by `require_permission(...)` (or a customer-account route by `require_platform_permission(...)`), silently granting the wrong identity class access | `require_permission` and `require_platform_permission` are separate functions with no shared flag/parameter that could be mis-set; a static route-audit test (same pattern as the existing `require_permission` coverage test) fails the build if either module imports the other's dependency |
+| T22 | Platform-admin credential enumeration | Distinguishing "wrong password" from "no such platform admin" on `POST /platform/auth/login` reveals which emails are provisioned as platform staff | Same generic-failure-message pattern as T11, applied independently to the platform login route |
+| T23 | Elevated blast radius of a compromised platform-admin credential | Unlike a compromised customer admin (scoped to one `account_id`), a compromised platform-admin credential could eventually reach cross-account tooling once Phase E's features exist | Phase B itself ships no actual platform-admin *features* — `platform.access` is the only permission code that exists, gating nothing sensitive yet; same Argon2id hashing as customer accounts; Phase E's own design (`FUTURE_SCOPE_PLATFORM_ADMIN.md §Secure support access`) requires reason/ticket/time-limit/full-audit/read-only-by-default for the one genuinely high-risk capability (viewing a customer account), not a blanket "platform admin can do anything" grant |
+| T24 | Unauthorized platform-admin provisioning | An attacker (or an over-privileged customer user) creates a new platform-admin identity for themselves | No such endpoint exists — per Phase B's own explicit scope, platform admins are seeded/provisioned directly (mirroring `admin@growixa.local` today), never through self-service signup; there is no attack surface here because there is no code path to attack |
+
+## Explicitly out of scope for Sprint 5 Phase B
+
+Any actual platform-admin feature's threat surface (support-session access to customer
+data, billing/provider management, infrastructure monitoring) is out of scope until
+Phase E builds it — Phase B is the auth boundary alone. Phase C's registration flow and
+Phase D's billing/webhook surface each get their own addendum when those phases start.

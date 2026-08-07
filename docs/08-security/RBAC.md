@@ -2,8 +2,8 @@
 
 - Document ID: DOC-SEC-RBAC
 - Status: ACTIVE
-- Version: 1.2
-- Last updated: 2026-08-01
+- Version: 1.3
+- Last updated: 2026-08-07
 - Owner: Coding agent
 - Related documents: [AUTHENTICATION](AUTHENTICATION.md), [DATA_MODEL](../05-data/DATA_MODEL.md), [PRD §20](../01-product/PRD.md#20-user-roles-and-permissions)
 
@@ -128,6 +128,54 @@ own **Roles** table, written in Sprint 1 before any of these modules existed:
   reporting" scope is exactly what campaign delivery reports are, so (unlike Slice 2,
   where Analyst only got `contacts.view`) this is Analyst's clearest fit yet.
 
+## Sprint 5 Phase B — platform-level roles (separate namespace, `GRX-SAAS-002`)
+
+This is a **distinct identity class**, not an addition to the roles/permissions above.
+Platform admins (IITDEVELOPER staff) are not `users`, hold no `account_id`, and are
+governed by an entirely separate table set (`platform_admins` /
+`platform_permissions` / `platform_role_permissions` — see
+[DATABASE_SCHEMA.md §Sprint 5 Phase B](../05-data/DATABASE_SCHEMA.md#sprint-5-phase-b-platform-auth-boundary-tables))
+and a separate enforcement dependency (`require_platform_permission`, see below) —
+never the `require_permission(...)` used for every code above. Per
+[SPRINT_05_CUSTOMER_ACCOUNT_PLATFORM.md §Phase B](../14-sprints/SPRINT_05_CUSTOMER_ACCOUNT_PLATFORM.md#phase-b--platform-auth-boundary-grx-saas-002),
+this split is deliberate: a route accidentally checking the wrong permission class must
+be structurally impossible, not just documented against.
+
+| Role | Intended scope |
+|---|---|
+| `platform.owner` | Full platform control, including provisioning other platform admins |
+| `platform.admin` | Account/user management, support session access, day-to-day operations |
+| `platform.support` | Customer support tooling (secure support sessions, Phase E) — no billing/provider config |
+| `platform.finance` | Subscription/billing visibility and changes (Phase D/E) — no customer data access |
+| `platform.operations` | Infrastructure monitoring, provider health/config (Phase E) — no customer or billing data |
+
+Unlike the account-level roles above, a platform admin holds exactly one `role` value
+directly on `platform_admins` (not a many-to-many join) — see
+[DEC-GRX-018](../00-project-control/DECISIONS.md) for why.
+
+## Sprint 5 Phase B permission codes
+
+| Code | Meaning |
+|---|---|
+| `platform.access` | The minimal gate proving a platform-admin session can reach a platform-only route at all — structurally analogous to `admin.access` above |
+
+This is deliberately the *only* code Phase B defines. Phase B builds the auth boundary,
+not any actual platform-admin feature — each Phase E capability (user management,
+billing, provider config, support sessions, etc.) adds its own `platform.*` code when
+that feature is actually built, same "extended, not redesigned" convention this document
+already follows for account-level codes.
+
+## Sprint 5 Phase B role → permission matrix
+
+| Permission | platform.owner | platform.admin | platform.support | platform.finance | platform.operations |
+|---|---|---|---|---|---|
+| `platform.access` | ✅ | ✅ | ✅ | ✅ | ✅ |
+
+All five roles get the one Phase B code — it only proves the boundary works, it doesn't
+yet differentiate what each role can do once inside. That differentiation is exactly what
+each Phase E feature's own permission code(s) will encode (e.g. a future
+`platform.billing.manage` granted only to `platform.owner`/`platform.finance`).
+
 ## Enforcement rule
 
 Every API route that isn't explicitly public (login, invitation-acceptance, password-reset
@@ -135,3 +183,10 @@ flows) requires an authenticated session and passes through the centralized
 `require_permission(...)` dependency described in [AUTHENTICATION.md](AUTHENTICATION.md).
 Enforcement lives in the backend only — the frontend hiding a button is a UX nicety, never
 the actual access control.
+
+Every route under `apps/api/src/growixa_api/platform_auth/` and any future
+`platform_admin/`-style module follows the identical rule with
+`require_platform_permission(...)` instead — never `require_permission(...)`. A static
+route-audit test (mirroring the existing `require_permission` coverage test) enforces
+that no route in a platform-only module ever imports the account-level dependency, and
+vice versa.
