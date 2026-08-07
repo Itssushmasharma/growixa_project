@@ -124,6 +124,22 @@ new machinery.
 | T36 | Usage-data cross-account leakage | The per-account usage aggregate accidentally attributes one account's `usage_records` rows to another, or exposes more than the aggregate (e.g. individual contact-level send targets) | The aggregate is a `GROUP BY account_id, operation_type` query with no per-record detail in the response — a compromised platform-admin session learns "how much," never "to whom" |
 | T37 | Cross-account campaign-oversight leakage | The queued/failed campaign list exposes campaign body content (subject/HTML) across accounts, beyond what oversight requires | The oversight list returns only status/scheduling metadata (name, status, account, timestamps) — never `subject`/`body_html`/`body_text`, which stay reachable only through the existing account-scoped customer routes |
 
+## Sprint 5 Phase E — Secure support session (`GRX-SAAS-010`) scope
+
+Scope: the sprint's highest-trust platform-admin capability — audited, time-limited,
+banner-visible read (and narrowly-gated write) access into one specific customer
+account's data, implemented as a dedicated platform-side surface rather than literal
+impersonation of the customer's own session (`DEC-GRX-022`).
+
+| # | Threat | Vector | Mitigation |
+|---|---|---|---|
+| T38 | Session hijack via a leaked/logged `support_session_id` | Knowledge of a session's id alone lets a different platform admin (or a captured request) read/write through it | Every session-scoped route requires the caller's *own* authenticated platform-admin id to equal the session's `platform_admin_id`, not just a valid `support_session_id` — matching a session id to the wrong admin 404s the same as an unknown id, so the check leaks no information either way |
+| T39 | Stale session still usable after expiry or an explicit end | A session used after its `expires_at` has passed, or after the admin ended it early | Every read/write action re-checks `ended_at IS NULL AND expires_at > now()` at call time (not only when the session was created) — an expired or ended session behaves identically to one that never existed |
+| T40 | Write escalation without the write gate | A `READ`-level session, or an admin who never held `platform.support_session.write`, performs the gated write action anyway | Two independent checks, either one alone blocks it: route-level `require_platform_permission("platform.support_session.write")`, and a session-level `access_level == "WRITE"` check in the service layer |
+| T41 | Cross-account leakage via a mismatched session | A session-scoped read/write route is called with data belonging to a different account than the session's own `account_id` | Every session-scoped query derives `account_id` from the session row itself — never from a client-supplied value — so the target account is fixed the moment the session is loaded, not re-trusted per request |
+| T42 | Invisible support access | An active session reads a customer's data with no way for that customer to notice, defeating the "banner-visible" requirement and enabling unnoticed snooping | `GET /support-sessions/active` (customer-authenticated, no platform permission needed) reports whether any session with `ended_at IS NULL AND expires_at > now()` exists for the caller's own `account_id`; the dashboard shell polls it and shows a persistent banner while true |
+| T43 | Raw credential exposure through the write path | The gated write action is later extended to a module holding encrypted secrets (e.g. `integrations`) and starts returning them | Not reachable in this checkpoint — the only write action is `contacts.services.update_contact`, which has no encrypted-secret fields; no session-scoped route reads or writes `integrations`/`email_provider_connections` at all (`DEC-GRX-022` point 5) |
+
 ## Explicitly out of scope for Sprint 5 Phase C
 
 Actual plan *enforcement* (contact/send limits, feature gating) has no threat surface

@@ -590,6 +590,33 @@ and [DECISIONS.md §DEC-GRX-019](../00-project-control/DECISIONS.md).
 `status`'s CHECK constraint becomes `IN ('ACTIVE', 'DISABLED', 'PENDING_VERIFICATION')` —
 see the Sprint 1 `users` table above for the rest of its columns, unchanged.
 
+## Sprint 5 Phase E (Secure support session, `GRX-SAAS-010`) tables
+
+See [DATA_MODEL.md §Sprint 5 Phase E entities (Secure support session)](DATA_MODEL.md#sprint-5-phase-e-entities-customer-account-platform--secure-support-session-grx-saas-010)
+and [DECISIONS.md §DEC-GRX-022](../00-project-control/DECISIONS.md).
+
+## `support_sessions`
+
+| Column | Type | Constraints |
+|---|---|---|
+| id | uuid | PK |
+| account_id | uuid | FK → accounts.id ON DELETE CASCADE, NOT NULL |
+| platform_admin_id | uuid | FK → platform_admins.id ON DELETE RESTRICT, NOT NULL |
+| reason | text | NOT NULL |
+| ticket_number | text | NOT NULL |
+| access_level | text | NOT NULL, CHECK IN ('READ','WRITE'), DEFAULT 'READ' |
+| started_at | timestamptz | NOT NULL, DEFAULT now() |
+| expires_at | timestamptz | NOT NULL |
+| ended_at | timestamptz | NULL |
+| created_at | timestamptz | NOT NULL, DEFAULT now() |
+| updated_at | timestamptz | NOT NULL, DEFAULT now() |
+
+Indexes: `account_id`, `platform_admin_id`; a partial index on `account_id WHERE ended_at
+IS NULL` to make the customer-facing "is a session currently active on my account" check
+(T42) cheap. Two new `platform_permissions` seed rows in the same migration:
+`platform.support_session.create` (all of `platform.owner`/`platform.admin`/`platform.support`)
+and `platform.support_session.write` (`platform.owner`/`platform.admin` only).
+
 ## Extensions required
 
 - `pgcrypto` or equivalent for `gen_random_uuid()`.
@@ -637,3 +664,9 @@ migration seeds `platform_permissions.code = 'platform.usage.manage'`, granted t
 `platform.owner`/`platform.admin`/`platform.support`. Reads existing `usage_records` and
 `campaigns` tables (see [DATA_MODEL.md §Sprint 5 Phase E entities (usage/campaign oversight)](DATA_MODEL.md#sprint-5-phase-e-entities-customer-account-platform--usage--campaign-oversight-grx-saas-008))
 and [DECISIONS.md §DEC-GRX-021](../00-project-control/DECISIONS.md).
+
+Sprint 5 Phase E (`GRX-SAAS-010`): one new table, `support_sessions`, plus two
+`platform_permissions` seed rows (`platform.support_session.create`,
+`platform.support_session.write`). Depends on Phase B's `platform_admins` table and
+Phase A's `accounts` table both existing. See [DATA_MODEL.md §Sprint 5 Phase E entities (Secure support session)](DATA_MODEL.md#sprint-5-phase-e-entities-customer-account-platform--secure-support-session-grx-saas-010)
+and [DECISIONS.md §DEC-GRX-022](../00-project-control/DECISIONS.md).

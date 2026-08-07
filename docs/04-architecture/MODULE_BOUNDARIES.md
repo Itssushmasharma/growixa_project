@@ -58,6 +58,7 @@ rewrite.
 | `billing` | Out of MVP scope — not implemented (see [DEC-GRX-013](../00-project-control/DECISIONS.md)) | — | — |
 | `audit` | Immutable audit event log | — | Nothing — same rationale as `usage` |
 | `admin` | Cross-module admin views (users, roles, company, integrations, usage, audit) | Reads from other modules | Must not contain business logic that belongs in another module |
+| `platform_admin` | IITDEVELOPER-staff views across all customer accounts (account management, usage/campaign oversight, audited support sessions) | Reads from other modules, scoped by `account_id`; a support session's writes call the owning module's own `services/` (e.g. `contacts.services`) rather than writing that module's tables directly | `platform_auth` is the only auth boundary it uses — never `auth`/`permissions` (see [DEC-GRX-018](../00-project-control/DECISIONS.md)); must not contain business logic that belongs in another module |
 | `files` | Not required until Slice 5; scaffolding only if touched in Sprint 1 | `integrations` (storage adapter) | — |
 | `webhooks` | Out of MVP scope for Sprint 1 (no external providers yet to receive webhooks from) | — | — |
 

@@ -545,6 +545,35 @@ why the response shape stays metadata-only); "pausing" a campaign reuses the exi
 `cancel_campaign` state transition (`DRAFT`/`SCHEDULED` → `CANCELLED`) rather than adding a
 new `PAUSED` status.
 
+## Sprint 5 Phase E entities (Customer Account Platform — Secure support session, `GRX-SAAS-010`)
+
+One new table, `support_sessions` — the system of record for every audited support
+session, per [DECISIONS.md §DEC-GRX-022](../00-project-control/DECISIONS.md):
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | UUID PK | |
+| `account_id` | UUID FK → `accounts.id`, `ON DELETE CASCADE` | The one account this session grants access to |
+| `platform_admin_id` | UUID FK → `platform_admins.id`, `ON DELETE RESTRICT` | Who opened it — every session-scoped route requires the *caller's own* id to match this, not just a valid session id |
+| `reason` | text, NOT NULL | Required free-text justification |
+| `ticket_number` | text, NOT NULL | Required external ticket reference |
+| `access_level` | text, NOT NULL, `CHECK IN ('READ','WRITE')`, default `'READ'` | `WRITE` additionally requires `platform.support_session.write` at creation time |
+| `started_at` | timestamptz, default `now()` | |
+| `expires_at` | timestamptz, NOT NULL | `started_at` + `support_session_ttl_minutes` (new setting, default 60) — re-checked on every access, not just at creation |
+| `ended_at` | timestamptz, nullable | Set when the opening admin ends it early; an active session is `ended_at IS NULL AND expires_at > now()` |
+| `created_at`/`updated_at` | timestamptz | Standard pair |
+
+Two new seed rows in `platform_permissions`/`platform_role_permissions`:
+`platform.support_session.create` (`platform.owner`/`platform.admin`/`platform.support`)
+and `platform.support_session.write` (`platform.owner`/`platform.admin` only). No new
+tables for the session's read data (company profile, contacts, audit trail) or its one
+gated write action (editing a contact) — both read the existing `company`/`contacts`/
+`audit` tables directly, scoped by the session's own `account_id`. `contacts.services.update_contact`'s
+`actor_id` parameter widened from `uuid.UUID` to `uuid.UUID | None` (plus a new optional
+`audit_metadata` parameter) so a platform admin's edit through a session can record
+`actor_user_id=None` with the acting admin's identity in `audit_logs.event_metadata` —
+the same pattern `DEC-GRX-020` established, now reused by a second module.
+
 ## Full MVP entity landscape (target slice)
 
 Entities beyond Slice 3 are named here for continuity with `docs/02-features/` and future

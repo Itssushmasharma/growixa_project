@@ -175,9 +175,30 @@ decision (reusing `cancel_campaign`'s existing terminal state rather than invent
 resumable one) — everything else follows the same per-task pattern this document already
 establishes.
 
+## Readiness gate — Sprint 5 Phase E, Secure support session (`GRX-SAAS-010`)
+
+| Readiness item | Required | Status | Evidence |
+|---|---|---|---|
+| Phase B dependency | Yes — depends on `GRX-SAAS-002` (platform auth boundary) and `GRX-SAAS-005` (its own tracker row lists both) | PASS | Both marked `DONE` in [MASTER_TASK_TRACKER.md](MASTER_TASK_TRACKER.md) |
+| Session-model design decision | Yes — the tracker's own wording ("banner-visible... into a customer account") is ambiguous between literal impersonation and a dedicated support-only view; left unspecified which read/write surface a session actually grants | PASS | [DECISIONS.md §DEC-GRX-022](DECISIONS.md) — dedicated platform-side view chosen (confirmed with the user directly), not impersonation |
+| Data model additions | Yes — one new table (`support_sessions`) plus two permission seed rows | PASS | [DATA_MODEL.md §Sprint 5 Phase E entities (Secure support session)](../05-data/DATA_MODEL.md#sprint-5-phase-e-entities-customer-account-platform--secure-support-session-grx-saas-010), [DATABASE_SCHEMA.md §support_sessions](../05-data/DATABASE_SCHEMA.md#support_sessions) |
+| RBAC additions | Yes | PASS | [RBAC.md §Sprint 5 Phase E permission codes (GRX-SAAS-010)](../08-security/RBAC.md#sprint-5-phase-e-permission-codes-grx-saas-010) — `platform.support_session.create`, `platform.support_session.write` |
+| Threat model addendum | Yes (sprint's own "highest-trust capability") | PASS | [THREAT_MODEL.md §Sprint 5 Phase E — Secure support session](../08-security/THREAT_MODEL.md#sprint-5-phase-e--secure-support-session-grx-saas-010-scope) — T38–T43 |
+| Module boundaries | Yes — first time `platform_admin` reads from `contacts`/`company`/`audit`, not previously documented as a module at all | PASS | [MODULE_BOUNDARIES.md](../04-architecture/MODULE_BOUNDARIES.md) — new `platform_admin` row |
+| Sprint plan | Yes | PASS | [SPRINT_05_CUSTOMER_ACCOUNT_PLATFORM.md §Phase E](../14-sprints/SPRINT_05_CUSTOMER_ACCOUNT_PLATFORM.md#phase-e--platform-admin-panel-grx-saas-005-through-grx-saas-009) |
+| Feature specs | No (written per-task, not upfront — same practice as every prior slice/sprint) | DEFERRED TO EACH TASK | — |
+| Project tracker row | Yes | PASS | [MASTER_TASK_TRACKER.md](MASTER_TASK_TRACKER.md) — `GRX-SAAS-010` |
+| AI safety baseline | No (no AI feature in this task) | N/A FOR GRX-SAAS-010 | — |
+| Billing/provider decisions | No (out of this task's scope) | N/A FOR GRX-SAAS-010 | [OPEN_QUESTIONS.md](OPEN_QUESTIONS.md) |
+
+**Overall status: READY — `GRX-SAAS-010` cleared to `READY` in `MASTER_TASK_TRACKER.md`.**
+The genuinely new prerequisite versus GRX-SAAS-005/008's gates was the session-model
+decision itself (dedicated view vs. impersonation) — everything else follows the same
+per-task pattern this document already establishes.
+
 ## Gate for later slices/phases
 
 Slice 4 (Scheduled Email) onward, and Sprint 5 Phase D and the remaining Phase E rows
-(`GRX-SAAS-006`, `GRX-SAAS-007`, `GRX-SAAS-009`, `GRX-SAAS-010`), will each need their own
-readiness pass (data model additions, feature specs, etc.) before becoming `READY` — this
-table will be extended per slice/phase rather than re-litigated from scratch.
+(`GRX-SAAS-006`, `GRX-SAAS-007`, `GRX-SAAS-009`), will each need their own readiness pass
+(data model additions, feature specs, etc.) before becoming `READY` — this table will be
+extended per slice/phase rather than re-litigated from scratch.

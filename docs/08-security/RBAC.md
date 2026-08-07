@@ -199,6 +199,24 @@ task begins, same convention as Phase B's `platform.access`.
 |---|---|---|---|---|---|
 | `platform.accounts.manage` | ✅ | ✅ | ❌ | ❌ | ❌ |
 | `platform.usage.manage` | ✅ | ✅ | ✅ | ❌ | ❌ |
+| `platform.support_session.create` | ✅ | ✅ | ✅ | ❌ | ❌ |
+| `platform.support_session.write` | ✅ | ✅ | ❌ | ❌ | ❌ |
+
+## Sprint 5 Phase E permission codes (`GRX-SAAS-010`)
+
+| Code | Meaning |
+|---|---|
+| `platform.support_session.create` | Start an audited, time-limited support session into a customer account (default `access_level=READ`); view that account's data through an active session it started; end a session early |
+| `platform.support_session.write` | Additionally required to start a session with `access_level=WRITE`, and to perform the one gated write action (editing a contact) through an active `WRITE` session |
+
+Per [DEC-GRX-022](../00-project-control/DECISIONS.md), `platform.support_session.create`
+is granted to `platform.owner`/`platform.admin`/`platform.support` — matching
+`platform.support`'s own stated scope ("Customer support tooling (secure support
+sessions, Phase E)"). `platform.support_session.write` is owner/admin-only, the same
+higher-trust shape `platform.accounts.manage` already uses — the literal "separate
+permission gate for write access" the tracker's own wording calls for: a session can
+only be opened (or written through) at `WRITE` level if the acting admin holds *both*
+codes, not just `.create`.
 
 ## Enforcement rule
 

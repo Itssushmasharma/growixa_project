@@ -587,5 +587,89 @@ Decision statuses: `PROPOSED`, `UNDER_REVIEW`, `APPROVED`, `REJECTED`, `SUPERSED
 
 ---
 
+## DEC-GRX-022: Secure support session as a dedicated platform-side read/write surface, not literal customer impersonation
+
+- Status: APPROVED
+- Date: 2026-08-07
+- Context: `GRX-SAAS-010` (`SPRINT_05_CUSTOMER_ACCOUNT_PLATFORM.md`, deliberately last —
+  "highest-trust capability in the sprint") calls for "audited, time-limited,
+  banner-visible, read-by-default support access into a customer account — reason +
+  ticket number required, platform-admin confirmation, full audit log, no raw API key
+  exposure, separate permission gate for write access." Two implementation shapes were
+  considered: (a) literal impersonation — issue a platform admin a token that lets them
+  browse the customer's real `/dashboard/*` UI as if logged in as that account, or (b) a
+  dedicated, purpose-built platform-side view of a curated slice of the account's data,
+  with the customer's own dashboard showing a banner while a session is active. User
+  confirmed (b) when asked directly.
+- Decisions:
+  1. **New `support_sessions` table** (`account_id`, `platform_admin_id`, `reason`,
+     `ticket_number`, `access_level` ∈ `{READ, WRITE}` default `READ`, `started_at`,
+     `expires_at`, `ended_at`) — the system of record for every session: who, why, which
+     ticket, how much access, and for how long. `expires_at` is computed at creation time
+     from a new `support_session_ttl_minutes` setting (default 60); every read/write
+     action re-checks `ended_at IS NULL AND expires_at > now()` at call time, not only at
+     creation, so a session cannot be used past its window just because it was valid when
+     opened.
+  2. **Two new platform-namespace permission codes**: `platform.support_session.create`
+     (start a session, default read access, view the session's data, end it early —
+     granted to `platform.owner`/`platform.admin`/`platform.support`, matching
+     `platform.support`'s own stated scope "Customer support tooling (secure support
+     sessions, Phase E)") and `platform.support_session.write` (additionally required to
+     start a session with `access_level=WRITE` or perform the one gated write action
+     through an active one — granted only to `platform.owner`/`platform.admin`, the same
+     higher-trust owner/admin-only shape `DEC-GRX-020` already used for
+     `platform.accounts.manage`). This is the literal "separate permission gate for write
+     access" the tracker asks for: two independent checks (route-level permission +
+     session-level `access_level`) both have to pass, not one.
+  3. **Read scope for this checkpoint**: company profile, the account's contacts, and its
+     full audit trail (not the security-action-filtered subset `GRX-SAAS-005`'s
+     account-detail view already uses — support needs day-to-day operational context, not
+     just security events). **Write scope for this checkpoint**: exactly one action,
+     editing a contact record, reusing `contacts/services.py`'s existing
+     `update_contact` directly rather than duplicating its validation/dedup logic. Neither
+     list is meant to be exhaustive forever — matching this project's own "don't build
+     ahead of need" practice, more read surfaces or write actions are added the same way
+     (a new platform_admin-side route calling the owning module's existing service) as
+     real support needs surface, not spelled out speculatively now.
+  4. **`update_contact`'s `actor_id` parameter widened from `uuid.UUID` to
+     `uuid.UUID | None`, plus a new optional `audit_metadata` parameter.** A platform
+     admin has no `users.id` to pass as the audit event's actor — the exact same gap
+     `DEC-GRX-020` closed for `platform_admin`'s own module by recording
+     `actor_user_id=None` with the acting admin's id/email in `metadata`. Rather than
+     re-implement contact-update logic inside `platform_admin` to work around this, the
+     one call site that needs it now passes `actor_id=None` and an `audit_metadata` dict
+     carrying the platform admin's id/email plus the support session's id — existing
+     customer-side callers are unaffected (they keep passing a real `actor_id`, and
+     `audit_metadata` defaults to `None`, preserving current behavior exactly).
+  5. **No raw API key exposure is satisfied structurally, not by a special case**: no
+     support-session route reads or writes `integrations`/`email_provider_connections` at
+     all in this checkpoint, and every existing read endpoint for that table already never
+     returns a decrypted or even encrypted secret to any caller (`GRX-EMAIL-001`) — there
+     is nothing for a support session to leak here even if it were extended to touch that
+     module later.
+  6. **"Banner-visible" is implemented without touching customer auth**: a new endpoint,
+     gated only by the customer's own existing `require_permission`-equivalent
+     authentication (any logged-in user of the account, no new permission needed — a
+     customer should always be able to see that support currently has eyes on their own
+     account), returns whether an active session exists for the caller's `account_id`.
+     The customer dashboard shell polls it and renders a persistent banner while one is
+     active. This is deliberately the *only* place a support session's existence is
+     visible from the customer side — the session itself never causes the customer's own
+     UI or API responses to change in any other way.
+- Consequences: Support staff see a purpose-built read surface, not the exact pixels of
+  the customer's real dashboard — extending *what* is visible is additive (a new route),
+  not a re-architecture. The rejected alternative (literal impersonation) would have
+  required extending the core `get_current_user`/`require_permission` dependency chain
+  used by every existing customer route to recognize a second token shape — a much larger
+  blast radius for the sprint's own "highest-trust capability," and a real risk of
+  reopening the cross-account leakage class of bug `GRX-SAAS-001`'s account-isolation work
+  spent significant effort closing. If true impersonation is genuinely needed later (e.g.
+  because the read-surface approach proves insufficient for some support workflow), that
+  is a new, separately-considered decision, not a silent extension of this one.
+- Related tasks: `GRX-SAAS-010` in `MASTER_TASK_TRACKER.md`.
+- Supersedes: none.
+
+---
+
 *Decisions DEC-GRX-020 onward will be logged as they are made — e.g., resolutions to
 OQ-003 through OQ-011 in [OPEN_QUESTIONS.md](OPEN_QUESTIONS.md).*
