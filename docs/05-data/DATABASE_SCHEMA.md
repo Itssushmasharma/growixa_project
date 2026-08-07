@@ -2,7 +2,7 @@
 
 - Document ID: DOC-DB-SCHEMA
 - Status: ACTIVE (extended per slice, not redesigned)
-- Version: 1.3
+- Version: 1.4
 - Last updated: 2026-08-07
 - Owner: Coding agent
 - Related documents: [DATA_MODEL](DATA_MODEL.md), [ERD](ERD.md), [MIGRATION_STRATEGY](MIGRATION_STRATEGY.md)
@@ -556,6 +556,40 @@ feature as it's built, same convention as `permissions`.
 
 Seed rows (Phase B minimum): all five roles → `platform.access`.
 
+## Sprint 5 Phase C (Self-service registration) tables
+
+`accounts` gains one column here (`selected_plan_slug`); `users` gains one CHECK value
+(`PENDING_VERIFICATION`) — both documented in place below, alongside the one new table.
+See [DATA_MODEL.md §Sprint 5 Phase C entities](DATA_MODEL.md#sprint-5-phase-c-entities-customer-account-platform--self-service-registration-full-detail)
+and [DECISIONS.md §DEC-GRX-019](../00-project-control/DECISIONS.md).
+
+## `accounts` (documented here for the first time — see DATA_MODEL.md's note)
+
+| Column | Type | Constraints |
+|---|---|---|
+| id | uuid | PK |
+| name | text | NOT NULL |
+| status | text | NOT NULL, CHECK IN ('ACTIVE','SUSPENDED','CLOSED'), DEFAULT 'ACTIVE' |
+| plan_id | uuid | NULL, no FK yet (reserved for Phase D) |
+| selected_plan_slug | text | NULL, CHECK IN ('starter', 'growth') |
+| created_at | timestamptz | NOT NULL, DEFAULT now() |
+
+## `account_verification_tokens`
+
+| Column | Type | Constraints |
+|---|---|---|
+| id | uuid | PK |
+| account_id | uuid | FK → accounts.id ON DELETE CASCADE, NOT NULL |
+| user_id | uuid | FK → users.id ON DELETE CASCADE, NOT NULL |
+| token_hash | text | UNIQUE, NOT NULL |
+| expires_at | timestamptz | NOT NULL |
+| used_at | timestamptz | NULL |
+
+## `users` (amended)
+
+`status`'s CHECK constraint becomes `IN ('ACTIVE', 'DISABLED', 'PENDING_VERIFICATION')` —
+see the Sprint 1 `users` table above for the rest of its columns, unchanged.
+
 ## Extensions required
 
 - `pgcrypto` or equivalent for `gen_random_uuid()`.
@@ -587,3 +621,7 @@ Sprint 5 Phase B: `platform_admins` → `platform_permissions` → `platform_rol
 Independent of every `GRX-SAAS-001` migration — no FK to `accounts` or any account-owned
 table, so this can land in any order relative to Phase A's migrations (though Phase A
 merges first per the sprint's own dependency order).
+
+Sprint 5 Phase C: `users.status` CHECK widened to add `PENDING_VERIFICATION` →
+`accounts.selected_plan_slug` added → `account_verification_tokens`. Depends on
+`GRX-SAAS-001`'s `accounts`/`users` tables existing; independent of Phase B.

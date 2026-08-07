@@ -2,7 +2,7 @@
 
 - Document ID: DOC-DEV-READINESS
 - Status: ACTIVE
-- Version: 6.0
+- Version: 7.0
 - Last updated: 2026-08-07
 - Owner: Coding agent
 - Related documents: [DEFINITION_OF_DONE](DEFINITION_OF_DONE.md), [PROJECT_STATUS](PROJECT_STATUS.md), [MASTER_TASK_TRACKER](MASTER_TASK_TRACKER.md), [SPRINT_01_FOUNDATION](../14-sprints/SPRINT_01_FOUNDATION.md), [SPRINT_02_CONTACTS](../14-sprints/SPRINT_02_CONTACTS.md), [SPRINT_03_EMAIL_CAMPAIGN](../14-sprints/SPRINT_03_EMAIL_CAMPAIGN.md), [SPRINT_05_CUSTOMER_ACCOUNT_PLATFORM](../14-sprints/SPRINT_05_CUSTOMER_ACCOUNT_PLATFORM.md)
@@ -114,8 +114,27 @@ The one genuinely new prerequisite versus Slice 1/2/3's gate structure was the p
 admin schema shape itself (DEC-GRX-018) — everything else follows the same per-slice
 pattern (data model, RBAC, threat model, sprint plan) this document already establishes.
 
+## Readiness gate — Sprint 5 Phase C (Self-service registration, `GRX-SAAS-003`)
+
+| Readiness item | Required | Status | Evidence |
+|---|---|---|---|
+| Phase A dependency | Yes — Phase C depends only on `GRX-SAAS-001`, not Phase B (the two proceed in parallel per the sprint's own dependency graph) | PASS | `GRX-SAAS-001` marked `DONE` |
+| Owner role / plan-slug / verification-gate design decisions | Yes — the sprint doc's own wording ("a `customer.owner` user," "plan selection") left the exact shape unspecified | PASS | [DECISIONS.md §DEC-GRX-019](DECISIONS.md) — existing `Super Admin` role reused, `selected_plan_slug` text column (no plans table yet), verification via a third `users.status` value |
+| Data model additions | Yes | PASS | [DATA_MODEL.md §Sprint 5 Phase C entities](../05-data/DATA_MODEL.md#sprint-5-phase-c-entities-customer-account-platform--self-service-registration-full-detail), [DATABASE_SCHEMA.md §Sprint 5 Phase C](../05-data/DATABASE_SCHEMA.md#sprint-5-phase-c-self-service-registration-tables), [ERD.md §Sprint 5 Phase C additions](../05-data/ERD.md#sprint-5-phase-c-self-service-registration-additions) |
+| RBAC additions | No — register/verify-email are public routes, identity comes from the credential/token itself, same shape as `/auth/login`/`/users/invitations/accept`; no new permission code needed | N/A FOR PHASE C | [RBAC.md](../08-security/RBAC.md)'s existing enforcement rule already covers this shape |
+| Threat model addendum | Yes (new external surface: the first fully public write path — anyone can create an account) | PASS | [THREAT_MODEL.md §Sprint 5 Phase C](../08-security/THREAT_MODEL.md#sprint-5-phase-c-self-service-registration-scope) — T25–T29 |
+| Sprint plan | Yes | PASS | [SPRINT_05_CUSTOMER_ACCOUNT_PLATFORM.md §Phase C](../14-sprints/SPRINT_05_CUSTOMER_ACCOUNT_PLATFORM.md#phase-c--self-service-registration-grx-saas-003) |
+| Feature specs | No (written per-task, not upfront — same practice as every prior slice/sprint) | DEFERRED TO EACH TASK | — |
+| Project tracker row | Yes | PASS | [MASTER_TASK_TRACKER.md](MASTER_TASK_TRACKER.md) — `GRX-SAAS-003` |
+| AI safety baseline | No (no AI feature in Phase C) | N/A FOR PHASE C | — |
+| Billing provider decision (OQ-007) | No (Phase C only records a plan choice; enforcement/payment is Phase D) | N/A FOR PHASE C | [OPEN_QUESTIONS.md](OPEN_QUESTIONS.md) |
+
+**Overall status: READY — `GRX-SAAS-003` cleared to `READY` in `MASTER_TASK_TRACKER.md`.**
+The genuinely new prerequisites versus Phase B's gate were the three schema-shape
+decisions in DEC-GRX-019 — everything else follows the same per-slice pattern.
+
 ## Gate for later slices/phases
 
-Slice 4 (Scheduled Email) onward, and Sprint 5 Phases C/D/E, will each need their own
+Slice 4 (Scheduled Email) onward, and Sprint 5 Phase D/E, will each need their own
 readiness pass (data model additions, feature specs, etc.) before becoming `READY` — this
 table will be extended per slice/phase rather than re-litigated from scratch.

@@ -396,5 +396,68 @@ Decision statuses: `PROPOSED`, `UNDER_REVIEW`, `APPROVED`, `REJECTED`, `SUPERSED
 
 ---
 
-*Decisions DEC-GRX-019 onward will be logged as they are made — e.g., resolutions to
+## DEC-GRX-019: Phase C registration shape — owner role, plan slug without a plans table, verification via a third `users.status` value
+
+- Status: APPROVED
+- Date: 2026-08-07
+- Context: `SPRINT_05_CUSTOMER_ACCOUNT_PLATFORM.md`'s Phase C (`GRX-SAAS-003`) says
+  registration "creates... a `customer.owner` user" and includes "plan selection... as
+  part of registration," but neither is specified precisely enough to write a migration
+  from — there is no `customer.owner` role anywhere in `RBAC.md`'s seeded role set, and
+  no `plans` catalog table exists yet (`accounts.plan_id` is a bare nullable `UUID` with
+  no FK, explicitly "nullable until Phase D... creates the subscriptions/plans model").
+- Decisions:
+  1. **Owner role**: the newly-registered account's first user gets the existing seeded
+     `Super Admin` role, not a new `customer.owner` role. Phase C's own "Included" list
+     never lists a role-taxonomy change, and `FUTURE_SCOPE_PLATFORM_ADMIN.md`'s
+     `customer.owner`/`customer.admin`/etc. naming is explicitly a *future* renaming
+     proposal ("Proposed customer-level roles"), not a Phase C requirement. `Super
+     Admin` already means "full access within one account" — exactly what a new
+     account's first user needs — so registration reuses it rather than inventing a
+     second name for the same thing.
+  2. **Plan selection**: `accounts` gains `selected_plan_slug` (nullable `text`, `CHECK
+     IN ('starter', 'growth')`) — deliberately a plain string, not a `plan_id` FK,
+     since there is no `plans` table to point at yet. The two allowed values are the
+     two self-service plans already live on the public pricing page
+     (`apps/web/.../pricing-section.tsx`'s `Starter`/`Growth` cards) — `Enterprise` is
+     excluded on purpose, since its own button already reads "Contact Sales," not a
+     self-service action. Recorded only, per Phase C's own "actual plan enforcement is
+     Phase D" exclusion — Phase D reads this value (or its absence) when creating the
+     first real subscription, and may migrate it into a proper FK at that point.
+  3. **Verification gate**: `users.status`'s `CHECK` constraint gains a third value,
+     `PENDING_VERIFICATION` — the newly-registered owner starts here instead of
+     `ACTIVE`; verifying flips it to `ACTIVE`. This reuses `auth/services.py`'s
+     existing `login()` check (`user.status == "ACTIVE"`) with zero new login-path
+     code — a `PENDING_VERIFICATION` user already can't log in today, before writing
+     a single line of Phase C code, satisfying "an unverified account cannot
+     authenticate" for free. `accounts.status` (`ACTIVE`/`SUSPENDED`/`CLOSED`) is left
+     untouched — conflating "not yet verified" with "administratively suspended" would
+     blur a distinction Phase E's platform-admin suspend/close actions need to stay
+     meaningful.
+  4. **Email uniqueness across accounts**: confirmed as already resolved, not newly
+     decided — Phase A (`GRX-SAAS-001`'s users/auth slice) already made `users.email`
+     globally unique on purpose ("login resolves a user by email before any account is
+     known"). Registration inherits this for free: a duplicate email fails the same
+     `EmailAlreadyRegisteredError` path `invite_user`/`accept_invitation` already use.
+     This directly confirms Phase C's own flagged assumption ("one email = one
+     platform identity") rather than opening a new question.
+  5. **Verification token**: a new `account_verification_tokens` table, structurally
+     identical to `password_reset_tokens` (`id`/`account_id`/`user_id`/`token_hash`/
+     `expires_at`/`used_at`) — reuses `auth/tokens.py`'s existing `generate_token`/
+     `hash_token` functions per Phase C's own instruction, rather than a new token
+     table shape.
+- Consequences: A future real `plans` catalog (Phase D) will need its own migration to
+  either keep `selected_plan_slug` as a soft hint alongside a proper `plan_id` FK, or
+  migrate existing values into it — a real but small follow-up cost, accepted since
+  inventing a `plans` table now (with only two placeholder rows and no billing
+  attached) would be schema speculation ahead of an actual requirement. If a future
+  need for `customer.owner` as a genuinely distinct role from `Super Admin` (e.g.
+  per-account role customization) ever arrives, that is a real, separate RBAC change,
+  not something this decision forecloses.
+- Related tasks: `GRX-SAAS-003` in `MASTER_TASK_TRACKER.md`.
+- Supersedes: none.
+
+---
+
+*Decisions DEC-GRX-020 onward will be logged as they are made — e.g., resolutions to
 OQ-003 through OQ-011 in [OPEN_QUESTIONS.md](OPEN_QUESTIONS.md).*

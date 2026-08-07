@@ -2,7 +2,7 @@
 
 - Document ID: DOC-SEC-THREAT
 - Status: ACTIVE (expanded per slice, not redesigned)
-- Version: 1.2
+- Version: 1.3
 - Last updated: 2026-08-07
 - Owner: Coding agent
 - Related documents: [SECURITY_ARCHITECTURE](SECURITY_ARCHITECTURE.md), [AUTHENTICATION](AUTHENTICATION.md), [RBAC](RBAC.md)
@@ -79,5 +79,26 @@ platform-admin login/permission-check path itself.
 
 Any actual platform-admin feature's threat surface (support-session access to customer
 data, billing/provider management, infrastructure monitoring) is out of scope until
-Phase E builds it — Phase B is the auth boundary alone. Phase C's registration flow and
-Phase D's billing/webhook surface each get their own addendum when those phases start.
+Phase E builds it — Phase B is the auth boundary alone. Phase D's billing/webhook
+surface gets its own addendum when that phase starts.
+
+## Sprint 5 Phase C (Self-service registration) scope
+
+Scope: the first fully public, unauthenticated write path into this app — anyone can
+create an `accounts` row. Every prior write path required either an existing session
+(`require_permission`) or a token issued by someone who already had one (invitation
+accept). Registration has neither.
+
+| # | Threat | Vector | Mitigation |
+|---|---|---|---|
+| T25 | Registration flooding / account-creation spam | Attacker scripts repeated `POST /accounts/register` calls, creating junk accounts | Same Redis-backed rate limiting as T1/T12, applied to `/accounts/register` and `/accounts/verify-email` under their own bucket, per Phase C's own scope item 5 |
+| T26 | Email-registration-status enumeration (accepted, not a defect) | Registering with an already-used email returns a distinguishable "already registered" response, unlike login's deliberately generic failure (T11) | Accepted by design — a registration flow that hid this would make claiming an email impossible to attempt twice by its rightful owner; this is standard practice industry-wide, and the leaked fact ("this email has an account somewhere") is far less sensitive than a password or a specific account's existence |
+| T27 | Verification-token guessing | Attacker guesses or brute-forces a verification link | Same mitigation as T6 — `account_verification_tokens.token_hash` is a high-entropy, single-use, time-limited token (`auth/tokens.py`'s existing `generate_token`/`hash_token`), stored hashed |
+| T28 | Unverified-account privilege via a stale access token | A `PENDING_VERIFICATION` user somehow obtains a valid access-token cookie before verifying (e.g. a future bug reusing login's token-issuing code path incorrectly) | `login()`'s existing `status == "ACTIVE"` check (DEC-GRX-019) is the single enforcement point — registration itself never calls `create_access_token`/sets any auth cookie, so there is no code path today that could hand a `PENDING_VERIFICATION` user a session at all |
+| T29 | Plan-slug tampering | A client sends an arbitrary `selected_plan_slug` value outside the two allowed plans | Rejected at both the API boundary (Pydantic `Literal["starter", "growth"]`) and the DB (`CHECK` constraint) — matches this codebase's existing double-validation pattern for `email_provider_connections.provider` |
+
+## Explicitly out of scope for Sprint 5 Phase C
+
+Actual plan *enforcement* (contact/send limits, feature gating) has no threat surface
+yet — Phase C only records a plan choice, per its own exclusions. Phase D's payment/
+webhook surface is a separate addendum when that phase starts.

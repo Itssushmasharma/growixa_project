@@ -2,7 +2,7 @@
 
 - Document ID: DOC-DATA-MODEL
 - Status: ACTIVE
-- Version: 1.2
+- Version: 1.3
 - Last updated: 2026-08-07
 - Owner: Coding agent
 - Related documents: [ERD](ERD.md), [DATABASE_SCHEMA](DATABASE_SCHEMA.md), [MODULE_BOUNDARIES](../04-architecture/MODULE_BOUNDARIES.md), [AUTHENTICATION](../08-security/AUTHENTICATION.md)
@@ -26,7 +26,10 @@
 - Purpose: internal application users.
 - Primary key: `id` (UUID)
 - Required fields: `email` (unique, citext), `password_hash` (Argon2id), `full_name`, `status`
-- Status values: `ACTIVE`, `DISABLED`
+- Status values: `ACTIVE`, `DISABLED`, `PENDING_VERIFICATION` (Sprint 5 Phase C,
+  `GRX-SAAS-003` — a self-registered owner starts here; email verification flips it to
+  `ACTIVE`; reuses `login()`'s existing `status == "ACTIVE"` gate, see
+  [DECISIONS.md §DEC-GRX-019](../00-project-control/DECISIONS.md))
 - Optional fields: `last_login_at`
 - Sensitive fields: `password_hash` — never serialized, never logged.
 - Audit fields: `created_at`, `updated_at`
@@ -479,6 +482,40 @@ behind it yet (that's Phase E) — so these entities are deliberately minimal.
   — Phase B proves the boundary works, it doesn't yet differentiate what each role can do
   once inside; that differentiation arrives with each Phase E feature's own permission
   code(s).
+
+## Sprint 5 Phase C entities (Customer Account Platform — Self-service registration, full detail)
+
+`GRX-SAAS-003` per [SPRINT_05_CUSTOMER_ACCOUNT_PLATFORM.md §Phase C](../14-sprints/SPRINT_05_CUSTOMER_ACCOUNT_PLATFORM.md#phase-c--self-service-registration-grx-saas-003).
+Design decisions (owner role, plan slug without a plans table, verification via a third
+`users.status` value) are in [DECISIONS.md §DEC-GRX-019](../00-project-control/DECISIONS.md)
+— not repeated here.
+
+### `accounts` (documented here for the first time)
+
+`accounts` has existed since Phase A (`GRX-SAAS-001`) but was never given its own entity
+entry — this section closes that gap for the one field Phase C actually touches, not a
+full Phase A retrospective.
+
+- Purpose: the customer-account isolation boundary every account-owned table's
+  `account_id` points at.
+- Primary key: `id` (UUID)
+- Required fields: `name`, `status`
+- Status values: `ACTIVE`, `SUSPENDED`, `CLOSED` (Phase A) — unrelated to a user's own
+  `PENDING_VERIFICATION` status; see DEC-GRX-019 for why the two aren't conflated.
+- Optional fields: `plan_id` (nullable `UUID`, no FK yet — reserved for Phase D's real
+  `plans`/`subscriptions` model), `selected_plan_slug` (Phase C, nullable `text`, `CHECK
+  IN ('starter', 'growth')` — the self-service plan picked at registration, recorded
+  only; no enforcement until Phase D)
+- Audit fields: `created_at`
+
+### `account_verification_tokens`
+
+- Purpose: one-time email verification for a self-registered account's first user —
+  structurally identical to `password_reset_tokens`.
+- Primary key: `id` (UUID)
+- Required fields: `account_id`, `user_id`, `token_hash`, `expires_at`
+- Optional fields: `used_at`
+- Sensitive fields: `token_hash`
 
 ## Full MVP entity landscape (target slice)
 

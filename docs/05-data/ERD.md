@@ -2,7 +2,7 @@
 
 - Document ID: DOC-ERD
 - Status: ACTIVE (expanded per slice, not redesigned)
-- Version: 1.3
+- Version: 1.4
 - Last updated: 2026-08-07
 - Owner: Coding agent
 - Related documents: [DATA_MODEL](DATA_MODEL.md), [DATABASE_SCHEMA](DATABASE_SCHEMA.md)
@@ -407,5 +407,36 @@ erDiagram
     PLATFORM_ROLE_PERMISSIONS {
         string role
         uuid permission_id FK
+    }
+```
+
+## Sprint 5 Phase C (Self-service registration) additions
+
+Unlike Phase B, this connects directly to `accounts`/`users` (Sprint 1's diagram) — the
+registration flow creates real rows there. Shown as its own fragment since Sprint 1's
+diagram predates `accounts` existing at all (Phase A never added it retroactively; see
+[DATA_MODEL.md's note](DATA_MODEL.md#accounts-documented-here-for-the-first-time)).
+
+```mermaid
+erDiagram
+    ACCOUNTS ||--o{ USERS : owns
+    ACCOUNTS ||--o{ ACCOUNT_VERIFICATION_TOKENS : issues
+    USERS ||--o{ ACCOUNT_VERIFICATION_TOKENS : "verifies"
+
+    ACCOUNTS {
+        uuid id PK
+        string name
+        string status
+        uuid plan_id
+        string selected_plan_slug
+        timestamp created_at
+    }
+    ACCOUNT_VERIFICATION_TOKENS {
+        uuid id PK
+        uuid account_id FK
+        uuid user_id FK
+        string token_hash
+        timestamp expires_at
+        timestamp used_at
     }
 ```
