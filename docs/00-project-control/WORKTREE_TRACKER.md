@@ -8,7 +8,7 @@ This document maintains a real-time record of all parallel Git worktrees, active
 
 | Worktree Path | Branch Name | Feature / Task | Preview URL | Status | Created |
 |---|---|---|---|---|---|
-| `.worktrees/grx-templates-page-redesign` | `feature/FRONTEND/GRX-TEMPLATES-PAGE-REDESIGN` | Email Templates Page Redesign (Hero Showcase, Visual Card Grid, Metric Summary Cards, View Switcher & Live Preview Drawer) | `http://localhost:3001` | 🟡 `IN_PROGRESS` | 2026-08-06 |
+| *(No active worktrees running)* | — | — | — | — | — |
 
 ---
 
@@ -16,6 +16,7 @@ This document maintains a real-time record of all parallel Git worktrees, active
 
 | Worktree Directory | Branch | Feature Delivered | Merged Commit | Merged Date |
 |---|---|---|---|---|
+| `.worktrees/grx-templates-page-redesign` | `feature/FRONTEND/GRX-TEMPLATES-PAGE-REDESIGN` | Email Templates Page Redesign (Hero Showcase Spotlight, Visual Card Grid, Metric Summary Cards, Category Pills, View Switcher & Live Preview Drawer) | `954eab2` | 2026-08-07 |
 | `.worktrees/grx-cicd-deployment` | `feature/BACKEND/GRX-CICD-DEPLOYMENT` | Deployment CI/CD Workflows (Hugging Face Spaces API+Worker, Netlify Web Frontend, Release Orchestration) | `f146b98` | 2026-08-07 |
 | `.worktrees/grx-admin-health-panel` | `feature/FRONTEND/GRX-ADMIN-001-HEALTH-PANEL` | System Health Panel (`/admin`, real auth gate, live Postgres/Redis/RabbitMQ status, healthcheck-job trigger) | `c93af62` | 2026-08-06 |
 | `.worktrees/grx-sched-frontend` | `feature/FRONTEND/GRX-SCHED-UI` | Scheduled Campaigns UI (Send Mode selector, datetime picker, Cancel button, status badges, Scheduled tab) | `211e81d` | 2026-08-06 |
