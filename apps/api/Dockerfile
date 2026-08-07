@@ -16,4 +16,6 @@ RUN pip install --no-cache-dir -e ".[dev]"
 
 EXPOSE 8000
 
-CMD ["uvicorn", "growixa_api.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+# Use --reload only in development (controlled via RELOAD_ENABLED env var).
+# Production deployments (like Render) should NOT use --reload to avoid file descriptor exhaustion.
+CMD sh -c 'uvicorn growixa_api.main:app --host 0.0.0.0 --port 8000 ${RELOAD_ENABLED:+--reload}'

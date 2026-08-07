@@ -1,0 +1,64 @@
+services:
+  - type: web
+    name: growixa-api
+    runtime: docker
+    region: oregon  # Change to match your preference
+    plan: standard
+    dockerfile: ./apps/api/Dockerfile
+    dockerfilePath: ./apps/api
+    buildCommand: ''  # Use default Docker build
+    healthCheckPath: /health  # Add a health check endpoint if available
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      # RELOAD_ENABLED is NOT set, so --reload is disabled in CMD
+      # DATABASE_URL is provided by Render's PostgreSQL service or external database
+      # Ensure these are set in Render's environment variables dashboard:
+      # - DATABASE_URL (provided by Render PostgreSQL or set manually)
+      # - REDIS_URL (if using Render Redis or external)
+      # - RABBITMQ_URL (if using external service)
+      # - JWT_SIGNING_KEY (generate a secure key)
+      # - ENCRYPTION_KEY (generate using Fernet.generate_key())
+
+  # Uncomment if you have a separate frontend service
+  # - type: web
+  #   name: growixa-web
+  #   runtime: node
+  #   region: oregon
+  #   plan: standard
+  #   buildCommand: npm install && npm run build
+  #   startCommand: npm run start
+  #   staticPublishPath: ./out
+  #   envVars:
+  #     - key: NEXT_PUBLIC_API_URL
+  #       value: https://growixa-api.onrender.com
+
+  # Uncomment if you have a background worker service
+  # - type: background_worker
+  #   name: growixa-worker
+  #   runtime: docker
+  #   dockerfile: ./apps/worker/Dockerfile
+  #   envVars:
+  #     - key: ENVIRONMENT
+  #       value: production
+  #     - key: DATABASE_URL
+  #       fromDatabase:
+  #         name: growixa-db
+  #         property: connectionString
+
+# Optional: Define PostgreSQL database if using Render's managed database
+# databases:
+#   - name: growixa-db
+#     engine: postgres
+#     version: '15'
+#     region: oregon
+#     plan: standard
+#     databaseName: growixa
+#     user: growixa
+
+# Optional: Define Redis if needed
+# services:
+#   - type: redis
+#     name: growixa-redis
+#     region: oregon
+#     plan: standard
