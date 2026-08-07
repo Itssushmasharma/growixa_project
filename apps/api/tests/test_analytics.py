@@ -75,6 +75,7 @@ async def _create_campaign(sender_identity_id: uuid.UUID, actor_id: uuid.UUID) -
 
 async def _create_recipient_with_delivery(
     campaign_id: uuid.UUID,
+    account_id: uuid.UUID,
     *,
     email: str,
     recipient_status: str,
@@ -85,7 +86,7 @@ async def _create_recipient_with_delivery(
     recipient that was never attempted). `event_types` may repeat a type to prove events
     are counted as distinct deliveries, not raw event rows."""
     async with async_session_factory() as session:
-        contact = Contact(email=email)
+        contact = Contact(account_id=account_id, email=email)
         session.add(contact)
         await session.flush()
         recipient = CampaignRecipient(
@@ -139,13 +140,18 @@ async def _cleanup() -> None:
 @pytest.mark.integration
 async def test_report_reflects_delivery_and_event_counts(
     user_factory: Callable[..., Awaitable[uuid.UUID]],
+    account_factory: Callable[..., Awaitable[uuid.UUID]],
 ) -> None:
-    manager_id = await user_factory(full_name="Test Manager", role_name="Marketing Manager")
+    account_id = await account_factory()
+    manager_id = await user_factory(
+        full_name="Test Manager", role_name="Marketing Manager", account_id=account_id
+    )
     sender_identity_id = await _create_sender_identity()
     campaign_id = await _create_campaign(sender_identity_id, manager_id)
     try:
         await _create_recipient_with_delivery(
             campaign_id,
+            account_id,
             email="opened-clicked@example.com",
             recipient_status="SENT",
             delivery_status="DELIVERED",
@@ -153,6 +159,7 @@ async def test_report_reflects_delivery_and_event_counts(
         )
         await _create_recipient_with_delivery(
             campaign_id,
+            account_id,
             email="bounced@example.com",
             recipient_status="SENT",
             delivery_status="BOUNCED",
@@ -160,6 +167,7 @@ async def test_report_reflects_delivery_and_event_counts(
         )
         await _create_recipient_with_delivery(
             campaign_id,
+            account_id,
             email="suppressed@example.com",
             recipient_status="SUPPRESSED",
             delivery_status=None,

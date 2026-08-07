@@ -24,18 +24,40 @@ from growixa_api.contacts.models import (
 )
 
 
-async def get_contact_by_email(session: AsyncSession, email: str) -> Contact | None:
-    result = await session.execute(select(Contact).where(Contact.email == email))
+async def get_account_id_for_contact(
+    session: AsyncSession, contact_id: uuid.UUID
+) -> uuid.UUID | None:
+    """Resolves a contact's owning account from its id alone -- for internal,
+    cross-module callers (email_delivery webhook/unsubscribe handling) that already
+    hold a trusted `contact_id` via an FK chain but don't yet have their own account
+    context (campaigns/email_delivery aren't account-scoped until the next GRX-SAAS-001
+    checkpoint). Not for use from any account-boundary-sensitive lookup."""
+    result = await session.execute(select(Contact.account_id).where(Contact.id == contact_id))
     return result.scalar_one_or_none()
 
 
-async def get_contact_by_id(session: AsyncSession, contact_id: uuid.UUID) -> Contact | None:
-    result = await session.execute(select(Contact).where(Contact.id == contact_id))
+async def get_contact_by_email(
+    session: AsyncSession, account_id: uuid.UUID, email: str
+) -> Contact | None:
+    result = await session.execute(
+        select(Contact).where(Contact.account_id == account_id, Contact.email == email)
+    )
     return result.scalar_one_or_none()
 
 
-async def list_contacts(session: AsyncSession) -> Sequence[Contact]:
-    result = await session.execute(select(Contact).order_by(Contact.created_at.desc()))
+async def get_contact_by_id(
+    session: AsyncSession, account_id: uuid.UUID, contact_id: uuid.UUID
+) -> Contact | None:
+    result = await session.execute(
+        select(Contact).where(Contact.account_id == account_id, Contact.id == contact_id)
+    )
+    return result.scalar_one_or_none()
+
+
+async def list_contacts(session: AsyncSession, account_id: uuid.UUID) -> Sequence[Contact]:
+    result = await session.execute(
+        select(Contact).where(Contact.account_id == account_id).order_by(Contact.created_at.desc())
+    )
     return result.scalars().all()
 
 
@@ -52,20 +74,32 @@ async def apply_contact_fields(contact: Contact, fields: dict[str, Any]) -> Cont
     return contact
 
 
-async def get_custom_field_by_key(session: AsyncSession, key: str) -> ContactCustomField | None:
-    result = await session.execute(select(ContactCustomField).where(ContactCustomField.key == key))
+async def get_custom_field_by_key(
+    session: AsyncSession, account_id: uuid.UUID, key: str
+) -> ContactCustomField | None:
+    result = await session.execute(
+        select(ContactCustomField).where(
+            ContactCustomField.account_id == account_id, ContactCustomField.key == key
+        )
+    )
     return result.scalar_one_or_none()
 
 
-async def list_custom_fields(session: AsyncSession) -> Sequence[ContactCustomField]:
-    result = await session.execute(select(ContactCustomField).order_by(ContactCustomField.key))
+async def list_custom_fields(
+    session: AsyncSession, account_id: uuid.UUID
+) -> Sequence[ContactCustomField]:
+    result = await session.execute(
+        select(ContactCustomField)
+        .where(ContactCustomField.account_id == account_id)
+        .order_by(ContactCustomField.key)
+    )
     return result.scalars().all()
 
 
 async def create_custom_field(
-    session: AsyncSession, *, key: str, label: str, field_type: str
+    session: AsyncSession, *, account_id: uuid.UUID, key: str, label: str, field_type: str
 ) -> ContactCustomField:
-    field = ContactCustomField(key=key, label=label, field_type=field_type)
+    field = ContactCustomField(account_id=account_id, key=key, label=label, field_type=field_type)
     session.add(field)
     await session.flush()
     return field
@@ -83,7 +117,12 @@ async def get_field_values_for_contact(
 
 
 async def upsert_field_value(
-    session: AsyncSession, *, contact_id: uuid.UUID, field_id: uuid.UUID, value: str
+    session: AsyncSession,
+    *,
+    account_id: uuid.UUID,
+    contact_id: uuid.UUID,
+    field_id: uuid.UUID,
+    value: str,
 ) -> None:
     result = await session.execute(
         select(ContactFieldValue).where(
@@ -92,28 +131,40 @@ async def upsert_field_value(
     )
     existing = result.scalar_one_or_none()
     if existing is None:
-        session.add(ContactFieldValue(contact_id=contact_id, field_id=field_id, value=value))
+        session.add(
+            ContactFieldValue(
+                account_id=account_id, contact_id=contact_id, field_id=field_id, value=value
+            )
+        )
     else:
         existing.value = value
 
 
-async def get_tag_by_id(session: AsyncSession, tag_id: uuid.UUID) -> Tag | None:
-    result = await session.execute(select(Tag).where(Tag.id == tag_id))
+async def get_tag_by_id(
+    session: AsyncSession, account_id: uuid.UUID, tag_id: uuid.UUID
+) -> Tag | None:
+    result = await session.execute(
+        select(Tag).where(Tag.account_id == account_id, Tag.id == tag_id)
+    )
     return result.scalar_one_or_none()
 
 
-async def get_tag_by_name(session: AsyncSession, name: str) -> Tag | None:
-    result = await session.execute(select(Tag).where(Tag.name == name))
+async def get_tag_by_name(session: AsyncSession, account_id: uuid.UUID, name: str) -> Tag | None:
+    result = await session.execute(
+        select(Tag).where(Tag.account_id == account_id, Tag.name == name)
+    )
     return result.scalar_one_or_none()
 
 
-async def list_tags(session: AsyncSession) -> Sequence[Tag]:
-    result = await session.execute(select(Tag).order_by(Tag.name))
+async def list_tags(session: AsyncSession, account_id: uuid.UUID) -> Sequence[Tag]:
+    result = await session.execute(
+        select(Tag).where(Tag.account_id == account_id).order_by(Tag.name)
+    )
     return result.scalars().all()
 
 
-async def create_tag(session: AsyncSession, *, name: str) -> Tag:
-    tag = Tag(name=name)
+async def create_tag(session: AsyncSession, *, account_id: uuid.UUID, name: str) -> Tag:
+    tag = Tag(account_id=account_id, name=name)
     session.add(tag)
     await session.flush()
     return tag
@@ -137,10 +188,12 @@ async def is_tag_attached(
     return result.scalar_one_or_none() is not None
 
 
-async def attach_tag(session: AsyncSession, *, contact_id: uuid.UUID, tag_id: uuid.UUID) -> None:
+async def attach_tag(
+    session: AsyncSession, *, account_id: uuid.UUID, contact_id: uuid.UUID, tag_id: uuid.UUID
+) -> None:
     if await is_tag_attached(session, contact_id=contact_id, tag_id=tag_id):
         return
-    session.add(ContactTag(contact_id=contact_id, tag_id=tag_id))
+    session.add(ContactTag(account_id=account_id, contact_id=contact_id, tag_id=tag_id))
 
 
 async def detach_tag(session: AsyncSession, *, contact_id: uuid.UUID, tag_id: uuid.UUID) -> None:
@@ -152,21 +205,37 @@ async def detach_tag(session: AsyncSession, *, contact_id: uuid.UUID, tag_id: uu
         await session.delete(existing)
 
 
-async def get_contact_list_by_id(session: AsyncSession, list_id: uuid.UUID) -> ContactList | None:
-    result = await session.execute(select(ContactList).where(ContactList.id == list_id))
+async def get_contact_list_by_id(
+    session: AsyncSession, account_id: uuid.UUID, list_id: uuid.UUID
+) -> ContactList | None:
+    result = await session.execute(
+        select(ContactList).where(ContactList.account_id == account_id, ContactList.id == list_id)
+    )
     return result.scalar_one_or_none()
 
 
-async def list_contact_lists(session: AsyncSession) -> Sequence[ContactList]:
-    result = await session.execute(select(ContactList).order_by(ContactList.created_at.desc()))
+async def list_contact_lists(session: AsyncSession, account_id: uuid.UUID) -> Sequence[ContactList]:
+    result = await session.execute(
+        select(ContactList)
+        .where(ContactList.account_id == account_id)
+        .order_by(ContactList.created_at.desc())
+    )
     return result.scalars().all()
 
 
 async def create_contact_list(
-    session: AsyncSession, *, name: str, description: str | None, created_by_user_id: uuid.UUID
+    session: AsyncSession,
+    *,
+    account_id: uuid.UUID,
+    name: str,
+    description: str | None,
+    created_by_user_id: uuid.UUID,
 ) -> ContactList:
     contact_list = ContactList(
-        name=name, description=description, created_by_user_id=created_by_user_id
+        account_id=account_id,
+        name=name,
+        description=description,
+        created_by_user_id=created_by_user_id,
     )
     session.add(contact_list)
     await session.flush()
@@ -192,11 +261,11 @@ async def is_list_member(
 
 
 async def add_list_member(
-    session: AsyncSession, *, list_id: uuid.UUID, contact_id: uuid.UUID
+    session: AsyncSession, *, account_id: uuid.UUID, list_id: uuid.UUID, contact_id: uuid.UUID
 ) -> None:
     if await is_list_member(session, list_id=list_id, contact_id=contact_id):
         return
-    session.add(ContactListMember(list_id=list_id, contact_id=contact_id))
+    session.add(ContactListMember(account_id=account_id, list_id=list_id, contact_id=contact_id))
 
 
 async def remove_list_member(
@@ -229,7 +298,13 @@ CUSTOM_FIELD_RULE_OPERATORS = {"equals", "contains"}
 def build_rule_condition(field: str, operator: str, value: str) -> ColumnElement[bool]:
     """Translate one validated (field, operator, value) triple into a SQLAlchemy
     boolean expression over `Contact`. Callers must validate field/operator combinations
-    (and parse `created_at` values) before calling this — it assumes valid input."""
+    (and parse `created_at` values) before calling this — it assumes valid input.
+
+    The `tag`/`custom_field:` subqueries below aren't themselves account-scoped, but
+    every caller intersects the result with an account_id filter on the outer `Contact`
+    query (see `_matching_contacts_query`), so a same-named tag/field key in another
+    account can never leak a contact into these results.
+    """
     if field == "status":
         return Contact.status == value
     if field == "email":
@@ -261,53 +336,78 @@ def build_rule_condition(field: str, operator: str, value: str) -> ColumnElement
     raise ValueError(f"Unsupported segment rule field: {field}")
 
 
-def _matching_contacts_query(rules: Sequence[SegmentRule]) -> Select[tuple[Contact]]:
+def _matching_contacts_query(
+    account_id: uuid.UUID, rules: Sequence[SegmentRule]
+) -> Select[tuple[Contact]]:
     conditions = [build_rule_condition(r.field, r.operator, r.value) for r in rules]
-    query = select(Contact)
+    query = select(Contact).where(Contact.account_id == account_id)
     if conditions:
         query = query.where(and_(*conditions))
     return query
 
 
 async def evaluate_segment_rules(
-    session: AsyncSession, rules: Sequence[SegmentRule]
+    session: AsyncSession, account_id: uuid.UUID, rules: Sequence[SegmentRule]
 ) -> Sequence[Contact]:
-    result = await session.execute(_matching_contacts_query(rules))
+    result = await session.execute(_matching_contacts_query(account_id, rules))
     return result.scalars().all()
 
 
-async def count_dynamic_segment_members(session: AsyncSession, rules: Sequence[SegmentRule]) -> int:
+async def count_dynamic_segment_members(
+    session: AsyncSession, account_id: uuid.UUID, rules: Sequence[SegmentRule]
+) -> int:
     conditions = [build_rule_condition(r.field, r.operator, r.value) for r in rules]
-    query = select(func.count()).select_from(Contact)
+    query = select(func.count()).select_from(Contact).where(Contact.account_id == account_id)
     if conditions:
         query = query.where(and_(*conditions))
     result = await session.execute(query)
     return result.scalar_one()
 
 
-async def get_segment_by_id(session: AsyncSession, segment_id: uuid.UUID) -> Segment | None:
-    result = await session.execute(select(Segment).where(Segment.id == segment_id))
+async def get_segment_by_id(
+    session: AsyncSession, account_id: uuid.UUID, segment_id: uuid.UUID
+) -> Segment | None:
+    result = await session.execute(
+        select(Segment).where(Segment.account_id == account_id, Segment.id == segment_id)
+    )
     return result.scalar_one_or_none()
 
 
-async def list_segments(session: AsyncSession) -> Sequence[Segment]:
-    result = await session.execute(select(Segment).order_by(Segment.created_at.desc()))
+async def list_segments(session: AsyncSession, account_id: uuid.UUID) -> Sequence[Segment]:
+    result = await session.execute(
+        select(Segment).where(Segment.account_id == account_id).order_by(Segment.created_at.desc())
+    )
     return result.scalars().all()
 
 
 async def create_segment(
-    session: AsyncSession, *, name: str, type_: str, created_by_user_id: uuid.UUID
+    session: AsyncSession,
+    *,
+    account_id: uuid.UUID,
+    name: str,
+    type_: str,
+    created_by_user_id: uuid.UUID,
 ) -> Segment:
-    segment = Segment(name=name, type=type_, created_by_user_id=created_by_user_id)
+    segment = Segment(
+        account_id=account_id, name=name, type=type_, created_by_user_id=created_by_user_id
+    )
     session.add(segment)
     await session.flush()
     return segment
 
 
 async def add_segment_rule(
-    session: AsyncSession, *, segment_id: uuid.UUID, field: str, operator: str, value: str
+    session: AsyncSession,
+    *,
+    account_id: uuid.UUID,
+    segment_id: uuid.UUID,
+    field: str,
+    operator: str,
+    value: str,
 ) -> SegmentRule:
-    rule = SegmentRule(segment_id=segment_id, field=field, operator=operator, value=value)
+    rule = SegmentRule(
+        account_id=account_id, segment_id=segment_id, field=field, operator=operator, value=value
+    )
     session.add(rule)
     await session.flush()
     return rule
@@ -319,10 +419,16 @@ async def list_segment_rules(session: AsyncSession, segment_id: uuid.UUID) -> Se
 
 
 async def add_segment_members(
-    session: AsyncSession, *, segment_id: uuid.UUID, contact_ids: Sequence[uuid.UUID]
+    session: AsyncSession,
+    *,
+    account_id: uuid.UUID,
+    segment_id: uuid.UUID,
+    contact_ids: Sequence[uuid.UUID],
 ) -> None:
     for contact_id in contact_ids:
-        session.add(SegmentMember(segment_id=segment_id, contact_id=contact_id))
+        session.add(
+            SegmentMember(account_id=account_id, segment_id=segment_id, contact_id=contact_id)
+        )
 
 
 async def count_saved_segment_members(session: AsyncSession, segment_id: uuid.UUID) -> int:
@@ -348,31 +454,46 @@ async def list_saved_segment_members(
 async def create_import(
     session: AsyncSession,
     *,
+    account_id: uuid.UUID,
     filename: str,
     column_mapping: dict[str, str],
     created_by_user_id: uuid.UUID,
 ) -> ContactImport:
     contact_import = ContactImport(
-        filename=filename, column_mapping=column_mapping, created_by_user_id=created_by_user_id
+        account_id=account_id,
+        filename=filename,
+        column_mapping=column_mapping,
+        created_by_user_id=created_by_user_id,
     )
     session.add(contact_import)
     await session.flush()
     return contact_import
 
 
-async def get_import_by_id(session: AsyncSession, import_id: uuid.UUID) -> ContactImport | None:
-    result = await session.execute(select(ContactImport).where(ContactImport.id == import_id))
+async def get_import_by_id(
+    session: AsyncSession, account_id: uuid.UUID, import_id: uuid.UUID
+) -> ContactImport | None:
+    result = await session.execute(
+        select(ContactImport).where(
+            ContactImport.account_id == account_id, ContactImport.id == import_id
+        )
+    )
     return result.scalar_one_or_none()
 
 
-async def list_imports(session: AsyncSession) -> Sequence[ContactImport]:
-    result = await session.execute(select(ContactImport).order_by(ContactImport.created_at.desc()))
+async def list_imports(session: AsyncSession, account_id: uuid.UUID) -> Sequence[ContactImport]:
+    result = await session.execute(
+        select(ContactImport)
+        .where(ContactImport.account_id == account_id)
+        .order_by(ContactImport.created_at.desc())
+    )
     return result.scalars().all()
 
 
 async def add_import_row(
     session: AsyncSession,
     *,
+    account_id: uuid.UUID,
     import_id: uuid.UUID,
     row_number: int,
     email: str | None,
@@ -380,6 +501,7 @@ async def add_import_row(
     error_message: str | None,
 ) -> ContactImportRow:
     row = ContactImportRow(
+        account_id=account_id,
         import_id=import_id,
         row_number=row_number,
         email=email,
@@ -405,6 +527,7 @@ async def list_import_rows(
 async def create_consent_record(
     session: AsyncSession,
     *,
+    account_id: uuid.UUID,
     contact_id: uuid.UUID,
     channel: str,
     status: str,
@@ -412,6 +535,7 @@ async def create_consent_record(
     recorded_by_user_id: uuid.UUID | None,
 ) -> ConsentRecord:
     record = ConsentRecord(
+        account_id=account_id,
         contact_id=contact_id,
         channel=channel,
         status=status,
@@ -434,31 +558,43 @@ async def list_consent_records(
     return result.scalars().all()
 
 
-async def get_suppression_by_email(session: AsyncSession, email: str) -> SuppressionEntry | None:
-    result = await session.execute(select(SuppressionEntry).where(SuppressionEntry.email == email))
+async def get_suppression_by_email(
+    session: AsyncSession, account_id: uuid.UUID, email: str
+) -> SuppressionEntry | None:
+    result = await session.execute(
+        select(SuppressionEntry).where(
+            SuppressionEntry.account_id == account_id, SuppressionEntry.email == email
+        )
+    )
     return result.scalar_one_or_none()
 
 
-async def list_suppression_entries(session: AsyncSession) -> Sequence[SuppressionEntry]:
+async def list_suppression_entries(
+    session: AsyncSession, account_id: uuid.UUID
+) -> Sequence[SuppressionEntry]:
     result = await session.execute(
-        select(SuppressionEntry).order_by(SuppressionEntry.suppressed_at.desc())
+        select(SuppressionEntry)
+        .where(SuppressionEntry.account_id == account_id)
+        .order_by(SuppressionEntry.suppressed_at.desc())
     )
     return result.scalars().all()
 
 
-async def is_email_suppressed(session: AsyncSession, email: str) -> bool:
-    return await get_suppression_by_email(session, email) is not None
+async def is_email_suppressed(session: AsyncSession, account_id: uuid.UUID, email: str) -> bool:
+    return await get_suppression_by_email(session, account_id, email) is not None
 
 
 async def create_suppression_entry(
     session: AsyncSession,
     *,
+    account_id: uuid.UUID,
     email: str,
     reason: str,
     contact_id: uuid.UUID | None,
     suppressed_by_user_id: uuid.UUID | None,
 ) -> SuppressionEntry:
     entry = SuppressionEntry(
+        account_id=account_id,
         email=email,
         reason=reason,
         contact_id=contact_id,

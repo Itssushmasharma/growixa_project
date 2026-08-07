@@ -52,6 +52,7 @@ class CampaignNotCancellableError(Exception):
 
 async def _validate_recipient_target(
     session: AsyncSession,
+    account_id: uuid.UUID,
     recipient_type: str,
     recipient_segment_id: uuid.UUID | None,
     recipient_list_id: uuid.UUID | None,
@@ -65,7 +66,7 @@ async def _validate_recipient_target(
                 "recipient_segment_id must be set and recipient_list_id must be unset "
                 "when recipient_type is SEGMENT"
             )
-        if await get_segment_by_id(session, recipient_segment_id) is None:
+        if await get_segment_by_id(session, account_id, recipient_segment_id) is None:
             raise InvalidRecipientTargetError("recipient_segment_id does not exist")
     elif recipient_type == "LIST":
         if recipient_list_id is None or recipient_segment_id is not None:
@@ -73,7 +74,7 @@ async def _validate_recipient_target(
                 "recipient_list_id must be set and recipient_segment_id must be unset "
                 "when recipient_type is LIST"
             )
-        if await get_contact_list_by_id(session, recipient_list_id) is None:
+        if await get_contact_list_by_id(session, account_id, recipient_list_id) is None:
             raise InvalidRecipientTargetError("recipient_list_id does not exist")
     else:
         if recipient_segment_id is not None or recipient_list_id is not None:
@@ -83,13 +84,15 @@ async def _validate_recipient_target(
             )
 
 
-async def create_campaign(session: AsyncSession, data: CampaignIn, actor_id: uuid.UUID) -> Campaign:
+async def create_campaign(
+    session: AsyncSession, account_id: uuid.UUID, data: CampaignIn, actor_id: uuid.UUID
+) -> Campaign:
     if await get_sender_identity(session, data.sender_identity_id) is None:
         raise SenderIdentityNotFoundError
     if data.template_id is not None and await get_template(session, data.template_id) is None:
         raise TemplateNotFoundError
     await _validate_recipient_target(
-        session, data.recipient_type, data.recipient_segment_id, data.recipient_list_id
+        session, account_id, data.recipient_type, data.recipient_segment_id, data.recipient_list_id
     )
     return await create_campaign_row(
         session,
@@ -120,7 +123,7 @@ async def list_all_campaigns(session: AsyncSession) -> Sequence[Campaign]:
 
 
 async def update_campaign(
-    session: AsyncSession, campaign_id: uuid.UUID, data: CampaignUpdateIn
+    session: AsyncSession, account_id: uuid.UUID, campaign_id: uuid.UUID, data: CampaignUpdateIn
 ) -> Campaign:
     campaign = await get_campaign(session, campaign_id)
     if campaign is None:
@@ -146,7 +149,7 @@ async def update_campaign(
         recipient_segment_id = fields.get("recipient_segment_id")
         recipient_list_id = fields.get("recipient_list_id")
         await _validate_recipient_target(
-            session, recipient_type, recipient_segment_id, recipient_list_id
+            session, account_id, recipient_type, recipient_segment_id, recipient_list_id
         )
         # Force both explicitly into `fields` (even if the client didn't send them) so
         # switching recipient_type also clears whichever of segment_id/list_id no longer

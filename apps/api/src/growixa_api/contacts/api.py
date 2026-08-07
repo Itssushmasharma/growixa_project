@@ -81,7 +81,7 @@ from growixa_api.contacts.services import suppress_email as suppress_email_servi
 from growixa_api.contacts.services import update_contact as update_contact_service
 from growixa_api.contacts.services import update_contact_status as update_contact_status_service
 from growixa_api.db import get_session
-from growixa_api.permissions.dependencies import require_permission
+from growixa_api.permissions.dependencies import get_current_account_id, require_permission
 
 router = APIRouter(prefix="/contacts", tags=["contacts"])
 
@@ -136,20 +136,26 @@ def _segment_to_out(
 @router.get("/custom-fields", response_model=list[CustomFieldOut])
 async def list_custom_fields_route(
     _actor_id: uuid.UUID = Depends(_require_view),
+    account_id: uuid.UUID = Depends(get_current_account_id),
     session: AsyncSession = Depends(get_session),
 ) -> list[ContactCustomField]:
-    return list(await list_custom_fields_service(session))
+    return list(await list_custom_fields_service(session, account_id))
 
 
 @router.post("/custom-fields", response_model=CustomFieldOut, status_code=status.HTTP_201_CREATED)
 async def create_custom_field_route(
     payload: CustomFieldIn,
     _actor_id: uuid.UUID = Depends(_require_manage),
+    account_id: uuid.UUID = Depends(get_current_account_id),
     session: AsyncSession = Depends(get_session),
 ) -> ContactCustomField:
     try:
         return await create_custom_field_service(
-            session, key=payload.key, label=payload.label, field_type=payload.field_type
+            session,
+            account_id=account_id,
+            key=payload.key,
+            label=payload.label,
+            field_type=payload.field_type,
         )
     except DuplicateFieldKeyError as exc:
         raise HTTPException(
@@ -160,19 +166,21 @@ async def create_custom_field_route(
 @router.get("/tags", response_model=list[TagOut])
 async def list_tags_route(
     _actor_id: uuid.UUID = Depends(_require_view),
+    account_id: uuid.UUID = Depends(get_current_account_id),
     session: AsyncSession = Depends(get_session),
 ) -> list[Tag]:
-    return list(await list_tags_service(session))
+    return list(await list_tags_service(session, account_id))
 
 
 @router.post("/tags", response_model=TagOut, status_code=status.HTTP_201_CREATED)
 async def create_tag_route(
     payload: TagIn,
     _actor_id: uuid.UUID = Depends(_require_manage),
+    account_id: uuid.UUID = Depends(get_current_account_id),
     session: AsyncSession = Depends(get_session),
 ) -> Tag:
     try:
-        return await create_tag_service(session, name=payload.name)
+        return await create_tag_service(session, account_id=account_id, name=payload.name)
     except DuplicateTagNameError as exc:
         raise HTTPException(
             status.HTTP_409_CONFLICT, "A tag with this name already exists"
@@ -182,9 +190,10 @@ async def create_tag_route(
 @router.get("/lists", response_model=list[ContactListOut])
 async def list_lists_route(
     _actor_id: uuid.UUID = Depends(_require_view),
+    account_id: uuid.UUID = Depends(get_current_account_id),
     session: AsyncSession = Depends(get_session),
 ) -> list[ContactListOut]:
-    lists_with_counts = await list_lists_service(session)
+    lists_with_counts = await list_lists_service(session, account_id)
     return [_list_to_out(contact_list, count) for contact_list, count in lists_with_counts]
 
 
@@ -192,10 +201,15 @@ async def list_lists_route(
 async def create_list_route(
     payload: ContactListIn,
     actor_id: uuid.UUID = Depends(_require_manage),
+    account_id: uuid.UUID = Depends(get_current_account_id),
     session: AsyncSession = Depends(get_session),
 ) -> ContactListOut:
     contact_list, count = await create_list_service(
-        session, actor_id=actor_id, name=payload.name, description=payload.description
+        session,
+        account_id=account_id,
+        actor_id=actor_id,
+        name=payload.name,
+        description=payload.description,
     )
     return _list_to_out(contact_list, count)
 
@@ -204,10 +218,11 @@ async def create_list_route(
 async def get_list_route(
     list_id: uuid.UUID,
     _actor_id: uuid.UUID = Depends(_require_view),
+    account_id: uuid.UUID = Depends(get_current_account_id),
     session: AsyncSession = Depends(get_session),
 ) -> ContactListOut:
     try:
-        contact_list, count = await get_list_service(session, list_id)
+        contact_list, count = await get_list_service(session, account_id, list_id)
     except ContactListNotFoundError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "List not found") from exc
 
@@ -219,11 +234,16 @@ async def add_list_member_route(
     list_id: uuid.UUID,
     payload: AddListMemberIn,
     actor_id: uuid.UUID = Depends(_require_manage),
+    account_id: uuid.UUID = Depends(get_current_account_id),
     session: AsyncSession = Depends(get_session),
 ) -> ContactListOut:
     try:
         contact_list, count = await add_contact_to_list_service(
-            session, actor_id=actor_id, list_id=list_id, contact_id=payload.contact_id
+            session,
+            account_id=account_id,
+            actor_id=actor_id,
+            list_id=list_id,
+            contact_id=payload.contact_id,
         )
     except ContactListNotFoundError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "List not found") from exc
@@ -238,11 +258,16 @@ async def remove_list_member_route(
     list_id: uuid.UUID,
     contact_id: uuid.UUID,
     actor_id: uuid.UUID = Depends(_require_manage),
+    account_id: uuid.UUID = Depends(get_current_account_id),
     session: AsyncSession = Depends(get_session),
 ) -> ContactListOut:
     try:
         contact_list, count = await remove_contact_from_list_service(
-            session, actor_id=actor_id, list_id=list_id, contact_id=contact_id
+            session,
+            account_id=account_id,
+            actor_id=actor_id,
+            list_id=list_id,
+            contact_id=contact_id,
         )
     except ContactListNotFoundError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "List not found") from exc
@@ -255,9 +280,10 @@ async def remove_list_member_route(
 @router.get("/segments", response_model=list[SegmentOut])
 async def list_segments_route(
     _actor_id: uuid.UUID = Depends(_require_view),
+    account_id: uuid.UUID = Depends(get_current_account_id),
     session: AsyncSession = Depends(get_session),
 ) -> list[SegmentOut]:
-    details = await list_segments_service(session)
+    details = await list_segments_service(session, account_id)
     return [_segment_to_out(segment, rules, count) for segment, rules, count in details]
 
 
@@ -265,11 +291,13 @@ async def list_segments_route(
 async def create_segment_route(
     payload: SegmentIn,
     actor_id: uuid.UUID = Depends(_require_manage),
+    account_id: uuid.UUID = Depends(get_current_account_id),
     session: AsyncSession = Depends(get_session),
 ) -> SegmentOut:
     try:
         segment, rules, count = await create_segment_service(
             session,
+            account_id=account_id,
             actor_id=actor_id,
             name=payload.name,
             type_=payload.type,
@@ -285,10 +313,11 @@ async def create_segment_route(
 async def get_segment_route(
     segment_id: uuid.UUID,
     _actor_id: uuid.UUID = Depends(_require_view),
+    account_id: uuid.UUID = Depends(get_current_account_id),
     session: AsyncSession = Depends(get_session),
 ) -> SegmentOut:
     try:
-        segment, rules, count = await get_segment_service(session, segment_id)
+        segment, rules, count = await get_segment_service(session, account_id, segment_id)
     except SegmentNotFoundError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Segment not found") from exc
 
@@ -299,10 +328,11 @@ async def get_segment_route(
 async def list_segment_members_route(
     segment_id: uuid.UUID,
     _actor_id: uuid.UUID = Depends(_require_view),
+    account_id: uuid.UUID = Depends(get_current_account_id),
     session: AsyncSession = Depends(get_session),
 ) -> list[ContactOut]:
     try:
-        snapshots = await list_segment_members_service(session, segment_id)
+        snapshots = await list_segment_members_service(session, account_id, segment_id)
     except SegmentNotFoundError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Segment not found") from exc
 
@@ -319,9 +349,10 @@ def _import_to_out(contact_import: ContactImport) -> ContactImportOut:
 @router.get("/imports", response_model=list[ContactImportOut])
 async def list_imports_route(
     _actor_id: uuid.UUID = Depends(_require_view),
+    account_id: uuid.UUID = Depends(get_current_account_id),
     session: AsyncSession = Depends(get_session),
 ) -> list[ContactImportOut]:
-    imports = await list_imports_service(session)
+    imports = await list_imports_service(session, account_id)
     return [_import_to_out(contact_import) for contact_import in imports]
 
 
@@ -330,6 +361,7 @@ async def create_import_route(
     file: UploadFile = File(...),
     column_mapping: str = Form(...),
     actor_id: uuid.UUID = Depends(_require_manage),
+    account_id: uuid.UUID = Depends(get_current_account_id),
     session: AsyncSession = Depends(get_session),
 ) -> ContactImportOut:
     try:
@@ -350,6 +382,7 @@ async def create_import_route(
     try:
         contact_import = await import_contacts_service(
             session,
+            account_id=account_id,
             actor_id=actor_id,
             filename=file.filename or "upload.csv",
             csv_text=csv_text,
@@ -365,10 +398,11 @@ async def create_import_route(
 async def get_import_route(
     import_id: uuid.UUID,
     _actor_id: uuid.UUID = Depends(_require_view),
+    account_id: uuid.UUID = Depends(get_current_account_id),
     session: AsyncSession = Depends(get_session),
 ) -> ContactImportOut:
     try:
-        contact_import = await get_import_service(session, import_id)
+        contact_import = await get_import_service(session, account_id, import_id)
     except ContactImportNotFoundError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Import not found") from exc
 
@@ -379,10 +413,11 @@ async def get_import_route(
 async def list_import_rows_route(
     import_id: uuid.UUID,
     _actor_id: uuid.UUID = Depends(_require_view),
+    account_id: uuid.UUID = Depends(get_current_account_id),
     session: AsyncSession = Depends(get_session),
 ) -> list[ContactImportRowOut]:
     try:
-        rows = await list_import_rows_service(session, import_id)
+        rows = await list_import_rows_service(session, account_id, import_id)
     except ContactImportNotFoundError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Import not found") from exc
 
@@ -392,9 +427,10 @@ async def list_import_rows_route(
 @router.get("/suppression", response_model=list[SuppressionEntryOut])
 async def list_suppression_route(
     _actor_id: uuid.UUID = Depends(_require_view),
+    account_id: uuid.UUID = Depends(get_current_account_id),
     session: AsyncSession = Depends(get_session),
 ) -> list[SuppressionEntryOut]:
-    entries = await list_suppressions_service(session)
+    entries = await list_suppressions_service(session, account_id)
     return [SuppressionEntryOut.model_validate(entry) for entry in entries]
 
 
@@ -404,11 +440,13 @@ async def list_suppression_route(
 async def suppress_email_route(
     payload: SuppressionEntryIn,
     actor_id: uuid.UUID = Depends(_require_manage),
+    account_id: uuid.UUID = Depends(get_current_account_id),
     session: AsyncSession = Depends(get_session),
 ) -> SuppressionEntryOut:
     try:
         entry = await suppress_email_service(
             session,
+            account_id=account_id,
             actor_id=actor_id,
             email=payload.email,
             reason=payload.reason,
@@ -423,9 +461,10 @@ async def suppress_email_route(
 @router.get("", response_model=list[ContactOut])
 async def list_contacts_route(
     _actor_id: uuid.UUID = Depends(_require_view),
+    account_id: uuid.UUID = Depends(get_current_account_id),
     session: AsyncSession = Depends(get_session),
 ) -> list[ContactOut]:
-    contacts_with_fields = await list_contacts_service(session)
+    contacts_with_fields = await list_contacts_service(session, account_id)
     return [
         _to_out(contact, fields, tags, suppressed)
         for contact, fields, tags, suppressed in contacts_with_fields
@@ -436,11 +475,13 @@ async def list_contacts_route(
 async def create_contact_route(
     payload: ContactIn,
     actor_id: uuid.UUID = Depends(_require_manage),
+    account_id: uuid.UUID = Depends(get_current_account_id),
     session: AsyncSession = Depends(get_session),
 ) -> ContactOut:
     try:
         contact, fields, tags, suppressed = await create_or_update_service(
             session,
+            account_id=account_id,
             actor_id=actor_id,
             email=payload.email,
             first_name=payload.first_name,
@@ -461,10 +502,13 @@ async def create_contact_route(
 async def get_contact_route(
     contact_id: uuid.UUID,
     _actor_id: uuid.UUID = Depends(_require_view),
+    account_id: uuid.UUID = Depends(get_current_account_id),
     session: AsyncSession = Depends(get_session),
 ) -> ContactOut:
     try:
-        contact, fields, tags, suppressed = await get_contact_service(session, contact_id)
+        contact, fields, tags, suppressed = await get_contact_service(
+            session, account_id, contact_id
+        )
     except ContactNotFoundError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Contact not found") from exc
 
@@ -476,11 +520,13 @@ async def update_contact_route(
     contact_id: uuid.UUID,
     payload: ContactUpdateIn,
     actor_id: uuid.UUID = Depends(_require_manage),
+    account_id: uuid.UUID = Depends(get_current_account_id),
     session: AsyncSession = Depends(get_session),
 ) -> ContactOut:
     try:
         contact, fields, tags, suppressed = await update_contact_service(
             session,
+            account_id=account_id,
             actor_id=actor_id,
             contact_id=contact_id,
             email=payload.email,
@@ -508,11 +554,16 @@ async def update_contact_status_route(
     contact_id: uuid.UUID,
     payload: UpdateContactStatusIn,
     actor_id: uuid.UUID = Depends(_require_manage),
+    account_id: uuid.UUID = Depends(get_current_account_id),
     session: AsyncSession = Depends(get_session),
 ) -> ContactOut:
     try:
         contact, fields, tags, suppressed = await update_contact_status_service(
-            session, actor_id=actor_id, contact_id=contact_id, status=payload.status
+            session,
+            account_id=account_id,
+            actor_id=actor_id,
+            contact_id=contact_id,
+            status=payload.status,
         )
     except ContactNotFoundError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Contact not found") from exc
@@ -525,11 +576,16 @@ async def attach_tag_route(
     contact_id: uuid.UUID,
     payload: AttachTagIn,
     actor_id: uuid.UUID = Depends(_require_manage),
+    account_id: uuid.UUID = Depends(get_current_account_id),
     session: AsyncSession = Depends(get_session),
 ) -> ContactOut:
     try:
         contact, fields, tags, suppressed = await attach_tag_service(
-            session, actor_id=actor_id, contact_id=contact_id, tag_id=payload.tag_id
+            session,
+            account_id=account_id,
+            actor_id=actor_id,
+            contact_id=contact_id,
+            tag_id=payload.tag_id,
         )
     except ContactNotFoundError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Contact not found") from exc
@@ -544,11 +600,16 @@ async def detach_tag_route(
     contact_id: uuid.UUID,
     tag_id: uuid.UUID,
     actor_id: uuid.UUID = Depends(_require_manage),
+    account_id: uuid.UUID = Depends(get_current_account_id),
     session: AsyncSession = Depends(get_session),
 ) -> ContactOut:
     try:
         contact, fields, tags, suppressed = await detach_tag_service(
-            session, actor_id=actor_id, contact_id=contact_id, tag_id=tag_id
+            session,
+            account_id=account_id,
+            actor_id=actor_id,
+            contact_id=contact_id,
+            tag_id=tag_id,
         )
     except ContactNotFoundError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Contact not found") from exc
@@ -562,10 +623,11 @@ async def detach_tag_route(
 async def list_consent_route(
     contact_id: uuid.UUID,
     _actor_id: uuid.UUID = Depends(_require_view),
+    account_id: uuid.UUID = Depends(get_current_account_id),
     session: AsyncSession = Depends(get_session),
 ) -> list[ConsentRecordOut]:
     try:
-        records = await get_consent_history_service(session, contact_id)
+        records = await get_consent_history_service(session, account_id, contact_id)
     except ContactNotFoundError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Contact not found") from exc
 
@@ -579,11 +641,13 @@ async def record_consent_route(
     contact_id: uuid.UUID,
     payload: ConsentRecordIn,
     actor_id: uuid.UUID = Depends(_require_manage),
+    account_id: uuid.UUID = Depends(get_current_account_id),
     session: AsyncSession = Depends(get_session),
 ) -> ConsentRecordOut:
     try:
         record = await record_consent_service(
             session,
+            account_id=account_id,
             actor_id=actor_id,
             contact_id=contact_id,
             channel=payload.channel,

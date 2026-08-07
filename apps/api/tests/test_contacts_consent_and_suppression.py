@@ -232,9 +232,15 @@ async def test_suppressing_with_unknown_contact_id_returns_404(
 @pytest.mark.integration
 async def test_analyst_can_view_but_not_record_consent_or_suppress(
     user_factory: Callable[..., Awaitable[uuid.UUID]],
+    account_factory: Callable[..., Awaitable[uuid.UUID]],
 ) -> None:
-    analyst_id = await user_factory(full_name="Test Analyst", role_name="Analyst")
-    admin_id = await user_factory(full_name="Test Admin 2", role_name="Admin")
+    account_id = await account_factory()
+    analyst_id = await user_factory(
+        full_name="Test Analyst", role_name="Analyst", account_id=account_id
+    )
+    admin_id = await user_factory(
+        full_name="Test Admin 2", role_name="Admin", account_id=account_id
+    )
     email = f"{uuid.uuid4()}@example.com"
 
     transport = ASGITransport(app=create_app())

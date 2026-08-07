@@ -65,17 +65,17 @@ async def _create_template() -> uuid.UUID:
         return template.id
 
 
-async def _create_segment() -> uuid.UUID:
+async def _create_segment(account_id: uuid.UUID) -> uuid.UUID:
     async with async_session_factory() as session:
-        segment = Segment(name="Test Segment", type="SAVED")
+        segment = Segment(account_id=account_id, name="Test Segment", type="SAVED")
         session.add(segment)
         await session.commit()
         return segment.id
 
 
-async def _create_contact_list() -> uuid.UUID:
+async def _create_contact_list(account_id: uuid.UUID) -> uuid.UUID:
     async with async_session_factory() as session:
-        contact_list = ContactList(name="Test List")
+        contact_list = ContactList(account_id=account_id, name="Test List")
         session.add(contact_list)
         await session.commit()
         return contact_list.id
@@ -156,10 +156,14 @@ async def test_manager_can_create_an_all_contacts_campaign(
 @pytest.mark.integration
 async def test_manager_can_create_a_segment_targeted_campaign(
     user_factory: Callable[..., Awaitable[uuid.UUID]],
+    account_factory: Callable[..., Awaitable[uuid.UUID]],
     sender_identity_id: uuid.UUID,
 ) -> None:
-    manager_id = await user_factory(full_name="Test Manager", role_name="Marketing Manager")
-    segment_id = await _create_segment()
+    account_id = await account_factory()
+    manager_id = await user_factory(
+        full_name="Test Manager", role_name="Marketing Manager", account_id=account_id
+    )
+    segment_id = await _create_segment(account_id)
     try:
         cookies = _access_token_cookie(manager_id)
         transport = ASGITransport(app=create_app())
@@ -187,10 +191,14 @@ async def test_manager_can_create_a_segment_targeted_campaign(
 @pytest.mark.integration
 async def test_manager_can_create_a_list_targeted_campaign_from_a_template(
     user_factory: Callable[..., Awaitable[uuid.UUID]],
+    account_factory: Callable[..., Awaitable[uuid.UUID]],
     sender_identity_id: uuid.UUID,
 ) -> None:
-    manager_id = await user_factory(full_name="Test Manager", role_name="Marketing Manager")
-    list_id = await _create_contact_list()
+    account_id = await account_factory()
+    manager_id = await user_factory(
+        full_name="Test Manager", role_name="Marketing Manager", account_id=account_id
+    )
+    list_id = await _create_contact_list(account_id)
     template_id = await _create_template()
     try:
         cookies = _access_token_cookie(manager_id)
@@ -221,10 +229,14 @@ async def test_manager_can_create_a_list_targeted_campaign_from_a_template(
 @pytest.mark.integration
 async def test_invalid_recipient_targeting_shapes_are_rejected(
     user_factory: Callable[..., Awaitable[uuid.UUID]],
+    account_factory: Callable[..., Awaitable[uuid.UUID]],
     sender_identity_id: uuid.UUID,
 ) -> None:
-    manager_id = await user_factory(full_name="Test Manager", role_name="Marketing Manager")
-    segment_id = await _create_segment()
+    account_id = await account_factory()
+    manager_id = await user_factory(
+        full_name="Test Manager", role_name="Marketing Manager", account_id=account_id
+    )
+    segment_id = await _create_segment(account_id)
     try:
         cookies = _access_token_cookie(manager_id)
         transport = ASGITransport(app=create_app())
@@ -277,10 +289,14 @@ async def test_create_rejects_unknown_sender_identity(
 @pytest.mark.integration
 async def test_editing_a_draft_updates_fields_and_can_switch_targeting(
     user_factory: Callable[..., Awaitable[uuid.UUID]],
+    account_factory: Callable[..., Awaitable[uuid.UUID]],
     sender_identity_id: uuid.UUID,
 ) -> None:
-    manager_id = await user_factory(full_name="Test Manager", role_name="Marketing Manager")
-    segment_id = await _create_segment()
+    account_id = await account_factory()
+    manager_id = await user_factory(
+        full_name="Test Manager", role_name="Marketing Manager", account_id=account_id
+    )
+    segment_id = await _create_segment(account_id)
     try:
         cookies = _access_token_cookie(manager_id)
         transport = ASGITransport(app=create_app())

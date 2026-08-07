@@ -126,6 +126,7 @@ async def _create_connection_with_webhook_creds(
 async def _create_delivery_for_recipient(
     sender_identity_id: uuid.UUID,
     actor_id: uuid.UUID,
+    account_id: uuid.UUID,
     *,
     email: str = "recipient@example.com",
     provider_message_id: str | None = "pm-123",
@@ -134,7 +135,7 @@ async def _create_delivery_for_recipient(
     and unsubscribe handling has something real to match against. Returns
     (campaign_recipient_id, message_delivery_id)."""
     async with async_session_factory() as session:
-        contact = Contact(email=email)
+        contact = Contact(account_id=account_id, email=email)
         session.add(contact)
         await session.flush()
         campaign = Campaign(
@@ -427,12 +428,16 @@ async def test_test_send_smtp_failure_returns_502(
 @pytest.mark.integration
 async def test_webhook_rejects_request_with_no_credentials(
     user_factory: Callable[..., Awaitable[uuid.UUID]],
+    account_factory: Callable[..., Awaitable[uuid.UUID]],
 ) -> None:
     """Key negative test per SPRINT_03's acceptance criteria: an unauthenticated webhook
     request is rejected before it ever touches email_events/message_deliveries."""
-    actor_id = await user_factory(full_name="Test Manager", role_name="Marketing Manager")
+    account_id = await account_factory()
+    actor_id = await user_factory(
+        full_name="Test Manager", role_name="Marketing Manager", account_id=account_id
+    )
     sender_identity_id = await _create_connection_with_webhook_creds()
-    await _create_delivery_for_recipient(sender_identity_id, actor_id)
+    await _create_delivery_for_recipient(sender_identity_id, actor_id, account_id)
     try:
         transport = ASGITransport(app=create_app())
         async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -458,10 +463,14 @@ async def test_webhook_rejects_request_with_no_credentials(
 @pytest.mark.integration
 async def test_webhook_rejects_wrong_credentials(
     user_factory: Callable[..., Awaitable[uuid.UUID]],
+    account_factory: Callable[..., Awaitable[uuid.UUID]],
 ) -> None:
-    actor_id = await user_factory(full_name="Test Manager", role_name="Marketing Manager")
+    account_id = await account_factory()
+    actor_id = await user_factory(
+        full_name="Test Manager", role_name="Marketing Manager", account_id=account_id
+    )
     sender_identity_id = await _create_connection_with_webhook_creds()
-    await _create_delivery_for_recipient(sender_identity_id, actor_id)
+    await _create_delivery_for_recipient(sender_identity_id, actor_id, account_id)
     try:
         transport = ASGITransport(app=create_app())
         async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -488,10 +497,14 @@ async def test_webhook_rejects_wrong_credentials(
 @pytest.mark.integration
 async def test_webhook_delivery_event_updates_message_delivery_and_records_event(
     user_factory: Callable[..., Awaitable[uuid.UUID]],
+    account_factory: Callable[..., Awaitable[uuid.UUID]],
 ) -> None:
-    actor_id = await user_factory(full_name="Test Manager", role_name="Marketing Manager")
+    account_id = await account_factory()
+    actor_id = await user_factory(
+        full_name="Test Manager", role_name="Marketing Manager", account_id=account_id
+    )
     sender_identity_id = await _create_connection_with_webhook_creds()
-    _, delivery_id = await _create_delivery_for_recipient(sender_identity_id, actor_id)
+    _, delivery_id = await _create_delivery_for_recipient(sender_identity_id, actor_id, account_id)
     try:
         transport = ASGITransport(app=create_app())
         async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -526,13 +539,17 @@ async def test_webhook_delivery_event_updates_message_delivery_and_records_event
 @pytest.mark.integration
 async def test_webhook_bounce_event_auto_suppresses_recipient(
     user_factory: Callable[..., Awaitable[uuid.UUID]],
+    account_factory: Callable[..., Awaitable[uuid.UUID]],
 ) -> None:
     """suppression_entries.reason has supported BOUNCED/COMPLAINED since Slice 2, but
     nothing wrote them until this task wired webhook-triggered auto-suppression."""
-    actor_id = await user_factory(full_name="Test Manager", role_name="Marketing Manager")
+    account_id = await account_factory()
+    actor_id = await user_factory(
+        full_name="Test Manager", role_name="Marketing Manager", account_id=account_id
+    )
     sender_identity_id = await _create_connection_with_webhook_creds()
     _, delivery_id = await _create_delivery_for_recipient(
-        sender_identity_id, actor_id, email="bouncy@example.com"
+        sender_identity_id, actor_id, account_id, email="bouncy@example.com"
     )
     try:
         transport = ASGITransport(app=create_app())
@@ -569,13 +586,17 @@ async def test_webhook_bounce_event_auto_suppresses_recipient(
 @pytest.mark.integration
 async def test_webhook_unknown_message_id_is_a_noop_returns_200(
     user_factory: Callable[..., Awaitable[uuid.UUID]],
+    account_factory: Callable[..., Awaitable[uuid.UUID]],
 ) -> None:
     """No live Postmark account is available to verify the exact payload shape (see
     AGENT_HANDOFF.md's documented evidence gap) — an unmatched MessageID must still be
     acknowledged with 200 rather than rejected, since Postmark expects that either way."""
-    actor_id = await user_factory(full_name="Test Manager", role_name="Marketing Manager")
+    account_id = await account_factory()
+    actor_id = await user_factory(
+        full_name="Test Manager", role_name="Marketing Manager", account_id=account_id
+    )
     sender_identity_id = await _create_connection_with_webhook_creds()
-    await _create_delivery_for_recipient(sender_identity_id, actor_id)
+    await _create_delivery_for_recipient(sender_identity_id, actor_id, account_id)
     try:
         transport = ASGITransport(app=create_app())
         async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -602,11 +623,15 @@ async def test_webhook_unknown_message_id_is_a_noop_returns_200(
 @pytest.mark.integration
 async def test_unsubscribe_valid_link_creates_event_and_suppresses_recipient(
     user_factory: Callable[..., Awaitable[uuid.UUID]],
+    account_factory: Callable[..., Awaitable[uuid.UUID]],
 ) -> None:
-    actor_id = await user_factory(full_name="Test Manager", role_name="Marketing Manager")
+    account_id = await account_factory()
+    actor_id = await user_factory(
+        full_name="Test Manager", role_name="Marketing Manager", account_id=account_id
+    )
     sender_identity_id = await _create_connection_with_webhook_creds()
     recipient_id, _ = await _create_delivery_for_recipient(
-        sender_identity_id, actor_id, email="unsub@example.com"
+        sender_identity_id, actor_id, account_id, email="unsub@example.com"
     )
     try:
         transport = ASGITransport(app=create_app())

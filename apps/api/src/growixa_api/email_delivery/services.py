@@ -9,6 +9,7 @@ from growixa_api.campaigns.models import Campaign
 from growixa_api.campaigns.repositories import get_campaign
 from growixa_api.contacts.repositories import (
     create_suppression_entry,
+    get_account_id_for_contact,
     get_suppression_by_email,
 )
 from growixa_api.email_delivery.repositories import (
@@ -192,18 +193,37 @@ async def record_webhook_event(session: AsyncSession, payload: PostmarkWebhookPa
 
     suppression_reason = _SUPPRESSION_REASON_BY_EVENT_TYPE.get(event_type)
     if suppression_reason is not None and payload.Recipient:
-        await _upsert_suppression(session, email=payload.Recipient, reason=suppression_reason)
+        recipient = await get_campaign_recipient(session, delivery.campaign_recipient_id)
+        account_id = (
+            await get_account_id_for_contact(session, recipient.contact_id)
+            if recipient is not None
+            else None
+        )
+        if account_id is not None:
+            await _upsert_suppression(
+                session, account_id=account_id, email=payload.Recipient, reason=suppression_reason
+            )
 
     await session.commit()
 
 
 async def _upsert_suppression(
-    session: AsyncSession, *, email: str, reason: str, contact_id: uuid.UUID | None = None
+    session: AsyncSession,
+    *,
+    account_id: uuid.UUID,
+    email: str,
+    reason: str,
+    contact_id: uuid.UUID | None = None,
 ) -> None:
-    existing = await get_suppression_by_email(session, email)
+    existing = await get_suppression_by_email(session, account_id, email)
     if existing is None:
         await create_suppression_entry(
-            session, email=email, reason=reason, contact_id=contact_id, suppressed_by_user_id=None
+            session,
+            account_id=account_id,
+            email=email,
+            reason=reason,
+            contact_id=contact_id,
+            suppressed_by_user_id=None,
         )
     else:
         existing.reason = reason
@@ -230,7 +250,13 @@ async def record_unsubscribe(session: AsyncSession, campaign_recipient_id: uuid.
             "email": recipient.email,
         },
     )
-    await _upsert_suppression(
-        session, email=recipient.email, reason="UNSUBSCRIBED", contact_id=recipient.contact_id
-    )
+    account_id = await get_account_id_for_contact(session, recipient.contact_id)
+    if account_id is not None:
+        await _upsert_suppression(
+            session,
+            account_id=account_id,
+            email=recipient.email,
+            reason="UNSUBSCRIBED",
+            contact_id=recipient.contact_id,
+        )
     await session.commit()

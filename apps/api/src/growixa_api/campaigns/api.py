@@ -25,7 +25,7 @@ from growixa_api.campaigns.services import (
     update_campaign,
 )
 from growixa_api.db import get_session
-from growixa_api.permissions.dependencies import require_permission
+from growixa_api.permissions.dependencies import get_current_account_id, require_permission
 
 router = APIRouter(prefix="/campaigns", tags=["campaigns"])
 
@@ -46,10 +46,11 @@ async def list_campaigns_route(
 async def create_campaign_route(
     payload: CampaignIn,
     actor_id: uuid.UUID = Depends(_require_manage),
+    account_id: uuid.UUID = Depends(get_current_account_id),
     session: AsyncSession = Depends(get_session),
 ) -> CampaignOut:
     try:
-        campaign = await create_campaign(session, payload, actor_id)
+        campaign = await create_campaign(session, account_id, payload, actor_id)
     except SenderIdentityNotFoundError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Sender identity not found") from exc
     except TemplateNotFoundError as exc:
@@ -78,10 +79,11 @@ async def update_campaign_route(
     campaign_id: uuid.UUID,
     payload: CampaignUpdateIn,
     _actor_id: uuid.UUID = Depends(_require_manage),
+    account_id: uuid.UUID = Depends(get_current_account_id),
     session: AsyncSession = Depends(get_session),
 ) -> CampaignOut:
     try:
-        campaign = await update_campaign(session, campaign_id, payload)
+        campaign = await update_campaign(session, account_id, campaign_id, payload)
     except CampaignNotFoundError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Campaign not found") from exc
     except CampaignNotEditableError as exc:

@@ -9,7 +9,8 @@ This is the regression guard for GRX-SAAS-001: if a future change ever drops an
 account_id scoping filter anywhere, one of these tests fails. Kept as one file, organized
 by module, rather than scattered across every module's own test file — this is the single
 place to see everything this app currently guarantees about account isolation. Grows one
-section per Phase A checkpoint (users/auth done; company/brand, contacts, email next).
+section per Phase A checkpoint (users/auth done; company/brand done; contacts done; email
+next).
 """
 
 import uuid
@@ -25,6 +26,7 @@ from growixa_api.audit.models import AuditLog
 from growixa_api.brand.models import BrandProfile
 from growixa_api.company.models import CompanyProfile
 from growixa_api.config import get_settings
+from growixa_api.contacts.models import Contact, SuppressionEntry, Tag
 from growixa_api.db import async_session_factory
 from growixa_api.users.models import User
 
@@ -48,6 +50,22 @@ async def _clear_company_and_brand() -> None:
     async with async_session_factory() as session:
         await session.execute(delete(BrandProfile))
         await session.execute(delete(CompanyProfile))
+        await session.commit()
+
+
+async def _clear_contacts_fixtures() -> None:
+    # audit_logs rows for these actions reference actor_user_id with no ON DELETE CASCADE
+    # (by design, see GRX-AUDIT-001) -- must go before account_factory's teardown deletes
+    # the users those rows point to, same as _cleanup_invited_user above.
+    async with async_session_factory() as session:
+        await session.execute(
+            delete(AuditLog).where(
+                AuditLog.entity_type.in_(("contact", "segment", "contact_import"))
+            )
+        )
+        await session.execute(delete(SuppressionEntry))
+        await session.execute(delete(Tag))
+        await session.execute(delete(Contact))
         await session.commit()
 
 
@@ -253,3 +271,162 @@ async def test_admin_cannot_see_another_accounts_brand_profile(
         assert put_response.status_code == 400
     finally:
         await _clear_company_and_brand()
+
+
+# --- contacts (GRX-SAAS-001 contacts slice) ---
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_admin_cannot_list_another_accounts_contacts(
+    user_factory: Callable[..., Awaitable[uuid.UUID]],
+    account_factory: Callable[..., Awaitable[uuid.UUID]],
+) -> None:
+    account_a = await account_factory()
+    account_b = await account_factory()
+    admin_a = await user_factory(
+        full_name="Account A Admin", role_name="Admin", account_id=account_a
+    )
+    admin_b = await user_factory(
+        full_name="Account B Admin", role_name="Admin", account_id=account_b
+    )
+
+    transport = ASGITransport(app=create_app())
+    try:
+        async with AsyncClient(
+            transport=transport, base_url="http://test", cookies=_access_token_cookie(admin_b)
+        ) as client_b:
+            create_response = await client_b.post(
+                "/contacts", json={"email": f"{uuid.uuid4()}@example.com"}
+            )
+            assert create_response.status_code == 201
+
+        async with AsyncClient(
+            transport=transport, base_url="http://test", cookies=_access_token_cookie(admin_a)
+        ) as client_a:
+            list_response = await client_a.get("/contacts")
+
+        assert list_response.status_code == 200
+        assert list_response.json() == []
+    finally:
+        await _clear_contacts_fixtures()
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_admin_gets_404_not_403_viewing_another_accounts_contact(
+    user_factory: Callable[..., Awaitable[uuid.UUID]],
+    account_factory: Callable[..., Awaitable[uuid.UUID]],
+) -> None:
+    """A 403 here would leak "this id exists, you're just not allowed" -- matching the
+    same 404-not-403 guarantee already enforced for users (see above)."""
+    account_a = await account_factory()
+    account_b = await account_factory()
+    admin_a = await user_factory(
+        full_name="Account A Admin", role_name="Admin", account_id=account_a
+    )
+    admin_b = await user_factory(
+        full_name="Account B Admin", role_name="Admin", account_id=account_b
+    )
+
+    transport = ASGITransport(app=create_app())
+    try:
+        async with AsyncClient(
+            transport=transport, base_url="http://test", cookies=_access_token_cookie(admin_b)
+        ) as client_b:
+            create_response = await client_b.post(
+                "/contacts", json={"email": f"{uuid.uuid4()}@example.com"}
+            )
+            contact_b_id = create_response.json()["id"]
+
+        async with AsyncClient(
+            transport=transport, base_url="http://test", cookies=_access_token_cookie(admin_a)
+        ) as client_a:
+            get_response = await client_a.get(f"/contacts/{contact_b_id}")
+            update_response = await client_a.patch(
+                f"/contacts/{contact_b_id}", json={"first_name": "Hijacked"}
+            )
+
+        assert get_response.status_code == 404
+        assert update_response.status_code == 404
+    finally:
+        await _clear_contacts_fixtures()
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_same_email_is_allowed_across_two_different_accounts(
+    user_factory: Callable[..., Awaitable[uuid.UUID]],
+    account_factory: Callable[..., Awaitable[uuid.UUID]],
+) -> None:
+    """contacts.email is composite-unique on (account_id, email), not globally unique
+    (unlike users.email) -- two different customers may each have their own contact at
+    the same address. Proves the GRX-SAAS-001 uniqueness-constraint judgment call
+    actually holds against the real API, not just the migration."""
+    account_a = await account_factory()
+    account_b = await account_factory()
+    admin_a = await user_factory(
+        full_name="Account A Admin", role_name="Admin", account_id=account_a
+    )
+    admin_b = await user_factory(
+        full_name="Account B Admin", role_name="Admin", account_id=account_b
+    )
+    shared_email = f"{uuid.uuid4()}@example.com"
+
+    transport = ASGITransport(app=create_app())
+    try:
+        async with AsyncClient(
+            transport=transport, base_url="http://test", cookies=_access_token_cookie(admin_a)
+        ) as client_a:
+            response_a = await client_a.post("/contacts", json={"email": shared_email})
+
+        async with AsyncClient(
+            transport=transport, base_url="http://test", cookies=_access_token_cookie(admin_b)
+        ) as client_b:
+            response_b = await client_b.post("/contacts", json={"email": shared_email})
+
+        assert response_a.status_code == 201
+        assert response_b.status_code == 201
+        assert response_a.json()["id"] != response_b.json()["id"]
+    finally:
+        await _clear_contacts_fixtures()
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_tag_name_can_be_reused_across_accounts_without_leaking(
+    user_factory: Callable[..., Awaitable[uuid.UUID]],
+    account_factory: Callable[..., Awaitable[uuid.UUID]],
+) -> None:
+    account_a = await account_factory()
+    account_b = await account_factory()
+    admin_a = await user_factory(
+        full_name="Account A Admin", role_name="Admin", account_id=account_a
+    )
+    admin_b = await user_factory(
+        full_name="Account B Admin", role_name="Admin", account_id=account_b
+    )
+    tag_name = "VIP"
+
+    transport = ASGITransport(app=create_app())
+    try:
+        async with AsyncClient(
+            transport=transport, base_url="http://test", cookies=_access_token_cookie(admin_b)
+        ) as client_b:
+            create_response = await client_b.post("/contacts/tags", json={"name": tag_name})
+            assert create_response.status_code == 201
+
+        async with AsyncClient(
+            transport=transport, base_url="http://test", cookies=_access_token_cookie(admin_a)
+        ) as client_a:
+            create_a_response = await client_a.post("/contacts/tags", json={"name": tag_name})
+            list_a_response = await client_a.get("/contacts/tags")
+
+        # Account A has never created this tag -- must succeed independently (composite
+        # unique, not global), and its own list must show only its own row.
+        assert create_a_response.status_code == 201
+        assert list_a_response.status_code == 200
+        tag_ids = {row["id"] for row in list_a_response.json()}
+        assert tag_ids == {create_a_response.json()["id"]}
+    finally:
+        await _clear_contacts_fixtures()

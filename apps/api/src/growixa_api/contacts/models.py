@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Integer, Text
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Integer, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import CITEXT, JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
@@ -13,10 +13,20 @@ class Contact(Base):
     __tablename__ = "contacts"
     __table_args__ = (
         CheckConstraint("status IN ('ACTIVE', 'ARCHIVED')", name="ck_contacts_status"),
+        # GRX-SAAS-001: dedup is per-account, not global -- two different customers may
+        # legitimately both have a contact at the same email address (unlike users.email,
+        # which stays globally unique because it's a login identity, not audience data).
+        UniqueConstraint("account_id", "email", name="ux_contacts_account_id_email"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    email: Mapped[str] = mapped_column(CITEXT, unique=True, nullable=False)
+    account_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("accounts.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    email: Mapped[str] = mapped_column(CITEXT, nullable=False)
     first_name: Mapped[str | None] = mapped_column(Text, nullable=True)
     last_name: Mapped[str | None] = mapped_column(Text, nullable=True)
     phone: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -40,10 +50,18 @@ class ContactCustomField(Base):
             "field_type IN ('TEXT', 'NUMBER', 'DATE', 'BOOLEAN')",
             name="ck_contact_custom_fields_type",
         ),
+        # Custom field definitions (the schema, not the values) are per-account.
+        UniqueConstraint("account_id", "key", name="ux_contact_custom_fields_account_id_key"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    key: Mapped[str] = mapped_column(Text, unique=True, nullable=False)
+    account_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("accounts.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    key: Mapped[str] = mapped_column(Text, nullable=False)
     label: Mapped[str] = mapped_column(Text, nullable=False)
     field_type: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
@@ -54,6 +72,15 @@ class ContactCustomField(Base):
 class ContactFieldValue(Base):
     __tablename__ = "contact_field_values"
 
+    # Denormalized from contact_id's own account_id -- always accessed via an
+    # already-account-verified contact_id in practice, but kept for schema consistency
+    # with every other account-owned table (GRX-SAAS-001).
+    account_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("accounts.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     contact_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("contacts.id", ondelete="CASCADE"), primary_key=True
     )
@@ -67,9 +94,16 @@ class ContactFieldValue(Base):
 
 class Tag(Base):
     __tablename__ = "tags"
+    __table_args__ = (UniqueConstraint("account_id", "name", name="ux_tags_account_id_name"),)
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    name: Mapped[str] = mapped_column(Text, unique=True, nullable=False)
+    account_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("accounts.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    name: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -78,6 +112,13 @@ class Tag(Base):
 class ContactTag(Base):
     __tablename__ = "contact_tags"
 
+    # Denormalized -- see ContactFieldValue's identical note.
+    account_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("accounts.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     contact_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("contacts.id", ondelete="CASCADE"), primary_key=True
     )
@@ -90,6 +131,12 @@ class ContactList(Base):
     __tablename__ = "contact_lists"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    account_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("accounts.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     name: Mapped[str] = mapped_column(Text, nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
@@ -106,6 +153,13 @@ class ContactList(Base):
 class ContactListMember(Base):
     __tablename__ = "contact_list_members"
 
+    # Denormalized -- see ContactFieldValue's identical note.
+    account_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("accounts.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     list_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("contact_lists.id", ondelete="CASCADE"), primary_key=True
     )
@@ -122,6 +176,12 @@ class Segment(Base):
     __table_args__ = (CheckConstraint("type IN ('DYNAMIC', 'SAVED')", name="ck_segments_type"),)
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    account_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("accounts.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     name: Mapped[str] = mapped_column(Text, nullable=False)
     type: Mapped[str] = mapped_column(Text, nullable=False)
     created_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
@@ -139,6 +199,13 @@ class SegmentRule(Base):
     __tablename__ = "segment_rules"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    # Denormalized from segment_id's own account_id -- see ContactFieldValue's note.
+    account_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("accounts.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     segment_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("segments.id", ondelete="CASCADE"),
@@ -153,6 +220,13 @@ class SegmentRule(Base):
 class SegmentMember(Base):
     __tablename__ = "segment_members"
 
+    # Denormalized -- see ContactFieldValue's identical note.
+    account_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("accounts.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     segment_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("segments.id", ondelete="CASCADE"), primary_key=True
     )
@@ -174,6 +248,12 @@ class ContactImport(Base):
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    account_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("accounts.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     filename: Mapped[str] = mapped_column(Text, nullable=False)
     column_mapping: Mapped[dict[str, str]] = mapped_column(JSONB, nullable=False)
     status: Mapped[str] = mapped_column(Text, nullable=False, server_default="PENDING")
@@ -201,6 +281,13 @@ class ContactImportRow(Base):
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    # Denormalized from import_id's own account_id -- see ContactFieldValue's note.
+    account_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("accounts.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     import_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("contact_imports.id", ondelete="CASCADE"),
@@ -227,6 +314,13 @@ class ConsentRecord(Base):
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    # Denormalized from contact_id's own account_id -- see ContactFieldValue's note.
+    account_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("accounts.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     contact_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("contacts.id", ondelete="CASCADE"),
@@ -251,10 +345,19 @@ class SuppressionEntry(Base):
             "reason IN ('UNSUBSCRIBED', 'BOUNCED', 'COMPLAINED', 'MANUAL')",
             name="ck_suppression_entries_reason",
         ),
+        # Suppression is per-account -- an address suppressed by one customer's sends
+        # doesn't suppress it for a different customer's own audience.
+        UniqueConstraint("account_id", "email", name="ux_suppression_entries_account_id_email"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    email: Mapped[str] = mapped_column(CITEXT, unique=True, nullable=False)
+    account_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("accounts.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    email: Mapped[str] = mapped_column(CITEXT, nullable=False)
     reason: Mapped[str] = mapped_column(Text, nullable=False)
     contact_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("contacts.id"), nullable=True
