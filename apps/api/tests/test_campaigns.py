@@ -27,9 +27,10 @@ def _access_token_cookie(user_id: uuid.UUID) -> dict[str, str]:
     return {"access_token": token}
 
 
-async def _create_sender_identity() -> uuid.UUID:
+async def _create_sender_identity(account_id: uuid.UUID) -> uuid.UUID:
     async with async_session_factory() as session:
         connection = EmailProviderConnection(
+            account_id=account_id,
             provider="POSTMARK",
             smtp_host="smtp.postmarkapp.com",
             smtp_port=587,
@@ -39,6 +40,7 @@ async def _create_sender_identity() -> uuid.UUID:
         session.add(connection)
         await session.flush()
         identity = SenderIdentity(
+            account_id=account_id,
             email_provider_connection_id=connection.id,
             from_email="hello@growixa.local",
             from_name="Growixa",
@@ -48,13 +50,14 @@ async def _create_sender_identity() -> uuid.UUID:
         return identity.id
 
 
-async def _create_template() -> uuid.UUID:
+async def _create_template(account_id: uuid.UUID) -> uuid.UUID:
     async with async_session_factory() as session:
-        template = EmailTemplate(name="Test Template")
+        template = EmailTemplate(account_id=account_id, name="Test Template")
         session.add(template)
         await session.flush()
         session.add(
             EmailTemplateVersion(
+                account_id=account_id,
                 template_id=template.id,
                 version_number=1,
                 subject="Hi",
@@ -111,8 +114,15 @@ async def _cleanup() -> None:
 
 
 @pytest.fixture
-async def sender_identity_id() -> AsyncGenerator[uuid.UUID, None]:
-    yield await _create_sender_identity()
+async def campaign_account_id(
+    account_factory: Callable[..., Awaitable[uuid.UUID]],
+) -> AsyncGenerator[uuid.UUID, None]:
+    yield await account_factory()
+
+
+@pytest.fixture
+async def sender_identity_id(campaign_account_id: uuid.UUID) -> AsyncGenerator[uuid.UUID, None]:
+    yield await _create_sender_identity(campaign_account_id)
 
 
 def _campaign_payload(sender_identity_id: uuid.UUID, **overrides: object) -> dict[str, object]:
@@ -131,9 +141,12 @@ def _campaign_payload(sender_identity_id: uuid.UUID, **overrides: object) -> dic
 @pytest.mark.integration
 async def test_manager_can_create_an_all_contacts_campaign(
     user_factory: Callable[..., Awaitable[uuid.UUID]],
+    campaign_account_id: uuid.UUID,
     sender_identity_id: uuid.UUID,
 ) -> None:
-    manager_id = await user_factory(full_name="Test Manager", role_name="Marketing Manager")
+    manager_id = await user_factory(
+        full_name="Test Manager", role_name="Marketing Manager", account_id=campaign_account_id
+    )
     try:
         cookies = _access_token_cookie(manager_id)
         transport = ASGITransport(app=create_app())
@@ -156,14 +169,13 @@ async def test_manager_can_create_an_all_contacts_campaign(
 @pytest.mark.integration
 async def test_manager_can_create_a_segment_targeted_campaign(
     user_factory: Callable[..., Awaitable[uuid.UUID]],
-    account_factory: Callable[..., Awaitable[uuid.UUID]],
+    campaign_account_id: uuid.UUID,
     sender_identity_id: uuid.UUID,
 ) -> None:
-    account_id = await account_factory()
     manager_id = await user_factory(
-        full_name="Test Manager", role_name="Marketing Manager", account_id=account_id
+        full_name="Test Manager", role_name="Marketing Manager", account_id=campaign_account_id
     )
-    segment_id = await _create_segment(account_id)
+    segment_id = await _create_segment(campaign_account_id)
     try:
         cookies = _access_token_cookie(manager_id)
         transport = ASGITransport(app=create_app())
@@ -191,15 +203,14 @@ async def test_manager_can_create_a_segment_targeted_campaign(
 @pytest.mark.integration
 async def test_manager_can_create_a_list_targeted_campaign_from_a_template(
     user_factory: Callable[..., Awaitable[uuid.UUID]],
-    account_factory: Callable[..., Awaitable[uuid.UUID]],
+    campaign_account_id: uuid.UUID,
     sender_identity_id: uuid.UUID,
 ) -> None:
-    account_id = await account_factory()
     manager_id = await user_factory(
-        full_name="Test Manager", role_name="Marketing Manager", account_id=account_id
+        full_name="Test Manager", role_name="Marketing Manager", account_id=campaign_account_id
     )
-    list_id = await _create_contact_list(account_id)
-    template_id = await _create_template()
+    list_id = await _create_contact_list(campaign_account_id)
+    template_id = await _create_template(campaign_account_id)
     try:
         cookies = _access_token_cookie(manager_id)
         transport = ASGITransport(app=create_app())
@@ -229,14 +240,13 @@ async def test_manager_can_create_a_list_targeted_campaign_from_a_template(
 @pytest.mark.integration
 async def test_invalid_recipient_targeting_shapes_are_rejected(
     user_factory: Callable[..., Awaitable[uuid.UUID]],
-    account_factory: Callable[..., Awaitable[uuid.UUID]],
+    campaign_account_id: uuid.UUID,
     sender_identity_id: uuid.UUID,
 ) -> None:
-    account_id = await account_factory()
     manager_id = await user_factory(
-        full_name="Test Manager", role_name="Marketing Manager", account_id=account_id
+        full_name="Test Manager", role_name="Marketing Manager", account_id=campaign_account_id
     )
-    segment_id = await _create_segment(account_id)
+    segment_id = await _create_segment(campaign_account_id)
     try:
         cookies = _access_token_cookie(manager_id)
         transport = ASGITransport(app=create_app())
@@ -289,14 +299,13 @@ async def test_create_rejects_unknown_sender_identity(
 @pytest.mark.integration
 async def test_editing_a_draft_updates_fields_and_can_switch_targeting(
     user_factory: Callable[..., Awaitable[uuid.UUID]],
-    account_factory: Callable[..., Awaitable[uuid.UUID]],
+    campaign_account_id: uuid.UUID,
     sender_identity_id: uuid.UUID,
 ) -> None:
-    account_id = await account_factory()
     manager_id = await user_factory(
-        full_name="Test Manager", role_name="Marketing Manager", account_id=account_id
+        full_name="Test Manager", role_name="Marketing Manager", account_id=campaign_account_id
     )
-    segment_id = await _create_segment(account_id)
+    segment_id = await _create_segment(campaign_account_id)
     try:
         cookies = _access_token_cookie(manager_id)
         transport = ASGITransport(app=create_app())
@@ -331,9 +340,12 @@ async def test_editing_a_draft_updates_fields_and_can_switch_targeting(
 @pytest.mark.integration
 async def test_editing_a_non_draft_campaign_is_rejected(
     user_factory: Callable[..., Awaitable[uuid.UUID]],
+    campaign_account_id: uuid.UUID,
     sender_identity_id: uuid.UUID,
 ) -> None:
-    manager_id = await user_factory(full_name="Test Manager", role_name="Marketing Manager")
+    manager_id = await user_factory(
+        full_name="Test Manager", role_name="Marketing Manager", account_id=campaign_account_id
+    )
     try:
         cookies = _access_token_cookie(manager_id)
         transport = ASGITransport(app=create_app())
@@ -364,10 +376,15 @@ async def test_editing_a_non_draft_campaign_is_rejected(
 @pytest.mark.integration
 async def test_view_only_role_can_read_but_not_create_or_edit(
     user_factory: Callable[..., Awaitable[uuid.UUID]],
+    campaign_account_id: uuid.UUID,
     sender_identity_id: uuid.UUID,
 ) -> None:
-    manager_id = await user_factory(full_name="Test Manager", role_name="Marketing Manager")
-    analyst_id = await user_factory(full_name="Test Analyst", role_name="Analyst")
+    manager_id = await user_factory(
+        full_name="Test Manager", role_name="Marketing Manager", account_id=campaign_account_id
+    )
+    analyst_id = await user_factory(
+        full_name="Test Analyst", role_name="Analyst", account_id=campaign_account_id
+    )
     try:
         transport = ASGITransport(app=create_app())
         async with AsyncClient(

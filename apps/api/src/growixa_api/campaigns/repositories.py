@@ -15,12 +15,19 @@ async def create_campaign(session: AsyncSession, fields: dict[str, Any]) -> Camp
     return campaign
 
 
-async def get_campaign(session: AsyncSession, campaign_id: uuid.UUID) -> Campaign | None:
-    return await session.get(Campaign, campaign_id)
+async def get_campaign(
+    session: AsyncSession, account_id: uuid.UUID, campaign_id: uuid.UUID
+) -> Campaign | None:
+    result = await session.execute(
+        select(Campaign).where(Campaign.account_id == account_id, Campaign.id == campaign_id)
+    )
+    return result.scalar_one_or_none()
 
 
-async def list_campaigns(session: AsyncSession) -> Sequence[Campaign]:
-    result = await session.execute(select(Campaign).order_by(Campaign.created_at))
+async def list_campaigns(session: AsyncSession, account_id: uuid.UUID) -> Sequence[Campaign]:
+    result = await session.execute(
+        select(Campaign).where(Campaign.account_id == account_id).order_by(Campaign.created_at)
+    )
     return result.scalars().all()
 
 

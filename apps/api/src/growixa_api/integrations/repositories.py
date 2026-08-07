@@ -9,10 +9,11 @@ from growixa_api.integrations.models import EmailProviderConnection, SenderIdent
 
 
 async def get_active_email_provider_connection(
-    session: AsyncSession, provider: str
+    session: AsyncSession, account_id: uuid.UUID, provider: str
 ) -> EmailProviderConnection | None:
     result = await session.execute(
         select(EmailProviderConnection).where(
+            EmailProviderConnection.account_id == account_id,
             EmailProviderConnection.provider == provider,
             EmailProviderConnection.is_active.is_(True),
         )
@@ -20,12 +21,30 @@ async def get_active_email_provider_connection(
     return result.scalar_one_or_none()
 
 
-async def deactivate_active_email_provider_connections(
+async def list_active_email_provider_connections(
     session: AsyncSession, provider: str
+) -> Sequence[EmailProviderConnection]:
+    """Unscoped by account -- the sole caller is the Postmark webhook receiver, which has
+    no account context of its own (`/webhooks/postmark` carries no account identifier;
+    Postmark authenticates via this connection's own webhook Basic Auth credentials
+    instead). It must check the incoming credentials against every account's active
+    connection for this provider to find out which account they belong to."""
+    result = await session.execute(
+        select(EmailProviderConnection).where(
+            EmailProviderConnection.provider == provider,
+            EmailProviderConnection.is_active.is_(True),
+        )
+    )
+    return result.scalars().all()
+
+
+async def deactivate_active_email_provider_connections(
+    session: AsyncSession, account_id: uuid.UUID, provider: str
 ) -> None:
     await session.execute(
         update(EmailProviderConnection)
         .where(
+            EmailProviderConnection.account_id == account_id,
             EmailProviderConnection.provider == provider,
             EmailProviderConnection.is_active.is_(True),
         )
@@ -34,10 +53,12 @@ async def deactivate_active_email_provider_connections(
 
 
 async def list_email_provider_connections(
-    session: AsyncSession,
+    session: AsyncSession, account_id: uuid.UUID
 ) -> Sequence[EmailProviderConnection]:
     result = await session.execute(
-        select(EmailProviderConnection).order_by(EmailProviderConnection.provider)
+        select(EmailProviderConnection)
+        .where(EmailProviderConnection.account_id == account_id)
+        .order_by(EmailProviderConnection.provider)
     )
     return result.scalars().all()
 
@@ -52,13 +73,25 @@ async def create_email_provider_connection(
 
 
 async def get_email_provider_connection(
-    session: AsyncSession, connection_id: uuid.UUID
+    session: AsyncSession, account_id: uuid.UUID, connection_id: uuid.UUID
 ) -> EmailProviderConnection | None:
-    return await session.get(EmailProviderConnection, connection_id)
+    result = await session.execute(
+        select(EmailProviderConnection).where(
+            EmailProviderConnection.account_id == account_id,
+            EmailProviderConnection.id == connection_id,
+        )
+    )
+    return result.scalar_one_or_none()
 
 
-async def list_sender_identities(session: AsyncSession) -> Sequence[SenderIdentity]:
-    result = await session.execute(select(SenderIdentity).order_by(SenderIdentity.created_at))
+async def list_sender_identities(
+    session: AsyncSession, account_id: uuid.UUID
+) -> Sequence[SenderIdentity]:
+    result = await session.execute(
+        select(SenderIdentity)
+        .where(SenderIdentity.account_id == account_id)
+        .order_by(SenderIdentity.created_at)
+    )
     return result.scalars().all()
 
 
@@ -70,6 +103,11 @@ async def create_sender_identity(session: AsyncSession, fields: dict[str, Any]) 
 
 
 async def get_sender_identity(
-    session: AsyncSession, identity_id: uuid.UUID
+    session: AsyncSession, account_id: uuid.UUID, identity_id: uuid.UUID
 ) -> SenderIdentity | None:
-    return await session.get(SenderIdentity, identity_id)
+    result = await session.execute(
+        select(SenderIdentity).where(
+            SenderIdentity.account_id == account_id, SenderIdentity.id == identity_id
+        )
+    )
+    return result.scalar_one_or_none()

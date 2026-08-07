@@ -20,6 +20,14 @@ class MessageDelivery(Base):
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    # Denormalized from campaign_recipient_id's own account_id -- see
+    # contacts.ContactFieldValue's identical note (GRX-SAAS-001).
+    account_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("accounts.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     campaign_recipient_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("campaign_recipients.id", ondelete="CASCADE"), nullable=False
     )
@@ -41,6 +49,13 @@ class DeliveryAttempt(Base):
     __table_args__ = (Index("ix_delivery_attempts_message_delivery_id", "message_delivery_id"),)
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    # Denormalized from message_delivery_id's own account_id -- see MessageDelivery's note.
+    account_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("accounts.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     message_delivery_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("message_deliveries.id", ondelete="CASCADE"), nullable=False
     )
@@ -66,6 +81,13 @@ class EmailEvent(Base):
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    # Denormalized from message_delivery_id's own account_id -- see MessageDelivery's note.
+    account_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("accounts.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     message_delivery_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("message_deliveries.id", ondelete="CASCADE"), nullable=False
     )
@@ -88,6 +110,15 @@ class UnsubscribeEvent(Base):
     __table_args__ = (Index("ix_unsubscribe_events_email", "email"),)
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    # Denormalized from contact_id/campaign_id's own account_id -- both are nullable at
+    # the schema level, but the sole caller (record_unsubscribe) always resolves and
+    # supplies a real account_id, same as ConsentRecord's contact_id note.
+    account_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("accounts.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     contact_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("contacts.id"), nullable=True
     )

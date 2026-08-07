@@ -26,18 +26,29 @@ from growixa_worker.recipients import resolve_recipients
 logger = logging.getLogger("growixa_worker")
 
 
-async def _is_suppressed_or_withdrawn(session: AsyncSession, contact_id: Any, email: str) -> bool:
+async def _is_suppressed_or_withdrawn(
+    session: AsyncSession, account_id: uuid.UUID, contact_id: Any, email: str
+) -> bool:
     """Per DEC-GRX-008 / SPRINT_03's acceptance criteria: an address on the suppression
-    list OR whose most recent EMAIL consent is WITHDRAWN is excluded from sending."""
+    list OR whose most recent EMAIL consent is WITHDRAWN is excluded from sending.
+    Scoped to the sending campaign's own account (GRX-SAAS-001) -- one account's
+    suppression/consent state must never affect another account's send, even for the
+    same email address."""
     suppression_result = await session.execute(
-        select(SuppressionEntry.id).where(SuppressionEntry.email == email).limit(1)
+        select(SuppressionEntry.id)
+        .where(SuppressionEntry.account_id == account_id, SuppressionEntry.email == email)
+        .limit(1)
     )
     if suppression_result.scalar_one_or_none() is not None:
         return True
 
     consent_result = await session.execute(
         select(ConsentRecord.status)
-        .where(ConsentRecord.contact_id == contact_id, ConsentRecord.channel == "EMAIL")
+        .where(
+            ConsentRecord.account_id == account_id,
+            ConsentRecord.contact_id == contact_id,
+            ConsentRecord.channel == "EMAIL",
+        )
         .order_by(ConsentRecord.recorded_at.desc())
         .limit(1)
     )
@@ -91,8 +102,11 @@ async def handle_send_campaign(session: AsyncSession, payload: dict[str, Any]) -
 
     recipients: list[CampaignRecipient] = []
     for contact in contacts:
-        suppressed = await _is_suppressed_or_withdrawn(session, contact.id, contact.email)
+        suppressed = await _is_suppressed_or_withdrawn(
+            session, campaign.account_id, contact.id, contact.email
+        )
         recipient = CampaignRecipient(
+            account_id=campaign.account_id,
             campaign_id=campaign.id,
             contact_id=contact.id,
             email=contact.email,
@@ -104,6 +118,7 @@ async def handle_send_campaign(session: AsyncSession, payload: dict[str, Any]) -
 
     session.add(
         CampaignVersion(
+            account_id=campaign.account_id,
             campaign_id=campaign.id,
             subject=campaign.subject,
             body_html=campaign.body_html,
@@ -118,7 +133,9 @@ async def handle_send_campaign(session: AsyncSession, payload: dict[str, Any]) -
         if recipient.status == "SUPPRESSED":
             continue
 
-        delivery = MessageDelivery(campaign_recipient_id=recipient.id, status="QUEUED")
+        delivery = MessageDelivery(
+            account_id=campaign.account_id, campaign_recipient_id=recipient.id, status="QUEUED"
+        )
         session.add(delivery)
         await session.flush()
 
@@ -143,6 +160,7 @@ async def handle_send_campaign(session: AsyncSession, payload: dict[str, Any]) -
             recipient.status = "FAILED"
             session.add(
                 DeliveryAttempt(
+                    account_id=campaign.account_id,
                     message_delivery_id=delivery.id,
                     attempt_number=1,
                     status="FAILED",

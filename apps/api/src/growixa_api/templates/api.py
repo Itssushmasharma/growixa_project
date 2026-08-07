@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from growixa_api.db import get_session
-from growixa_api.permissions.dependencies import require_permission
+from growixa_api.permissions.dependencies import get_current_account_id, require_permission
 from growixa_api.templates.models import EmailTemplate, EmailTemplateVersion
 from growixa_api.templates.schemas import (
     EmailTemplateIn,
@@ -48,9 +48,10 @@ def _to_out(
 @router.get("", response_model=list[EmailTemplateOut])
 async def list_templates_route(
     _actor_id: uuid.UUID = Depends(_require_view),
+    account_id: uuid.UUID = Depends(get_current_account_id),
     session: AsyncSession = Depends(get_session),
 ) -> list[EmailTemplateOut]:
-    templates = await list_templates_with_current_version(session)
+    templates = await list_templates_with_current_version(session, account_id)
     return [_to_out(template, version) for template, version in templates]
 
 
@@ -58,9 +59,10 @@ async def list_templates_route(
 async def create_template_route(
     payload: EmailTemplateIn,
     actor_id: uuid.UUID = Depends(_require_manage),
+    account_id: uuid.UUID = Depends(get_current_account_id),
     session: AsyncSession = Depends(get_session),
 ) -> EmailTemplateOut:
-    template, version = await create_template(session, payload, actor_id)
+    template, version = await create_template(session, account_id, payload, actor_id)
     await session.commit()
     return _to_out(template, version)
 
@@ -69,10 +71,13 @@ async def create_template_route(
 async def get_template_route(
     template_id: uuid.UUID,
     _actor_id: uuid.UUID = Depends(_require_view),
+    account_id: uuid.UUID = Depends(get_current_account_id),
     session: AsyncSession = Depends(get_session),
 ) -> EmailTemplateOut:
     try:
-        template, version = await get_template_with_current_version(session, template_id)
+        template, version = await get_template_with_current_version(
+            session, account_id, template_id
+        )
     except TemplateNotFoundError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Template not found") from exc
     return _to_out(template, version)
@@ -82,10 +87,11 @@ async def get_template_route(
 async def list_template_versions_route(
     template_id: uuid.UUID,
     _actor_id: uuid.UUID = Depends(_require_view),
+    account_id: uuid.UUID = Depends(get_current_account_id),
     session: AsyncSession = Depends(get_session),
 ) -> list[EmailTemplateVersionOut]:
     try:
-        versions = await list_template_versions(session, template_id)
+        versions = await list_template_versions(session, account_id, template_id)
     except TemplateNotFoundError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Template not found") from exc
     return [EmailTemplateVersionOut.model_validate(version) for version in versions]
@@ -95,10 +101,11 @@ async def list_template_versions_route(
 async def delete_template_route(
     template_id: uuid.UUID,
     _actor_id: uuid.UUID = Depends(_require_manage),
+    account_id: uuid.UUID = Depends(get_current_account_id),
     session: AsyncSession = Depends(get_session),
 ) -> None:
     try:
-        await delete_template(session, template_id)
+        await delete_template(session, account_id, template_id)
     except TemplateNotFoundError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Template not found") from exc
     except TemplateInUseError as exc:
@@ -114,10 +121,13 @@ async def add_template_version_route(
     template_id: uuid.UUID,
     payload: EmailTemplateVersionIn,
     actor_id: uuid.UUID = Depends(_require_manage),
+    account_id: uuid.UUID = Depends(get_current_account_id),
     session: AsyncSession = Depends(get_session),
 ) -> EmailTemplateOut:
     try:
-        template, version = await add_template_version(session, template_id, payload, actor_id)
+        template, version = await add_template_version(
+            session, account_id, template_id, payload, actor_id
+        )
     except TemplateNotFoundError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Template not found") from exc
     await session.commit()

@@ -32,6 +32,11 @@ from growixa_api.campaigns.services import (
 # ---------------------------------------------------------------------------
 
 
+# get_campaign is mocked in every test here, so the real value never matters -- just needs
+# to satisfy schedule_campaign/cancel_campaign's account_id parameter (GRX-SAAS-001).
+_ACCOUNT_ID = uuid.uuid4()
+
+
 def _future(minutes: int = 30) -> datetime:
     return datetime.now(UTC) + timedelta(minutes=minutes)
 
@@ -90,7 +95,7 @@ class TestScheduleCampaign:
         ):
             scheduled_at = _future()
             result = await schedule_campaign(
-                session, campaign.id, ScheduleCampaignIn(scheduled_at=scheduled_at)
+                session, _ACCOUNT_ID, campaign.id, ScheduleCampaignIn(scheduled_at=scheduled_at)
             )
         assert result.status == "SCHEDULED"
         assert result.scheduled_at == scheduled_at
@@ -110,7 +115,7 @@ class TestScheduleCampaign:
                 pytest.raises(CampaignAlreadyScheduledError),
             ):
                 await schedule_campaign(
-                    session, campaign.id, ScheduleCampaignIn(scheduled_at=_future())
+                    session, _ACCOUNT_ID, campaign.id, ScheduleCampaignIn(scheduled_at=_future())
                 )
 
     @pytest.mark.asyncio
@@ -126,7 +131,9 @@ class TestScheduleCampaign:
             ),
             pytest.raises(ValueError, match="future"),
         ):
-            await schedule_campaign(session, campaign.id, ScheduleCampaignIn(scheduled_at=_past()))
+            await schedule_campaign(
+                session, _ACCOUNT_ID, campaign.id, ScheduleCampaignIn(scheduled_at=_past())
+            )
 
     @pytest.mark.asyncio
     async def test_not_found_raises(self) -> None:
@@ -141,7 +148,7 @@ class TestScheduleCampaign:
             pytest.raises(CampaignNotFoundError),
         ):
             await schedule_campaign(
-                session, uuid.uuid4(), ScheduleCampaignIn(scheduled_at=_future())
+                session, _ACCOUNT_ID, uuid.uuid4(), ScheduleCampaignIn(scheduled_at=_future())
             )
 
 
@@ -171,7 +178,7 @@ class TestCancelCampaign:
                 new=AsyncMock(side_effect=_fake_update_cancel),
             ),
         ):
-            result = await cancel_campaign(session, campaign.id)
+            result = await cancel_campaign(session, _ACCOUNT_ID, campaign.id)
 
         assert result.status == "CANCELLED"
         assert result.cancelled_at is not None
@@ -197,7 +204,7 @@ class TestCancelCampaign:
                 new=AsyncMock(side_effect=_fake_update_sched),
             ),
         ):
-            result = await cancel_campaign(session, campaign.id)
+            result = await cancel_campaign(session, _ACCOUNT_ID, campaign.id)
 
         assert result.status == "CANCELLED"
 
@@ -215,7 +222,7 @@ class TestCancelCampaign:
                 ),
                 pytest.raises(CampaignNotCancellableError),
             ):
-                await cancel_campaign(session, campaign.id)
+                await cancel_campaign(session, _ACCOUNT_ID, campaign.id)
 
     @pytest.mark.asyncio
     async def test_cancel_not_found_raises(self) -> None:
@@ -229,7 +236,7 @@ class TestCancelCampaign:
             ),
             pytest.raises(CampaignNotFoundError),
         ):
-            await cancel_campaign(session, uuid.uuid4())
+            await cancel_campaign(session, _ACCOUNT_ID, uuid.uuid4())
 
 
 # ---------------------------------------------------------------------------

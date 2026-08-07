@@ -7,6 +7,12 @@ layer rather than depending on growixa_api as a library. Column/constraint defin
 here must stay consistent with their growixa_api counterparts; there is intentionally no
 write path here for anything outside send_campaign's own tables (message_deliveries,
 delivery_attempts, campaign_recipients, campaign_versions, campaigns.status, usage_records).
+
+`account_id` (GRX-SAAS-001) is declared on every model send_campaign filters or writes by
+it: read-only on `Contact`/`ConsentRecord`/`SuppressionEntry` (so recipient resolution and
+the suppression/consent check can be account-scoped), and written on every table
+send_campaign inserts into (`campaigns` excepted -- read-only here). `usage_records` is
+intentionally excluded (GRX-SAAS-001's still-BACKLOG "cross-cutting" group, not this one).
 """
 
 import uuid
@@ -24,6 +30,7 @@ class Contact(Base):
     __tablename__ = "contacts"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    account_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     email: Mapped[str] = mapped_column(CITEXT, nullable=False)
     status: Mapped[str] = mapped_column(Text, nullable=False)
     source: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -65,12 +72,17 @@ class ContactList(Base):
     __tablename__ = "contact_lists"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    # Not read by send_campaign's own logic (only Contact.account_id is filtered on) --
+    # declared here only so tests can construct a real row against the NOT NULL DB
+    # column (added by GRX-SAAS-001's contacts checkpoint, not this one).
+    account_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     name: Mapped[str] = mapped_column(Text, nullable=False)
 
 
 class ContactListMember(Base):
     __tablename__ = "contact_list_members"
 
+    account_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     list_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
     contact_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
 
@@ -79,6 +91,8 @@ class Segment(Base):
     __tablename__ = "segments"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    # See ContactList's identical note.
+    account_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     name: Mapped[str] = mapped_column(Text, nullable=False)
     type: Mapped[str] = mapped_column(Text, nullable=False)
 
@@ -87,6 +101,7 @@ class SegmentRule(Base):
     __tablename__ = "segment_rules"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    account_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     segment_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     field: Mapped[str] = mapped_column(Text, nullable=False)
     operator: Mapped[str] = mapped_column(Text, nullable=False)
@@ -96,6 +111,7 @@ class SegmentRule(Base):
 class SegmentMember(Base):
     __tablename__ = "segment_members"
 
+    account_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     segment_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
     contact_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
 
@@ -104,6 +120,7 @@ class ConsentRecord(Base):
     __tablename__ = "consent_records"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    account_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     contact_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     channel: Mapped[str] = mapped_column(Text, nullable=False)
     status: Mapped[str] = mapped_column(Text, nullable=False)
@@ -114,6 +131,7 @@ class SuppressionEntry(Base):
     __tablename__ = "suppression_entries"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    account_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     email: Mapped[str] = mapped_column(CITEXT, nullable=False)
     reason: Mapped[str] = mapped_column(Text, nullable=False)
 
@@ -122,6 +140,10 @@ class EmailProviderConnection(Base):
     __tablename__ = "email_provider_connections"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    # Not read by send_campaign's own logic (connections are fetched by PK via an
+    # already-account-verified sender_identity_id) -- declared only so tests can
+    # construct a real row against the NOT NULL DB column.
+    account_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     provider: Mapped[str] = mapped_column(Text, nullable=False)
     smtp_host: Mapped[str] = mapped_column(Text, nullable=False)
     smtp_port: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -133,6 +155,8 @@ class SenderIdentity(Base):
     __tablename__ = "sender_identities"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    # See EmailProviderConnection's identical note.
+    account_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     email_provider_connection_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), nullable=False
     )
@@ -155,6 +179,7 @@ class Campaign(Base):
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    account_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     name: Mapped[str] = mapped_column(Text, nullable=False)
     subject: Mapped[str] = mapped_column(Text, nullable=False)
     body_html: Mapped[str] = mapped_column(Text, nullable=False)
@@ -180,6 +205,7 @@ class CampaignVersion(Base):
     __tablename__ = "campaign_versions"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    account_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     campaign_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("campaigns.id"), nullable=False
     )
@@ -202,6 +228,7 @@ class CampaignRecipient(Base):
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    account_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     campaign_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("campaigns.id", ondelete="CASCADE"), nullable=False
     )
@@ -225,6 +252,7 @@ class MessageDelivery(Base):
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    account_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     campaign_recipient_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("campaign_recipients.id", ondelete="CASCADE"), nullable=False
     )
@@ -243,6 +271,7 @@ class DeliveryAttempt(Base):
     __tablename__ = "delivery_attempts"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    account_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     message_delivery_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("message_deliveries.id", ondelete="CASCADE"), nullable=False
     )

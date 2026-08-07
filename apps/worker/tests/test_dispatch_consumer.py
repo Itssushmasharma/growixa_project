@@ -79,9 +79,15 @@ async def session() -> AsyncGenerator[AsyncSession, None]:
         yield session
 
 
+# Same seeded account every GRX-SAAS-001 migration backfills into -- see
+# test_send_campaign.py's identical constant/note.
+_ACCOUNT_ID = uuid.UUID("00000000-0000-0000-0000-000000000001")
+
+
 async def _create_dispatching_campaign(session: AsyncSession) -> uuid.UUID:
     connection = EmailProviderConnection(
         id=uuid.uuid4(),
+        account_id=_ACCOUNT_ID,
         provider="POSTMARK",
         smtp_host="smtp.postmarkapp.com",
         smtp_port=587,
@@ -92,6 +98,7 @@ async def _create_dispatching_campaign(session: AsyncSession) -> uuid.UUID:
     await session.flush()
     identity = SenderIdentity(
         id=uuid.uuid4(),
+        account_id=_ACCOUNT_ID,
         email_provider_connection_id=connection.id,
         from_email="hello@growixa.local",
         from_name="Growixa",
@@ -100,6 +107,7 @@ async def _create_dispatching_campaign(session: AsyncSession) -> uuid.UUID:
     await session.flush()
     campaign = Campaign(
         id=uuid.uuid4(),
+        account_id=_ACCOUNT_ID,
         name="Dispatch consumer test",
         subject="Hi",
         body_html="<p>hi</p>",

@@ -36,9 +36,10 @@ _require_view = require_permission("campaigns.view")
 @router.get("", response_model=list[CampaignOut])
 async def list_campaigns_route(
     _actor_id: uuid.UUID = Depends(_require_view),
+    account_id: uuid.UUID = Depends(get_current_account_id),
     session: AsyncSession = Depends(get_session),
 ) -> list[CampaignOut]:
-    campaigns = await list_all_campaigns(session)
+    campaigns = await list_all_campaigns(session, account_id)
     return [CampaignOut.model_validate(campaign) for campaign in campaigns]
 
 
@@ -65,10 +66,11 @@ async def create_campaign_route(
 async def get_campaign_route(
     campaign_id: uuid.UUID,
     _actor_id: uuid.UUID = Depends(_require_view),
+    account_id: uuid.UUID = Depends(get_current_account_id),
     session: AsyncSession = Depends(get_session),
 ) -> CampaignOut:
     try:
-        campaign = await get_campaign_or_raise(session, campaign_id)
+        campaign = await get_campaign_or_raise(session, account_id, campaign_id)
     except CampaignNotFoundError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Campaign not found") from exc
     return CampaignOut.model_validate(campaign)
@@ -104,6 +106,7 @@ async def schedule_campaign_route(
     campaign_id: uuid.UUID,
     payload: ScheduleCampaignIn,
     _actor_id: uuid.UUID = Depends(_require_manage),
+    account_id: uuid.UUID = Depends(get_current_account_id),
     session: AsyncSession = Depends(get_session),
 ) -> CampaignOut:
     """Schedule a DRAFT campaign to be dispatched at a future datetime.
@@ -111,7 +114,7 @@ async def schedule_campaign_route(
     Returns the updated campaign with status=SCHEDULED and scheduled_at set.
     """
     try:
-        campaign = await schedule_campaign(session, campaign_id, payload)
+        campaign = await schedule_campaign(session, account_id, campaign_id, payload)
     except CampaignNotFoundError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Campaign not found") from exc
     except CampaignAlreadyScheduledError as exc:
@@ -128,6 +131,7 @@ async def schedule_campaign_route(
 async def cancel_campaign_route(
     campaign_id: uuid.UUID,
     _actor_id: uuid.UUID = Depends(_require_manage),
+    account_id: uuid.UUID = Depends(get_current_account_id),
     session: AsyncSession = Depends(get_session),
 ) -> CampaignOut:
     """Cancel a DRAFT or SCHEDULED campaign before it is dispatched.
@@ -135,7 +139,7 @@ async def cancel_campaign_route(
     Returns the updated campaign with status=CANCELLED and cancelled_at set.
     """
     try:
-        campaign = await cancel_campaign(session, campaign_id)
+        campaign = await cancel_campaign(session, account_id, campaign_id)
     except CampaignNotFoundError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Campaign not found") from exc
     except CampaignNotCancellableError as exc:

@@ -36,9 +36,10 @@ def _access_token_cookie(user_id: uuid.UUID) -> dict[str, str]:
     return {"access_token": token}
 
 
-async def _create_sender_identity() -> uuid.UUID:
+async def _create_sender_identity(account_id: uuid.UUID) -> uuid.UUID:
     async with async_session_factory() as session:
         connection = EmailProviderConnection(
+            account_id=account_id,
             provider="POSTMARK",
             smtp_host="smtp.postmarkapp.com",
             smtp_port=587,
@@ -48,6 +49,7 @@ async def _create_sender_identity() -> uuid.UUID:
         session.add(connection)
         await session.flush()
         identity = SenderIdentity(
+            account_id=account_id,
             email_provider_connection_id=connection.id,
             from_email="hello@growixa.local",
             from_name="Growixa",
@@ -57,9 +59,12 @@ async def _create_sender_identity() -> uuid.UUID:
         return identity.id
 
 
-async def _create_campaign(sender_identity_id: uuid.UUID, actor_id: uuid.UUID) -> uuid.UUID:
+async def _create_campaign(
+    account_id: uuid.UUID, sender_identity_id: uuid.UUID, actor_id: uuid.UUID
+) -> uuid.UUID:
     async with async_session_factory() as session:
         campaign = Campaign(
+            account_id=account_id,
             name=CAMPAIGN_PAYLOAD["name"],
             subject=CAMPAIGN_PAYLOAD["subject"],
             body_html=CAMPAIGN_PAYLOAD["body_html"],
@@ -90,17 +95,24 @@ async def _create_recipient_with_delivery(
         session.add(contact)
         await session.flush()
         recipient = CampaignRecipient(
-            campaign_id=campaign_id, contact_id=contact.id, email=email, status=recipient_status
+            account_id=account_id,
+            campaign_id=campaign_id,
+            contact_id=contact.id,
+            email=email,
+            status=recipient_status,
         )
         session.add(recipient)
         await session.flush()
         if delivery_status is not None:
-            delivery = MessageDelivery(campaign_recipient_id=recipient.id, status=delivery_status)
+            delivery = MessageDelivery(
+                account_id=account_id, campaign_recipient_id=recipient.id, status=delivery_status
+            )
             session.add(delivery)
             await session.flush()
             for event_type in event_types or []:
                 session.add(
                     EmailEvent(
+                        account_id=account_id,
                         message_delivery_id=delivery.id,
                         event_type=event_type,
                         occurred_at=datetime.now(UTC),
@@ -146,8 +158,8 @@ async def test_report_reflects_delivery_and_event_counts(
     manager_id = await user_factory(
         full_name="Test Manager", role_name="Marketing Manager", account_id=account_id
     )
-    sender_identity_id = await _create_sender_identity()
-    campaign_id = await _create_campaign(sender_identity_id, manager_id)
+    sender_identity_id = await _create_sender_identity(account_id)
+    campaign_id = await _create_campaign(account_id, sender_identity_id, manager_id)
     try:
         await _create_recipient_with_delivery(
             campaign_id,
@@ -198,11 +210,17 @@ async def test_report_reflects_delivery_and_event_counts(
 @pytest.mark.integration
 async def test_campaigns_view_only_role_can_read_report(
     user_factory: Callable[..., Awaitable[uuid.UUID]],
+    account_factory: Callable[..., Awaitable[uuid.UUID]],
 ) -> None:
-    manager_id = await user_factory(full_name="Test Manager", role_name="Marketing Manager")
-    analyst_id = await user_factory(full_name="Test Analyst", role_name="Analyst")
-    sender_identity_id = await _create_sender_identity()
-    campaign_id = await _create_campaign(sender_identity_id, manager_id)
+    account_id = await account_factory()
+    manager_id = await user_factory(
+        full_name="Test Manager", role_name="Marketing Manager", account_id=account_id
+    )
+    analyst_id = await user_factory(
+        full_name="Test Analyst", role_name="Analyst", account_id=account_id
+    )
+    sender_identity_id = await _create_sender_identity(account_id)
+    campaign_id = await _create_campaign(account_id, sender_identity_id, manager_id)
     try:
         cookies = _access_token_cookie(analyst_id)
         transport = ASGITransport(app=create_app())
@@ -221,11 +239,17 @@ async def test_campaigns_view_only_role_can_read_report(
 @pytest.mark.integration
 async def test_viewer_role_gets_403(
     user_factory: Callable[..., Awaitable[uuid.UUID]],
+    account_factory: Callable[..., Awaitable[uuid.UUID]],
 ) -> None:
-    manager_id = await user_factory(full_name="Test Manager", role_name="Marketing Manager")
-    viewer_id = await user_factory(full_name="Test Viewer", role_name="Viewer")
-    sender_identity_id = await _create_sender_identity()
-    campaign_id = await _create_campaign(sender_identity_id, manager_id)
+    account_id = await account_factory()
+    manager_id = await user_factory(
+        full_name="Test Manager", role_name="Marketing Manager", account_id=account_id
+    )
+    viewer_id = await user_factory(
+        full_name="Test Viewer", role_name="Viewer", account_id=account_id
+    )
+    sender_identity_id = await _create_sender_identity(account_id)
+    campaign_id = await _create_campaign(account_id, sender_identity_id, manager_id)
     try:
         cookies = _access_token_cookie(viewer_id)
         transport = ASGITransport(app=create_app())

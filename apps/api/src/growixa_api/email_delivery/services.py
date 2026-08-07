@@ -9,7 +9,6 @@ from growixa_api.campaigns.models import Campaign
 from growixa_api.campaigns.repositories import get_campaign
 from growixa_api.contacts.repositories import (
     create_suppression_entry,
-    get_account_id_for_contact,
     get_suppression_by_email,
 )
 from growixa_api.email_delivery.repositories import (
@@ -20,9 +19,9 @@ from growixa_api.email_delivery.repositories import (
 )
 from growixa_api.email_delivery.schemas import PostmarkWebhookPayload
 from growixa_api.integrations.repositories import (
-    get_active_email_provider_connection,
     get_email_provider_connection,
     get_sender_identity,
+    list_active_email_provider_connections,
 )
 from growixa_api.integrations.smtp_transport import send_email
 from growixa_api.jobs.producer import publish_job
@@ -68,23 +67,29 @@ class CampaignRecipientNotFoundError(Exception):
     pass
 
 
-async def _load_sendable_campaign(session: AsyncSession, campaign_id: uuid.UUID) -> Campaign:
-    campaign = await get_campaign(session, campaign_id)
+async def _load_sendable_campaign(
+    session: AsyncSession, account_id: uuid.UUID, campaign_id: uuid.UUID
+) -> Campaign:
+    campaign = await get_campaign(session, account_id, campaign_id)
     if campaign is None:
         raise CampaignNotFoundError
     return campaign
 
 
-async def send_test_email(session: AsyncSession, campaign_id: uuid.UUID, to_email: str) -> None:
+async def send_test_email(
+    session: AsyncSession, account_id: uuid.UUID, campaign_id: uuid.UUID, to_email: str
+) -> None:
     """Sends the campaign's current draft content to a single address directly from the
     API request — deliberately synchronous and outside the job queue, since a test send
     doesn't touch campaign/recipient/delivery state at all (per SPRINT_03's acceptance
     criteria), unlike a real send which must never run inline (BACKGROUND_JOB_ARCHITECTURE.md)."""
-    campaign = await _load_sendable_campaign(session, campaign_id)
-    identity = await get_sender_identity(session, campaign.sender_identity_id)
+    campaign = await _load_sendable_campaign(session, account_id, campaign_id)
+    identity = await get_sender_identity(session, account_id, campaign.sender_identity_id)
     if identity is None:
         raise CampaignNotFoundError
-    connection = await get_email_provider_connection(session, identity.email_provider_connection_id)
+    connection = await get_email_provider_connection(
+        session, account_id, identity.email_provider_connection_id
+    )
     if connection is None:
         raise CampaignNotFoundError
     await send_email(
@@ -102,11 +107,11 @@ async def send_test_email(session: AsyncSession, campaign_id: uuid.UUID, to_emai
 
 
 async def trigger_campaign_send(
-    session: AsyncSession, campaign_id: uuid.UUID, actor_id: uuid.UUID
+    session: AsyncSession, account_id: uuid.UUID, campaign_id: uuid.UUID, actor_id: uuid.UUID
 ) -> JobEnvelope:
     """Flips the campaign to SENDING and enqueues the real send as a worker job — never
     resolves recipients or sends anything inline in this request."""
-    campaign = await _load_sendable_campaign(session, campaign_id)
+    campaign = await _load_sendable_campaign(session, account_id, campaign_id)
     if campaign.status != "DRAFT":
         raise CampaignNotSendableError
     campaign.status = "SENDING"
@@ -122,10 +127,15 @@ async def trigger_campaign_send(
     return envelope
 
 
-async def verify_webhook_credentials(session: AsyncSession, username: str, password: str) -> bool:
-    """Fails closed: no active Postmark connection, or a connection whose webhook
-    credentials were never generated (pre-GRX-EMAIL-005 row), rejects every request.
-    Constant-time comparison on both fields per THREAT_MODEL.md's T14.
+async def verify_webhook_credentials(
+    session: AsyncSession, username: str, password: str
+) -> uuid.UUID | None:
+    """Fails closed: no matching active Postmark connection (across every account --
+    `/webhooks/postmark` carries no account identifier of its own, so the connection's
+    own webhook credentials are the only way to find out which account this event
+    belongs to, per GRX-SAAS-001) rejects the request. Constant-time comparison on both
+    fields per THREAT_MODEL.md's T14. Returns the matched connection's account_id, or
+    None if no active connection's credentials matched.
 
     Hardcoded to the POSTMARK provider (not "whichever connection is active" — since
     GRX-EMAIL-011 that's ambiguous, as Custom SMTP can be independently active too):
@@ -133,17 +143,16 @@ async def verify_webhook_credentials(session: AsyncSession, username: str, passw
     relevant here. Custom SMTP has no webhook route at all — plain SMTP has no
     bounce/complaint/open/click callback mechanism to receive.
     """
-    connection = await get_active_email_provider_connection(session, provider="POSTMARK")
-    if (
-        connection is None
-        or connection.webhook_username is None
-        or connection.webhook_password_encrypted is None
-    ):
-        return False
-    expected_password = decrypt_secret(connection.webhook_password_encrypted)
-    username_ok = secrets.compare_digest(username, connection.webhook_username)
-    password_ok = secrets.compare_digest(password, expected_password)
-    return username_ok and password_ok
+    connections = await list_active_email_provider_connections(session, "POSTMARK")
+    for connection in connections:
+        if connection.webhook_username is None or connection.webhook_password_encrypted is None:
+            continue
+        expected_password = decrypt_secret(connection.webhook_password_encrypted)
+        username_ok = secrets.compare_digest(username, connection.webhook_username)
+        password_ok = secrets.compare_digest(password, expected_password)
+        if username_ok and password_ok:
+            return connection.account_id
+    return None
 
 
 def _extract_occurred_at(payload: PostmarkWebhookPayload) -> datetime:
@@ -158,16 +167,23 @@ def _extract_occurred_at(payload: PostmarkWebhookPayload) -> datetime:
     return datetime.now(UTC)
 
 
-async def record_webhook_event(session: AsyncSession, payload: PostmarkWebhookPayload) -> None:
+async def record_webhook_event(
+    session: AsyncSession, account_id: uuid.UUID, payload: PostmarkWebhookPayload
+) -> None:
     """Processes one Postmark webhook event. Silently no-ops (rather than erroring) when
     `MessageID` doesn't match any known delivery — a redelivery race, a message this
     system didn't send, or (per AGENT_HANDOFF.md's evidence gap) an unverified payload
-    shape are all treated the same: Postmark expects a 200, not a 4xx, either way."""
+    shape are all treated the same: Postmark expects a 200, not a 4xx, either way.
+
+    `account_id` comes from `verify_webhook_credentials`'s match, not from the payload
+    itself -- Postmark has no notion of our accounts."""
     event_type = _EVENT_TYPE_BY_RECORD_TYPE.get(payload.RecordType)
     if event_type is None:
         return
 
-    delivery = await get_message_delivery_by_provider_message_id(session, payload.MessageID)
+    delivery = await get_message_delivery_by_provider_message_id(
+        session, account_id, payload.MessageID
+    )
     if delivery is None:
         return
 
@@ -175,6 +191,7 @@ async def record_webhook_event(session: AsyncSession, payload: PostmarkWebhookPa
     await create_email_event(
         session,
         {
+            "account_id": account_id,
             "message_delivery_id": delivery.id,
             "event_type": event_type,
             "occurred_at": occurred_at,
@@ -193,16 +210,9 @@ async def record_webhook_event(session: AsyncSession, payload: PostmarkWebhookPa
 
     suppression_reason = _SUPPRESSION_REASON_BY_EVENT_TYPE.get(event_type)
     if suppression_reason is not None and payload.Recipient:
-        recipient = await get_campaign_recipient(session, delivery.campaign_recipient_id)
-        account_id = (
-            await get_account_id_for_contact(session, recipient.contact_id)
-            if recipient is not None
-            else None
+        await _upsert_suppression(
+            session, account_id=account_id, email=payload.Recipient, reason=suppression_reason
         )
-        if account_id is not None:
-            await _upsert_suppression(
-                session, account_id=account_id, email=payload.Recipient, reason=suppression_reason
-            )
 
     await session.commit()
 
@@ -237,7 +247,11 @@ async def record_unsubscribe(session: AsyncSession, campaign_recipient_id: uuid.
     Postmark-reported bounce/complaint. Records the audit trail row and (in the same
     transaction) suppresses the address, reusing Slice 2's suppression infrastructure
     per DATA_MODEL.md's `unsubscribe_events` note. No actor_id: this is a public,
-    unauthenticated action taken by the recipient, not an admin."""
+    unauthenticated action taken by the recipient, not an admin.
+
+    No account_id parameter -- this is a public route identified only by the
+    unguessable `campaign_recipient_id`, same as `get_campaign_recipient`'s own note.
+    The recipient's own (denormalized) `account_id` is used directly."""
     recipient = await get_campaign_recipient(session, campaign_recipient_id)
     if recipient is None:
         raise CampaignRecipientNotFoundError
@@ -245,18 +259,17 @@ async def record_unsubscribe(session: AsyncSession, campaign_recipient_id: uuid.
     await create_unsubscribe_event(
         session,
         {
+            "account_id": recipient.account_id,
             "contact_id": recipient.contact_id,
             "campaign_id": recipient.campaign_id,
             "email": recipient.email,
         },
     )
-    account_id = await get_account_id_for_contact(session, recipient.contact_id)
-    if account_id is not None:
-        await _upsert_suppression(
-            session,
-            account_id=account_id,
-            email=recipient.email,
-            reason="UNSUBSCRIBED",
-            contact_id=recipient.contact_id,
-        )
+    await _upsert_suppression(
+        session,
+        account_id=recipient.account_id,
+        email=recipient.email,
+        reason="UNSUBSCRIBED",
+        contact_id=recipient.contact_id,
+    )
     await session.commit()

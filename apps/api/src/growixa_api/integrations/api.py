@@ -24,7 +24,7 @@ from growixa_api.integrations.services import (
     update_identity_verification_status,
 )
 from growixa_api.integrations.smtp_transport import EmailSendError
-from growixa_api.permissions.dependencies import require_permission
+from growixa_api.permissions.dependencies import get_current_account_id, require_permission
 
 router = APIRouter(prefix="/integrations", tags=["integrations"])
 
@@ -34,12 +34,13 @@ _require_manage = require_permission("integrations.manage")
 @router.get("/email-providers", response_model=list[EmailProviderConnectionOut])
 async def list_email_provider_connections_route(
     _actor_id: uuid.UUID = Depends(_require_manage),
+    account_id: uuid.UUID = Depends(get_current_account_id),
     session: AsyncSession = Depends(get_session),
 ) -> list[EmailProviderConnectionOut]:
     """Lists every configured provider connection (GRX-EMAIL-011: one active row per
     provider now, not a single global one) — the frontend renders one card per known
     provider and looks up its row here, rather than fetching "the" connection."""
-    connections = await list_connections(session)
+    connections = await list_connections(session, account_id)
     return [EmailProviderConnectionOut.model_validate(connection) for connection in connections]
 
 
@@ -65,9 +66,10 @@ async def test_email_provider_connection_route(
 async def create_email_provider_connection_route(
     payload: EmailProviderConnectionIn,
     actor_id: uuid.UUID = Depends(_require_manage),
+    account_id: uuid.UUID = Depends(get_current_account_id),
     session: AsyncSession = Depends(get_session),
 ) -> EmailProviderConnectionOut:
-    connection, webhook_password = await create_connection(session, payload, actor_id)
+    connection, webhook_password = await create_connection(session, account_id, payload, actor_id)
     await session.commit()
     out = EmailProviderConnectionOut.model_validate(connection)
     # Shown once, in this response only — see EmailProviderConnectionOut's docstring.
@@ -77,9 +79,10 @@ async def create_email_provider_connection_route(
 @router.get("/sender-identities", response_model=list[SenderIdentityOut])
 async def list_sender_identities_route(
     _actor_id: uuid.UUID = Depends(_require_manage),
+    account_id: uuid.UUID = Depends(get_current_account_id),
     session: AsyncSession = Depends(get_session),
 ) -> list[SenderIdentityOut]:
-    identities = await list_identities(session)
+    identities = await list_identities(session, account_id)
     return [SenderIdentityOut.model_validate(identity) for identity in identities]
 
 
@@ -91,10 +94,11 @@ async def list_sender_identities_route(
 async def create_sender_identity_route(
     payload: SenderIdentityIn,
     actor_id: uuid.UUID = Depends(_require_manage),
+    account_id: uuid.UUID = Depends(get_current_account_id),
     session: AsyncSession = Depends(get_session),
 ) -> SenderIdentityOut:
     try:
-        identity = await create_identity(session, payload, actor_id)
+        identity = await create_identity(session, account_id, payload, actor_id)
     except EmailProviderConnectionNotFoundError as exc:
         raise HTTPException(
             status.HTTP_404_NOT_FOUND, "Email provider connection not found"
@@ -108,11 +112,12 @@ async def update_sender_identity_status_route(
     identity_id: uuid.UUID,
     payload: SenderIdentityStatusIn,
     _actor_id: uuid.UUID = Depends(_require_manage),
+    account_id: uuid.UUID = Depends(get_current_account_id),
     session: AsyncSession = Depends(get_session),
 ) -> SenderIdentityOut:
     try:
         identity = await update_identity_verification_status(
-            session, identity_id, payload.verification_status
+            session, account_id, identity_id, payload.verification_status
         )
     except SenderIdentityNotFoundError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Sender identity not found") from exc

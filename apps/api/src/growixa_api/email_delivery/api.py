@@ -21,7 +21,7 @@ from growixa_api.email_delivery.services import (
     verify_webhook_credentials,
 )
 from growixa_api.integrations.smtp_transport import EmailSendError
-from growixa_api.permissions.dependencies import require_permission
+from growixa_api.permissions.dependencies import get_current_account_id, require_permission
 
 router = APIRouter(prefix="/campaigns", tags=["campaigns"])
 public_router = APIRouter(tags=["email-delivery-public"])
@@ -35,10 +35,11 @@ async def test_send_route(
     campaign_id: uuid.UUID,
     payload: TestSendIn,
     _actor_id: uuid.UUID = Depends(_require_send),
+    account_id: uuid.UUID = Depends(get_current_account_id),
     session: AsyncSession = Depends(get_session),
 ) -> None:
     try:
-        await send_test_email(session, campaign_id, payload.to_email)
+        await send_test_email(session, account_id, campaign_id, payload.to_email)
     except CampaignNotFoundError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Campaign not found") from exc
     except EmailSendError as exc:
@@ -51,10 +52,11 @@ async def test_send_route(
 async def send_campaign_route(
     campaign_id: uuid.UUID,
     actor_id: uuid.UUID = Depends(_require_send),
+    account_id: uuid.UUID = Depends(get_current_account_id),
     session: AsyncSession = Depends(get_session),
 ) -> CampaignSendOut:
     try:
-        envelope = await trigger_campaign_send(session, campaign_id, actor_id)
+        envelope = await trigger_campaign_send(session, account_id, campaign_id, actor_id)
     except CampaignNotFoundError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Campaign not found") from exc
     except CampaignNotSendableError as exc:
@@ -71,16 +73,20 @@ async def postmark_webhook_route(
     session: AsyncSession = Depends(get_session),
 ) -> dict[str, str]:
     """Public per THREAT_MODEL.md's T14 — authenticated via HTTP Basic Auth (checked
-    against the active connection's own webhook credentials) instead of a user session,
-    since Postmark itself is the caller. A failed check is rejected before this function
-    ever touches `email_events`/`message_deliveries`, per SPRINT_03's acceptance criteria."""
-    if not await verify_webhook_credentials(session, credentials.username, credentials.password):
+    against every account's active connection's own webhook credentials, since this
+    route carries no account identifier of its own) instead of a user session, since
+    Postmark itself is the caller. A failed check is rejected before this function ever
+    touches `email_events`/`message_deliveries`, per SPRINT_03's acceptance criteria."""
+    account_id = await verify_webhook_credentials(
+        session, credentials.username, credentials.password
+    )
+    if account_id is None:
         raise HTTPException(
             status.HTTP_401_UNAUTHORIZED,
             "Invalid webhook credentials",
             headers={"WWW-Authenticate": "Basic"},
         )
-    await record_webhook_event(session, payload)
+    await record_webhook_event(session, account_id, payload)
     return {"status": "ok"}
 
 

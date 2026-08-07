@@ -15,16 +15,27 @@ async def create_template(session: AsyncSession, fields: dict[str, Any]) -> Emai
     return template
 
 
-async def get_template(session: AsyncSession, template_id: uuid.UUID) -> EmailTemplate | None:
-    return await session.get(EmailTemplate, template_id)
+async def get_template(
+    session: AsyncSession, account_id: uuid.UUID, template_id: uuid.UUID
+) -> EmailTemplate | None:
+    result = await session.execute(
+        select(EmailTemplate).where(
+            EmailTemplate.account_id == account_id, EmailTemplate.id == template_id
+        )
+    )
+    return result.scalar_one_or_none()
 
 
 async def delete_template(session: AsyncSession, template: EmailTemplate) -> None:
     await session.delete(template)
 
 
-async def list_templates(session: AsyncSession) -> Sequence[EmailTemplate]:
-    result = await session.execute(select(EmailTemplate).order_by(EmailTemplate.created_at))
+async def list_templates(session: AsyncSession, account_id: uuid.UUID) -> Sequence[EmailTemplate]:
+    result = await session.execute(
+        select(EmailTemplate)
+        .where(EmailTemplate.account_id == account_id)
+        .order_by(EmailTemplate.created_at)
+    )
     return result.scalars().all()
 
 

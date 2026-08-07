@@ -36,14 +36,15 @@ class TemplateInUseError(Exception):
 
 
 async def create_template(
-    session: AsyncSession, data: EmailTemplateIn, actor_id: uuid.UUID
+    session: AsyncSession, account_id: uuid.UUID, data: EmailTemplateIn, actor_id: uuid.UUID
 ) -> tuple[EmailTemplate, EmailTemplateVersion]:
     template = await create_template_row(
-        session, {"name": data.name, "created_by_user_id": actor_id}
+        session, {"account_id": account_id, "name": data.name, "created_by_user_id": actor_id}
     )
     version = await create_template_version(
         session,
         {
+            "account_id": account_id,
             "template_id": template.id,
             "version_number": 1,
             "subject": data.subject,
@@ -55,8 +56,10 @@ async def create_template(
     return template, version
 
 
-async def delete_template(session: AsyncSession, template_id: uuid.UUID) -> None:
-    template = await get_template(session, template_id)
+async def delete_template(
+    session: AsyncSession, account_id: uuid.UUID, template_id: uuid.UUID
+) -> None:
+    template = await get_template(session, account_id, template_id)
     if template is None:
         raise TemplateNotFoundError
     try:
@@ -68,9 +71,9 @@ async def delete_template(session: AsyncSession, template_id: uuid.UUID) -> None
 
 
 async def get_template_with_current_version(
-    session: AsyncSession, template_id: uuid.UUID
+    session: AsyncSession, account_id: uuid.UUID, template_id: uuid.UUID
 ) -> tuple[EmailTemplate, EmailTemplateVersion | None]:
-    template = await get_template(session, template_id)
+    template = await get_template(session, account_id, template_id)
     if template is None:
         raise TemplateNotFoundError
     version = await get_current_version(session, template_id)
@@ -78,16 +81,16 @@ async def get_template_with_current_version(
 
 
 async def list_templates_with_current_version(
-    session: AsyncSession,
+    session: AsyncSession, account_id: uuid.UUID
 ) -> list[tuple[EmailTemplate, EmailTemplateVersion | None]]:
-    templates = await list_templates(session)
+    templates = await list_templates(session, account_id)
     return [(template, await get_current_version(session, template.id)) for template in templates]
 
 
 async def list_template_versions(
-    session: AsyncSession, template_id: uuid.UUID
+    session: AsyncSession, account_id: uuid.UUID, template_id: uuid.UUID
 ) -> Sequence[EmailTemplateVersion]:
-    template = await get_template(session, template_id)
+    template = await get_template(session, account_id, template_id)
     if template is None:
         raise TemplateNotFoundError
     return await list_versions(session, template_id)
@@ -95,19 +98,21 @@ async def list_template_versions(
 
 async def add_template_version(
     session: AsyncSession,
+    account_id: uuid.UUID,
     template_id: uuid.UUID,
     data: EmailTemplateVersionIn,
     actor_id: uuid.UUID,
 ) -> tuple[EmailTemplate, EmailTemplateVersion]:
     """Editing a template always appends a new version — the previous version's row is
     never touched, per DATA_MODEL.md's insert-only history for `email_template_versions`."""
-    template = await get_template(session, template_id)
+    template = await get_template(session, account_id, template_id)
     if template is None:
         raise TemplateNotFoundError
     next_version_number = await get_latest_version_number(session, template_id) + 1
     version = await create_template_version(
         session,
         {
+            "account_id": account_id,
             "template_id": template_id,
             "version_number": next_version_number,
             "subject": data.subject,

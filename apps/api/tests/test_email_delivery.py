@@ -39,9 +39,10 @@ def _access_token_cookie(user_id: uuid.UUID) -> dict[str, str]:
     return {"access_token": token}
 
 
-async def _create_sender_identity() -> uuid.UUID:
+async def _create_sender_identity(account_id: uuid.UUID) -> uuid.UUID:
     async with async_session_factory() as session:
         connection = EmailProviderConnection(
+            account_id=account_id,
             provider="POSTMARK",
             smtp_host="smtp.postmarkapp.com",
             smtp_port=587,
@@ -51,6 +52,7 @@ async def _create_sender_identity() -> uuid.UUID:
         session.add(connection)
         await session.flush()
         identity = SenderIdentity(
+            account_id=account_id,
             email_provider_connection_id=connection.id,
             from_email="hello@growixa.local",
             from_name="Growixa",
@@ -60,9 +62,12 @@ async def _create_sender_identity() -> uuid.UUID:
         return identity.id
 
 
-async def _create_campaign(sender_identity_id: uuid.UUID, actor_id: uuid.UUID) -> uuid.UUID:
+async def _create_campaign(
+    account_id: uuid.UUID, sender_identity_id: uuid.UUID, actor_id: uuid.UUID
+) -> uuid.UUID:
     async with async_session_factory() as session:
         campaign = Campaign(
+            account_id=account_id,
             name=CAMPAIGN_PAYLOAD["name"],
             subject=CAMPAIGN_PAYLOAD["subject"],
             body_html=CAMPAIGN_PAYLOAD["body_html"],
@@ -99,10 +104,13 @@ async def _cleanup() -> None:
 
 
 async def _create_connection_with_webhook_creds(
-    webhook_username: str = "wh-user", webhook_password: str = "wh-pass"
+    account_id: uuid.UUID,
+    webhook_username: str = "wh-user",
+    webhook_password: str = "wh-pass",
 ) -> uuid.UUID:
     async with async_session_factory() as session:
         connection = EmailProviderConnection(
+            account_id=account_id,
             provider="POSTMARK",
             smtp_host="smtp.postmarkapp.com",
             smtp_port=587,
@@ -114,6 +122,7 @@ async def _create_connection_with_webhook_creds(
         session.add(connection)
         await session.flush()
         identity = SenderIdentity(
+            account_id=account_id,
             email_provider_connection_id=connection.id,
             from_email="hello@growixa.local",
             from_name="Growixa",
@@ -139,6 +148,7 @@ async def _create_delivery_for_recipient(
         session.add(contact)
         await session.flush()
         campaign = Campaign(
+            account_id=account_id,
             name=CAMPAIGN_PAYLOAD["name"],
             subject=CAMPAIGN_PAYLOAD["subject"],
             body_html=CAMPAIGN_PAYLOAD["body_html"],
@@ -150,11 +160,16 @@ async def _create_delivery_for_recipient(
         session.add(campaign)
         await session.flush()
         recipient = CampaignRecipient(
-            campaign_id=campaign.id, contact_id=contact.id, email=email, status="SENT"
+            account_id=account_id,
+            campaign_id=campaign.id,
+            contact_id=contact.id,
+            email=email,
+            status="SENT",
         )
         session.add(recipient)
         await session.flush()
         delivery = MessageDelivery(
+            account_id=account_id,
             campaign_recipient_id=recipient.id,
             provider_message_id=provider_message_id,
             status="SENT",
@@ -200,6 +215,7 @@ async def _cleanup_delivery_fixtures() -> None:
 async def test_manager_can_trigger_send_and_campaign_flips_to_sending(
     monkeypatch: pytest.MonkeyPatch,
     user_factory: Callable[..., Awaitable[uuid.UUID]],
+    account_factory: Callable[..., Awaitable[uuid.UUID]],
 ) -> None:
     published: list[tuple[str, JobEnvelope]] = []
 
@@ -208,9 +224,12 @@ async def test_manager_can_trigger_send_and_campaign_flips_to_sending(
 
     monkeypatch.setattr(email_delivery_services, "publish_job", _fake_publish_job)
 
-    manager_id = await user_factory(full_name="Test Manager", role_name="Marketing Manager")
-    sender_identity_id = await _create_sender_identity()
-    campaign_id = await _create_campaign(sender_identity_id, manager_id)
+    account_id = await account_factory()
+    manager_id = await user_factory(
+        full_name="Test Manager", role_name="Marketing Manager", account_id=account_id
+    )
+    sender_identity_id = await _create_sender_identity(account_id)
+    campaign_id = await _create_campaign(account_id, sender_identity_id, manager_id)
     try:
         cookies = _access_token_cookie(manager_id)
         transport = ASGITransport(app=create_app())
@@ -240,15 +259,19 @@ async def test_manager_can_trigger_send_and_campaign_flips_to_sending(
 async def test_sending_twice_is_rejected(
     monkeypatch: pytest.MonkeyPatch,
     user_factory: Callable[..., Awaitable[uuid.UUID]],
+    account_factory: Callable[..., Awaitable[uuid.UUID]],
 ) -> None:
     async def _fake_publish_job(queue_name: str, envelope: JobEnvelope) -> None:
         return None
 
     monkeypatch.setattr(email_delivery_services, "publish_job", _fake_publish_job)
 
-    manager_id = await user_factory(full_name="Test Manager", role_name="Marketing Manager")
-    sender_identity_id = await _create_sender_identity()
-    campaign_id = await _create_campaign(sender_identity_id, manager_id)
+    account_id = await account_factory()
+    manager_id = await user_factory(
+        full_name="Test Manager", role_name="Marketing Manager", account_id=account_id
+    )
+    sender_identity_id = await _create_sender_identity(account_id)
+    campaign_id = await _create_campaign(account_id, sender_identity_id, manager_id)
     try:
         cookies = _access_token_cookie(manager_id)
         transport = ASGITransport(app=create_app())
@@ -268,13 +291,17 @@ async def test_sending_twice_is_rejected(
 @pytest.mark.integration
 async def test_content_creator_can_manage_but_not_send(
     user_factory: Callable[..., Awaitable[uuid.UUID]],
+    account_factory: Callable[..., Awaitable[uuid.UUID]],
 ) -> None:
     """The new "permission-gated action within an otherwise-accessible resource" shape
     from SPRINT_03's acceptance criteria: Content Creator has campaigns.manage but not
     campaigns.send, so editing the draft succeeds while sending it doesn't."""
-    creator_id = await user_factory(full_name="Test Creator", role_name="Content Creator")
-    sender_identity_id = await _create_sender_identity()
-    campaign_id = await _create_campaign(sender_identity_id, creator_id)
+    account_id = await account_factory()
+    creator_id = await user_factory(
+        full_name="Test Creator", role_name="Content Creator", account_id=account_id
+    )
+    sender_identity_id = await _create_sender_identity(account_id)
+    campaign_id = await _create_campaign(account_id, sender_identity_id, creator_id)
     try:
         cookies = _access_token_cookie(creator_id)
         transport = ASGITransport(app=create_app())
@@ -300,11 +327,15 @@ async def test_content_creator_can_manage_but_not_send(
 @pytest.mark.integration
 async def test_view_only_role_gets_403_on_send_and_test_send(
     user_factory: Callable[..., Awaitable[uuid.UUID]],
+    account_factory: Callable[..., Awaitable[uuid.UUID]],
 ) -> None:
     analyst_id = await user_factory(full_name="Test Analyst", role_name="Analyst")
-    manager_id = await user_factory(full_name="Test Manager", role_name="Marketing Manager")
-    sender_identity_id = await _create_sender_identity()
-    campaign_id = await _create_campaign(sender_identity_id, manager_id)
+    account_id = await account_factory()
+    manager_id = await user_factory(
+        full_name="Test Manager", role_name="Marketing Manager", account_id=account_id
+    )
+    sender_identity_id = await _create_sender_identity(account_id)
+    campaign_id = await _create_campaign(account_id, sender_identity_id, manager_id)
     try:
         cookies = _access_token_cookie(analyst_id)
         transport = ASGITransport(app=create_app())
@@ -361,6 +392,7 @@ async def test_send_and_test_send_on_unknown_campaign_returns_404(
 async def test_test_send_calls_smtp_with_the_campaigns_current_draft_content(
     monkeypatch: pytest.MonkeyPatch,
     user_factory: Callable[..., Awaitable[uuid.UUID]],
+    account_factory: Callable[..., Awaitable[uuid.UUID]],
 ) -> None:
     sent: list[dict[str, object]] = []
 
@@ -369,9 +401,12 @@ async def test_test_send_calls_smtp_with_the_campaigns_current_draft_content(
 
     monkeypatch.setattr(email_delivery_services, "send_email", _fake_send_email)
 
-    manager_id = await user_factory(full_name="Test Manager", role_name="Marketing Manager")
-    sender_identity_id = await _create_sender_identity()
-    campaign_id = await _create_campaign(sender_identity_id, manager_id)
+    account_id = await account_factory()
+    manager_id = await user_factory(
+        full_name="Test Manager", role_name="Marketing Manager", account_id=account_id
+    )
+    sender_identity_id = await _create_sender_identity(account_id)
+    campaign_id = await _create_campaign(account_id, sender_identity_id, manager_id)
     try:
         cookies = _access_token_cookie(manager_id)
         transport = ASGITransport(app=create_app())
@@ -400,15 +435,19 @@ async def test_test_send_calls_smtp_with_the_campaigns_current_draft_content(
 async def test_test_send_smtp_failure_returns_502(
     monkeypatch: pytest.MonkeyPatch,
     user_factory: Callable[..., Awaitable[uuid.UUID]],
+    account_factory: Callable[..., Awaitable[uuid.UUID]],
 ) -> None:
     async def _failing_send_email(**kwargs: object) -> None:
         raise EmailSendError("connection refused")
 
     monkeypatch.setattr(email_delivery_services, "send_email", _failing_send_email)
 
-    manager_id = await user_factory(full_name="Test Manager", role_name="Marketing Manager")
-    sender_identity_id = await _create_sender_identity()
-    campaign_id = await _create_campaign(sender_identity_id, manager_id)
+    account_id = await account_factory()
+    manager_id = await user_factory(
+        full_name="Test Manager", role_name="Marketing Manager", account_id=account_id
+    )
+    sender_identity_id = await _create_sender_identity(account_id)
+    campaign_id = await _create_campaign(account_id, sender_identity_id, manager_id)
     try:
         cookies = _access_token_cookie(manager_id)
         transport = ASGITransport(app=create_app())
@@ -436,7 +475,7 @@ async def test_webhook_rejects_request_with_no_credentials(
     actor_id = await user_factory(
         full_name="Test Manager", role_name="Marketing Manager", account_id=account_id
     )
-    sender_identity_id = await _create_connection_with_webhook_creds()
+    sender_identity_id = await _create_connection_with_webhook_creds(account_id)
     await _create_delivery_for_recipient(sender_identity_id, actor_id, account_id)
     try:
         transport = ASGITransport(app=create_app())
@@ -469,7 +508,7 @@ async def test_webhook_rejects_wrong_credentials(
     actor_id = await user_factory(
         full_name="Test Manager", role_name="Marketing Manager", account_id=account_id
     )
-    sender_identity_id = await _create_connection_with_webhook_creds()
+    sender_identity_id = await _create_connection_with_webhook_creds(account_id)
     await _create_delivery_for_recipient(sender_identity_id, actor_id, account_id)
     try:
         transport = ASGITransport(app=create_app())
@@ -503,7 +542,7 @@ async def test_webhook_delivery_event_updates_message_delivery_and_records_event
     actor_id = await user_factory(
         full_name="Test Manager", role_name="Marketing Manager", account_id=account_id
     )
-    sender_identity_id = await _create_connection_with_webhook_creds()
+    sender_identity_id = await _create_connection_with_webhook_creds(account_id)
     _, delivery_id = await _create_delivery_for_recipient(sender_identity_id, actor_id, account_id)
     try:
         transport = ASGITransport(app=create_app())
@@ -547,7 +586,7 @@ async def test_webhook_bounce_event_auto_suppresses_recipient(
     actor_id = await user_factory(
         full_name="Test Manager", role_name="Marketing Manager", account_id=account_id
     )
-    sender_identity_id = await _create_connection_with_webhook_creds()
+    sender_identity_id = await _create_connection_with_webhook_creds(account_id)
     _, delivery_id = await _create_delivery_for_recipient(
         sender_identity_id, actor_id, account_id, email="bouncy@example.com"
     )
@@ -595,7 +634,7 @@ async def test_webhook_unknown_message_id_is_a_noop_returns_200(
     actor_id = await user_factory(
         full_name="Test Manager", role_name="Marketing Manager", account_id=account_id
     )
-    sender_identity_id = await _create_connection_with_webhook_creds()
+    sender_identity_id = await _create_connection_with_webhook_creds(account_id)
     await _create_delivery_for_recipient(sender_identity_id, actor_id, account_id)
     try:
         transport = ASGITransport(app=create_app())
@@ -629,7 +668,7 @@ async def test_unsubscribe_valid_link_creates_event_and_suppresses_recipient(
     actor_id = await user_factory(
         full_name="Test Manager", role_name="Marketing Manager", account_id=account_id
     )
-    sender_identity_id = await _create_connection_with_webhook_creds()
+    sender_identity_id = await _create_connection_with_webhook_creds(account_id)
     recipient_id, _ = await _create_delivery_for_recipient(
         sender_identity_id, actor_id, account_id, email="unsub@example.com"
     )

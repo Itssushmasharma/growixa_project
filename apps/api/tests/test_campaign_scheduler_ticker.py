@@ -23,9 +23,10 @@ from growixa_api.jobs.schemas import JobEnvelope
 from growixa_api.templates.models import EmailTemplate  # noqa: F401  (registers FK target metadata)
 
 
-async def _create_sender_identity() -> uuid.UUID:
+async def _create_sender_identity(account_id: uuid.UUID) -> uuid.UUID:
     async with async_session_factory() as session:
         connection = EmailProviderConnection(
+            account_id=account_id,
             provider="POSTMARK",
             smtp_host="smtp.postmarkapp.com",
             smtp_port=587,
@@ -35,6 +36,7 @@ async def _create_sender_identity() -> uuid.UUID:
         session.add(connection)
         await session.flush()
         identity = SenderIdentity(
+            account_id=account_id,
             email_provider_connection_id=connection.id,
             from_email="hello@growixa.local",
             from_name="Growixa",
@@ -45,12 +47,20 @@ async def _create_sender_identity() -> uuid.UUID:
 
 
 @pytest.fixture
-async def sender_identity_id() -> AsyncGenerator[uuid.UUID, None]:
-    yield await _create_sender_identity()
+async def scheduler_account_id(
+    account_factory: Callable[..., Awaitable[uuid.UUID]],
+) -> AsyncGenerator[uuid.UUID, None]:
+    yield await account_factory()
+
+
+@pytest.fixture
+async def sender_identity_id(scheduler_account_id: uuid.UUID) -> AsyncGenerator[uuid.UUID, None]:
+    yield await _create_sender_identity(scheduler_account_id)
 
 
 async def _create_campaign(
     *,
+    account_id: uuid.UUID,
     sender_identity_id: uuid.UUID,
     actor_id: uuid.UUID,
     status: str,
@@ -58,6 +68,7 @@ async def _create_campaign(
 ) -> uuid.UUID:
     async with async_session_factory() as session:
         campaign = Campaign(
+            account_id=account_id,
             name="Scheduler ticker test",
             subject="Hi",
             body_html="<p>Hi</p>",
@@ -95,25 +106,34 @@ async def _cleanup(campaign_ids: list[uuid.UUID], *, sender_identity_id: uuid.UU
 @pytest.mark.integration
 async def test_claim_due_campaigns_only_claims_scheduled_and_due(
     user_factory: Callable[..., Awaitable[uuid.UUID]],
+    scheduler_account_id: uuid.UUID,
     sender_identity_id: uuid.UUID,
 ) -> None:
-    actor_id = await user_factory(full_name="Ticker Test", role_name="Admin")
+    actor_id = await user_factory(
+        full_name="Ticker Test", role_name="Admin", account_id=scheduler_account_id
+    )
     now = datetime.now(UTC)
 
     due_id = await _create_campaign(
+        account_id=scheduler_account_id,
         sender_identity_id=sender_identity_id,
         actor_id=actor_id,
         status="SCHEDULED",
         scheduled_at=now,
     )
     future_id = await _create_campaign(
+        account_id=scheduler_account_id,
         sender_identity_id=sender_identity_id,
         actor_id=actor_id,
         status="SCHEDULED",
         scheduled_at=now + timedelta(hours=1),
     )
     draft_id = await _create_campaign(
-        sender_identity_id=sender_identity_id, actor_id=actor_id, status="DRAFT", scheduled_at=None
+        account_id=scheduler_account_id,
+        sender_identity_id=sender_identity_id,
+        actor_id=actor_id,
+        status="DRAFT",
+        scheduled_at=None,
     )
 
     try:
@@ -143,6 +163,7 @@ async def test_claim_due_campaigns_only_claims_scheduled_and_due(
 async def test_run_scheduler_tick_publishes_one_job_per_claimed_campaign(
     monkeypatch: pytest.MonkeyPatch,
     user_factory: Callable[..., Awaitable[uuid.UUID]],
+    scheduler_account_id: uuid.UUID,
     sender_identity_id: uuid.UUID,
 ) -> None:
     published: list[tuple[str, JobEnvelope]] = []
@@ -152,8 +173,11 @@ async def test_run_scheduler_tick_publishes_one_job_per_claimed_campaign(
 
     monkeypatch.setattr(scheduler_module, "publish_job", _fake_publish_job)
 
-    actor_id = await user_factory(full_name="Ticker Test 2", role_name="Admin")
+    actor_id = await user_factory(
+        full_name="Ticker Test 2", role_name="Admin", account_id=scheduler_account_id
+    )
     due_id = await _create_campaign(
+        account_id=scheduler_account_id,
         sender_identity_id=sender_identity_id,
         actor_id=actor_id,
         status="SCHEDULED",
@@ -184,6 +208,7 @@ async def test_run_scheduler_tick_publishes_one_job_per_claimed_campaign(
 async def test_run_scheduler_tick_is_a_noop_when_nothing_is_due(
     monkeypatch: pytest.MonkeyPatch,
     user_factory: Callable[..., Awaitable[uuid.UUID]],
+    scheduler_account_id: uuid.UUID,
     sender_identity_id: uuid.UUID,
 ) -> None:
     published = False
@@ -194,8 +219,11 @@ async def test_run_scheduler_tick_is_a_noop_when_nothing_is_due(
 
     monkeypatch.setattr(scheduler_module, "publish_job", _fake_publish_job)
 
-    actor_id = await user_factory(full_name="Ticker Test 3", role_name="Admin")
+    actor_id = await user_factory(
+        full_name="Ticker Test 3", role_name="Admin", account_id=scheduler_account_id
+    )
     future_id = await _create_campaign(
+        account_id=scheduler_account_id,
         sender_identity_id=sender_identity_id,
         actor_id=actor_id,
         status="SCHEDULED",

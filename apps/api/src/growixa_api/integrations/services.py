@@ -39,36 +39,41 @@ class InvalidVerificationStatusError(Exception):
 
 
 async def get_active_connection(
-    session: AsyncSession, provider: str
+    session: AsyncSession, account_id: uuid.UUID, provider: str
 ) -> EmailProviderConnection | None:
-    return await get_active_email_provider_connection(session, provider)
+    return await get_active_email_provider_connection(session, account_id, provider)
 
 
-async def list_connections(session: AsyncSession) -> Sequence[EmailProviderConnection]:
-    return await list_email_provider_connections(session)
+async def list_connections(
+    session: AsyncSession, account_id: uuid.UUID
+) -> Sequence[EmailProviderConnection]:
+    return await list_email_provider_connections(session, account_id)
 
 
 async def create_connection(
     session: AsyncSession,
+    account_id: uuid.UUID,
     data: EmailProviderConnectionIn,
     actor_id: uuid.UUID,
 ) -> tuple[EmailProviderConnection, str]:
-    """Deactivates any existing active connection **for this same provider** and
-    creates a new row rather than overwriting in place, so the credential history
-    isn't silently lost (per DATA_MODEL.md's singleton-by-convention note) — since
-    GRX-EMAIL-011, "singleton" means one active connection per provider, not one
-    globally, so a different provider's active connection is left untouched.
+    """Deactivates any existing active connection **for this same account and
+    provider** and creates a new row rather than overwriting in place, so the
+    credential history isn't silently lost (per DATA_MODEL.md's singleton-by-convention
+    note) — since GRX-EMAIL-011, "singleton" means one active connection per provider,
+    not one globally, and since GRX-SAAS-001 that's scoped per account too, so a
+    different account's or a different provider's active connection is left untouched.
 
     Also generates this connection's webhook Basic Auth credentials (THREAT_MODEL.md's
     T14) — the plaintext password is returned once, alongside the row, for the API
     layer to include in this one response; it is never persisted or retrievable again.
     """
-    await deactivate_active_email_provider_connections(session, data.provider)
+    await deactivate_active_email_provider_connections(session, account_id, data.provider)
     webhook_username = secrets.token_urlsafe(12)
     webhook_password = secrets.token_urlsafe(24)
     connection = await create_email_provider_connection(
         session,
         {
+            "account_id": account_id,
             "provider": data.provider,
             "smtp_host": data.smtp_host,
             "smtp_port": data.smtp_port,
@@ -96,21 +101,25 @@ async def test_email_provider_connection(data: EmailProviderConnectionTestIn) ->
     )
 
 
-async def list_identities(session: AsyncSession) -> Sequence[SenderIdentity]:
-    return await list_sender_identities(session)
+async def list_identities(session: AsyncSession, account_id: uuid.UUID) -> Sequence[SenderIdentity]:
+    return await list_sender_identities(session, account_id)
 
 
 async def create_identity(
     session: AsyncSession,
+    account_id: uuid.UUID,
     data: SenderIdentityIn,
     actor_id: uuid.UUID,
 ) -> SenderIdentity:
-    connection = await get_email_provider_connection(session, data.email_provider_connection_id)
+    connection = await get_email_provider_connection(
+        session, account_id, data.email_provider_connection_id
+    )
     if connection is None:
         raise EmailProviderConnectionNotFoundError
     return await create_sender_identity(
         session,
         {
+            "account_id": account_id,
             "email_provider_connection_id": data.email_provider_connection_id,
             "from_email": data.from_email,
             "from_name": data.from_name,
@@ -122,12 +131,13 @@ async def create_identity(
 
 async def update_identity_verification_status(
     session: AsyncSession,
+    account_id: uuid.UUID,
     identity_id: uuid.UUID,
     status: str,
 ) -> SenderIdentity:
     if status not in VALID_VERIFICATION_STATUSES:
         raise InvalidVerificationStatusError(status)
-    identity = await get_sender_identity(session, identity_id)
+    identity = await get_sender_identity(session, account_id, identity_id)
     if identity is None:
         raise SenderIdentityNotFoundError
     identity.verification_status = status

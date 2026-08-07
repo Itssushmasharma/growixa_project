@@ -61,10 +61,11 @@ async def _cleanup() -> None:
 
 
 async def _create_campaign_referencing_template(
-    template_id: uuid.UUID, actor_id: uuid.UUID
+    account_id: uuid.UUID, template_id: uuid.UUID, actor_id: uuid.UUID
 ) -> None:
     async with async_session_factory() as session:
         connection = EmailProviderConnection(
+            account_id=account_id,
             provider="POSTMARK",
             smtp_host="smtp.postmarkapp.com",
             smtp_port=587,
@@ -74,6 +75,7 @@ async def _create_campaign_referencing_template(
         session.add(connection)
         await session.flush()
         identity = SenderIdentity(
+            account_id=account_id,
             email_provider_connection_id=connection.id,
             from_email="hello@growixa.local",
             from_name="Growixa",
@@ -81,6 +83,7 @@ async def _create_campaign_referencing_template(
         session.add(identity)
         await session.flush()
         campaign = Campaign(
+            account_id=account_id,
             name="Uses the template",
             subject="Hi",
             body_html="<p>Hi</p>",
@@ -159,9 +162,15 @@ async def test_editing_a_template_creates_a_new_version_without_mutating_the_old
 @pytest.mark.integration
 async def test_view_only_role_can_read_but_not_create_or_edit(
     user_factory: Callable[..., Awaitable[uuid.UUID]],
+    account_factory: Callable[..., Awaitable[uuid.UUID]],
 ) -> None:
-    manager_id = await user_factory(full_name="Test Manager", role_name="Marketing Manager")
-    analyst_id = await user_factory(full_name="Test Analyst", role_name="Analyst")
+    account_id = await account_factory()
+    manager_id = await user_factory(
+        full_name="Test Manager", role_name="Marketing Manager", account_id=account_id
+    )
+    analyst_id = await user_factory(
+        full_name="Test Analyst", role_name="Analyst", account_id=account_id
+    )
     try:
         transport = ASGITransport(app=create_app())
         async with AsyncClient(
@@ -312,12 +321,16 @@ async def test_view_only_role_cannot_delete(
 @pytest.mark.integration
 async def test_deleting_a_template_referenced_by_a_campaign_returns_409(
     user_factory: Callable[..., Awaitable[uuid.UUID]],
+    account_factory: Callable[..., Awaitable[uuid.UUID]],
 ) -> None:
     """campaigns.template_id has no ON DELETE behavior — a campaign copies a template's
     content at creation time rather than depending on it, but the FK still exists to
     preserve the "created from" link, so deleting a referenced template must be blocked
     with a clean error, not a raw 500."""
-    manager_id = await user_factory(full_name="Test Manager", role_name="Marketing Manager")
+    account_id = await account_factory()
+    manager_id = await user_factory(
+        full_name="Test Manager", role_name="Marketing Manager", account_id=account_id
+    )
     try:
         cookies = _access_token_cookie(manager_id)
         transport = ASGITransport(app=create_app())
@@ -327,7 +340,9 @@ async def test_deleting_a_template_referenced_by_a_campaign_returns_409(
             create_response = await client.post("/templates", json=TEMPLATE_PAYLOAD)
             template_id = create_response.json()["id"]
 
-            await _create_campaign_referencing_template(uuid.UUID(template_id), manager_id)
+            await _create_campaign_referencing_template(
+                account_id, uuid.UUID(template_id), manager_id
+            )
 
             delete_response = await client.delete(f"/templates/{template_id}")
             list_response = await client.get("/templates")

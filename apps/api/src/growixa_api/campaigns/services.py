@@ -87,9 +87,12 @@ async def _validate_recipient_target(
 async def create_campaign(
     session: AsyncSession, account_id: uuid.UUID, data: CampaignIn, actor_id: uuid.UUID
 ) -> Campaign:
-    if await get_sender_identity(session, data.sender_identity_id) is None:
+    if await get_sender_identity(session, account_id, data.sender_identity_id) is None:
         raise SenderIdentityNotFoundError
-    if data.template_id is not None and await get_template(session, data.template_id) is None:
+    if (
+        data.template_id is not None
+        and await get_template(session, account_id, data.template_id) is None
+    ):
         raise TemplateNotFoundError
     await _validate_recipient_target(
         session, account_id, data.recipient_type, data.recipient_segment_id, data.recipient_list_id
@@ -97,6 +100,7 @@ async def create_campaign(
     return await create_campaign_row(
         session,
         {
+            "account_id": account_id,
             "name": data.name,
             "subject": data.subject,
             "body_html": data.body_html,
@@ -111,21 +115,23 @@ async def create_campaign(
     )
 
 
-async def get_campaign_or_raise(session: AsyncSession, campaign_id: uuid.UUID) -> Campaign:
-    campaign = await get_campaign(session, campaign_id)
+async def get_campaign_or_raise(
+    session: AsyncSession, account_id: uuid.UUID, campaign_id: uuid.UUID
+) -> Campaign:
+    campaign = await get_campaign(session, account_id, campaign_id)
     if campaign is None:
         raise CampaignNotFoundError
     return campaign
 
 
-async def list_all_campaigns(session: AsyncSession) -> Sequence[Campaign]:
-    return await list_campaigns(session)
+async def list_all_campaigns(session: AsyncSession, account_id: uuid.UUID) -> Sequence[Campaign]:
+    return await list_campaigns(session, account_id)
 
 
 async def update_campaign(
     session: AsyncSession, account_id: uuid.UUID, campaign_id: uuid.UUID, data: CampaignUpdateIn
 ) -> Campaign:
-    campaign = await get_campaign(session, campaign_id)
+    campaign = await get_campaign(session, account_id, campaign_id)
     if campaign is None:
         raise CampaignNotFoundError
     if campaign.status != "DRAFT":
@@ -134,13 +140,13 @@ async def update_campaign(
     fields = data.model_dump(exclude_unset=True)
 
     if "sender_identity_id" in fields and (
-        await get_sender_identity(session, fields["sender_identity_id"]) is None
+        await get_sender_identity(session, account_id, fields["sender_identity_id"]) is None
     ):
         raise SenderIdentityNotFoundError
     if (
         "template_id" in fields
         and fields["template_id"] is not None
-        and await get_template(session, fields["template_id"]) is None
+        and await get_template(session, account_id, fields["template_id"]) is None
     ):
         raise TemplateNotFoundError
 
@@ -166,7 +172,7 @@ async def update_campaign(
 
 
 async def schedule_campaign(
-    session: AsyncSession, campaign_id: uuid.UUID, data: ScheduleCampaignIn
+    session: AsyncSession, account_id: uuid.UUID, campaign_id: uuid.UUID, data: ScheduleCampaignIn
 ) -> Campaign:
     """Move a DRAFT campaign to SCHEDULED status.
 
@@ -177,7 +183,7 @@ async def schedule_campaign(
     ``data.scheduled_at`` must be strictly in the future (UTC); a past or
     present value raises ``ValueError``.
     """
-    campaign = await get_campaign(session, campaign_id)
+    campaign = await get_campaign(session, account_id, campaign_id)
     if campaign is None:
         raise CampaignNotFoundError
     if campaign.status != "DRAFT":
@@ -200,14 +206,16 @@ async def schedule_campaign(
     return campaign
 
 
-async def cancel_campaign(session: AsyncSession, campaign_id: uuid.UUID) -> Campaign:
+async def cancel_campaign(
+    session: AsyncSession, account_id: uuid.UUID, campaign_id: uuid.UUID
+) -> Campaign:
     """Cancel a DRAFT or SCHEDULED campaign before it is dispatched.
 
     Campaigns that are already DISPATCHING, SENDING, SENT, or FAILED cannot be
     cancelled (they are either mid-flight or complete) — raises
     ``CampaignNotCancellableError``.
     """
-    campaign = await get_campaign(session, campaign_id)
+    campaign = await get_campaign(session, account_id, campaign_id)
     if campaign is None:
         raise CampaignNotFoundError
     if campaign.status not in {"DRAFT", "SCHEDULED"}:

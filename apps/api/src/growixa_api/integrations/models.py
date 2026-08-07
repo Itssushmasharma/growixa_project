@@ -16,11 +16,13 @@ class EmailProviderConnection(Base):
             "provider IN ('POSTMARK', 'CUSTOM_SMTP')",
             name="ck_email_provider_connections_provider",
         ),
-        # DB-enforced "one active connection per provider" (GRX-EMAIL-011 / DEC-GRX-016)
-        # — a partial unique index, not just the app-level deactivate-then-create
-        # convention DATA_MODEL.md describes for e.g. company_profile.
+        # DB-enforced "one active connection per provider per account" (GRX-EMAIL-011 /
+        # DEC-GRX-016, composite since GRX-SAAS-001) — a partial unique index, not just
+        # the app-level deactivate-then-create convention DATA_MODEL.md describes for
+        # e.g. company_profile.
         Index(
             "ux_email_provider_connections_active_per_provider",
+            "account_id",
             "provider",
             unique=True,
             postgresql_where=text("is_active"),
@@ -28,6 +30,12 @@ class EmailProviderConnection(Base):
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    account_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("accounts.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     provider: Mapped[str] = mapped_column(Text, nullable=False)
     smtp_host: Mapped[str] = mapped_column(Text, nullable=False)
     smtp_port: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -63,6 +71,14 @@ class SenderIdentity(Base):
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    # Denormalized from email_provider_connection_id's own account_id -- see
+    # EmailTemplateVersion's identical note.
+    account_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("accounts.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     email_provider_connection_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("email_provider_connections.id"), nullable=False
     )

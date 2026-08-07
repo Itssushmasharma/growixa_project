@@ -24,10 +24,14 @@ from sqlalchemy import delete
 from growixa_api.app import create_app
 from growixa_api.audit.models import AuditLog
 from growixa_api.brand.models import BrandProfile
+from growixa_api.campaigns.models import Campaign, CampaignRecipient
 from growixa_api.company.models import CompanyProfile
 from growixa_api.config import get_settings
 from growixa_api.contacts.models import Contact, SuppressionEntry, Tag
 from growixa_api.db import async_session_factory
+from growixa_api.email_delivery.models import EmailEvent, MessageDelivery
+from growixa_api.integrations.models import EmailProviderConnection, SenderIdentity
+from growixa_api.templates.models import EmailTemplate, EmailTemplateVersion
 from growixa_api.users.models import User
 
 
@@ -430,3 +434,338 @@ async def test_tag_name_can_be_reused_across_accounts_without_leaking(
         assert tag_ids == {create_a_response.json()["id"]}
     finally:
         await _clear_contacts_fixtures()
+
+
+# --- email/campaigns/integrations (GRX-SAAS-001 email slice) ---
+
+
+async def _clear_email_fixtures() -> None:
+    async with async_session_factory() as session:
+        await session.execute(delete(EmailEvent))
+        await session.execute(delete(MessageDelivery))
+        await session.execute(delete(CampaignRecipient))
+        await session.execute(delete(Campaign))
+        await session.execute(delete(Contact))
+        await session.execute(delete(SenderIdentity))
+        await session.execute(delete(EmailProviderConnection))
+        await session.execute(delete(EmailTemplateVersion))
+        await session.execute(delete(EmailTemplate))
+        await session.commit()
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_admin_cannot_list_another_accounts_templates(
+    user_factory: Callable[..., Awaitable[uuid.UUID]],
+    account_factory: Callable[..., Awaitable[uuid.UUID]],
+) -> None:
+    account_a = await account_factory()
+    account_b = await account_factory()
+    admin_a = await user_factory(
+        full_name="Account A Admin", role_name="Admin", account_id=account_a
+    )
+    admin_b = await user_factory(
+        full_name="Account B Admin", role_name="Admin", account_id=account_b
+    )
+
+    transport = ASGITransport(app=create_app())
+    try:
+        async with AsyncClient(
+            transport=transport, base_url="http://test", cookies=_access_token_cookie(admin_b)
+        ) as client_b:
+            create_response = await client_b.post(
+                "/templates",
+                json={"name": "B's Template", "subject": "Hi", "body_html": "<p>hi</p>"},
+            )
+            assert create_response.status_code == 201
+            template_b_id = create_response.json()["id"]
+
+        async with AsyncClient(
+            transport=transport, base_url="http://test", cookies=_access_token_cookie(admin_a)
+        ) as client_a:
+            list_response = await client_a.get("/templates")
+            get_response = await client_a.get(f"/templates/{template_b_id}")
+
+        assert list_response.status_code == 200
+        assert list_response.json() == []
+        assert get_response.status_code == 404
+    finally:
+        await _clear_email_fixtures()
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_admin_gets_404_not_403_on_another_accounts_campaign(
+    user_factory: Callable[..., Awaitable[uuid.UUID]],
+    account_factory: Callable[..., Awaitable[uuid.UUID]],
+) -> None:
+    account_a = await account_factory()
+    account_b = await account_factory()
+    admin_a = await user_factory(
+        full_name="Account A Admin", role_name="Admin", account_id=account_a
+    )
+    # Super Admin: creating a connection/sender identity needs integrations.manage,
+    # which per RBAC.md is Super-Admin-only.
+    admin_b = await user_factory(
+        full_name="Account B Super Admin", role_name="Super Admin", account_id=account_b
+    )
+
+    transport = ASGITransport(app=create_app())
+    try:
+        async with AsyncClient(
+            transport=transport, base_url="http://test", cookies=_access_token_cookie(admin_b)
+        ) as client_b:
+            connection_response = await client_b.post(
+                "/integrations/email-provider",
+                json={
+                    "provider": "POSTMARK",
+                    "smtp_host": "smtp.postmarkapp.com",
+                    "smtp_port": 587,
+                    "smtp_username": "token",
+                    "smtp_password": "b-secret",
+                },
+            )
+            assert connection_response.status_code == 201
+            identity_response = await client_b.post(
+                "/integrations/sender-identities",
+                json={
+                    "email_provider_connection_id": connection_response.json()["id"],
+                    "from_email": "b@growixa.local",
+                    "from_name": "Account B",
+                },
+            )
+            assert identity_response.status_code == 201
+            campaign_response = await client_b.post(
+                "/campaigns",
+                json={
+                    "name": "B's Campaign",
+                    "subject": "Hi",
+                    "body_html": "<p>hi</p>",
+                    "sender_identity_id": identity_response.json()["id"],
+                    "recipient_type": "ALL_CONTACTS",
+                },
+            )
+            assert campaign_response.status_code == 201
+            campaign_b_id = campaign_response.json()["id"]
+
+        async with AsyncClient(
+            transport=transport, base_url="http://test", cookies=_access_token_cookie(admin_a)
+        ) as client_a:
+            get_response = await client_a.get(f"/campaigns/{campaign_b_id}")
+            edit_response = await client_a.patch(
+                f"/campaigns/{campaign_b_id}", json={"subject": "Hijacked"}
+            )
+
+        assert get_response.status_code == 404
+        assert edit_response.status_code == 404
+    finally:
+        await _clear_email_fixtures()
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_two_accounts_can_each_independently_activate_the_same_provider(
+    user_factory: Callable[..., Awaitable[uuid.UUID]],
+    account_factory: Callable[..., Awaitable[uuid.UUID]],
+) -> None:
+    """The GRX-EMAIL-011 partial unique index on (provider) WHERE is_active became
+    composite on (account_id, provider) for GRX-SAAS-001 -- proves two different
+    accounts can each have their own active POSTMARK connection at the same time,
+    and that each account's list only shows its own row."""
+    account_a = await account_factory()
+    account_b = await account_factory()
+    # Super Admin: integrations.manage is Super-Admin-only per RBAC.md.
+    admin_a = await user_factory(
+        full_name="Account A Super Admin", role_name="Super Admin", account_id=account_a
+    )
+    admin_b = await user_factory(
+        full_name="Account B Super Admin", role_name="Super Admin", account_id=account_b
+    )
+
+    transport = ASGITransport(app=create_app())
+    try:
+        async with AsyncClient(
+            transport=transport, base_url="http://test", cookies=_access_token_cookie(admin_a)
+        ) as client_a:
+            response_a = await client_a.post(
+                "/integrations/email-provider",
+                json={
+                    "provider": "POSTMARK",
+                    "smtp_host": "smtp.postmarkapp.com",
+                    "smtp_port": 587,
+                    "smtp_username": "token",
+                    "smtp_password": "a-secret",
+                },
+            )
+
+        async with AsyncClient(
+            transport=transport, base_url="http://test", cookies=_access_token_cookie(admin_b)
+        ) as client_b:
+            response_b = await client_b.post(
+                "/integrations/email-provider",
+                json={
+                    "provider": "POSTMARK",
+                    "smtp_host": "smtp.postmarkapp.com",
+                    "smtp_port": 587,
+                    "smtp_username": "token",
+                    "smtp_password": "b-secret",
+                },
+            )
+            list_b_response = await client_b.get("/integrations/email-providers")
+
+        assert response_a.status_code == 201
+        assert response_b.status_code == 201
+        assert response_a.json()["id"] != response_b.json()["id"]
+        assert list_b_response.status_code == 200
+        assert [row["id"] for row in list_b_response.json()] == [response_b.json()["id"]]
+    finally:
+        await _clear_email_fixtures()
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_postmark_webhook_only_updates_the_matching_accounts_own_delivery(
+    user_factory: Callable[..., Awaitable[uuid.UUID]],
+    account_factory: Callable[..., Awaitable[uuid.UUID]],
+) -> None:
+    """`/webhooks/postmark` carries no account identifier of its own -- it resolves the
+    account purely by matching Basic Auth credentials against every account's active
+    POSTMARK connection (see email_delivery.services.verify_webhook_credentials). Proves
+    that resolution is real isolation, not just "any valid credentials work": account B's
+    correct credentials against account A's MessageID must not touch account A's row."""
+    account_a = await account_factory()
+    account_b = await account_factory()
+    # Super Admin: integrations.manage is Super-Admin-only per RBAC.md.
+    admin_a = await user_factory(
+        full_name="Account A Super Admin", role_name="Super Admin", account_id=account_a
+    )
+    admin_b = await user_factory(
+        full_name="Account B Super Admin", role_name="Super Admin", account_id=account_b
+    )
+
+    transport = ASGITransport(app=create_app())
+    try:
+        async with AsyncClient(
+            transport=transport, base_url="http://test", cookies=_access_token_cookie(admin_a)
+        ) as client_a:
+            connection_a = (
+                await client_a.post(
+                    "/integrations/email-provider",
+                    json={
+                        "provider": "POSTMARK",
+                        "smtp_host": "smtp.postmarkapp.com",
+                        "smtp_port": 587,
+                        "smtp_username": "token",
+                        "smtp_password": "a-secret",
+                    },
+                )
+            ).json()
+            identity_a = (
+                await client_a.post(
+                    "/integrations/sender-identities",
+                    json={
+                        "email_provider_connection_id": connection_a["id"],
+                        "from_email": "a@growixa.local",
+                        "from_name": "Account A",
+                    },
+                )
+            ).json()
+        async with AsyncClient(
+            transport=transport, base_url="http://test", cookies=_access_token_cookie(admin_b)
+        ) as client_b:
+            connection_b = (
+                await client_b.post(
+                    "/integrations/email-provider",
+                    json={
+                        "provider": "POSTMARK",
+                        "smtp_host": "smtp.postmarkapp.com",
+                        "smtp_port": 587,
+                        "smtp_username": "token",
+                        "smtp_password": "b-secret",
+                    },
+                )
+            ).json()
+
+        # Basic Auth needs the real (auto-generated) usernames too.
+        async with async_session_factory() as session:
+            conn_a_row = await session.get(EmailProviderConnection, uuid.UUID(connection_a["id"]))
+            conn_b_row = await session.get(EmailProviderConnection, uuid.UUID(connection_b["id"]))
+            assert conn_a_row is not None
+            assert conn_b_row is not None
+            assert conn_a_row.webhook_username is not None
+            assert conn_b_row.webhook_username is not None
+            wh_username_a = conn_a_row.webhook_username
+            wh_username_b = conn_b_row.webhook_username
+
+        # Build account A's own send-chain directly, matching test_email_delivery.py's
+        # established fixture pattern.
+        async with async_session_factory() as session:
+            contact = Contact(account_id=account_a, email="recipient@example.com")
+            session.add(contact)
+            await session.flush()
+            campaign = Campaign(
+                account_id=account_a,
+                name="A's Campaign",
+                subject="Hi",
+                body_html="<p>hi</p>",
+                sender_identity_id=uuid.UUID(identity_a["id"]),
+                recipient_type="ALL_CONTACTS",
+                status="SENDING",
+            )
+            session.add(campaign)
+            await session.flush()
+            recipient = CampaignRecipient(
+                account_id=account_a,
+                campaign_id=campaign.id,
+                contact_id=contact.id,
+                email=contact.email,
+                status="SENT",
+            )
+            session.add(recipient)
+            await session.flush()
+            delivery = MessageDelivery(
+                account_id=account_a,
+                campaign_recipient_id=recipient.id,
+                provider_message_id="pm-A-only",
+                status="SENT",
+            )
+            session.add(delivery)
+            await session.commit()
+            delivery_id = delivery.id
+
+        async with AsyncClient(transport=transport, base_url="http://test") as public_client:
+            # Account B's own (valid) credentials, against account A's MessageID -- must
+            # not find or touch account A's delivery.
+            wrong_account_response = await public_client.post(
+                "/webhooks/postmark",
+                json={
+                    "RecordType": "Delivery",
+                    "MessageID": "pm-A-only",
+                    "Recipient": "recipient@example.com",
+                },
+                auth=(wh_username_b, connection_b["webhook_password"]),
+            )
+            assert wrong_account_response.status_code == 200  # unmatched -- silent no-op
+
+            async with async_session_factory() as session:
+                delivery_after_wrong = await session.get(MessageDelivery, delivery_id)
+                assert delivery_after_wrong is not None
+                assert delivery_after_wrong.status == "SENT"  # untouched
+
+            right_account_response = await public_client.post(
+                "/webhooks/postmark",
+                json={
+                    "RecordType": "Delivery",
+                    "MessageID": "pm-A-only",
+                    "Recipient": "recipient@example.com",
+                },
+                auth=(wh_username_a, connection_a["webhook_password"]),
+            )
+            assert right_account_response.status_code == 200
+
+            async with async_session_factory() as session:
+                delivery_after_right = await session.get(MessageDelivery, delivery_id)
+                assert delivery_after_right is not None
+                assert delivery_after_right.status == "DELIVERED"
+    finally:
+        await _clear_email_fixtures()

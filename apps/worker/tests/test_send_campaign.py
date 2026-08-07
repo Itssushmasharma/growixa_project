@@ -38,6 +38,11 @@ from growixa_worker.models import (
 )
 from growixa_worker.send_campaign import handle_send_campaign
 
+# The seed account every GRX-SAAS-001 migration backfills pre-existing data into --
+# guaranteed to exist in any migrated DB, so worker tests (which have no Account model
+# of their own to create a fresh one) reuse it rather than needing a real accounts insert.
+_ACCOUNT_ID = uuid.UUID("00000000-0000-0000-0000-000000000001")
+
 
 def _encrypt(plaintext: str) -> str:
     return Fernet(get_settings().encryption_key.encode()).encrypt(plaintext.encode()).decode()
@@ -52,6 +57,7 @@ async def session() -> AsyncGenerator[AsyncSession, None]:
 async def _create_sender_identity(session: AsyncSession) -> uuid.UUID:
     connection = EmailProviderConnection(
         id=uuid.uuid4(),
+        account_id=_ACCOUNT_ID,
         provider="POSTMARK",
         smtp_host="smtp.postmarkapp.com",
         smtp_port=587,
@@ -62,6 +68,7 @@ async def _create_sender_identity(session: AsyncSession) -> uuid.UUID:
     await session.flush()
     identity = SenderIdentity(
         id=uuid.uuid4(),
+        account_id=_ACCOUNT_ID,
         email_provider_connection_id=connection.id,
         from_email="hello@growixa.local",
         from_name="Growixa",
@@ -74,7 +81,7 @@ async def _create_sender_identity(session: AsyncSession) -> uuid.UUID:
 async def _create_contact(
     session: AsyncSession, email: str, *, status: str = "ACTIVE"
 ) -> uuid.UUID:
-    contact = Contact(id=uuid.uuid4(), email=email, status=status)
+    contact = Contact(id=uuid.uuid4(), account_id=_ACCOUNT_ID, email=email, status=status)
     session.add(contact)
     await session.flush()
     return contact.id
@@ -90,6 +97,7 @@ async def _create_campaign(
 ) -> uuid.UUID:
     campaign = Campaign(
         id=uuid.uuid4(),
+        account_id=_ACCOUNT_ID,
         name="Test Campaign",
         subject="Hello",
         body_html="<p>hi</p>",
@@ -193,11 +201,17 @@ async def test_suppressed_and_withdrawn_consent_contacts_are_excluded(
         withdrawn_id = await _create_contact(session, "withdrawn@example.com")
 
         session.add(
-            SuppressionEntry(id=uuid.uuid4(), email="suppressed@example.com", reason="MANUAL")
+            SuppressionEntry(
+                id=uuid.uuid4(),
+                account_id=_ACCOUNT_ID,
+                email="suppressed@example.com",
+                reason="MANUAL",
+            )
         )
         session.add(
             ConsentRecord(
                 id=uuid.uuid4(),
+                account_id=_ACCOUNT_ID,
                 contact_id=withdrawn_id,
                 channel="EMAIL",
                 status="WITHDRAWN",
@@ -254,13 +268,21 @@ async def test_saved_segment_and_list_targeting_resolve_correctly(
         await _create_contact(session, "not-in-segment@example.com")
         in_list_id = await _create_contact(session, "in-list@example.com")
 
-        segment = Segment(id=uuid.uuid4(), name="Test Segment", type="SAVED")
+        segment = Segment(
+            id=uuid.uuid4(), account_id=_ACCOUNT_ID, name="Test Segment", type="SAVED"
+        )
         session.add(segment)
-        contact_list = ContactList(id=uuid.uuid4(), name="Test List")
+        contact_list = ContactList(id=uuid.uuid4(), account_id=_ACCOUNT_ID, name="Test List")
         session.add(contact_list)
         await session.flush()
-        session.add(SegmentMember(segment_id=segment.id, contact_id=in_segment_id))
-        session.add(ContactListMember(list_id=contact_list.id, contact_id=in_list_id))
+        session.add(
+            SegmentMember(account_id=_ACCOUNT_ID, segment_id=segment.id, contact_id=in_segment_id)
+        )
+        session.add(
+            ContactListMember(
+                account_id=_ACCOUNT_ID, list_id=contact_list.id, contact_id=in_list_id
+            )
+        )
         await session.commit()
 
         segment_campaign_id = await _create_campaign(
@@ -298,12 +320,15 @@ async def test_dynamic_segment_evaluates_rules_at_send_time(
         await _create_contact(session, "vip@example.com")
         await _create_contact(session, "regular@example.com")
 
-        segment = Segment(id=uuid.uuid4(), name="VIP Segment", type="DYNAMIC")
+        segment = Segment(
+            id=uuid.uuid4(), account_id=_ACCOUNT_ID, name="VIP Segment", type="DYNAMIC"
+        )
         session.add(segment)
         await session.flush()
         session.add(
             SegmentRule(
                 id=uuid.uuid4(),
+                account_id=_ACCOUNT_ID,
                 segment_id=segment.id,
                 field="email",
                 operator="contains",
