@@ -1,0 +1,32 @@
+# Multi-stage Dockerfile for Hugging Face Spaces — Combined API + Worker
+FROM python:3.13-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    git \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy python project definitions
+COPY apps/api/pyproject.toml /app/apps/api/pyproject.toml
+COPY apps/worker/pyproject.toml /app/apps/worker/pyproject.toml
+
+# Copy application source code
+COPY apps/api /app/apps/api
+COPY apps/worker /app/apps/worker
+
+# Install API and Worker in editable mode
+RUN pip install --no-cache-dir -e "/app/apps/api" && \
+    pip install --no-cache-dir -e "/app/apps/worker"
+
+# Copy runner script
+COPY start.sh /app/start.sh
+RUN chmod +x /app/start.sh
+
+# Hugging Face Space default port is 7860
+EXPOSE 7860
+
+ENTRYPOINT ["/app/start.sh"]
