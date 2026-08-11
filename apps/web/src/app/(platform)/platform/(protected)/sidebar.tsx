@@ -1,20 +1,39 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+
+import iconMark from "@/assets/icon/growixa-icon-mark.png";
 
 import styles from "./sidebar.module.css";
 
 interface NavItem {
   label: string;
   href: string;
+  icon: string;
   requiresPermission: string;
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { label: "Accounts", href: "/platform/accounts", requiresPermission: "platform.accounts.manage" },
-  { label: "Usage", href: "/platform/usage", requiresPermission: "platform.usage.manage" },
-  { label: "Campaigns", href: "/platform/campaigns", requiresPermission: "platform.usage.manage" },
+  {
+    label: "Accounts",
+    href: "/platform/accounts",
+    icon: "🏢",
+    requiresPermission: "platform.accounts.manage",
+  },
+  {
+    label: "Usage",
+    href: "/platform/usage",
+    icon: "📈",
+    requiresPermission: "platform.usage.manage",
+  },
+  {
+    label: "Campaigns",
+    href: "/platform/campaigns",
+    icon: "📧",
+    requiresPermission: "platform.usage.manage",
+  },
 ];
 
 export function Sidebar({ permissions }: { permissions: string[] }) {
@@ -23,6 +42,15 @@ export function Sidebar({ permissions }: { permissions: string[] }) {
 
   return (
     <nav className={styles.sidebar}>
+      <div className={styles.brand}>
+        <Image src={iconMark} alt="" width={28} height={28} />
+        <div>
+          <div className={styles.brandName}>Growixa</div>
+          <div className={styles.brandCaption}>PLATFORM ADMIN</div>
+        </div>
+      </div>
+
+      <div className={styles.sectionLabel}>OVERSIGHT</div>
       {items.map((item) => {
         const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
         return (
@@ -31,7 +59,10 @@ export function Sidebar({ permissions }: { permissions: string[] }) {
             href={item.href}
             className={isActive ? styles.navItemActive : styles.navItem}
           >
-            {item.label}
+            <span className={styles.navIcon} aria-hidden="true">
+              {item.icon}
+            </span>
+            <span>{item.label}</span>
           </Link>
         );
       })}
