@@ -6,7 +6,20 @@ import { ApiError, apiFetch } from "@/lib/api-client";
 import { ToastProvider } from "@/components/toast/toast-context";
 
 import { IntegrationsPage } from "./integrations-page";
-import type { EmailProviderConnection, MeResponse, SenderIdentity } from "./types";
+import type {
+  EmailProviderConnection,
+  MeResponse,
+  SenderIdentity,
+  SocialConnection,
+} from "./types";
+
+const mockReplace = vi.fn();
+let mockSearchParams = new URLSearchParams();
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ replace: mockReplace }),
+  useSearchParams: () => mockSearchParams,
+}));
 
 vi.mock("@/lib/api-client", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/api-client")>();
@@ -54,6 +67,17 @@ const CUSTOM_SMTP_CONNECTION: EmailProviderConnection = {
   webhook_username: "wh-user-2",
 };
 
+const SOCIAL_CONNECTION: SocialConnection = {
+  id: "social-conn-1",
+  provider: "INSTAGRAM_BUSINESS",
+  ig_business_account_id: "ig-123",
+  ig_username: "growixa_test",
+  facebook_page_id: "page-123",
+  is_active: true,
+  last_connected_at: "2026-08-12T00:00:00Z",
+  last_error: null,
+};
+
 const IDENTITY: SenderIdentity = {
   id: "identity-1",
   email_provider_connection_id: "conn-postmark",
@@ -67,6 +91,8 @@ const IDENTITY: SenderIdentity = {
 
 beforeEach(() => {
   mockedApiFetch.mockReset();
+  mockReplace.mockReset();
+  mockSearchParams = new URLSearchParams();
 });
 
 describe("IntegrationsPage", () => {
@@ -97,6 +123,7 @@ describe("IntegrationsPage", () => {
       if (path === "/auth/me") return Promise.resolve(meWithPermissions(["integrations.manage"]));
       if (path === "/integrations/email-providers") return Promise.resolve([]);
       if (path === "/integrations/sender-identities") return Promise.resolve([]);
+      if (path === "/social/connections") return Promise.resolve([]);
       throw new Error(`unexpected path: ${path}`);
     });
 
@@ -104,7 +131,8 @@ describe("IntegrationsPage", () => {
 
     expect(await screen.findByText("Postmark")).toBeInTheDocument();
     expect(screen.getByText("Custom SMTP")).toBeInTheDocument();
-    expect(screen.getAllByText("Unconfigured")).toHaveLength(2);
+    // 3, not 2 -- includes the Instagram card (GRX-SOCIAL-010), also unconfigured here.
+    expect(screen.getAllByText("Unconfigured")).toHaveLength(3);
   });
 
   it("configuring Postmark leaves Custom SMTP still Unconfigured", async () => {
@@ -113,6 +141,7 @@ describe("IntegrationsPage", () => {
       if (path === "/auth/me") return Promise.resolve(meWithPermissions(["integrations.manage"]));
       if (path === "/integrations/email-providers" && !init) return Promise.resolve([]);
       if (path === "/integrations/sender-identities") return Promise.resolve([]);
+      if (path === "/social/connections") return Promise.resolve([]);
       if (path === "/integrations/email-provider" && init?.method === "POST") {
         return Promise.resolve({
           ...POSTMARK_CONNECTION,
@@ -137,7 +166,13 @@ describe("IntegrationsPage", () => {
       expect(screen.getByText(/Webhook credentials generated/)).toBeInTheDocument(),
     );
     const statuses = screen.getAllByText(/Connected|Unconfigured/);
-    expect(statuses.map((el) => el.textContent)).toEqual(["Connected", "Unconfigured"]);
+    // Instagram card renders first (unconfigured here), then Postmark (now Connected),
+    // then Custom SMTP (still Unconfigured) -- see GRX-SOCIAL-010.
+    expect(statuses.map((el) => el.textContent)).toEqual([
+      "Unconfigured",
+      "Connected",
+      "Unconfigured",
+    ]);
   });
 
   it("shows a success toast when the connection test passes", async () => {
@@ -146,6 +181,7 @@ describe("IntegrationsPage", () => {
       if (path === "/auth/me") return Promise.resolve(meWithPermissions(["integrations.manage"]));
       if (path === "/integrations/email-providers") return Promise.resolve([]);
       if (path === "/integrations/sender-identities") return Promise.resolve([]);
+      if (path === "/social/connections") return Promise.resolve([]);
       if (path === "/integrations/email-providers/test" && init?.method === "POST") {
         return Promise.resolve(undefined);
       }
@@ -172,6 +208,7 @@ describe("IntegrationsPage", () => {
       if (path === "/auth/me") return Promise.resolve(meWithPermissions(["integrations.manage"]));
       if (path === "/integrations/email-providers") return Promise.resolve([]);
       if (path === "/integrations/sender-identities") return Promise.resolve([]);
+      if (path === "/social/connections") return Promise.resolve([]);
       if (path === "/integrations/email-providers/test" && init?.method === "POST") {
         return Promise.reject(
           new ApiError(
@@ -204,6 +241,7 @@ describe("IntegrationsPage", () => {
       if (path === "/integrations/email-providers")
         return Promise.resolve([POSTMARK_CONNECTION, CUSTOM_SMTP_CONNECTION]);
       if (path === "/integrations/sender-identities") return Promise.resolve([IDENTITY]);
+      if (path === "/social/connections") return Promise.resolve([]);
       throw new Error(`unexpected path: ${path}`);
     });
 
@@ -225,6 +263,7 @@ describe("IntegrationsPage", () => {
       if (path === "/auth/me") return Promise.resolve(meWithPermissions(["integrations.manage"]));
       if (path === "/integrations/email-providers") return Promise.resolve([POSTMARK_CONNECTION]);
       if (path === "/integrations/sender-identities" && !init) return Promise.resolve([]);
+      if (path === "/social/connections") return Promise.resolve([]);
       if (path === "/integrations/sender-identities" && init?.method === "POST") {
         return Promise.resolve(IDENTITY);
       }
@@ -249,6 +288,7 @@ describe("IntegrationsPage", () => {
       if (path === "/auth/me") return Promise.resolve(meWithPermissions(["integrations.manage"]));
       if (path === "/integrations/email-providers") return Promise.resolve([POSTMARK_CONNECTION]);
       if (path === "/integrations/sender-identities" && !init) return Promise.resolve([IDENTITY]);
+      if (path === "/social/connections") return Promise.resolve([]);
       if (
         path === "/integrations/sender-identities/identity-1/status" &&
         init?.method === "PATCH"
@@ -272,5 +312,72 @@ describe("IntegrationsPage", () => {
         ) ?? [];
       expect(statusCall).toBeDefined();
     });
+  });
+
+  it("shows the Instagram card as Unconfigured with no connection", async () => {
+    mockedApiFetch.mockImplementation((path: string) => {
+      if (path === "/auth/me") return Promise.resolve(meWithPermissions(["integrations.manage"]));
+      if (path === "/integrations/email-providers") return Promise.resolve([]);
+      if (path === "/integrations/sender-identities") return Promise.resolve([]);
+      if (path === "/social/connections") return Promise.resolve([]);
+      throw new Error(`unexpected path: ${path}`);
+    });
+
+    renderIntegrationsPage();
+
+    expect(await screen.findByText("Instagram Business")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "+ Connect Instagram" })).toBeInTheDocument();
+  });
+
+  it("shows the Instagram card as Connected with the account username", async () => {
+    mockedApiFetch.mockImplementation((path: string) => {
+      if (path === "/auth/me") return Promise.resolve(meWithPermissions(["integrations.manage"]));
+      if (path === "/integrations/email-providers") return Promise.resolve([]);
+      if (path === "/integrations/sender-identities") return Promise.resolve([]);
+      if (path === "/social/connections") return Promise.resolve([SOCIAL_CONNECTION]);
+      throw new Error(`unexpected path: ${path}`);
+    });
+
+    renderIntegrationsPage();
+
+    expect(await screen.findByText("growixa_test")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Reconnect Instagram" })).toBeInTheDocument();
+  });
+
+  it("shows a success toast and clears the query param after a successful Instagram connect", async () => {
+    mockSearchParams = new URLSearchParams("instagram=connected");
+    mockedApiFetch.mockImplementation((path: string) => {
+      if (path === "/auth/me") return Promise.resolve(meWithPermissions(["integrations.manage"]));
+      if (path === "/integrations/email-providers") return Promise.resolve([]);
+      if (path === "/integrations/sender-identities") return Promise.resolve([]);
+      if (path === "/social/connections") return Promise.resolve([SOCIAL_CONNECTION]);
+      throw new Error(`unexpected path: ${path}`);
+    });
+
+    renderIntegrationsPage();
+
+    expect(await screen.findByText("Instagram account connected.")).toBeInTheDocument();
+    expect(mockReplace).toHaveBeenCalledWith("/dashboard/integrations");
+
+    mockSearchParams = new URLSearchParams();
+  });
+
+  it("shows an error toast when the Instagram connect flow fails", async () => {
+    mockSearchParams = new URLSearchParams("instagram=error&reason=graph_api_error");
+    mockedApiFetch.mockImplementation((path: string) => {
+      if (path === "/auth/me") return Promise.resolve(meWithPermissions(["integrations.manage"]));
+      if (path === "/integrations/email-providers") return Promise.resolve([]);
+      if (path === "/integrations/sender-identities") return Promise.resolve([]);
+      if (path === "/social/connections") return Promise.resolve([]);
+      throw new Error(`unexpected path: ${path}`);
+    });
+
+    renderIntegrationsPage();
+
+    expect(
+      await screen.findByText("Could not connect that Instagram account. Please try again."),
+    ).toBeInTheDocument();
+
+    mockSearchParams = new URLSearchParams();
   });
 });

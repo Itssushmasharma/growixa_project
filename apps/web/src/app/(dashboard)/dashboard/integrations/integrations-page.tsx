@@ -1,9 +1,11 @@
 "use client";
 
+import { useRouter, useSearchParams } from "next/navigation";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 
 import { useToast } from "@/components/toast/toast-context";
 import { ApiError, apiFetch } from "@/lib/api-client";
+import { getApiUrl } from "@/lib/env";
 
 import styles from "./integrations-page.module.css";
 import {
@@ -13,6 +15,7 @@ import {
   PROVIDER_REGISTRY,
   type ProviderDefinition,
   type SenderIdentity,
+  type SocialConnection,
   type VerificationStatus,
 } from "./types";
 
@@ -76,11 +79,14 @@ function ProviderIcon({ name }: { name: string }) {
   if (name.includes("SendGrid")) icon = "🚀";
   if (name.includes("Twilio")) icon = "💬";
   if (name.includes("Webhook")) icon = "🔗";
+  if (name.includes("Instagram")) icon = "📸";
 
   return <span className={styles.providerIcon}>{icon}</span>;
 }
 
 export function IntegrationsPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const { showToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -89,6 +95,7 @@ export function IntegrationsPage() {
     Partial<Record<EmailProvider, EmailProviderConnection>>
   >({});
   const [identities, setIdentities] = useState<SenderIdentity[]>([]);
+  const [socialConnection, setSocialConnection] = useState<SocialConnection | null>(null);
 
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("All Transports");
 
@@ -116,9 +123,10 @@ export function IntegrationsPage() {
         setCanManage(hasAccess);
 
         if (hasAccess) {
-          const [connectionList, identityList] = await Promise.all([
+          const [connectionList, identityList, socialConnections] = await Promise.all([
             apiFetch<EmailProviderConnection[]>("/integrations/email-providers"),
             apiFetch<SenderIdentity[]>("/integrations/sender-identities"),
+            apiFetch<SocialConnection[]>("/social/connections"),
           ]);
           const byProvider: Partial<Record<EmailProvider, EmailProviderConnection>> = {};
           for (const connection of connectionList) {
@@ -126,6 +134,7 @@ export function IntegrationsPage() {
           }
           setConnections(byProvider);
           setIdentities(identityList);
+          setSocialConnection(socialConnections[0] ?? null);
         }
       } catch {
         setLoadError("Could not load integration settings.");
@@ -136,6 +145,27 @@ export function IntegrationsPage() {
 
     void load();
   }, []);
+
+  // GRX-SOCIAL-003: Meta redirects the browser back here after the OAuth flow completes
+  // (success or failure) — surface the outcome as a toast, then strip the query params
+  // so a page refresh doesn't re-show it.
+  useEffect(() => {
+    const instagramResult = searchParams.get("instagram");
+    if (!instagramResult) return;
+    if (instagramResult === "connected") {
+      showToast("success", "Instagram account connected.");
+    } else {
+      const reason = searchParams.get("reason");
+      showToast(
+        "error",
+        reason === "denied"
+          ? "Instagram connection was cancelled."
+          : "Could not connect that Instagram account. Please try again.",
+      );
+    }
+    router.replace("/dashboard/integrations");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   function openConnectionForm(definition: ProviderDefinition) {
     setConnectionForm(emptyConnectionForm(definition));
@@ -326,6 +356,57 @@ export function IntegrationsPage() {
             <span className={styles.metricValue} style={{ fontSize: "15px", color: "#15803d" }}>
               🟢 TLS Verified
             </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Social Publishing (Slice 5) */}
+      <div className={styles.grid}>
+        <div className={styles.card}>
+          <div className={styles.header}>
+            <div className={styles.headerTitleGroup}>
+              <ProviderIcon name="Instagram" />
+              <div>
+                <h3 className={styles.headerTitle}>Instagram Business</h3>
+                <p className={styles.headerSubtitle}>
+                  Publish and schedule posts to your connected Instagram Business account.
+                </p>
+              </div>
+            </div>
+            <span
+              className={`${styles.statusBadge} ${
+                socialConnection ? styles.statusActive : styles.statusUnconfigured
+              }`}
+            >
+              {socialConnection ? "Connected" : "Unconfigured"}
+            </span>
+          </div>
+
+          {socialConnection ? (
+            <div className={styles.connectionDetails}>
+              <div className={styles.summaryRow}>
+                <span className={styles.summaryLabel}>Account</span>
+                <span>
+                  {socialConnection.ig_username ?? socialConnection.ig_business_account_id}
+                </span>
+              </div>
+              {socialConnection.last_error && (
+                <p className={styles.hint}>Last error: {socialConnection.last_error}</p>
+              )}
+            </div>
+          ) : (
+            <p className={styles.hint}>No Instagram account connected yet.</p>
+          )}
+
+          {/* Plain navigation, not apiFetch -- the user must interact with Meta's own
+              consent screen, which a fetch/XHR call cannot do. */}
+          <div className={styles.cardActions}>
+            <a
+              href={`${getApiUrl()}/integrations/instagram/oauth/authorize`}
+              className={styles.secondaryButton}
+            >
+              {socialConnection ? "Reconnect Instagram" : "+ Connect Instagram"}
+            </a>
           </div>
         </div>
       </div>

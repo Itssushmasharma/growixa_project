@@ -17,6 +17,8 @@ const PAGE_TITLES: Record<string, string> = {
   "/dashboard/integrations": "Integrations",
   "/dashboard/templates": "Email Templates",
   "/dashboard/campaigns": "Campaigns",
+  "/dashboard/social": "Social",
+  "/dashboard/social/calendar": "Content Calendar",
 };
 
 export function PageTitle() {
@@ -30,6 +32,10 @@ export function PageTitle() {
     title = "New Campaign";
   } else if (!title && /^\/dashboard\/campaigns\/[^/]+$/.test(pathname)) {
     title = "Campaign";
+  } else if (!title && pathname === "/dashboard/social/new") {
+    title = "New Post";
+  } else if (!title && /^\/dashboard\/social\/[^/]+$/.test(pathname)) {
+    title = "Post";
   }
   return <h1 className={styles.title}>{title ?? "Growixa"}</h1>;
 }

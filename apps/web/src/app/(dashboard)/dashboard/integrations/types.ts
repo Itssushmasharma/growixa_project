@@ -50,6 +50,20 @@ export interface ProviderDefinition {
   hasWebhook: boolean;
 }
 
+// Slice 5 (Social Publishing) — Instagram Business, connected via OAuth rather than a
+// form (see integrations-page.tsx's Instagram card). Not part of PROVIDER_REGISTRY
+// since that registry is SMTP-relay-specific.
+export interface SocialConnection {
+  id: string;
+  provider: string;
+  ig_business_account_id: string;
+  ig_username: string | null;
+  facebook_page_id: string;
+  is_active: boolean;
+  last_connected_at: string;
+  last_error: string | null;
+}
+
 export const PROVIDER_REGISTRY: ProviderDefinition[] = [
   {
     key: "POSTMARK",

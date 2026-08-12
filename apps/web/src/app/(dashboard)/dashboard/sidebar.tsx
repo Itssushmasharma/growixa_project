@@ -76,6 +76,12 @@ const NAV_SECTIONS: NavSection[] = [
         icon: "🎨",
         requiresPermission: "campaigns.view",
       },
+      {
+        label: "Social",
+        href: "/dashboard/social",
+        icon: "📸",
+        requiresPermission: "social.view",
+      },
     ],
   },
   {
