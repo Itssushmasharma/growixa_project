@@ -1,7 +1,16 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Index, Text, text
+from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    Text,
+    text,
+)
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
@@ -58,4 +67,85 @@ class SocialConnection(Base):
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+
+class SocialPost(Base):
+    __tablename__ = "social_posts"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ("
+            "'DRAFT', 'SCHEDULED', 'DISPATCHING', 'PUBLISHING', 'PUBLISHED', "
+            "'CANCELLED', 'FAILED'"
+            ")",
+            name="ck_social_posts_status",
+        ),
+        # Composite index for scheduler polling, identical rationale to
+        # ix_campaigns_status_scheduled_at: WHERE status='SCHEDULED' AND scheduled_at <= NOW()
+        Index("ix_social_posts_status_scheduled_at", "status", "scheduled_at"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    account_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("accounts.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    social_connection_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("social_connections.id"), nullable=False
+    )
+    caption: Mapped[str] = mapped_column(Text, nullable=False, server_default="")
+    status: Mapped[str] = mapped_column(Text, nullable=False, server_default="DRAFT")
+    scheduled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Idempotency key prevents double-publish when the scheduler or worker restarts
+    # between state transitions -- identical role to campaigns.idempotency_key.
+    idempotency_key: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), nullable=False, default=uuid.uuid4, unique=True
+    )
+    ig_media_id: Mapped[str | None] = mapped_column(Text, nullable=True)
+    ig_permalink: Mapped[str | None] = mapped_column(Text, nullable=True)
+    last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+
+class SocialPostMedia(Base):
+    """Exactly one row per post is an app-level rule (social/services.py), not a schema
+    constraint -- media_type/position stay carousel/video-ready for a later slice, per
+    DEC-GRX-023's "single JPEG image only" scope decision for this one."""
+
+    __tablename__ = "social_post_media"
+    __table_args__ = (
+        CheckConstraint("media_type IN ('IMAGE')", name="ck_social_post_media_media_type"),
+        Index("ix_social_post_media_social_post_id", "social_post_id"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    # Denormalized from social_post_id's own account_id -- see campaigns.CampaignVersion's
+    # identical note.
+    account_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("accounts.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    social_post_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("social_posts.id", ondelete="CASCADE"), nullable=False
+    )
+    media_type: Mapped[str] = mapped_column(Text, nullable=False)
+    storage_path: Mapped[str] = mapped_column(Text, nullable=False)
+    public_url: Mapped[str] = mapped_column(Text, nullable=False)
+    position: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
     )
