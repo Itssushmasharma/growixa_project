@@ -13,6 +13,8 @@ dependencies = [
     "cryptography>=43.0",
     "aiosmtplib>=3.0",
     "redis>=5.1",
+    # Instagram Graph API calls for social publishing (Slice 5, GRX-SOCIAL-008).
+    "httpx>=0.27",
 ]
 
 [project.optional-dependencies]

@@ -15,3 +15,10 @@ def decrypt_secret(ciphertext: str) -> str:
         return _fernet().decrypt(ciphertext.encode()).decode()
     except InvalidToken as exc:
         raise ValueError("Could not decrypt secret — wrong key or corrupted value") from exc
+
+
+def encrypt_secret(plaintext: str) -> str:
+    """Needed by GRX-SOCIAL-008's inline token-refresh check -- unlike campaigns
+    (decrypt-only, never writes credentials back), the worker re-encrypts a refreshed
+    Instagram access token before writing it back to social_connections."""
+    return _fernet().encrypt(plaintext.encode()).decode()

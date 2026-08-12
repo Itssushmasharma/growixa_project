@@ -33,6 +33,13 @@ class Settings(BaseSettings):
     # recipients' browsers must be able to reach, not an internal container hostname.
     api_public_url: str = "http://localhost:8000"
 
+    # Slice 5 (Social Publishing, GRX-SOCIAL-008): needed for the inline near-expiry
+    # token refresh check before each publish attempt. Must match growixa_api's own
+    # instagram_app_id/instagram_app_secret exactly, same reasoning as encryption_key.
+    instagram_app_id: str = ""
+    instagram_app_secret: str = ""
+    instagram_graph_api_version: str = "v21.0"
+
 
 @lru_cache
 def get_settings() -> Settings:

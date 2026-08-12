@@ -298,3 +298,77 @@ class UsageRecord(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+
+
+class SocialConnection(Base):
+    """Hand-kept-in-sync subset of growixa_api.social.models.SocialConnection -- see this
+    module's own docstring. publish_social_post reads it by PK (already
+    account-verified via its owning post), so account_id is declared for test-fixture
+    purposes only, matching EmailProviderConnection's identical note."""
+
+    __tablename__ = "social_connections"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    account_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    ig_business_account_id: Mapped[str] = mapped_column(Text, nullable=False)
+    facebook_page_id: Mapped[str] = mapped_column(Text, nullable=False)
+    access_token_encrypted: Mapped[str] = mapped_column(Text, nullable=False)
+    token_expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+
+class SocialPost(Base):
+    __tablename__ = "social_posts"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ("
+            "'DRAFT', 'SCHEDULED', 'DISPATCHING', 'PUBLISHING', 'PUBLISHED', "
+            "'CANCELLED', 'FAILED'"
+            ")",
+            name="ck_social_posts_status",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    account_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    social_connection_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    caption: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(Text, nullable=False)
+    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    ig_media_id: Mapped[str | None] = mapped_column(Text, nullable=True)
+    ig_permalink: Mapped[str | None] = mapped_column(Text, nullable=True)
+    last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+
+class SocialPostMedia(Base):
+    __tablename__ = "social_post_media"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    account_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    social_post_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("social_posts.id", ondelete="CASCADE"), nullable=False
+    )
+    media_type: Mapped[str] = mapped_column(Text, nullable=False)
+    storage_path: Mapped[str] = mapped_column(Text, nullable=False)
+    public_url: Mapped[str] = mapped_column(Text, nullable=False)
+    position: Mapped[int] = mapped_column(Integer, nullable=False)
+
+
+class SocialPostVersion(Base):
+    __tablename__ = "social_post_versions"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    account_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    social_post_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("social_posts.id"), nullable=False
+    )
+    caption: Mapped[str] = mapped_column(Text, nullable=False)
+    media_snapshot: Mapped[list[dict[str, object]]] = mapped_column(JSONB, nullable=False)
+    ig_media_id: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
