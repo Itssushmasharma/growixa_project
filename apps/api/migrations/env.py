@@ -23,6 +23,7 @@ from growixa_api.permissions import models as permissions_models  # noqa: F401
 from growixa_api.platform_admin import models as platform_admin_models  # noqa: F401
 from growixa_api.platform_auth import models as platform_auth_models  # noqa: F401
 from growixa_api.roles import models as roles_models  # noqa: F401
+from growixa_api.social import models as social_models  # noqa: F401
 from growixa_api.templates import models as templates_models  # noqa: F401
 from growixa_api.usage import models as usage_models  # noqa: F401
 from growixa_api.users import models as users_models  # noqa: F401

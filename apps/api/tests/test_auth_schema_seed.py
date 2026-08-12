@@ -40,6 +40,10 @@ EXPECTED_PERMISSIONS = {
     "campaigns.manage",
     "campaigns.view",
     "campaigns.send",
+    # Slice 5 additions (GRX-SOCIAL-002) — see RBAC.md §Slice 5 permission codes.
+    "social.manage",
+    "social.publish",
+    "social.view",
 }
 
 # permission code -> set of role names granted that permission, per RBAC.md's Sprint 1 and
@@ -64,6 +68,15 @@ EXPECTED_MATRIX: dict[str, set[str]] = {
         "Analyst",
     },
     "campaigns.send": {"Super Admin", "Admin", "Marketing Manager"},
+    "social.manage": {"Super Admin", "Admin", "Marketing Manager", "Content Creator"},
+    "social.publish": {"Super Admin", "Admin", "Marketing Manager"},
+    "social.view": {
+        "Super Admin",
+        "Admin",
+        "Marketing Manager",
+        "Content Creator",
+        "Analyst",
+    },
 }
 
 
