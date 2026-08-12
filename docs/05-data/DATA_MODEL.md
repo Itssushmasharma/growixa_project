@@ -574,20 +574,80 @@ gated write action (editing a contact) — both read the existing `company`/`con
 `actor_user_id=None` with the acting admin's identity in `audit_logs.event_metadata` —
 the same pattern `DEC-GRX-020` established, now reused by a second module.
 
+## Slice 5 entities (full detail)
+
+Per `DEC-GRX-023`/`DEC-GRX-024`/`DEC-GRX-025`. Module ownership follows
+[MODULE_BOUNDARIES.md](../04-architecture/MODULE_BOUNDARIES.md): `social`, `files`. No
+`content_calendar` module this slice — the calendar is a `social`-owned read endpoint
+(`GET /social/posts/calendar`), not a separate cross-module entity; see
+`SPRINT_06_SOCIAL_PUBLISHING.md`'s exclusions. No separate `social_publish_attempts` table
+either — a post's `status`/`last_error` columns and its `social_post_versions` snapshot
+together cover the "publishing status, provider error visibility" requirement without a
+second table, mirroring how `campaigns` never needed one beyond `campaign_versions`.
+
+### `social_connections`
+
+- Purpose: one customer account's link to its own Instagram Business Account, via the
+  Meta Graph API OAuth flow.
+- Primary key: `id` (UUID)
+- Required fields: `account_id` (FK → `accounts.id`, `ON DELETE CASCADE`), `provider`
+  (`CHECK IN ('INSTAGRAM_BUSINESS')` — enum-via-CHECK, mirrors `email_provider_
+  connections.provider`, forward-compatible with a second platform later),
+  `ig_business_account_id` (the Graph API `ig-user-id` used in every publish call),
+  `facebook_page_id` (the linked Page — source of the Page access token),
+  `access_token_encrypted` (Fernet-encrypted per `DEC-GRX-025`), `is_active` (boolean,
+  default `true`)
+- Optional fields: `ig_username` (cached handle for UI display), `token_expires_at`
+  (long-lived token's ~60-day expiry — drives the inline-refresh check), `last_error`
+- Audit fields: `created_by_user_id`, `created_at`, `updated_at`, `last_connected_at`
+- One active connection per account (per provider): a
+  `ux_social_connections_active_per_provider` partial unique index on
+  `(account_id, provider) WHERE is_active` — identical shape to `email_provider_
+  connections`'s per-provider unique index. Reconnecting deactivates the prior row and
+  creates a fresh one, same convention as email provider reconnection.
+
+### `social_posts` / `social_post_media` / `social_post_versions`
+
+- Purpose: a single Instagram post — draft, scheduled, or published — and its media.
+- `social_posts`: `id` (UUID PK), `account_id` (FK → `accounts.id` CASCADE),
+  `social_connection_id` (FK → `social_connections.id`), `caption` (text, default `''` —
+  Instagram allows empty captions), `status` (`DRAFT` | `SCHEDULED` | `DISPATCHING` |
+  `PUBLISHING` | `PUBLISHED` | `CANCELLED` | `FAILED`, default `DRAFT` — mirrors
+  `campaigns.status`'s shape, substituting SENDING/SENT → PUBLISHING/PUBLISHED),
+  `scheduled_at`/`cancelled_at`/`published_at` (nullable), `idempotency_key` (UUID,
+  unique, default-generated — identical role to `campaigns.idempotency_key`),
+  `ig_media_id`/`ig_permalink` (nullable, populated after a successful publish),
+  `last_error` (nullable — provider-error-visibility requirement), `created_by_user_id`,
+  `created_at`, `updated_at`. Draft content (`caption`, media) is mutable only while
+  `status = 'DRAFT'`, enforced at the service layer — same convention as `campaigns`.
+- `social_post_media`: `id` (UUID PK), `account_id` (denormalized, same rationale as
+  `campaign_versions.account_id`), `social_post_id` (FK → `social_posts.id` CASCADE),
+  `media_type` (`CHECK IN ('IMAGE')` — column is carousel/video-ready, but only `IMAGE` is
+  valid this slice per `DEC-GRX-023`'s no-text-only-posts constraint and the media-scope
+  decision to ship a single image only), `storage_path`/`public_url` (the Supabase object
+  key and its public URL — the latter is what's handed to Instagram's `image_url` param),
+  `position` (default 0, forward-compat for carousel ordering), `created_at`. Exactly one
+  row per post is an app-level rule (`social/services.py`), not a schema constraint, so
+  lifting it for carousel later needs no migration.
+- `social_post_versions`: `id` (UUID PK), `account_id`, `social_post_id` (FK →
+  `social_posts.id`), `caption`, `media_snapshot` (JSONB — `[{storage_path, public_url,
+  media_type}]` at publish time), `ig_media_id`, `created_at`. Immutable
+  "what was actually published" snapshot, mirrors `campaign_versions` exactly — and
+  doubles as the worker's idempotency guard (its existence for a post is the authoritative
+  "already published" check), same role `CampaignVersion` plays in `handle_send_campaign`.
+
 ## Full MVP entity landscape (target slice)
 
-Entities beyond Slice 3 are named here for continuity with `docs/02-features/` and future
+Entities beyond Slice 5 are named here for continuity with `docs/02-features/` and future
 `docs/06-api/` work, but are **not** designed in field-level detail until the slice that
-needs them. Slice 3's own entities moved to full detail above; `campaign_schedules` stays
-here since it's Slice 4:
+needs them. Slice 3/5's own entities moved to full detail above; `campaign_schedules`
+stays here since it's Slice 4:
 
 | Entity group | Target slice | Notes |
 |---|---|---|
 | `campaign_schedules` | Slice 4 | Scheduled Email — future send-time, cancellation, scheduling-specific retry |
-| `social_provider_connections`, `social_accounts`, `social_posts`, `social_post_targets`, `social_post_media`, `social_publish_attempts`, `content_calendar_items` | Slice 5 | Social Media Automation |
 | `ai_prompt_templates`, `ai_prompt_versions`, `ai_generations`, `ai_usage_events` | Slice 6 | AI Content Assistant |
 | `notifications` | Slice 1 stub, still no real writer after Slice 3 | Notification center |
-| `files` | Slice 5 | Media storage, once object storage provider is chosen ([OQ-005](../00-project-control/OPEN_QUESTIONS.md)) |
 | `webhook_endpoints`, `webhook_events`, `webhook_deliveries` | Deferred indefinitely — see Slice 3's "explicitly deferred" note | Only revisit with a second email/social provider |
 | `feature_entitlements` | Alongside `usage_records`, expanded when a real limit needs enforcing | |
 | `analytics_events` | Deferred — see Slice 3's "explicitly deferred" note | Read-side aggregation, computed from existing tables for now |

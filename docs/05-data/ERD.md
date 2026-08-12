@@ -440,3 +440,65 @@ erDiagram
         timestamp used_at
     }
 ```
+
+## Slice 5 (Social Publishing) additions
+
+```mermaid
+erDiagram
+    ACCOUNTS ||--o{ SOCIAL_CONNECTIONS : owns
+    SOCIAL_CONNECTIONS ||--o{ SOCIAL_POSTS : "publishes through"
+    SOCIAL_POSTS ||--o{ SOCIAL_POST_MEDIA : has
+    SOCIAL_POSTS ||--o{ SOCIAL_POST_VERSIONS : "frozen at publish"
+
+    SOCIAL_CONNECTIONS {
+        uuid id PK
+        uuid account_id FK
+        string provider
+        string ig_business_account_id
+        string ig_username
+        string facebook_page_id
+        string access_token_encrypted
+        timestamp token_expires_at
+        boolean is_active
+        string last_error
+        uuid created_by_user_id FK
+        timestamp created_at
+        timestamp updated_at
+    }
+    SOCIAL_POSTS {
+        uuid id PK
+        uuid account_id FK
+        uuid social_connection_id FK
+        string caption
+        string status
+        timestamp scheduled_at
+        timestamp cancelled_at
+        timestamp published_at
+        uuid idempotency_key
+        string ig_media_id
+        string ig_permalink
+        string last_error
+        uuid created_by_user_id FK
+        timestamp created_at
+        timestamp updated_at
+    }
+    SOCIAL_POST_MEDIA {
+        uuid id PK
+        uuid account_id FK
+        uuid social_post_id FK
+        string media_type
+        string storage_path
+        string public_url
+        int position
+        timestamp created_at
+    }
+    SOCIAL_POST_VERSIONS {
+        uuid id PK
+        uuid account_id FK
+        uuid social_post_id FK
+        string caption
+        jsonb media_snapshot
+        string ig_media_id
+        timestamp created_at
+    }
+```

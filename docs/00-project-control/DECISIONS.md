@@ -669,7 +669,100 @@ Decision statuses: `PROPOSED`, `UNDER_REVIEW`, `APPROVED`, `REJECTED`, `SUPERSED
 - Related tasks: `GRX-SAAS-010` in `MASTER_TASK_TRACKER.md`.
 - Supersedes: none.
 
+## DEC-GRX-023: Instagram Business is the first (and for MVP, only) social platform (resolves OQ-003)
+
+- Status: APPROVED
+- Date: 2026-08-12
+- Context: Slice 5 (Social Publishing) cannot start until the first social platform is
+  fixed — it determines the OAuth scope, the publishing API shape, and the media
+  constraints the rest of the slice is built around. [OQ-003](OPEN_QUESTIONS.md) asked
+  which single platform (LinkedIn, Facebook Pages, Instagram Business, X) is first.
+- Options considered:
+  1. LinkedIn — strong B2B fit, but its content API is materially more restrictive for
+     automated/scheduled posting than Meta's.
+  2. Facebook Pages — broadest reach, mature Graph API; product owner's audience is more
+     visual/Instagram-first.
+  3. Instagram Business — visual-first, matches the product's target audience; requires
+     an underlying Facebook Page + Meta Developer App (same platform family as option 2).
+  4. X (Twitter) — real-time fit, but API access is paid and materially more restrictive
+     than Meta's for this use case.
+- Decision: Instagram Business (option 3), via the Meta Graph API (Facebook Login for
+  Business OAuth → resolve the linked Instagram Business Account through the connected
+  Facebook Page). The product owner already has a Meta Developer App with a test
+  Instagram Business Account linked to a Facebook Page.
+- Rationale: Best fit for Growixa's target customer (visual marketing), and picking it
+  keeps the whole Meta family (Facebook Pages later, if ever) on one adapter/app
+  registration rather than a second unrelated vendor integration.
+- Consequences: Per [DEC-GRX-005](DECISIONS.md), the concrete provider is abstracted
+  behind a `SocialProvider`-shaped adapter (`social/instagram_client.py` on the API side,
+  `growixa_worker/instagram_client.py` on the worker side) so a second platform later is
+  an additive adapter, not a rewrite. Instagram's Content Publishing API has **no
+  text-only posts** — every post requires at least one image or video — which is a hard
+  constraint the whole post/media data model is built around (see `DATA_MODEL.md` §Slice
+  5). Production-scale use (beyond the developer's own test users) requires Meta's App
+  Review process for the `instagram_content_publish` permission — a rollout timeline
+  concern, not a build blocker, documented in `SPRINT_06_SOCIAL_PUBLISHING.md`.
+- Related tasks: `GRX-SOCIAL-*` in `MASTER_TASK_TRACKER.md`.
+- Supersedes: none.
+
+## DEC-GRX-024: Supabase Storage for social post media (resolves OQ-005)
+
+- Status: APPROVED
+- Date: 2026-08-12
+- Context: Instagram's Content Publishing API has no text-only posts and fetches media by
+  plain HTTP(S) URL (it cannot accept a raw upload or an authenticated request), so an
+  S3-compatible object storage target is now a hard MVP requirement for Slice 5, not the
+  deferred-until-Slice-5 item [OQ-005](OPEN_QUESTIONS.md) originally framed it as.
+- Options considered:
+  1. Cloudflare R2 — S3-compatible, no egress fees.
+  2. AWS S3 — most common choice, most tooling, slightly pricier egress.
+  3. Supabase Storage — the project already uses Supabase for production Postgres
+     ([render.yaml](../../render.yaml)), so this adds no new vendor account.
+  4. Defer/self-host — rejected outright; Instagram's URL-fetch requirement makes some
+     public-reachable object storage non-optional for this slice.
+- Decision: Supabase Storage (option 3).
+- Rationale: One fewer vendor relationship to manage since Supabase is already the
+  production database provider; its Storage REST API is simple enough to call directly
+  via `httpx` (this codebase's established pattern for provider integrations — see
+  `integrations/smtp_transport.py`), with no new SDK dependency.
+- Consequences: The bucket that holds post media **must be public-read**, since
+  Instagram's Graph API fetches the image by URL with no auth header support — this is
+  documented as an accepted risk (`THREAT_MODEL.md` T48), scoped explicitly to this one
+  bucket, mitigated by non-enumerable UUID-random object paths, and never reused for
+  private/sensitive file storage later. `growixa_api.files.storage_client` is the one
+  place that talks to Supabase Storage — per `MODULE_BOUNDARIES.md`, the `files` module
+  was already scaffolded in anticipation of exactly this.
+- Related tasks: `GRX-SOCIAL-005` in `MASTER_TASK_TRACKER.md`.
+- Supersedes: none.
+
+## DEC-GRX-025: Social OAuth tokens reuse the existing Fernet encryption, no new KMS
+
+- Status: APPROVED
+- Date: 2026-08-12
+- Context: Instagram's long-lived Page access token must be stored at rest to publish
+  posts (including scheduled ones, dispatched later by the worker) and needs the same
+  "encrypted at rest, decryptable by both api and worker" property `email_provider_
+  connections.smtp_password_encrypted` already has.
+- Options considered:
+  1. A dedicated secrets-manager/KMS integration (e.g. AWS KMS, Vault) — stronger
+     key-rotation story, but a new infrastructure dependency for a threat model
+     identical to a credential this codebase already encrypts a simpler way.
+  2. Reuse the existing Fernet-based `encrypt_secret`/`decrypt_secret` helpers in
+     `auth/encryption.py` ([DEC-GRX-009](DECISIONS.md)), keyed by the same
+     `Settings.encryption_key` the worker already mirrors for SMTP passwords.
+- Decision: Option 2 — reuse `auth/encryption.py` as-is for
+  `social_connections.access_token_encrypted`.
+- Rationale: Identical trust and threat model to the SMTP credential already encrypted
+  this way; a second encryption scheme would be pure duplication with no security benefit
+  at this scale, and it keeps the worker's existing key-mirroring setup (`growixa_worker/
+  encryption.py`) valid for a second table with zero new configuration.
+- Consequences: No new settings beyond what `DEC-GRX-009` already introduced. If a future
+  compliance requirement forces a real KMS, that migration affects both credential types
+  (SMTP and social) together, not just one.
+- Related tasks: `GRX-SOCIAL-002` in `MASTER_TASK_TRACKER.md`.
+- Supersedes: none.
+
 ---
 
-*Decisions DEC-GRX-020 onward will be logged as they are made — e.g., resolutions to
-OQ-003 through OQ-011 in [OPEN_QUESTIONS.md](OPEN_QUESTIONS.md).*
+*Decisions DEC-GRX-026 onward will be logged as they are made — e.g., resolutions to
+OQ-004, OQ-006 through OQ-011 in [OPEN_QUESTIONS.md](OPEN_QUESTIONS.md).*

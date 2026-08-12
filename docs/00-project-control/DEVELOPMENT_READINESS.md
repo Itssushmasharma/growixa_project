@@ -196,9 +196,31 @@ The genuinely new prerequisite versus GRX-SAAS-005/008's gates was the session-m
 decision itself (dedicated view vs. impersonation) — everything else follows the same
 per-task pattern this document already establishes.
 
+## Readiness gate — Slice 5 (Social Publishing)
+
+| Readiness item | Required | Status | Evidence |
+|---|---|---|---|
+| Social platform decision (OQ-003) | Yes — this is the item Slice 3's gate flagged as deferred, not N/A | PASS | [DECISIONS.md §DEC-GRX-023](DECISIONS.md) — Instagram Business, via the Meta Graph API |
+| Object storage decision (OQ-005) | Yes — Instagram's publishing API requires a public fetchable media URL, making this a hard Slice 5 requirement, not optional | PASS | [DECISIONS.md §DEC-GRX-024](DECISIONS.md) — Supabase Storage |
+| OAuth token storage decision | Yes — first third-party OAuth integration in the codebase, needs an at-rest encryption approach | PASS | [DECISIONS.md §DEC-GRX-025](DECISIONS.md) — reuses existing Fernet encryption, no new KMS |
+| Data model additions | Yes | PASS | [DATA_MODEL.md §Slice 5 entities](../05-data/DATA_MODEL.md#slice-5-entities-full-detail), [DATABASE_SCHEMA.md §Slice 5](../05-data/DATABASE_SCHEMA.md#slice-5-social-publishing-tables), [ERD.md §Slice 5 additions](../05-data/ERD.md#slice-5-social-publishing-additions) |
+| RBAC additions | Yes | PASS | [RBAC.md §Slice 5](../08-security/RBAC.md#slice-5-permission-codes) — `social.manage`, `social.publish`, `social.view` |
+| Threat model addendum | Yes (new external surface: first OAuth integration, public media bucket, external publishing API) | PASS | [THREAT_MODEL.md §Slice 5](../08-security/THREAT_MODEL.md#slice-5-social-publishing-scope) — T44–T51 |
+| Module boundaries | Yes — `social` and `files` rows both move from placeholder to real | PASS | [MODULE_BOUNDARIES.md](../04-architecture/MODULE_BOUNDARIES.md) — updated `social`/`files` rows |
+| Sprint 6 plan | Yes | PASS | [SPRINT_06_SOCIAL_PUBLISHING.md](../14-sprints/SPRINT_06_SOCIAL_PUBLISHING.md) |
+| Feature specs | No (written per-task, not upfront — same practice as every prior slice) | DEFERRED TO EACH TASK | [FEATURE_CATALOG.md](../02-features/FEATURE_CATALOG.md) |
+| Project tracker rows | Yes | PASS | [MASTER_TASK_TRACKER.md](MASTER_TASK_TRACKER.md) — `GRX-SOCIAL-*` |
+| AI safety baseline | No (no AI feature in Slice 5) | N/A FOR SLICE 5 | — |
+| Meta Developer App / test Instagram Business Account | Yes — needed for live end-to-end verification, not just code review | PASS | Product owner confirmed an existing Meta Developer App with a linked test Instagram Business Account |
+
+**Overall status: READY — first task cleared: `GRX-SOCIAL-001` (readiness-gate docs,
+this task).** The genuinely new prerequisites versus prior slices' gates were the three
+decisions themselves (OQ-003, OQ-005, and the OAuth-token-storage choice) — everything
+else follows the same per-slice pattern this document already establishes.
+
 ## Gate for later slices/phases
 
-Slice 4 (Scheduled Email) onward, and Sprint 5 Phase D and the remaining Phase E rows
+Slice 6 (AI Assistant) onward, and Sprint 5 Phase D and the remaining Phase E rows
 (`GRX-SAAS-006`, `GRX-SAAS-007`, `GRX-SAAS-009`), will each need their own readiness pass
 (data model additions, feature specs, etc.) before becoming `READY` — this table will be
 extended per slice/phase rather than re-litigated from scratch.

@@ -47,8 +47,8 @@ rewrite.
 | `templates` | Email template definitions and versions | `brand` | `campaigns` (templates are used by, not aware of, campaigns) |
 | `campaigns` | Campaign drafts, versions, schedules, recipients | `templates`, `segments`, `contacts` (read) | `social` |
 | `email_delivery` | Delivery attempts, provider events, bounce/complaint state | `campaigns`, `contacts` (suppression check) | `social`, `ai` |
-| `social` | Social account connections, posts, publish attempts | `content_calendar` | `email_delivery` |
-| `content_calendar` | Scheduled-content view across email/social | `campaigns`, `social` (read) | — |
+| `social` | Social account connections (OAuth), posts, media, single-image publishing (Instagram Business, Slice 5) | `auth` (encryption of OAuth tokens), `files` (storage adapter) | `email_delivery` |
+| `content_calendar` | Scheduled-content view across email/social — not built in Slice 5; the calendar shipped there is a `social`-owned endpoint (`GET /social/posts/calendar`), not a cross-module view. Revisit if a real unified email+social calendar becomes a need. | `campaigns`, `social` (read) | — |
 | `ai` | Prompt templates, generations, usage/cost tracking | `brand` (voice), `usage` | Must never call `email_delivery`/`social` to send/publish directly — see GRX-AI-002 |
 | `automation` | Out of MVP scope — not implemented in Sprint 1–6 | — | — |
 | `analytics` | Read-side aggregation/reporting over campaigns, posts, AI usage | All modules (read-only, via repositories or events) | Must not own writes to other modules' data |
@@ -59,7 +59,7 @@ rewrite.
 | `audit` | Immutable audit event log | — | Nothing — same rationale as `usage` |
 | `admin` | Cross-module admin views (users, roles, company, integrations, usage, audit) | Reads from other modules | Must not contain business logic that belongs in another module |
 | `platform_admin` | IITDEVELOPER-staff views across all customer accounts (account management, usage/campaign oversight, audited support sessions) | Reads from other modules, scoped by `account_id`; a support session's writes call the owning module's own `services/` (e.g. `contacts.services`) rather than writing that module's tables directly | `platform_auth` is the only auth boundary it uses — never `auth`/`permissions` (see [DEC-GRX-018](../00-project-control/DECISIONS.md)); must not contain business logic that belongs in another module |
-| `files` | Not required until Slice 5; scaffolding only if touched in Sprint 1 | `integrations` (storage adapter) | — |
+| `files` | Supabase Storage adapter (upload/delete/public-URL) for social post media, built in Slice 5 (`DEC-GRX-024`) | — | — |
 | `webhooks` | Out of MVP scope for Sprint 1 (no external providers yet to receive webhooks from) | — | — |
 
 ## Cross-module communication rules

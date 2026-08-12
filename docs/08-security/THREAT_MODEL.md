@@ -145,3 +145,32 @@ impersonation of the customer's own session (`DEC-GRX-022`).
 Actual plan *enforcement* (contact/send limits, feature gating) has no threat surface
 yet — Phase C only records a plan choice, per its own exclusions. Phase D's payment/
 webhook surface is a separate addendum when that phase starts.
+
+## Slice 5 (Social Publishing) scope
+
+Scope: the first third-party OAuth integration in the codebase (Instagram Business via
+Meta's Graph API), a public-read media bucket (required by Instagram's fetch-by-URL
+publishing API), and a scheduled-publish pipeline structurally identical to Slice 4's
+email dispatch pipeline (`DEC-GRX-023`, `DEC-GRX-024`).
+
+| # | Threat | Vector | Mitigation |
+|---|---|---|---|
+| T44 | OAuth CSRF / connection hijack | An attacker tricks a victim into completing an OAuth flow that attaches the attacker's Instagram account to the victim's Growixa account (or steers a victim's own flow to attach to the attacker's account) | Server-generated, single-use `state` param (`secrets.token_urlsafe(32)`), stored in Redis tied to the initiating `account_id`, deleted on first read, 600s TTL; the callback cross-checks the stored `account_id` against the current session's `account_id` before persisting a connection |
+| T45 | Access-token leakage via logs | `social_connections.access_token_encrypted`, or its decrypted form, ends up in application logs | Same secret-redaction convention as SMTP credentials (`DEC-GRX-009`); the token is decrypted only in-memory, inside the worker's publish call, never logged |
+| T46 | Path traversal / object-store abuse via media path | A client-influenced filename is used unsanitized to build the Supabase object key | The object path is entirely server-generated (`{account_id}/{social_post_id}/{uuid4}.jpg`), never derived from the client-supplied filename |
+| T47 | Cross-account post/connection access | Guessing another account's `social_post_id` or `social_connection_id` | Standard `account_id`-scoped repository lookups (same convention as every other module); a cross-account guess 404s, matching `test_cross_tenant_isolation.py`'s existing convention |
+| T48 | Public-bucket media exposure | Instagram's Content Publishing API requires media at a plain, unauthenticated, fetchable URL — the storage bucket holding post images is public-read by requirement, not by mistake | Object paths are non-enumerable (UUID-random, no listing enabled on the bucket); scoped to this one bucket only, explicitly never reused for private/sensitive file storage (`DEC-GRX-024`); accepted risk, same shape as the existing unsubscribe-link-guessing risk (T18) |
+| T49 | Expired/dead token causes repeated guaranteed-fail publish attempts | A Page access token dies (revoked, or the 60-day long-lived token expires) between connection and a later scheduled publish | Graph API error code 190 is classified `PermanentPublishError` and short-circuits the retry ladder immediately (rather than burning all 3 attempts against a token that can never succeed); the connection's `last_error` surfaces "reconnect required" |
+| T50 | Rate-limit / platform-reputation abuse | A compromised account with `social.publish` mass-publishes, risking Instagram's per-account rate limits or the connected Page's standing | No additional rate-limiting is built in this slice beyond the existing `usage_records` audit trail; accepted risk for MVP, same framing as other usage-abuse risks (T18) |
+| T51 | SSRF via the media-fetch URL | Instagram's container-create call takes an `image_url` parameter — if that URL were ever client-influenced, it could be used to probe internal network addresses | Not reachable: `image_url` is always the storage adapter's own server-constructed public URL (fixed Supabase base + server-generated path), never a client-supplied value |
+
+## Explicitly out of scope for Slice 5
+
+Video and carousel (multi-image) posts — deferred; the `media_type`/`position` columns on
+`social_post_media` are forward-compatible, but the service layer enforces "exactly one
+JPEG image" this slice. A proactive daily token-refresh ticker — deferred in favor of
+inline refresh-at-publish-time; revisit if scheduled-far-in-advance posts start hitting
+dead tokens in practice. Multi-Page/multi-Instagram-account customers — the OAuth flow
+takes the first Facebook Page with a linked Instagram Business Account, no picker UI.
+Platform-admin oversight of social connections/posts across accounts — a future,
+separately-scoped capability (comparable to `GRX-SAAS-007`), not part of this slice.

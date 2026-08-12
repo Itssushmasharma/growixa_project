@@ -128,6 +128,42 @@ own **Roles** table, written in Sprint 1 before any of these modules existed:
   reporting" scope is exactly what campaign delivery reports are, so (unlike Slice 2,
   where Analyst only got `contacts.view`) this is Analyst's clearest fit yet.
 
+## Slice 5 permission codes
+
+| Code | Meaning |
+|---|---|
+| `social.manage` | Create/edit social post drafts, upload/remove media |
+| `social.publish` | Publish a post immediately, schedule a post for later, cancel a scheduled post, retry a failed post |
+| `social.view` | Read-only access to posts, connection status, and the content calendar |
+
+Connecting/reconnecting the Instagram Business account itself reuses the **existing**
+`integrations.manage` code from Slice 3 — it's the same conceptual action (configuring a
+provider connection) as the Postmark/SMTP connection, not a new permission.
+
+Slice 5 deliberately mirrors Slice 3's `.manage`/`.send`-shaped split
+(`social.manage`/`social.publish`) rather than inventing new vocabulary — see the Slice 3
+section above for the "draft vs. send/publish" rationale, which applies identically here
+("draft vs. publish"). One divergence worth calling out: Slice 4's shipped campaign
+scheduling route checks `campaigns.manage` rather than `campaigns.send`, which
+inadvertently lets a Content Creator schedule a send despite not holding send authority.
+Social's schedule/cancel/retry routes are gated on `social.publish`, not `social.manage`,
+so this same gap is not replicated here.
+
+## Slice 5 role → permission matrix
+
+| Permission | Super Admin | Admin | Marketing Manager | Content Creator | Analyst | Viewer |
+|---|---|---|---|---|---|---|
+| `social.manage` | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
+| `social.publish` | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| `social.view` | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+
+- `social.manage`: same grant shape as `campaigns.manage` — everyone with a real drafting
+  need, honoring Content Creator's "drafts, AI generation, media — no send/publish
+  authority" scope.
+- `social.publish`: same grant shape as `campaigns.send` — Admin and Marketing Manager
+  only, Content Creator deliberately excluded.
+- `social.view`: same grant shape as `campaigns.view` — everyone except Viewer.
+
 ## Sprint 5 Phase B — platform-level roles (separate namespace, `GRX-SAAS-002`)
 
 This is a **distinct identity class**, not an addition to the roles/permissions above.

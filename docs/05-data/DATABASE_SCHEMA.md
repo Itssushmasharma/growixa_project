@@ -617,6 +617,87 @@ IS NULL` to make the customer-facing "is a session currently active on my accoun
 `platform.support_session.create` (all of `platform.owner`/`platform.admin`/`platform.support`)
 and `platform.support_session.write` (`platform.owner`/`platform.admin` only).
 
+## Slice 5 (Social Publishing) tables
+
+See [DATA_MODEL.md §Slice 5 entities](DATA_MODEL.md#slice-5-entities-full-detail) and
+[DECISIONS.md §DEC-GRX-023/024/025](../00-project-control/DECISIONS.md).
+
+## `social_connections`
+
+| Column | Type | Constraints |
+|---|---|---|
+| id | uuid | PK |
+| account_id | uuid | FK → accounts.id ON DELETE CASCADE, NOT NULL |
+| provider | text | NOT NULL, CHECK IN ('INSTAGRAM_BUSINESS') |
+| ig_business_account_id | text | NOT NULL |
+| ig_username | text | NULL |
+| facebook_page_id | text | NOT NULL |
+| access_token_encrypted | text | NOT NULL |
+| token_expires_at | timestamptz | NULL |
+| is_active | boolean | NOT NULL, DEFAULT true |
+| last_connected_at | timestamptz | NOT NULL, DEFAULT now() |
+| last_error | text | NULL |
+| created_by_user_id | uuid | FK → users.id, NULL |
+| created_at | timestamptz | NOT NULL, DEFAULT now() |
+| updated_at | timestamptz | NOT NULL, DEFAULT now() |
+
+Indexes: `account_id`; unique partial index `ux_social_connections_active_per_provider` on
+`(account_id, provider) WHERE is_active`. Same migration seeds `social.manage` /
+`social.publish` / `social.view` permission codes and their role grants (see
+[RBAC.md](../08-security/RBAC.md)).
+
+## `social_posts`
+
+| Column | Type | Constraints |
+|---|---|---|
+| id | uuid | PK |
+| account_id | uuid | FK → accounts.id ON DELETE CASCADE, NOT NULL |
+| social_connection_id | uuid | FK → social_connections.id, NOT NULL |
+| caption | text | NOT NULL, DEFAULT '' |
+| status | text | NOT NULL, CHECK IN ('DRAFT','SCHEDULED','DISPATCHING','PUBLISHING','PUBLISHED','CANCELLED','FAILED'), DEFAULT 'DRAFT' |
+| scheduled_at | timestamptz | NULL |
+| cancelled_at | timestamptz | NULL |
+| published_at | timestamptz | NULL |
+| idempotency_key | uuid | NOT NULL, UNIQUE, DEFAULT gen_random_uuid() |
+| ig_media_id | text | NULL |
+| ig_permalink | text | NULL |
+| last_error | text | NULL |
+| created_by_user_id | uuid | FK → users.id, NULL |
+| created_at | timestamptz | NOT NULL, DEFAULT now() |
+| updated_at | timestamptz | NOT NULL, DEFAULT now() |
+
+Indexes: `account_id`; composite `(status, scheduled_at)` for the scheduler's claim query
+— same rationale as `ix_campaigns_status_scheduled_at`.
+
+## `social_post_media`
+
+| Column | Type | Constraints |
+|---|---|---|
+| id | uuid | PK |
+| account_id | uuid | FK → accounts.id ON DELETE CASCADE, NOT NULL |
+| social_post_id | uuid | FK → social_posts.id ON DELETE CASCADE, NOT NULL |
+| media_type | text | NOT NULL, CHECK IN ('IMAGE') |
+| storage_path | text | NOT NULL |
+| public_url | text | NOT NULL |
+| position | integer | NOT NULL, DEFAULT 0 |
+| created_at | timestamptz | NOT NULL, DEFAULT now() |
+
+Indexes: `account_id`, `social_post_id`.
+
+## `social_post_versions`
+
+| Column | Type | Constraints |
+|---|---|---|
+| id | uuid | PK |
+| account_id | uuid | FK → accounts.id ON DELETE CASCADE, NOT NULL |
+| social_post_id | uuid | FK → social_posts.id, NOT NULL |
+| caption | text | NOT NULL |
+| media_snapshot | jsonb | NOT NULL |
+| ig_media_id | text | NULL |
+| created_at | timestamptz | NOT NULL, DEFAULT now() |
+
+Indexes: `account_id`, `social_post_id`.
+
 ## Extensions required
 
 - `pgcrypto` or equivalent for `gen_random_uuid()`.
@@ -670,3 +751,9 @@ Sprint 5 Phase E (`GRX-SAAS-010`): one new table, `support_sessions`, plus two
 `platform.support_session.write`). Depends on Phase B's `platform_admins` table and
 Phase A's `accounts` table both existing. See [DATA_MODEL.md §Sprint 5 Phase E entities (Secure support session)](DATA_MODEL.md#sprint-5-phase-e-entities-customer-account-platform--secure-support-session-grx-saas-010)
 and [DECISIONS.md §DEC-GRX-022](../00-project-control/DECISIONS.md).
+
+Slice 5: `social_connections` (+ seed migration adding `social.manage` / `social.publish`
+/ `social.view` and their role grants) → `social_posts` → `social_post_media` →
+`social_post_versions`. Depends on `GRX-SAAS-001`'s `accounts` table existing. See
+[DATA_MODEL.md §Slice 5 entities](DATA_MODEL.md#slice-5-entities-full-detail) and
+[DECISIONS.md §DEC-GRX-023/024/025](../00-project-control/DECISIONS.md).
