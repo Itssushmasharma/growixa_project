@@ -86,6 +86,16 @@ services:
       PLATFORM_SMTP_FROM_EMAIL: ${PLATFORM_SMTP_FROM_EMAIL:-noreply@growixa.local}
       PLATFORM_SMTP_FROM_NAME: ${PLATFORM_SMTP_FROM_NAME:-Growixa}
       FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:-http://localhost:3000}
+      # Slice 5: Social Publishing -- Instagram Business (DEC-GRX-023) + Supabase
+      # Storage (DEC-GRX-024). Empty by default (OAuth connect / publish routes fail
+      # cleanly until set) -- see docs/11-devops/LOCAL_DEVELOPMENT.md.
+      API_PUBLIC_URL: ${API_PUBLIC_URL:-http://localhost:${API_PORT:-8000}}
+      INSTAGRAM_APP_ID: ${INSTAGRAM_APP_ID:-}
+      INSTAGRAM_APP_SECRET: ${INSTAGRAM_APP_SECRET:-}
+      INSTAGRAM_GRAPH_API_VERSION: ${INSTAGRAM_GRAPH_API_VERSION:-v21.0}
+      SUPABASE_STORAGE_URL: ${SUPABASE_STORAGE_URL:-}
+      SUPABASE_STORAGE_SERVICE_KEY: ${SUPABASE_STORAGE_SERVICE_KEY:-}
+      SUPABASE_STORAGE_BUCKET: ${SUPABASE_STORAGE_BUCKET:-social-media}
     ports:
       - "${API_PORT:-8000}:8000"
     networks:
@@ -121,6 +131,12 @@ services:
       # Public origin recipients' browsers hit for the unsubscribe link — not the
       # internal container hostname, since this URL is embedded in outbound emails.
       API_PUBLIC_URL: http://localhost:${API_PORT:-8000}
+      # Slice 5: Social Publishing (DEC-GRX-023) -- must match the api service's
+      # INSTAGRAM_APP_ID/INSTAGRAM_APP_SECRET exactly; used to refresh a near-expiry
+      # long-lived token before publishing.
+      INSTAGRAM_APP_ID: ${INSTAGRAM_APP_ID:-}
+      INSTAGRAM_APP_SECRET: ${INSTAGRAM_APP_SECRET:-}
+      INSTAGRAM_GRAPH_API_VERSION: ${INSTAGRAM_GRAPH_API_VERSION:-v21.0}
     networks:
       - growixa-net
     depends_on:

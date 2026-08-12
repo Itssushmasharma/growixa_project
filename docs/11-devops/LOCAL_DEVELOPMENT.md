@@ -153,6 +153,54 @@ This is deliberately separate from the customer-owned `email_provider_connection
 table (Postmark/Custom SMTP per account, `GRX-EMAIL-011`) — a brand-new account has no
 provider of its own yet at the moment it registers.
 
+### Social Publishing (Instagram) setup (Slice 5, GRX-SOCIAL-011)
+
+Instagram Business publishing ([DEC-GRX-023](../00-project-control/DECISIONS.md)) and
+media storage ([DEC-GRX-024](../00-project-control/DECISIONS.md)) both require external
+accounts before a customer can connect and publish for real. Without them, the app still
+runs: the Integrations page shows Instagram as "Unconfigured", and OAuth
+connect/publish routes fail cleanly instead of crashing.
+
+**1. Meta Developer App + test Instagram Business account**
+
+- Create an app at [developers.facebook.com](https://developers.facebook.com/), add the
+  **Instagram Graph API** product.
+- You need a Facebook Page with an Instagram **Business** (not Personal/Creator-only)
+  account linked to it. Meta's Instagram Business login docs walk through this pairing.
+- Under App Settings → Basic, note the **App ID** and **App Secret**.
+- Under the Instagram Graph API product's settings, add an OAuth redirect URI matching
+  `API_PUBLIC_URL` exactly: `http://localhost:8000/integrations/instagram/oauth/callback`
+  for local dev (Meta requires HTTPS for non-localhost URIs).
+- While the app is in Development mode, only users added as Testers/Developers on the
+  app can complete the OAuth consent screen — add your own Meta account.
+
+**2. Supabase Storage project + public bucket**
+
+- Create a free project at [supabase.com](https://supabase.com/).
+- Under Storage, create a bucket (default name `social-media`, matching
+  `SUPABASE_STORAGE_BUCKET`) and mark it **public** — Instagram's media-container API
+  fetches images by plain URL, so the bucket cannot be private (see
+  [THREAT_MODEL.md](../08-security/THREAT_MODEL.md) T48 for the accepted-risk reasoning).
+- Under Project Settings → API, copy the Project URL (`SUPABASE_STORAGE_URL`) and the
+  **service_role** secret key (`SUPABASE_STORAGE_SERVICE_KEY` — never the anon key, the
+  API needs write access).
+
+**3. Set the env vars**
+
+Set these in the root `.env` (Docker Compose passes them through to both the `api` and
+`worker` services — see `compose.yaml`):
+
+| Env var | Meaning |
+|---|---|
+| `INSTAGRAM_APP_ID` / `INSTAGRAM_APP_SECRET` | From the Meta Developer App |
+| `INSTAGRAM_GRAPH_API_VERSION` | Defaults to `v21.0` |
+| `API_PUBLIC_URL` | Must exactly match the redirect URI registered with Meta |
+| `SUPABASE_STORAGE_URL` / `SUPABASE_STORAGE_SERVICE_KEY` / `SUPABASE_STORAGE_BUCKET` | From the Supabase project |
+
+Restart the `api` and `worker` containers after changing `.env`
+(`podman compose restart api worker` / `docker compose restart api worker`) — Compose
+only re-reads `.env` on container start, not on file save.
+
 ## Backend commands
 
 ```bash
