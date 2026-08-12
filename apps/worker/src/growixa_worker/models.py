@@ -310,6 +310,10 @@ class SocialConnection(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
     account_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    # Not read by publish_social_post's own logic (this module only ever handles
+    # Instagram) -- declared only so tests can construct a real row against the NOT
+    # NULL DB column, matching EmailProviderConnection.provider's identical note.
+    provider: Mapped[str] = mapped_column(Text, nullable=False)
     ig_business_account_id: Mapped[str] = mapped_column(Text, nullable=False)
     facebook_page_id: Mapped[str] = mapped_column(Text, nullable=False)
     access_token_encrypted: Mapped[str] = mapped_column(Text, nullable=False)

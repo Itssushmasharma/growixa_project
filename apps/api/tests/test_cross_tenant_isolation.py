@@ -23,6 +23,7 @@ from sqlalchemy import delete
 
 from growixa_api.app import create_app
 from growixa_api.audit.models import AuditLog
+from growixa_api.auth.encryption import encrypt_secret
 from growixa_api.brand.models import BrandProfile
 from growixa_api.campaigns.models import Campaign, CampaignRecipient
 from growixa_api.company.models import CompanyProfile
@@ -31,6 +32,7 @@ from growixa_api.contacts.models import Contact, SuppressionEntry, Tag
 from growixa_api.db import async_session_factory
 from growixa_api.email_delivery.models import EmailEvent, MessageDelivery
 from growixa_api.integrations.models import EmailProviderConnection, SenderIdentity
+from growixa_api.social.models import SocialConnection, SocialPost, SocialPostMedia
 from growixa_api.templates.models import EmailTemplate, EmailTemplateVersion
 from growixa_api.users.models import User
 
@@ -837,3 +839,130 @@ async def test_admin_cannot_list_another_accounts_audit_log_entries(
         assert str(viewer_b) not in entity_ids_a
     finally:
         await _clear_audit_fixtures()
+
+
+# --- social (Slice 5, GRX-SOCIAL-002/004/005) ---
+
+
+async def _clear_social_fixtures() -> None:
+    async with async_session_factory() as session:
+        await session.execute(delete(SocialPostMedia))
+        await session.execute(delete(SocialPost))
+        await session.execute(delete(SocialConnection))
+        await session.commit()
+
+
+async def _create_social_connection(account_id: uuid.UUID) -> uuid.UUID:
+    async with async_session_factory() as session:
+        connection = SocialConnection(
+            account_id=account_id,
+            provider="INSTAGRAM_BUSINESS",
+            ig_business_account_id=f"ig-{uuid.uuid4()}",
+            facebook_page_id=f"page-{uuid.uuid4()}",
+            access_token_encrypted=encrypt_secret("fake-page-access-token"),
+        )
+        session.add(connection)
+        await session.commit()
+        return connection.id
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_admin_cannot_list_another_accounts_social_connections(
+    user_factory: Callable[..., Awaitable[uuid.UUID]],
+    account_factory: Callable[..., Awaitable[uuid.UUID]],
+) -> None:
+    account_a = await account_factory()
+    account_b = await account_factory()
+    admin_a = await user_factory(
+        full_name="Account A Admin", role_name="Admin", account_id=account_a
+    )
+    await _create_social_connection(account_b)
+
+    transport = ASGITransport(app=create_app())
+    try:
+        async with AsyncClient(
+            transport=transport, base_url="http://test", cookies=_access_token_cookie(admin_a)
+        ) as client_a:
+            list_response = await client_a.get("/social/connections")
+
+        assert list_response.status_code == 200
+        assert list_response.json() == []
+    finally:
+        await _clear_social_fixtures()
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_admin_gets_404_not_403_on_another_accounts_social_post(
+    user_factory: Callable[..., Awaitable[uuid.UUID]],
+    account_factory: Callable[..., Awaitable[uuid.UUID]],
+) -> None:
+    account_a = await account_factory()
+    account_b = await account_factory()
+    admin_a = await user_factory(
+        full_name="Account A Admin", role_name="Admin", account_id=account_a
+    )
+    admin_b = await user_factory(
+        full_name="Account B Admin", role_name="Admin", account_id=account_b
+    )
+    connection_b = await _create_social_connection(account_b)
+
+    transport = ASGITransport(app=create_app())
+    try:
+        async with AsyncClient(
+            transport=transport, base_url="http://test", cookies=_access_token_cookie(admin_b)
+        ) as client_b:
+            create_response = await client_b.post(
+                "/social/posts",
+                json={"social_connection_id": str(connection_b), "caption": "B's post"},
+            )
+            assert create_response.status_code == 201
+            post_b_id = create_response.json()["id"]
+
+        async with AsyncClient(
+            transport=transport, base_url="http://test", cookies=_access_token_cookie(admin_a)
+        ) as client_a:
+            get_response = await client_a.get(f"/social/posts/{post_b_id}")
+            edit_response = await client_a.patch(
+                f"/social/posts/{post_b_id}", json={"caption": "Hijacked"}
+            )
+            media_response = await client_a.post(
+                f"/social/posts/{post_b_id}/media",
+                files={"file": ("test.jpg", b"\xff\xd8\xff" + b"fake jpeg", "image/jpeg")},
+            )
+
+        assert get_response.status_code == 404
+        assert edit_response.status_code == 404
+        assert media_response.status_code == 404
+    finally:
+        await _clear_social_fixtures()
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_creating_a_post_against_another_accounts_connection_404s(
+    user_factory: Callable[..., Awaitable[uuid.UUID]],
+    account_factory: Callable[..., Awaitable[uuid.UUID]],
+) -> None:
+    """A's own social.manage grant doesn't let A attach a post to B's connection just
+    by guessing its id -- the connection lookup itself is account-scoped."""
+    account_a = await account_factory()
+    account_b = await account_factory()
+    admin_a = await user_factory(
+        full_name="Account A Admin", role_name="Admin", account_id=account_a
+    )
+    connection_b = await _create_social_connection(account_b)
+
+    transport = ASGITransport(app=create_app())
+    try:
+        async with AsyncClient(
+            transport=transport, base_url="http://test", cookies=_access_token_cookie(admin_a)
+        ) as client_a:
+            create_response = await client_a.post(
+                "/social/posts", json={"social_connection_id": str(connection_b)}
+            )
+
+        assert create_response.status_code == 404
+    finally:
+        await _clear_social_fixtures()
