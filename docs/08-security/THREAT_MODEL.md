@@ -174,3 +174,32 @@ dead tokens in practice. Multi-Page/multi-Instagram-account customers — the OA
 takes the first Facebook Page with a linked Instagram Business Account, no picker UI.
 Platform-admin oversight of social connections/posts across accounts — a future,
 separately-scoped capability (comparable to `GRX-SAAS-007`), not part of this slice.
+
+## Slice 6 (AI Assistant) scope
+
+Scope: multi-provider AI content generation (OpenAI, Azure OpenAI, Anthropic, Ollama),
+platform-admin-configured default + per-account bring-your-own credentials, always
+assistive (never sends/publishes directly — `DEC-GRX-006`). The first feature in this
+codebase where customer-supplied free text (a rewrite request, a topic brief) is sent to
+an external LLM, and the first where a customer/admin can supply an arbitrary outbound
+`base_url` (`DEC-GRX-026`, `DEC-GRX-027`).
+
+| # | Threat | Vector | Mitigation |
+|---|---|---|---|
+| T52 | SSRF via customer/admin-supplied `base_url` | Azure OpenAI/Ollama connections take a free-text `base_url`; a malicious value could target cloud metadata endpoints (`169.254.169.254`) or internal services, with the API server's own credentials/network position | `ai/providers/base.py`'s shared validator rejects non-http(s) schemes and resolves+rejects private/loopback/link-local/multicast ranges and the metadata address specifically, applied uniformly to both `platform_ai_provider_config.base_url` and `ai_provider_connections.base_url` — no admin/customer asymmetry (`DEC-GRX-027`) |
+| T53 | DNS rebinding bypassing save-time-only validation | A `base_url` hostname resolves to a public IP when the connection is saved (passing validation), then to a private/internal IP by the time it's actually called | The validator re-resolves and re-checks at **call time**, not only at save time, for every generation request through a custom-`base_url` adapter |
+| T54 | Open-redirect-assisted SSRF | A validated `base_url` returns an HTTP redirect to an internal address on the actual call | Redirect targets are re-validated through the same IP-range check before being followed; no unchecked redirect-follow |
+| T55 | AI provider API key leakage via logs or prompts | `ai_provider_connections`/`platform_ai_provider_config`'s encrypted API key, or its decrypted form, ends up in application logs or is accidentally interpolated into a prompt sent to the model itself | Same secret-redaction convention as SMTP/Instagram credentials (`DEC-GRX-009`); decrypted only in-memory inside the provider adapter's own request construction, never logged, never included in `input_context`/prompt text (`GRX-AI-005`) |
+| T56 | Prompt injection via untrusted rewrite/brief input | A user (or content copy-pasted from an external source) includes text designed to make the model ignore its system prompt or leak instructions | Per `GRX-AI-007`, all such input is treated as untrusted data, never as instructions — the system prompt in `ai/prompts/templates.py` is never built by concatenating untrusted text into an instruction position; generation output is always human-reviewed before it can reach a send/publish path (`DEC-GRX-006`), bounding the practical impact to "bad suggestion," not an executed action |
+| T57 | Cross-account generation/connection access | Guessing another account's `ai_generations.id` or `ai_provider_connections.id` | Standard `account_id`-scoped repository lookups (same convention as every other module); a cross-account guess 404s, matching `test_cross_tenant_isolation.py`'s existing convention |
+| T58 | Runaway generation cost / usage abuse | A compromised account with `ai.manage` triggers a large volume of generation calls, running up cost against the platform's own default provider credentials | No hard rate limit built in this slice; every call writes both `ai_generations` (token/cost detail) and a `usage_records` row, giving the platform admin's existing usage view real visibility into per-account AI cost for the first time — accepted risk for MVP, same framing as Slice 5's T50, revisit with real usage data |
+| T59 | Deterministic authorization bypass via model output | A capability's output is misused to influence *who* can do something (e.g. a prompt response accidentally treated as an authorization decision) | Not reachable by construction — no capability function ever returns or consumes a permission/role value; `GRX-AI-004` (deterministic authorization) is enforced structurally, not by model behavior |
+
+## Explicitly out of scope for Slice 6
+
+A proactive cost-cap/rate-limit enforcement mechanism (only visibility via `usage_records`
+this slice — see T58). A customer-facing prompt-template editor (`DEC-GRX-028` — templates
+are code-defined). Multi-step/autonomous agent workflows and LangGraph adoption
+(`DEC-GRX-012` — MVP AI is single-shot assistive generation only). A UI for picking
+per-generation model/temperature/other inference parameters beyond the connection's
+configured `default_model` — kept to what `MVP_SCOPE.md §E` actually asks for.

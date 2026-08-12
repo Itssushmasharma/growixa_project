@@ -636,17 +636,68 @@ second table, mirroring how `campaigns` never needed one beyond `campaign_versio
   doubles as the worker's idempotency guard (its existence for a post is the authoritative
   "already published" check), same role `CampaignVersion` plays in `handle_send_campaign`.
 
+## Slice 6 entities (full detail)
+
+Per `DEC-GRX-026`/`DEC-GRX-027`/`DEC-GRX-028`. Module ownership follows
+[MODULE_BOUNDARIES.md](../04-architecture/MODULE_BOUNDARIES.md): `ai`. Deliberately 3
+tables, not the 4 the placeholder below originally speculated — see `DEC-GRX-028` for why
+`ai_prompt_templates`/`ai_prompt_versions` collapse into a plain string column, and why
+`ai_usage_events` collapses into columns on `ai_generations` directly.
+
+### `ai_generations`
+
+- Purpose: one row per AI generation call — the full record of what was asked, what came
+  back, and what it cost, satisfying `GRX-AI-006`'s logging requirement in one table.
+- Primary key: `id` (UUID)
+- Required fields: `account_id` (FK → `accounts.id` CASCADE), `capability` (`CHECK IN
+  ('SUBJECT_LINE', 'BODY_COPY', 'SOCIAL_CAPTION', 'REWRITE', 'HASHTAGS',
+  'POSTING_TIME')`), `prompt_template_key` (text — e.g. `"subject_line.v1"`, a
+  code-defined reference per `DEC-GRX-028`, not a table FK), `input_context` (JSONB — the
+  brief/topic/existing-text-to-rewrite and any other capability-specific input),
+  `provider`/`model` (the vendor and model actually used for this call — resolved at
+  call time, may differ per generation if the account's BYO connection changes),
+  `status` (`CHECK IN ('COMPLETE', 'FAILED')`)
+- Optional fields: `output` (JSONB — the generated variation(s); null if `FAILED`),
+  `prompt_tokens`/`completion_tokens`/`estimated_cost_usd` (null if `FAILED`),
+  `error_message` (populated only if `FAILED`), `linked_entity_type`/`linked_entity_id`
+  (nullable provenance — which campaign/social_post this generation was made from, set by
+  the frontend, no FK constraint since it can reference either table)
+- Audit fields: `created_by_user_id`, `created_at`
+- No update path — a generation row is write-once (mirrors `social_post_versions`'
+  immutability), never edited after creation.
+
+### `ai_provider_connections` / `platform_ai_provider_config`
+
+- Purpose: the two-level AI provider configuration per `DEC-GRX-026` — an account's own
+  "bring your own model" override, and the platform-wide default a brand-new account
+  falls back to.
+- `ai_provider_connections` (account-level): `id` (UUID PK), `account_id` (FK →
+  `accounts.id` CASCADE), `provider` (`CHECK IN ('OPENAI', 'AZURE_OPENAI', 'ANTHROPIC',
+  'OLLAMA')`), `api_key_encrypted` (nullable — Fernet-encrypted per `DEC-GRX-026`;
+  Ollama typically needs none), `base_url` (nullable — required for `AZURE_OPENAI`/
+  `OLLAMA`, validated per `DEC-GRX-027`), `default_model`, `is_active` (default `true`),
+  `created_by_user_id`, `created_at`, `updated_at`. One active connection per account: a
+  `ux_ai_provider_connections_active_per_account` partial unique index on `(account_id)
+  WHERE is_active` — an account brings *one* model at a time, unlike
+  `email_provider_connections`'s legitimate per-provider multiplicity (there's no
+  equivalent to "generate some content via OpenAI and some via Anthropic" as a standing
+  per-account choice). Reconfiguring deactivates the prior row and inserts a fresh one,
+  same convention as every other provider-connection table in this codebase.
+- `platform_ai_provider_config` (platform-level, new pattern — the first DB-backed,
+  admin-editable platform setting in this codebase): same columns minus `account_id`,
+  plus a `ux_platform_ai_provider_config_active` partial unique index on `WHERE
+  is_active` (at most one active platform default at a time).
+
 ## Full MVP entity landscape (target slice)
 
-Entities beyond Slice 5 are named here for continuity with `docs/02-features/` and future
-`docs/06-api/` work, but are **not** designed in field-level detail until the slice that
-needs them. Slice 3/5's own entities moved to full detail above; `campaign_schedules`
+Entities beyond Slice 5/6 are named here for continuity with `docs/02-features/` and
+future `docs/06-api/` work, but are **not** designed in field-level detail until the slice
+that needs them. Slice 3/5/6's own entities moved to full detail above; `campaign_schedules`
 stays here since it's Slice 4:
 
 | Entity group | Target slice | Notes |
 |---|---|---|
 | `campaign_schedules` | Slice 4 | Scheduled Email — future send-time, cancellation, scheduling-specific retry |
-| `ai_prompt_templates`, `ai_prompt_versions`, `ai_generations`, `ai_usage_events` | Slice 6 | AI Content Assistant |
 | `notifications` | Slice 1 stub, still no real writer after Slice 3 | Notification center |
 | `webhook_endpoints`, `webhook_events`, `webhook_deliveries` | Deferred indefinitely — see Slice 3's "explicitly deferred" note | Only revisit with a second email/social provider |
 | `feature_entitlements` | Alongside `usage_records`, expanded when a real limit needs enforcing | |

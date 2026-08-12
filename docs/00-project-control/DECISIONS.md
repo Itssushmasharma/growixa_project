@@ -760,6 +760,129 @@ Decision statuses: `PROPOSED`, `UNDER_REVIEW`, `APPROVED`, `REJECTED`, `SUPERSED
   compliance requirement forces a real KMS, that migration affects both credential types
   (SMTP and social) together, not just one.
 - Related tasks: `GRX-SOCIAL-002` in `MASTER_TASK_TRACKER.md`.
+
+## DEC-GRX-026: AI provider strategy — multi-provider adapter, platform default + per-account bring-your-own (resolves OQ-004)
+
+- Status: APPROVED
+- Date: 2026-08-12
+- Context: Slice 6 (AI Assistant) cannot start until the provider strategy is fixed — it
+  determines the adapter interface shape, the credential-storage model, and whether
+  generation is even possible before any account configures anything.
+  [OQ-004](OPEN_QUESTIONS.md) asked which AI provider(s)/model(s) for the content
+  assistant. The product owner's explicit requirement: OpenAI, Azure OpenAI, Anthropic,
+  and Ollama (self-hosted) must all be supported; a platform admin configures a
+  platform-wide default; any customer account may optionally override it with its own
+  "bring your own model" (BYO) credentials.
+- Options considered:
+  1. Single fixed provider (e.g. OpenAI only) — simplest, but explicitly rejected by the
+     product owner; also weaker fit for cost/privacy-conscious customers who want
+     self-hosted Ollama.
+  2. Multi-provider, but customer-configured only (no platform default) — would leave a
+     brand-new account with no working AI features until it configures its own
+     credentials, unlike every other provider-backed feature in this codebase
+     (email, social) which at minimum boots to a clean "not configured" state without
+     blocking unrelated functionality; a platform default avoids AI being dead-on-arrival
+     for accounts that haven't set anything up.
+  3. Multi-provider, platform-admin-configured default (new pattern — first DB-backed,
+     admin-editable platform setting in this codebase; every existing platform-level
+     setting today is `.env`-only, restart-required) + per-account BYO override (mirrors
+     `email_provider_connections`, `DEC-GRX-016`).
+- Decision: Option 3. `AIModelProvider` (already named as an adapter interface in
+  [DEC-GRX-005](DECISIONS.md)) gets one concrete implementation per vendor
+  (OpenAI/Azure OpenAI/Anthropic/Ollama), all raw-`httpx`-based (this codebase's
+  established no-vendor-SDK convention — Postmark, Supabase Storage, and Instagram Graph
+  API all integrate this way). Resolution order per generation call: the calling
+  account's active `ai_provider_connections` row if one exists, else the platform's
+  active `platform_ai_provider_config` row, else a clean "AI not configured" error —
+  never a silent hardcoded fallback to one specific vendor.
+- Rationale: Matches the product owner's explicit requirement without narrowing it;
+  reuses the adapter pattern already decided in principle; the platform-default +
+  per-account-override shape is a proven pattern in this codebase
+  (`PLATFORM_SMTP_*`/`email_provider_connections`), just promoted from `.env`-only to a
+  real DB-backed table on the platform side so a platform admin can change it without a
+  redeploy.
+- Consequences: `ai_provider_connections`/`platform_ai_provider_config` both store
+  credentials Fernet-encrypted via the existing `auth/encryption.py`
+  (`encrypt_secret`/`decrypt_secret`), no new crypto (same reasoning as
+  [DEC-GRX-025](DECISIONS.md)). Azure OpenAI and Ollama both take a customer/admin-supplied
+  `base_url` — a genuine SSRF surface, addressed separately in
+  [DEC-GRX-027](DECISIONS.md). BYO connection *management* (entering/rotating a
+  third-party API key) reuses the existing `integrations.manage` permission — the same
+  class of action as connecting Postmark/Instagram — rather than a new permission; see
+  `RBAC.md §Slice 6`.
+- Related tasks: `GRX-AI-002`, `GRX-AI-003`, `GRX-AI-004`, `GRX-AI-005` in
+  `MASTER_TASK_TRACKER.md`.
+- Supersedes: none.
+
+## DEC-GRX-027: SSRF-safe validation for customer/admin-supplied AI provider `base_url`, applied uniformly
+
+- Status: APPROVED
+- Date: 2026-08-12
+- Context: Azure OpenAI and Ollama (per [DEC-GRX-026](DECISIONS.md)) both require a
+  custom `base_url` — unlike OpenAI/Anthropic's fixed official hostnames, this field is
+  fully attacker-or-customer-controlled. A malicious or careless `base_url` (a cloud
+  metadata endpoint, an internal service address) sent through the API server's own
+  outbound `httpx` call is a real SSRF vector.
+- Options considered:
+  1. Restrict custom `base_url` to platform-admin-only configuration (trusted actor),
+     limit customer-level BYO to OpenAI/Anthropic only (fixed, safe base URLs) —
+     removes the surface for customer-supplied URLs, but silently disappoints a real use
+     case (self-hosted Ollama for cost/privacy-conscious customers) without actually
+     fixing the underlying class of risk, only narrowing who can trigger it.
+  2. Validate every custom `base_url`, regardless of who supplies it: reject non-http(s)
+     schemes; resolve the hostname and reject private/loopback/link-local/multicast IP
+     ranges and the `169.254.169.254` metadata address specifically; re-resolve and
+     re-check at **call time**, not only at connection-save time (defeats DNS
+     rebinding — a hostname that resolves safely at save time but to an internal address
+     later); don't follow a redirect without re-validating the redirect target's
+     resolved IP.
+- Decision: Option 2, implemented once in `ai/providers/base.py` and applied uniformly
+  to both `platform_ai_provider_config.base_url` and `ai_provider_connections.base_url`
+  — no asymmetry between platform-admin and customer-supplied values.
+- Rationale: Properly fixes the vulnerability class rather than narrowing who can trigger
+  it; keeps Ollama available as genuine per-account BYO, which the product owner's own
+  requirement calls for; the call-time re-check specifically closes the DNS-rebinding gap
+  a save-time-only validator would miss.
+- Consequences: Every AI provider call through a custom-`base_url` adapter
+  (`azure_openai_provider.py`/`ollama_provider.py`) pays one extra DNS resolution + IP
+  check per call — accepted cost for closing a real SSRF path. See `THREAT_MODEL.md
+  §Slice 6` for the full threat entry.
+- Related tasks: `GRX-AI-003` in `MASTER_TASK_TRACKER.md`.
+- Supersedes: none.
+
+## DEC-GRX-028: AI prompt templates are code-defined, not a customer-editable database table, in MVP
+
+- Status: APPROVED
+- Date: 2026-08-12
+- Context: `DATA_MODEL.md`'s Slice 6 placeholder speculatively named four tables,
+  including `ai_prompt_templates`/`ai_prompt_versions` — a fully versioned,
+  presumably-editable prompt-template system. Nothing in `MVP_SCOPE.md §E` actually
+  calls for customer-facing prompt template editing; the scope is generate/rewrite/
+  suggest capabilities with a human-reviewed output, not a prompt-engineering UI.
+- Options considered:
+  1. Build `ai_prompt_templates`/`ai_prompt_versions` as designed in the placeholder —
+     a real versioned-template system with no UI to actually edit templates in MVP,
+     making it exactly the kind of speculative table this codebase already has one
+     unused cautionary example of (`usage_records`, built Sprint 1 per
+     [DEC-GRX-007](DECISIONS.md), zero writers anywhere until this same slice).
+  2. Keep prompts as plain code in `ai/prompts/templates.py` (one prompt-builder
+     function per capability), and log which one produced a given generation via a
+     single `prompt_template_key` string column (e.g. `"subject_line.v1"`) on
+     `ai_generations` — still fully satisfies `GRX-AI-006`'s "prompt version... logged
+     for every generation" requirement, with no unused schema.
+- Decision: Option 2.
+- Rationale: Avoids repeating a known mistake in this exact codebase; a versioned
+  template table only earns its complexity once there's an actual UI/workflow that
+  edits templates, which is explicitly out of MVP scope.
+- Consequences: `ai_usage_events` is also collapsed into token/cost columns directly on
+  `ai_generations` (strict 1:1 with a generation, no concrete case yet for a
+  non-generation usage event) — Slice 6 ships 3 new tables total
+  (`ai_generations`, `ai_provider_connections`, `platform_ai_provider_config`), not the
+  4 the placeholder named. If template editing becomes a real requirement later, adding
+  a versioned-template table then is additive, not a rewrite — `prompt_template_key`
+  already gives every past generation a stable reference to migrate onto.
+- Related tasks: `GRX-AI-002` in `MASTER_TASK_TRACKER.md`.
+- Supersedes: none.
 - Supersedes: none.
 
 ---

@@ -164,6 +164,56 @@ so this same gap is not replicated here.
   only, Content Creator deliberately excluded.
 - `social.view`: same grant shape as `campaigns.view` — everyone except Viewer.
 
+## Slice 6 permission codes
+
+| Code | Meaning |
+|---|---|
+| `ai.manage` | Generate/rewrite AI content (subject lines, body copy, social captions, hashtags, posting-time suggestions) |
+| `ai.view` | Read-only access to generation history |
+
+Connecting/rotating an account's own "bring your own model" AI provider credentials
+reuses the **existing** `integrations.manage` code from Slice 3 — the same conceptual
+action (configuring a third-party provider connection with an encrypted credential) as
+the Postmark/SMTP or Instagram connection, not a new permission
+([DEC-GRX-026](../00-project-control/DECISIONS.md)).
+
+Slice 6 deliberately does **not** add an `ai.publish`/`ai.send`-shaped third code. Per
+[DEC-GRX-006](../00-project-control/DECISIONS.md), AI output can never send email or
+publish social content directly — it lands in a campaign/social draft, and the
+*existing* `campaigns.send`/`social.publish` permissions already gate the actual
+send/publish of whatever that draft becomes. Content Creator's long-documented scope
+("Drafts, AI generation, media — no send/publish authority," from this document's
+Sprint-1-era Roles table) is honored by simply not granting `campaigns.send`/
+`social.publish` — Slice 6 needs no approval-gate permission of its own, only
+`ai.manage` (generate) and `ai.view` (read history).
+
+## Slice 6 role → permission matrix
+
+| Permission | Super Admin | Admin | Marketing Manager | Content Creator | Analyst | Viewer |
+|---|---|---|---|---|---|---|
+| `ai.manage` | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
+| `ai.view` | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+
+Same grant shape as `social.manage`/`social.view` — everyone with a real drafting need
+gets `ai.manage` (including Content Creator, honoring its "AI generation" scope
+explicitly), and everyone except Viewer gets `ai.view`. Unlike `social.publish`/
+`campaigns.send`, there is no restricted third tier here — see the rationale above.
+
+## Sprint 7 — Platform AI config (`GRX-AI-005`)
+
+| Code | Meaning |
+|---|---|
+| `platform.ai.manage` | View/edit the platform-wide default AI provider configuration (`platform_ai_provider_config`) |
+
+Mirrors `platform.usage.manage`'s existing wiring exactly (`require_platform_permission`,
+never `require_permission`). Granted to `platform.owner`/`platform.admin` only — matching
+`platform.accounts.manage`'s higher-trust shape, since this gates an encrypted
+credential (an AI provider API key), not just an operational view.
+
+| Permission | platform.owner | platform.admin | platform.support | platform.finance | platform.operations |
+|---|---|---|---|---|---|
+| `platform.ai.manage` | ✅ | ✅ | ❌ | ❌ | ❌ |
+
 ## Sprint 5 Phase B — platform-level roles (separate namespace, `GRX-SAAS-002`)
 
 This is a **distinct identity class**, not an addition to the roles/permissions above.

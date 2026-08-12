@@ -218,9 +218,31 @@ this task).** The genuinely new prerequisites versus prior slices' gates were th
 decisions themselves (OQ-003, OQ-005, and the OAuth-token-storage choice) — everything
 else follows the same per-slice pattern this document already establishes.
 
+## Readiness gate — Slice 6 (AI Assistant)
+
+| Readiness item | Required | Status | Evidence |
+|---|---|---|---|
+| AI provider strategy decision (OQ-004) | Yes — determines the adapter shape, credential storage, and whether generation works before any account configures anything | PASS | [DECISIONS.md §DEC-GRX-026](DECISIONS.md) — multi-provider adapter (OpenAI/Azure OpenAI/Anthropic/Ollama), platform-admin default + per-account bring-your-own |
+| SSRF mitigation decision (custom `base_url`) | Yes — Azure OpenAI/Ollama both take a customer/admin-supplied `base_url`, a real outbound-request surface | PASS | [DECISIONS.md §DEC-GRX-027](DECISIONS.md) — validate-always, applied uniformly, re-checked at call time |
+| Schema-simplification decision (prompt templates) | Yes — the pre-existing `DATA_MODEL.md` placeholder named a 4-table design this gate needed to either confirm or deliberately simplify | PASS | [DECISIONS.md §DEC-GRX-028](DECISIONS.md) — 3 tables, prompt versioning as a code-defined string, not a DB table |
+| Data model additions | Yes | PASS | [DATA_MODEL.md §Slice 6 entities](../05-data/DATA_MODEL.md#slice-6-entities-full-detail), [DATABASE_SCHEMA.md §Slice 6](../05-data/DATABASE_SCHEMA.md#slice-6-ai-assistant-tables), [ERD.md §Slice 6 additions](../05-data/ERD.md#slice-6-ai-assistant-additions) |
+| RBAC additions | Yes | PASS | [RBAC.md §Slice 6](../08-security/RBAC.md#slice-6-permission-codes) — `ai.manage`, `ai.view`; [RBAC.md §Sprint 7](../08-security/RBAC.md#sprint-7--platform-ai-config-grx-ai-005) — `platform.ai.manage` |
+| Threat model addendum | Yes (new external surface: first feature sending customer-supplied free text to an external LLM, first feature accepting a customer/admin-supplied outbound `base_url`) | PASS | [THREAT_MODEL.md §Slice 6](../08-security/THREAT_MODEL.md#slice-6-ai-assistant-scope) — T52–T59 |
+| Module boundaries | Yes — `ai` row moves from placeholder to real, gains an `auth` dependency | PASS | [MODULE_BOUNDARIES.md](../04-architecture/MODULE_BOUNDARIES.md) — updated `ai` row |
+| Sprint 7 plan | Yes | PASS | [SPRINT_07_AI_ASSISTANT.md](../14-sprints/SPRINT_07_AI_ASSISTANT.md) |
+| Feature specs | No (written per-task, not upfront — same practice as every prior slice) | DEFERRED TO EACH TASK | [FEATURE_CATALOG.md](../02-features/FEATURE_CATALOG.md) |
+| Project tracker rows | Yes | PASS | [MASTER_TASK_TRACKER.md](MASTER_TASK_TRACKER.md) — `GRX-AI-*` |
+| AI safety baseline | Yes — this is the first slice that actually needs it | PASS | PRD's `GRX-AI-001`–`007` safety table (already existed since Sprint 1 planning), enforced structurally via [DECISIONS.md §DEC-GRX-006](DECISIONS.md) (human approval, no direct send/publish) and [DECISIONS.md §DEC-GRX-012](DECISIONS.md) (assistive only, no autonomous agents) |
+| Real AI provider credentials for live verification | Not required to start — needed only before the provider-adapter/capability-generation tasks are marked `DONE` | PENDING | Per `DEC-GRX-011`, at least one live provider's credentials are needed before `GRX-AI-003`/`006` can be marked `DONE`; code-complete + fully tested is achievable without them, matching Slice 5's Instagram/Supabase evidence-gap precedent |
+
+**Overall status: READY — first task cleared: `GRX-AI-001` (readiness-gate docs, this
+task).** The genuinely new prerequisites versus prior slices' gates were the three
+decisions themselves (provider strategy, SSRF policy, schema simplification) — everything
+else follows the same per-slice pattern this document already establishes.
+
 ## Gate for later slices/phases
 
-Slice 6 (AI Assistant) onward, and Sprint 5 Phase D and the remaining Phase E rows
-(`GRX-SAAS-006`, `GRX-SAAS-007`, `GRX-SAAS-009`), will each need their own readiness pass
-(data model additions, feature specs, etc.) before becoming `READY` — this table will be
+Sprint 5 Phase D and the remaining Phase E rows (`GRX-SAAS-006`, `GRX-SAAS-007`,
+`GRX-SAAS-009`), and any post-MVP slice, will each need their own readiness pass (data
+model additions, feature specs, etc.) before becoming `READY` — this table will be
 extended per slice/phase rather than re-litigated from scratch.

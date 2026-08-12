@@ -698,6 +698,72 @@ Indexes: `account_id`, `social_post_id`.
 
 Indexes: `account_id`, `social_post_id`.
 
+## Slice 6 (AI Assistant) tables
+
+See [DATA_MODEL.md §Slice 6 entities](DATA_MODEL.md#slice-6-entities-full-detail) and
+[DECISIONS.md §DEC-GRX-026/027/028](../00-project-control/DECISIONS.md).
+
+## `ai_generations`
+
+| Column | Type | Constraints |
+|---|---|---|
+| id | uuid | PK |
+| account_id | uuid | FK → accounts.id ON DELETE CASCADE, NOT NULL |
+| created_by_user_id | uuid | FK → users.id, NULL |
+| capability | text | NOT NULL, CHECK IN ('SUBJECT_LINE','BODY_COPY','SOCIAL_CAPTION','REWRITE','HASHTAGS','POSTING_TIME') |
+| prompt_template_key | text | NOT NULL |
+| input_context | jsonb | NOT NULL |
+| output | jsonb | NULL |
+| provider | text | NOT NULL |
+| model | text | NOT NULL |
+| prompt_tokens | integer | NULL |
+| completion_tokens | integer | NULL |
+| estimated_cost_usd | numeric | NULL |
+| status | text | NOT NULL, CHECK IN ('COMPLETE','FAILED') |
+| error_message | text | NULL |
+| linked_entity_type | text | NULL |
+| linked_entity_id | uuid | NULL |
+| created_at | timestamptz | NOT NULL, DEFAULT now() |
+
+Indexes: `account_id`; `(account_id, capability)` for history filtering. Same migration
+seeds `ai.manage` / `ai.view` (customer RBAC) and `platform.ai.manage` (platform RBAC)
+permission codes and their role grants (see [RBAC.md](../08-security/RBAC.md)).
+
+## `ai_provider_connections`
+
+| Column | Type | Constraints |
+|---|---|---|
+| id | uuid | PK |
+| account_id | uuid | FK → accounts.id ON DELETE CASCADE, NOT NULL |
+| provider | text | NOT NULL, CHECK IN ('OPENAI','AZURE_OPENAI','ANTHROPIC','OLLAMA') |
+| api_key_encrypted | text | NULL |
+| base_url | text | NULL |
+| default_model | text | NOT NULL |
+| is_active | boolean | NOT NULL, DEFAULT true |
+| created_by_user_id | uuid | FK → users.id, NULL |
+| created_at | timestamptz | NOT NULL, DEFAULT now() |
+| updated_at | timestamptz | NOT NULL, DEFAULT now() |
+
+Indexes: `account_id`; unique partial index
+`ux_ai_provider_connections_active_per_account` on `(account_id) WHERE is_active`.
+
+## `platform_ai_provider_config`
+
+| Column | Type | Constraints |
+|---|---|---|
+| id | uuid | PK |
+| provider | text | NOT NULL, CHECK IN ('OPENAI','AZURE_OPENAI','ANTHROPIC','OLLAMA') |
+| api_key_encrypted | text | NULL |
+| base_url | text | NULL |
+| default_model | text | NOT NULL |
+| is_active | boolean | NOT NULL, DEFAULT true |
+| created_by_platform_admin_id | uuid | FK → platform_admins.id, NULL |
+| created_at | timestamptz | NOT NULL, DEFAULT now() |
+| updated_at | timestamptz | NOT NULL, DEFAULT now() |
+
+Indexes: unique partial index `ux_platform_ai_provider_config_active` on `WHERE
+is_active`.
+
 ## Extensions required
 
 - `pgcrypto` or equivalent for `gen_random_uuid()`.
@@ -757,3 +823,10 @@ Slice 5: `social_connections` (+ seed migration adding `social.manage` / `social
 `social_post_versions`. Depends on `GRX-SAAS-001`'s `accounts` table existing. See
 [DATA_MODEL.md §Slice 5 entities](DATA_MODEL.md#slice-5-entities-full-detail) and
 [DECISIONS.md §DEC-GRX-023/024/025](../00-project-control/DECISIONS.md).
+
+Slice 6: `ai_generations` → `ai_provider_connections` → `platform_ai_provider_config` (+
+seed migration adding `ai.manage` / `ai.view` and their role grants, and
+`platform.ai.manage` granted to `platform.owner`/`platform.admin`). Depends on
+`GRX-SAAS-001`'s `accounts` table and Phase B's `platform_admins` table both existing.
+See [DATA_MODEL.md §Slice 6 entities](DATA_MODEL.md#slice-6-entities-full-detail) and
+[DECISIONS.md §DEC-GRX-026/027/028](../00-project-control/DECISIONS.md).

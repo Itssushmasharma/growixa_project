@@ -49,7 +49,7 @@ rewrite.
 | `email_delivery` | Delivery attempts, provider events, bounce/complaint state | `campaigns`, `contacts` (suppression check) | `social`, `ai` |
 | `social` | Social account connections (OAuth), posts, media, single-image publishing (Instagram Business, Slice 5) | `auth` (encryption of OAuth tokens), `files` (storage adapter) | `email_delivery` |
 | `content_calendar` | Scheduled-content view across email/social — not built in Slice 5; the calendar shipped there is a `social`-owned endpoint (`GET /social/posts/calendar`), not a cross-module view. Revisit if a real unified email+social calendar becomes a need. | `campaigns`, `social` (read) | — |
-| `ai` | Prompt templates, generations, usage/cost tracking | `brand` (voice), `usage` | Must never call `email_delivery`/`social` to send/publish directly — see GRX-AI-002 |
+| `ai` | Provider connections (platform default + per-account BYO), generations, usage/cost tracking | `brand` (voice), `usage`, `auth` (encryption of provider API keys, Slice 6) | Must never call `email_delivery`/`social` to send/publish directly — see GRX-AI-002 |
 | `automation` | Out of MVP scope — not implemented in Sprint 1–6 | — | — |
 | `analytics` | Read-side aggregation/reporting over campaigns, posts, AI usage | All modules (read-only, via repositories or events) | Must not own writes to other modules' data |
 | `notifications` | In-app/notification records | Any module (as event consumer) | — |

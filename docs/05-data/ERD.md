@@ -502,3 +502,60 @@ erDiagram
         timestamp created_at
     }
 ```
+
+## Slice 6 (AI Assistant) additions
+
+```mermaid
+erDiagram
+    ACCOUNTS ||--o{ AI_GENERATIONS : requests
+    ACCOUNTS ||--o{ AI_PROVIDER_CONNECTIONS : "brings own model"
+    PLATFORM_ADMINS ||--o{ PLATFORM_AI_PROVIDER_CONFIG : configures
+
+    AI_GENERATIONS {
+        uuid id PK
+        uuid account_id FK
+        uuid created_by_user_id FK
+        string capability
+        string prompt_template_key
+        jsonb input_context
+        jsonb output
+        string provider
+        string model
+        int prompt_tokens
+        int completion_tokens
+        numeric estimated_cost_usd
+        string status
+        string error_message
+        string linked_entity_type
+        uuid linked_entity_id
+        timestamp created_at
+    }
+    AI_PROVIDER_CONNECTIONS {
+        uuid id PK
+        uuid account_id FK
+        string provider
+        string api_key_encrypted
+        string base_url
+        string default_model
+        boolean is_active
+        uuid created_by_user_id FK
+        timestamp created_at
+        timestamp updated_at
+    }
+    PLATFORM_AI_PROVIDER_CONFIG {
+        uuid id PK
+        string provider
+        string api_key_encrypted
+        string base_url
+        string default_model
+        boolean is_active
+        uuid created_by_platform_admin_id FK
+        timestamp created_at
+        timestamp updated_at
+    }
+```
+
+`AI_PROVIDER_CONNECTIONS` (account-level) is checked first when resolving which provider
+a generation call actually uses; `PLATFORM_AI_PROVIDER_CONFIG` (platform-level, no
+`account_id`) is the fallback. Neither table has a direct FK to the other — the
+resolution is a runtime lookup (`ai/providers/factory.py`), not a schema relationship.
