@@ -86,6 +86,17 @@ class Settings(BaseSettings):
     # only at creation — see THREAT_MODEL.md T39).
     support_session_ttl_minutes: int = 60
 
+    # Slice 5 (Social Publishing, DEC-GRX-023): the API's own publicly-reachable base
+    # URL, used to build the Instagram OAuth redirect_uri — must exactly match what's
+    # registered in the Meta Developer App.
+    api_public_url: str = "http://localhost:8000"
+    instagram_app_id: str = ""
+    instagram_app_secret: str = ""
+    instagram_graph_api_version: str = "v21.0"
+    # How long a generated OAuth `state` value stays valid in Redis before the connect
+    # flow must be restarted — see THREAT_MODEL.md T44.
+    instagram_oauth_state_ttl_seconds: int = 600
+
 
 @lru_cache
 def get_settings() -> Settings:
