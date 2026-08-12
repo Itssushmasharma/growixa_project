@@ -51,3 +51,11 @@ class SocialPostOut(BaseModel):
     created_at: datetime
     updated_at: datetime
     media: list[SocialPostMediaOut] = []
+
+
+class SocialPostJobOut(BaseModel):
+    """Response for the publish/schedule/retry actions -- mirrors
+    email_delivery.CampaignSendOut's shape (a job id, not the post itself, since the
+    post's own status transition is only observable once the worker acts on the job)."""
+
+    job_id: str

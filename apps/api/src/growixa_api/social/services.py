@@ -10,6 +10,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from growixa_api.auth.encryption import encrypt_secret
 from growixa_api.config import get_settings
 from growixa_api.files import storage_client
+from growixa_api.jobs.producer import publish_job
+from growixa_api.jobs.schemas import JobEnvelope
 from growixa_api.social import instagram_client, repositories
 from growixa_api.social.models import SocialConnection, SocialPost, SocialPostMedia
 from growixa_api.social.schemas import SocialPostIn, SocialPostUpdateIn
@@ -18,6 +20,10 @@ _PROVIDER = "INSTAGRAM_BUSINESS"
 _STATE_KEY_PREFIX = "grx:social:instagram:oauth_state:"
 # Per DEC-GRX-023's media-scope decision: a single JPEG image, ≤8MB, per post this slice.
 _MAX_MEDIA_BYTES = 8 * 1024 * 1024
+# Fire-once, no retry/DLQ -- mirrors email_delivery's SEND_CAMPAIGN_QUEUE exactly: a
+# failure surfaces immediately via last_error/FAILED, retriable through GRX-SOCIAL-007's
+# explicit /retry route rather than an automatic requeue.
+PUBLISH_NOW_QUEUE = "grx.social.publish_now"
 _JPEG_MAGIC_BYTES = b"\xff\xd8\xff"
 # Verify against Meta's current dialog scopes at live-verification time (GRX-SOCIAL-008)
 # — these drift across Graph API versions.
@@ -287,3 +293,43 @@ async def remove_media(
 
     await repositories.delete_post_media(session, media)
     await session.commit()
+
+
+class PostHasNoMediaError(Exception):
+    """Instagram's Content Publishing API has no text-only posts (DEC-GRX-023) —
+    publishing or scheduling a post with zero media items is rejected here, not left
+    for the worker to discover."""
+
+
+class PostNotPublishableError(Exception):
+    """Raised when publish-now is attempted against a post that isn't (or is no longer)
+    a DRAFT — publishing twice, or publishing mid-publish, is not allowed. Mirrors
+    email_delivery's CampaignNotSendableError."""
+
+
+async def publish_now(
+    session: AsyncSession, account_id: uuid.UUID, post_id: uuid.UUID, actor_id: uuid.UUID
+) -> JobEnvelope:
+    """Flips the post to DISPATCHING and enqueues the real publish as a worker job —
+    never calls the Instagram API inline in this request, matching
+    email_delivery.trigger_campaign_send's shape exactly."""
+    post = await repositories.get_post(session, account_id, post_id)
+    if post is None:
+        raise SocialPostNotFoundError
+    if post.status != "DRAFT":
+        raise PostNotPublishableError
+    media = await repositories.list_post_media(session, account_id, post_id)
+    if len(media) == 0:
+        raise PostHasNoMediaError
+
+    post.status = "DISPATCHING"
+    await session.commit()
+
+    envelope = JobEnvelope(
+        idempotency_key=f"social-post-publish-{post.id}",
+        job_type=PUBLISH_NOW_QUEUE,
+        payload={"social_post_id": str(post.id)},
+        created_by_user_id=actor_id,
+    )
+    await publish_job(PUBLISH_NOW_QUEUE, envelope)
+    return envelope

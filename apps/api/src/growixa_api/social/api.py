@@ -15,6 +15,7 @@ from growixa_api.social.models import SocialPost, SocialPostMedia
 from growixa_api.social.schemas import (
     SocialConnectionOut,
     SocialPostIn,
+    SocialPostJobOut,
     SocialPostMediaOut,
     SocialPostOut,
     SocialPostUpdateIn,
@@ -23,6 +24,8 @@ from growixa_api.social.services import (
     InvalidMediaTypeError,
     MediaTooLargeError,
     OAuthStateInvalidError,
+    PostHasNoMediaError,
+    PostNotPublishableError,
     SocialConnectionNotFoundError,
     SocialPostMediaNotFoundError,
     SocialPostNotEditableError,
@@ -36,6 +39,7 @@ from growixa_api.social.services import (
     list_all_connections,
     list_all_posts,
     list_media_for_post,
+    publish_now,
     remove_media,
     update_post,
 )
@@ -45,6 +49,7 @@ router = APIRouter(prefix="/social", tags=["social"])
 
 _require_integrations_manage = require_permission("integrations.manage")
 _require_social_manage = require_permission("social.manage")
+_require_social_publish = require_permission("social.publish")
 _require_social_view = require_permission("social.view")
 
 
@@ -231,3 +236,27 @@ async def remove_media_route(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Media not found") from exc
     except StorageError as exc:
         raise HTTPException(status.HTTP_502_BAD_GATEWAY, f"Media removal failed: {exc}") from exc
+
+
+@router.post(
+    "/posts/{post_id}/publish",
+    response_model=SocialPostJobOut,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+async def publish_post_route(
+    post_id: uuid.UUID,
+    actor_id: uuid.UUID = Depends(_require_social_publish),
+    account_id: uuid.UUID = Depends(get_current_account_id),
+    session: AsyncSession = Depends(get_session),
+) -> SocialPostJobOut:
+    try:
+        envelope = await publish_now(session, account_id, post_id, actor_id)
+    except SocialPostNotFoundError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Post not found") from exc
+    except PostNotPublishableError as exc:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "Post is not in a publishable (DRAFT) state"
+        ) from exc
+    except PostHasNoMediaError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Post has no media to publish") from exc
+    return SocialPostJobOut(job_id=str(envelope.job_id))
