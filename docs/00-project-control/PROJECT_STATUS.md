@@ -127,6 +127,38 @@ directly by the user mid-session, is `DONE`.
 
 **Web Architecture & Brand Website Planning Pass:** `GRX-WEB-001` (Next.js App Router Groups refactoring: `(marketing)`, `(auth)`, `(dashboard)`, `(admin)`) added to [MASTER_TASK_TRACKER.md](MASTER_TASK_TRACKER.md) as `READY`. `GRX-WEB-002` (3D Brand & Landing Website: Linear/Vercel/Stripe aesthetic) and `GRX-ADMIN-001` (Admin Portal / Control Plane) added as `BACKLOG`.
 
+**Development Readiness Gate for Slice 5 (Sprint 6: Social Publishing): PASS.** See
+[DEVELOPMENT_READINESS.md](DEVELOPMENT_READINESS.md) and
+[SPRINT_06_SOCIAL_PUBLISHING.md](../14-sprints/SPRINT_06_SOCIAL_PUBLISHING.md) — the sixth
+sprint *file*, implementing the fifth product *slice* (Sprint 5's filename was already
+consumed by the unplanned multi-tenancy retrofit). Resolved
+[OQ-003](OPEN_QUESTIONS.md) (Instagram Business, [DEC-GRX-023](DECISIONS.md)) and
+[OQ-005](OPEN_QUESTIONS.md) (Supabase Storage, [DEC-GRX-024](DECISIONS.md)) per direct
+product-owner confirmation, plus [DEC-GRX-025](DECISIONS.md) (OAuth tokens reuse the
+existing Fernet encryption, no new KMS). Scoped, at the user's explicit direction, to the
+customer-facing feature only — platform-admin oversight tooling for social is deferred
+until the product itself is finished. **All eleven Slice 5 tasks
+(`GRX-SOCIAL-001`–`011`) are `DONE`**: readiness-gate docs; `social_connections` schema +
+`social.manage`/`social.publish`/`social.view` RBAC seed; Instagram OAuth connect flow;
+`social_posts`/`social_post_media` schema; post CRUD + Supabase Storage media upload
+(single JPEG only, by explicit scope decision); publish-now; schedule/cancel/retry
+dispatch pipeline (mirroring the Slice 4 campaigns pipeline's queue topology almost
+exactly); the worker-side Instagram publish handler with permanent-vs-transient error
+classification; a full backend+worker test suite (which found and fixed two real schema
+bugs — a missing `provider` column on the worker's lightweight connection model, and a
+missing DB-level default on `social_posts.idempotency_key`); the frontend (Instagram
+connect card, post composer, social-only content calendar); and env/settings docs
+(which found and fixed a real gap — `compose.yaml` wasn't passing the new Instagram/
+Supabase env vars through to the `api`/`worker` containers at all). Two evidence gaps
+remain, per [DEC-GRX-011](DECISIONS.md)'s no-DONE-on-mocked-provider-evidence rule as
+applied at the level of *individual external calls*, not whole tasks: no live OAuth
+round-trip against a real Meta Developer App, and no live image upload/publish against a
+real Supabase bucket / Instagram account, since the user has not yet added
+`INSTAGRAM_APP_ID`/`INSTAGRAM_APP_SECRET`/`SUPABASE_STORAGE_URL`/
+`SUPABASE_STORAGE_SERVICE_KEY` to `.env`. Everything reachable without those — full
+CRUD, validation, scheduling, cancellation, RBAC gating, cross-tenant isolation — was
+live-verified via `curl` against the real running Compose stack.
+
 ## Documents created so far
 
 | Document | Status |
@@ -270,6 +302,13 @@ directly by the user mid-session, is `DONE`.
 5. Do not resolve OQ-003/004/006/007/009/012 early — they don't block Slice 3 (explicit
    instruction; OQ-002 is the one exception, resolved because Slice 3 genuinely needed it).
 6. Do not start more than one Sprint 1 task concurrently (explicit instruction).
+7. Sprint 6 (Social Publishing, product Slice 5) is now fully `DONE`
+   (`GRX-SOCIAL-001`–`011`), built directly after the user chose it over Slice 6 (AI
+   Assistant) and explicitly scoped it to the customer-facing feature only, deferring
+   platform-admin oversight. Next up: either Slice 6 (AI Assistant, still unbuilt), the
+   platform-admin social oversight panel the user deferred, or `campaign-form-page.tsx`'s
+   still-missing schedule/cancel UI gap noted under item 1 above — whichever the user
+   picks next.
 
 ## Changelog
 

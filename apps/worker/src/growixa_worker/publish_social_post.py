@@ -6,7 +6,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from growixa_worker import instagram_client
+from growixa_worker import instagram_client as instagram_client
 from growixa_worker.config import get_settings
 from growixa_worker.encryption import decrypt_secret, encrypt_secret
 from growixa_worker.instagram_client import InstagramPublishError, TransientPublishError

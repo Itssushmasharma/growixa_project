@@ -10,6 +10,82 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
+## 2026-08-12 — GRX-SOCIAL-001–011: Social Publishing — Instagram Business (Sprint 6 / Slice 5 complete)
+
+- User chose Slice 5 (Social Publishing) over Slice 6 (AI Assistant) as the next MVP
+  feature, explicitly scoped to the self-serve customer-facing feature only —
+  platform-admin oversight tooling for social is deferred until the product itself is
+  finished.
+- Readiness gate: [DEC-GRX-023](DECISIONS.md) resolves [OQ-003](OPEN_QUESTIONS.md)
+  (Instagram Business/Meta Graph API), [DEC-GRX-024](DECISIONS.md) resolves
+  [OQ-005](OPEN_QUESTIONS.md) (Supabase Storage, public-read bucket required since
+  Instagram fetches media by plain URL), [DEC-GRX-025](DECISIONS.md) reuses the existing
+  Fernet encryption for OAuth tokens (no new KMS). `THREAT_MODEL.md` gained T44–T51.
+  Sprint-file numbering: this is `SPRINT_06_SOCIAL_PUBLISHING.md`, the sixth sprint file,
+  implementing product Slice 5 — Sprint 5's filename was already taken by the unplanned
+  multi-tenancy retrofit.
+- New `social_connections` (per-account Instagram OAuth connection, Fernet-encrypted
+  token, one-active-per-provider partial unique index — same shape as
+  `email_provider_connections`) and `social.manage`/`social.publish`/`social.view` RBAC
+  seed. `social.publish` is deliberately Marketing-Manager+-only, stricter than how
+  Slice 4's shipped `campaigns.manage`-gated schedule route actually behaves — a
+  deliberate correction, not a copy-paste of that gap.
+- Instagram OAuth connect flow (`/integrations/instagram/oauth/{authorize,callback}`):
+  Redis-backed single-use CSRF `state`, exchanges the short-lived code for a long-lived
+  user token, resolves the linked IG Business Account through the connected Facebook
+  Page, and stores the **Page's** own access token (what the Content Publishing API
+  actually authenticates with).
+- New `social_posts`/`social_post_media` schema (status state machine mirrors
+  `campaigns.status`) and a new `files` module (`storage_client.py`) wrapping Supabase
+  Storage's REST API directly via `httpx`, no SDK — matching this codebase's existing
+  thin-provider-wrapper convention. Post CRUD + media upload enforces exactly one JPEG
+  image ≤8MB per post, an explicit scope decision (the media table stays
+  carousel/video-ready for a future slice).
+- Publish-now (fire-once queue, mirrors `email_delivery`'s immediate-send queue) and a
+  full schedule/cancel/retry dispatch pipeline: `social/scheduler.py` is a structural
+  mirror of `campaigns/scheduler.py`'s atomic claim query, and the
+  `grx.social.dispatch`/DLQ/retry-ladder queue topology mirrors the campaigns dispatch
+  pipeline's TTL/dead-letter-exchange shape exactly. `retry_post` is genuinely new
+  territory (campaigns has no manual retry route at all) — confirmed safe to reuse the
+  post's fixed `idempotency_key` by reading how the campaigns worker's Redis "done"
+  marker only gets set *after* success.
+- Worker-side `instagram_client.py` (container-create/poll/publish) classifies Graph
+  error code 190 (dead/expired token) as a `PermanentPublishError` that short-circuits
+  the retry ladder straight to DLQ/FAILED, instead of burning all 3 attempts against a
+  token that can never succeed.
+- Full backend+worker test suite (17 new backend integration tests, 10 new worker
+  tests, a 3-test cross-tenant isolation extension) **found and fixed two real schema
+  bugs**: the worker's lightweight `SocialConnection` model was missing the `provider`
+  column entirely, and `social_posts.idempotency_key` had no DB-level default (only a
+  Python-side one), unlike `campaigns.idempotency_key` which deliberately has one for
+  exactly this reason — fixed via a new migration matching that established precedent.
+- Frontend: an Instagram card on the Integrations page (plain `<a href>` OAuth
+  navigation, the one deliberate departure from every other Connect/Save action in this
+  app, since the user has to reach Meta's own consent screen), a new post
+  list/composer/social-only-calendar route group under `/dashboard/social`, and sidebar
+  wiring. 19 new component tests; `next build` clean.
+- Settings/env docs **found and fixed a real gap**: `compose.yaml` only passes through
+  an explicit whitelist of environment variables to the `api`/`worker` containers, and
+  the new Instagram/Supabase vars weren't on it — so even after adding them to `.env`,
+  Compose would have silently never forwarded them (confirmed live via a `client_id=`
+  empty OAuth redirect before the fix). Added them to both services' `environment:`
+  blocks, plus matching `.env.example` (root, api, worker), `render.yaml`, and a new
+  "Social Publishing (Instagram) setup" section in `LOCAL_DEVELOPMENT.md`.
+- Live-verified everything reachable without real Instagram/Supabase credentials via
+  `curl` against the running Compose stack: login, `/auth/me` permission grants, full
+  post CRUD, publish/schedule validation (both correctly 400 with no media), unknown-
+  media 404, OAuth authorize redirect shape. Two evidence gaps remain per
+  [DEC-GRX-011](DECISIONS.md) — no live OAuth round-trip and no live media
+  upload/publish — pending the user adding real
+  `INSTAGRAM_APP_ID`/`INSTAGRAM_APP_SECRET`/`SUPABASE_STORAGE_URL`/
+  `SUPABASE_STORAGE_SERVICE_KEY` to `.env` themselves.
+- Did not complete an interactive logged-in browser click-through of the composer/
+  calendar UI: typing the local smoke-test admin account's password into the login form
+  was blocked by this environment's action classifier (treated as credential entry,
+  with no carve-out for a self-created local dev account); the user chose to rely on
+  the `curl` verification + 172 passing frontend tests + clean production build instead
+  of logging in themselves to unblock a full visual pass.
+
 ## 2026-08-06 — GRX-SCHED-002/003/004/005/006: Scheduler ticker, worker dispatch, retry/DLQ (Sprint 4 complete)
 
 - New `apps/api/src/growixa_api/campaigns/scheduler.py`: `claim_due_campaigns()` atomically

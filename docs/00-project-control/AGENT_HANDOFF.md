@@ -3,97 +3,151 @@
 - Document ID: DOC-AGENT-HANDOFF
 - Status: ACTIVE (updated at the end of every work session)
 - Version: 1.0
-- Last updated: 2026-08-06
+- Last updated: 2026-08-12
 - Owner: Coding agent
 - Related documents: [MASTER_TASK_TRACKER](MASTER_TASK_TRACKER.md), [PROJECT_STATUS](PROJECT_STATUS.md), [CHANGELOG](CHANGELOG.md), [FEATURE_STATUS_MATRIX](FEATURE_STATUS_MATRIX.md)
 
 ## Task worked on
 
-`GRX-WEB-002` — Public 3D Brand & Landing Website (`apps/web/src/app/(marketing)/`).
+`GRX-SOCIAL-001` through `GRX-SOCIAL-011` — Slice 5 (Social Publishing, Instagram
+Business only), chosen by the user over Slice 6 (AI Assistant) and explicitly scoped to
+the self-serve customer-facing feature only (platform-admin oversight deferred).
 
 ## Work completed
 
-- Built the public Growixa 3D Brand & Landing Website adhering to Linear, Vercel, and Stripe design standards:
-  - **`navbar.tsx`**: Header with official `BrandLogo` (`/assets/logo-icon.png`), nav links (*Platform*, *Solutions*, *Pricing*, *Security*, *Docs*), and dynamic CTAs (*Log In* / *Start Free* / *Go to Dashboard*).
-  - **`hero-section.tsx`**: Outcome-focused hero (*"Grow Faster. Market Smarter. Powered by AI."*), dual CTAs (*"Start Free"*, *"Book Demo"*), and 3D floating glass dashboard preview card with live metric counters & simulated growth chart.
-  - **`trust-bar.tsx`**: Social proof metric bar (*1,000+ Businesses*, *50M+ Emails*, *12M AI Generations*, *99.99% Uptime*).
-  - **`ai-team-section.tsx`**: "Meet Your AI Marketing Team" grid showcasing 6 AI agents (Copywriter, Email Optimizer, Campaign Planner, Audience Builder, Social Creator, Marketing Analyst).
-  - **`workflow-showcase.tsx`**: Visual automation step pipeline (*Lead fills form* ➔ *AI scores lead* ➔ *Email sequence* ➔ *WhatsApp/SMS* ➔ *Sales notified*).
-  - **`integrations-section.tsx`**: Logo grid showcasing native connections (Postmark, Stripe, Razorpay, OpenAI, Claude, Meta, LinkedIn, Slack, Zapier).
-  - **`security-section.tsx`**: Enterprise reliability badges (SOC2 Ready, GDPR, Fernet Encryption, RBAC, Insert-Only Audit Logs, 99.99% SLA Uptime).
-  - **`pricing-section.tsx`**: Stripe-style tiered pricing matrix (Starter, Growth, Enterprise).
-  - **`footer.tsx`**: Complete multi-column SaaS footer with system status badge.
-  - **Dedicated Sub-pages**: `/features`, `/pricing`, `/solutions`, `/security`, `/docs`.
-- Integrated official brand logo assets from `apps/web/src/assets/icon/growixa-icon-mark.png` and `primary/growixa-primary-horizontal-logo.png` into `public/assets/`.
-- Verified zero regressions across Vitest (54 passed) and Playwright E2E (4 passed).
+Full slice, backend through frontend through docs — see
+[CHANGELOG.md](CHANGELOG.md)'s 2026-08-12 entry for the complete narrative. Summary:
+
+- Readiness-gate docs (`DEC-GRX-023/024/025`, `THREAT_MODEL.md` T44–T51,
+  `SPRINT_06_SOCIAL_PUBLISHING.md`).
+- `social_connections`/`social_posts`/`social_post_media`/`social_post_versions` schema +
+  `social.manage`/`social.publish`/`social.view` RBAC seed.
+- Instagram OAuth connect flow, post CRUD + Supabase Storage single-JPEG media upload,
+  publish-now, and a full schedule/cancel/retry dispatch pipeline (API + worker),
+  mirroring the Slice 4 campaigns pipeline's patterns throughout.
+- Full backend+worker test suite (found and fixed two real schema bugs along the way).
+- Frontend: Instagram connect card, post composer, social-only content calendar, sidebar
+  wiring (19 new component tests, `next build` clean).
+- Env/settings docs, including a real `compose.yaml` env-passthrough gap found and fixed
+  during verification (Instagram/Supabase vars weren't being forwarded to the containers
+  at all).
+- One incidental fix found while running the final `mypy --strict` gate on
+  `apps/worker`: `publish_social_post.py`'s `from growixa_worker import instagram_client`
+  needed the `as instagram_client` explicit-reexport idiom so
+  `test_publish_social_post.py`'s `publish_social_post_module.instagram_client.*`
+  monkeypatching type-checks under `no_implicit_reexport` (implied by `strict = true`).
+
+**All eleven tasks are `DONE`.** Two evidence gaps remain per `DEC-GRX-011`: no live
+OAuth round-trip against a real Meta Developer App, and no live media upload/publish
+against real Supabase/Instagram accounts — both pending the user adding
+`INSTAGRAM_APP_ID`/`INSTAGRAM_APP_SECRET`/`SUPABASE_STORAGE_URL`/
+`SUPABASE_STORAGE_SERVICE_KEY` to `.env` themselves (asked, not yet confirmed done).
+Everything else was live-verified via `curl` against the real running Compose stack
+(login, permission grants, full post CRUD, publish/schedule validation, cross-tenant
+isolation).
 
 ## Files changed
 
-- `apps/web/src/app/(marketing)/marketing.module.css` (new)
-- `apps/web/src/app/(marketing)/navbar.tsx` (new)
-- `apps/web/src/app/(marketing)/hero-section.tsx` (new)
-- `apps/web/src/app/(marketing)/trust-bar.tsx` (new)
-- `apps/web/src/app/(marketing)/ai-team-section.tsx` (new)
-- `apps/web/src/app/(marketing)/workflow-showcase.tsx` (new)
-- `apps/web/src/app/(marketing)/integrations-section.tsx` (new)
-- `apps/web/src/app/(marketing)/security-section.tsx` (new)
-- `apps/web/src/app/(marketing)/pricing-section.tsx` (new)
-- `apps/web/src/app/(marketing)/footer.tsx` (new)
-- `apps/web/src/app/(marketing)/page.tsx` (new)
-- `apps/web/src/app/(marketing)/page.test.tsx` (new)
-- `apps/web/src/app/(marketing)/features/page.tsx` (new)
-- `apps/web/src/app/(marketing)/pricing/page.tsx` (new)
-- `apps/web/src/app/(marketing)/solutions/page.tsx` (new)
-- `apps/web/src/app/(marketing)/security/page.tsx` (new)
-- `apps/web/src/app/(marketing)/docs/page.tsx` (new)
-- `apps/web/src/components/brand-logo.tsx` (new)
-- `apps/web/public/assets/` (`logo-icon.png`, `logo-horizontal.png`, `hero-3d-concept.png`, `features-3d-concept.png`)
-- `docs/00-project-control/MASTER_TASK_TRACKER.md`
+GRX-SOCIAL-001 through 009 (readiness docs, schema, OAuth, post CRUD/media, publish-now,
+schedule/cancel/retry, worker publish handler, backend+worker tests) were committed
+individually earlier in this session — see `git log` (`f3dabf5` through `0e11704`) and
+their own `MASTER_TASK_TRACKER.md` rows for per-task file lists. This final push
+(GRX-SOCIAL-010/011 + closeout) touched:
+
+- `apps/web/src/app/(dashboard)/dashboard/social/` (new — `types.ts`, `social-page.tsx`,
+  `post-form-page.tsx`, `calendar-page.tsx` + `.module.css`/`.test.tsx` for each, plus
+  `page.tsx`/`new/page.tsx`/`[id]/page.tsx`/`calendar/page.tsx`)
+- `apps/web/src/app/(dashboard)/dashboard/integrations/{integrations-page.tsx,types.ts,integrations-page.test.tsx}` (extended: Instagram card)
+- `apps/web/src/app/(dashboard)/dashboard/{sidebar.tsx,page-title.tsx}` (extended)
+- `apps/web/package-lock.json` (resynced by `npm install`, no dependency version changes)
+- `.env.example`, `apps/api/.env.example`, `apps/worker/.env.example` (new Instagram/Supabase vars)
+- `compose.yaml` (env-passthrough fix for `api`/`worker` services — the real gap found this session)
+- `render.yaml` (commented entries)
+- `docs/11-devops/LOCAL_DEVELOPMENT.md` (new "Social Publishing (Instagram) setup" section)
+- `apps/worker/src/growixa_worker/publish_social_post.py` (mypy re-export fix)
+- `docs/00-project-control/{MASTER_TASK_TRACKER,PROJECT_STATUS,CHANGELOG,AGENT_HANDOFF}.md`
 
 ## Commands executed
 
 ```bash
-git checkout -b feature/FRONTEND/GRX-WEB-002
-cd apps/web
-npm run format && npm run lint && npm run typecheck && npm run test -- --run   # 54 passed (all clean)
-npx playwright test                                                             # 4 passed (Playwright e2e)
+# apps/api
+uv run ruff check . && uv run ruff format --check . && uv run mypy .   # clean
+uv run pytest -q                                                        # 244 passed, 8 skipped
+docker compose exec api alembic check                                   # no drift
+
+# apps/worker
+uv run ruff check . && uv run ruff format --check . && uv run mypy .   # clean
+uv run pytest -q                                                        # 26 passed
+
+# apps/web
+npx vitest run        # 172 passed (32 files)
+npx eslint ...         # clean (only expected next/image warnings)
+npx tsc --noEmit       # clean
+npx prettier --check src   # clean
+npx next build         # clean, all social routes generated
+
+# Compose
+docker compose config -q                 # valid
+docker compose up -d api worker          # recreated with new env passthrough
+curl http://localhost:8000/health        # postgres/redis/rabbitmq all ok
 ```
 
 ## Test results
 
-- `tsc --noEmit`, `eslint`, `prettier --check` clean.
-- `vitest` 54 passed.
-- Playwright `test:e2e` 4 passed.
+- `apps/api`: 244 passed, 8 skipped (4 of the skips are OAuth tests needing real Redis,
+  separately verified by copying into the running `api` container).
+- `apps/worker`: 26 passed.
+- `apps/web`: 172 passed (19 new for Social), `next build` clean.
+- Live `curl` verification against Compose: login, `/auth/me` permission grants, full
+  `social/posts` CRUD, publish/schedule validation (400 with no media), unknown-media
+  404, OAuth authorize redirect shape (client_id correctly empty pending real creds).
 
 ## Current state
 
-`GRX-WEB-002` is fully `DONE` and committed (`7b94ba2` & `eca4dd7`).
+**Slice 5 (Social Publishing) is fully `DONE`** — all eleven `GRX-SOCIAL-*` tasks
+closed. Sprints/Slices 1–4 were already complete; Slice 5 is the second MVP slice built
+this phase after the unplanned Slice-4.5 multi-tenancy retrofit (`GRX-SAAS-*`). Slice 6
+(AI Assistant) remains completely unbuilt, and the platform-admin social oversight panel
+the user explicitly deferred is not started.
 
 ## Exact next task
 
-`GRX-EMAIL-005` (Postmark webhook receiver + unsubscribe handling) is in progress by backend agent. Next frontend task is `GRX-EMAIL-007` / `GRX-ADMIN-001`.
+Whichever the user picks next: Slice 6 (AI Assistant — needs an `OQ` resolution for the
+AI provider; the user previously indicated "OpenAI (GPT)" in an earlier status-check
+round, not yet formally logged as a `DEC-GRX-*`), the platform-admin social oversight
+panel, or the pre-existing `campaign-form-page.tsx` schedule/cancel UI gap noted in
+earlier Sprint 4 handoff entries below.
+
+## Resume commands
+
+```bash
+cd /Users/ravi/Projects/growixa
+git log --oneline -15
+cat docs/00-project-control/MASTER_TASK_TRACKER.md
+docker compose up -d
+docker compose logs api --tail 20
+```
 
 ## Latest commit
 
-`eca4dd7` — feat(web): update brand logo component to use official logo-icon asset
+Pending — this session's final commit (GRX-SOCIAL-010/011 + closeout) has not yet been
+created as of this handoff entry being written; see `git status` for the exact diff.
 
 ## Decisions made this session
 
-Before writing code, two open architectural questions were surfaced to the user directly
-(not guessed):
+No new `DEC-GRX-*` decisions were needed — Slice 5's readiness gate (`GRX-SOCIAL-001`,
+committed earlier) already resolved every open question (`OQ-003`, `OQ-005`) up front.
+One judgment call worth recording: when typing the local smoke-test admin account's
+password into the login form was blocked by this environment's action classifier (no
+carve-out for self-created local dev accounts), the agent asked the user via
+`AskUserQuestion` rather than trying to work around it (e.g. injecting a session via
+JavaScript) — the user chose to accept `curl`-based backend verification + the passing
+frontend test/build suite in place of an interactive browser click-through.
 
-1. **How should `apps/worker` access the database?** `apps/worker` is a separate Python
-   package from `apps/api` with no shared code, but `send_campaign` needs to read/write
-   Postgres. Chosen: the worker gets its **own minimal SQLAlchemy/asyncpg data layer** —
-   lightweight models for exactly the tables it touches — rather than depending on
-   `growixa_api` as a library. Keeps the two apps independently deployable, matching
-   `SYSTEM_ARCHITECTURE.md`'s "independently scalable Python workers" framing, at the
-   cost of hand-kept-in-sync column definitions.
-2. **Is a live Postmark account available for real-send verification?** No. Per
-   `DEC-GRX-011`/`SPRINT_03_EMAIL_CAMPAIGN.md`'s own pre-approved fallback: build the
-   full real pipeline (real SMTP client, real DB writes) and explicitly document the
-   final outbound-send success as an evidence gap rather than silently assuming it or
-   faking it with a mock.
+---
+
+**Below this point: historical handoff entries from earlier sessions, preserved for
+context. Not updated as part of this session's work.**
 
 ## Work completed (GRX-EMAIL-007, first Sprint 3 frontend task)
 
