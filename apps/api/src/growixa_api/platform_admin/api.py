@@ -4,6 +4,13 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from growixa_api.accounts.models import Account
+from growixa_api.ai.schemas import PlatformAIProviderConfigIn, PlatformAIProviderConfigOut
+from growixa_api.ai.services import (
+    InsecureBaseUrlError,
+    MissingBaseUrlError,
+    get_platform_config,
+    set_platform_config,
+)
 from growixa_api.campaigns.models import Campaign
 from growixa_api.contacts.services import ContactNotFoundError, DuplicateEmailError
 from growixa_api.db import get_session
@@ -64,11 +71,13 @@ from growixa_api.platform_auth.dependencies import require_platform_permission
 router = APIRouter(prefix="/platform/accounts", tags=["platform_admin"])
 usage_router = APIRouter(prefix="/platform", tags=["platform_admin"])
 support_session_router = APIRouter(prefix="/platform", tags=["platform_admin"])
+ai_config_router = APIRouter(prefix="/platform", tags=["platform_admin"])
 
 _require_manage = require_platform_permission("platform.accounts.manage")
 _require_usage_manage = require_platform_permission("platform.usage.manage")
 _require_support_session_create = require_platform_permission("platform.support_session.create")
 _require_support_session_write = require_platform_permission("platform.support_session.write")
+_require_ai_manage = require_platform_permission("platform.ai.manage")
 
 
 def _to_list_item(account: Account, user_count: int) -> AccountListItemOut:
@@ -404,3 +413,28 @@ async def update_contact_via_support_session_route(
         phone=contact.phone,
         status=contact.status,
     )
+
+
+@ai_config_router.get("/ai-config", response_model=PlatformAIProviderConfigOut | None)
+async def get_platform_ai_config_route(
+    _platform_admin_id: uuid.UUID = Depends(_require_ai_manage),
+    session: AsyncSession = Depends(get_session),
+) -> PlatformAIProviderConfigOut | None:
+    config = await get_platform_config(session)
+    if config is None:
+        return None
+    return PlatformAIProviderConfigOut.model_validate(config)
+
+
+@ai_config_router.put("/ai-config", response_model=PlatformAIProviderConfigOut)
+async def set_platform_ai_config_route(
+    payload: PlatformAIProviderConfigIn,
+    platform_admin_id: uuid.UUID = Depends(_require_ai_manage),
+    session: AsyncSession = Depends(get_session),
+) -> PlatformAIProviderConfigOut:
+    try:
+        config = await set_platform_config(session, payload, platform_admin_id)
+    except (MissingBaseUrlError, InsecureBaseUrlError) as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
+    await session.commit()
+    return PlatformAIProviderConfigOut.model_validate(config)

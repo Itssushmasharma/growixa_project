@@ -86,6 +86,13 @@ services:
       PLATFORM_SMTP_FROM_EMAIL: ${PLATFORM_SMTP_FROM_EMAIL:-noreply@growixa.local}
       PLATFORM_SMTP_FROM_NAME: ${PLATFORM_SMTP_FROM_NAME:-Growixa}
       FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:-http://localhost:3000}
+      # Platform admin bootstrap (`python -m growixa_api.cli.seed_platform_admin`) --
+      # was previously never passed through at all, so the seed CLI could never work
+      # locally regardless of what was set in .env; found while live-verifying
+      # GRX-AI-005.
+      PLATFORM_ADMIN_EMAIL: ${PLATFORM_ADMIN_EMAIL:-}
+      PLATFORM_ADMIN_PASSWORD: ${PLATFORM_ADMIN_PASSWORD:-}
+      PLATFORM_ADMIN_FULL_NAME: ${PLATFORM_ADMIN_FULL_NAME:-Platform Owner}
       # Slice 5: Social Publishing -- Instagram Business (DEC-GRX-023) + Supabase
       # Storage (DEC-GRX-024). Empty by default (OAuth connect / publish routes fail
       # cleanly until set) -- see docs/11-devops/LOCAL_DEVELOPMENT.md.

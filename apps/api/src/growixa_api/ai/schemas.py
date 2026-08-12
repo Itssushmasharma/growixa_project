@@ -28,3 +28,23 @@ class AIProviderConnectionOut(BaseModel):
     created_at: datetime
     updated_at: datetime
     # Never the api_key or its encrypted form, in any response.
+
+
+class PlatformAIProviderConfigIn(BaseModel):
+    provider: AIProvider
+    api_key: str | None = None
+    base_url: str | None = None
+    default_model: str
+
+
+class PlatformAIProviderConfigOut(BaseModel):
+    model_config = {"from_attributes": True}
+
+    id: uuid.UUID
+    provider: AIProvider
+    base_url: str | None
+    default_model: str
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime
+    # Never the api_key or its encrypted form, in any response.
