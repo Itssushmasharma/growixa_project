@@ -97,6 +97,14 @@ class Settings(BaseSettings):
     # flow must be restarted — see THREAT_MODEL.md T44.
     instagram_oauth_state_ttl_seconds: int = 600
 
+    # Slice 5 media storage (DEC-GRX-024): Supabase Storage, called directly via its
+    # REST API (growixa_api.files.storage_client) — no SDK, matching this codebase's
+    # existing thin-provider-wrapper convention. The bucket is public-read by
+    # requirement (Instagram fetches media by plain URL) — see THREAT_MODEL.md T48.
+    supabase_storage_url: str = ""
+    supabase_storage_service_key: str = ""
+    supabase_storage_bucket: str = "social-media"
+
 
 @lru_cache
 def get_settings() -> Settings:

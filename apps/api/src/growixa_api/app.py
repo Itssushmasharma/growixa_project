@@ -32,6 +32,7 @@ from growixa_api.platform_admin.api import usage_router as platform_admin_usage_
 from growixa_api.platform_auth.api import router as platform_auth_router
 from growixa_api.roles.api import router as roles_router
 from growixa_api.social.api import oauth_router as social_oauth_router
+from growixa_api.social.api import router as social_router
 from growixa_api.templates.api import router as templates_router
 from growixa_api.users.api import router as users_router
 
@@ -86,6 +87,7 @@ def create_app() -> FastAPI:
     app.include_router(audit_router)
     app.include_router(integrations_router)
     app.include_router(social_oauth_router)
+    app.include_router(social_router)
     app.include_router(templates_router)
     app.include_router(campaigns_router)
     app.include_router(email_delivery_router)
