@@ -11,7 +11,7 @@ from sqlalchemy import (
     Text,
     text,
 )
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
 
@@ -146,6 +146,38 @@ class SocialPostMedia(Base):
     storage_path: Mapped[str] = mapped_column(Text, nullable=False)
     public_url: Mapped[str] = mapped_column(Text, nullable=False)
     position: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class SocialPostVersion(Base):
+    """Exactly one row per post, written when the worker successfully publishes it
+    (GRX-SOCIAL-008) -- an immutable "what was actually published" snapshot, distinct
+    from the mutable draft on `SocialPost` itself. Doubles as the worker's DB-level
+    idempotency guard: its existence for a post is the authoritative "already
+    published" check, mirroring campaigns.CampaignVersion's identical dual role. Not
+    populated by this task."""
+
+    __tablename__ = "social_post_versions"
+    __table_args__ = (Index("ix_social_post_versions_social_post_id", "social_post_id"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    # Denormalized from social_post_id's own account_id -- see campaigns.CampaignVersion's
+    # identical note.
+    account_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("accounts.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    social_post_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("social_posts.id"), nullable=False
+    )
+    caption: Mapped[str] = mapped_column(Text, nullable=False)
+    # [{storage_path, public_url, media_type}, ...] at publish time.
+    media_snapshot: Mapped[list[dict[str, object]]] = mapped_column(JSONB, nullable=False)
+    ig_media_id: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

@@ -105,6 +105,11 @@ class Settings(BaseSettings):
     supabase_storage_service_key: str = ""
     supabase_storage_bucket: str = "social-media"
 
+    # GRX-SOCIAL-007: how often the social post scheduler ticker polls for due posts —
+    # same default and rationale as scheduler_poll_interval_seconds, its campaigns
+    # equivalent, running as a second independent ticker.
+    social_scheduler_poll_interval_seconds: float = 5.0
+
 
 @lru_cache
 def get_settings() -> Settings:

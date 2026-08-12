@@ -13,6 +13,7 @@ from growixa_api.redis import get_redis
 from growixa_api.social.instagram_client import InstagramApiError
 from growixa_api.social.models import SocialPost, SocialPostMedia
 from growixa_api.social.schemas import (
+    ScheduleSocialPostIn,
     SocialConnectionOut,
     SocialPostIn,
     SocialPostJobOut,
@@ -24,8 +25,11 @@ from growixa_api.social.services import (
     InvalidMediaTypeError,
     MediaTooLargeError,
     OAuthStateInvalidError,
+    PostAlreadyScheduledError,
     PostHasNoMediaError,
+    PostNotCancellableError,
     PostNotPublishableError,
+    PostNotRetryableError,
     SocialConnectionNotFoundError,
     SocialPostMediaNotFoundError,
     SocialPostNotEditableError,
@@ -33,6 +37,7 @@ from growixa_api.social.services import (
     TooManyMediaItemsError,
     add_media,
     build_authorize_url,
+    cancel_post,
     complete_oauth_callback,
     create_post,
     get_post_or_raise,
@@ -41,6 +46,8 @@ from growixa_api.social.services import (
     list_media_for_post,
     publish_now,
     remove_media,
+    retry_post,
+    schedule_post,
     update_post,
 )
 
@@ -259,4 +266,61 @@ async def publish_post_route(
         ) from exc
     except PostHasNoMediaError as exc:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Post has no media to publish") from exc
+    return SocialPostJobOut(job_id=str(envelope.job_id))
+
+
+@router.post("/posts/{post_id}/schedule", response_model=SocialPostOut)
+async def schedule_post_route(
+    post_id: uuid.UUID,
+    payload: ScheduleSocialPostIn,
+    _actor_id: uuid.UUID = Depends(_require_social_publish),
+    account_id: uuid.UUID = Depends(get_current_account_id),
+    session: AsyncSession = Depends(get_session),
+) -> SocialPostOut:
+    try:
+        post = await schedule_post(session, account_id, post_id, payload)
+    except SocialPostNotFoundError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Post not found") from exc
+    except PostAlreadyScheduledError as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
+    except PostHasNoMediaError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Post has no media to publish") from exc
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
+    media = await list_media_for_post(session, account_id, post_id)
+    return _post_to_out(post, list(media))
+
+
+@router.post("/posts/{post_id}/cancel", response_model=SocialPostOut)
+async def cancel_post_route(
+    post_id: uuid.UUID,
+    _actor_id: uuid.UUID = Depends(_require_social_publish),
+    account_id: uuid.UUID = Depends(get_current_account_id),
+    session: AsyncSession = Depends(get_session),
+) -> SocialPostOut:
+    try:
+        post = await cancel_post(session, account_id, post_id)
+    except SocialPostNotFoundError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Post not found") from exc
+    except PostNotCancellableError as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
+    media = await list_media_for_post(session, account_id, post_id)
+    return _post_to_out(post, list(media))
+
+
+@router.post(
+    "/posts/{post_id}/retry", response_model=SocialPostJobOut, status_code=status.HTTP_202_ACCEPTED
+)
+async def retry_post_route(
+    post_id: uuid.UUID,
+    _actor_id: uuid.UUID = Depends(_require_social_publish),
+    account_id: uuid.UUID = Depends(get_current_account_id),
+    session: AsyncSession = Depends(get_session),
+) -> SocialPostJobOut:
+    try:
+        envelope = await retry_post(session, account_id, post_id)
+    except SocialPostNotFoundError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Post not found") from exc
+    except PostNotRetryableError as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
     return SocialPostJobOut(job_id=str(envelope.job_id))

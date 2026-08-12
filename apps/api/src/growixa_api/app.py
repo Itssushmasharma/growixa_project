@@ -33,6 +33,7 @@ from growixa_api.platform_auth.api import router as platform_auth_router
 from growixa_api.roles.api import router as roles_router
 from growixa_api.social.api import oauth_router as social_oauth_router
 from growixa_api.social.api import router as social_router
+from growixa_api.social.scheduler import run_scheduler_loop as run_social_scheduler_loop
 from growixa_api.templates.api import router as templates_router
 from growixa_api.users.api import router as users_router
 
@@ -43,12 +44,18 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # ASGITransport used throughout this repo's tests never invokes the lifespan
     # protocol, so no test accidentally spins up a background ticker.
     task = asyncio.create_task(run_scheduler_loop(get_settings().scheduler_poll_interval_seconds))
+    social_task = asyncio.create_task(
+        run_social_scheduler_loop(get_settings().social_scheduler_poll_interval_seconds)
+    )
     try:
         yield
     finally:
         task.cancel()
+        social_task.cancel()
         with contextlib.suppress(asyncio.CancelledError):
             await task
+        with contextlib.suppress(asyncio.CancelledError):
+            await social_task
 
 
 def create_app() -> FastAPI:

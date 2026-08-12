@@ -35,6 +35,13 @@ class SocialPostUpdateIn(BaseModel):
     caption: str | None = None
 
 
+class ScheduleSocialPostIn(BaseModel):
+    """Body for POST /social/posts/{id}/schedule."""
+
+    scheduled_at: datetime
+    """UTC datetime for when to dispatch this post. Must be in the future."""
+
+
 class SocialPostOut(BaseModel):
     model_config = {"from_attributes": True}
 

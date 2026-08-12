@@ -12,9 +12,9 @@ from growixa_api.config import get_settings
 from growixa_api.files import storage_client
 from growixa_api.jobs.producer import publish_job
 from growixa_api.jobs.schemas import JobEnvelope
-from growixa_api.social import instagram_client, repositories
+from growixa_api.social import instagram_client, repositories, scheduler
 from growixa_api.social.models import SocialConnection, SocialPost, SocialPostMedia
-from growixa_api.social.schemas import SocialPostIn, SocialPostUpdateIn
+from growixa_api.social.schemas import ScheduleSocialPostIn, SocialPostIn, SocialPostUpdateIn
 
 _PROVIDER = "INSTAGRAM_BUSINESS"
 _STATE_KEY_PREFIX = "grx:social:instagram:oauth_state:"
@@ -332,4 +332,96 @@ async def publish_now(
         created_by_user_id=actor_id,
     )
     await publish_job(PUBLISH_NOW_QUEUE, envelope)
+    return envelope
+
+
+class PostAlreadyScheduledError(Exception):
+    """Raised when scheduling a post that is not in DRAFT status. Mirrors
+    campaigns.services's CampaignAlreadyScheduledError."""
+
+
+class PostNotCancellableError(Exception):
+    """Raised when cancelling a post that is not in DRAFT or SCHEDULED status. Mirrors
+    campaigns.services's CampaignNotCancellableError."""
+
+
+class PostNotRetryableError(Exception):
+    """Raised when retrying a post that is not in FAILED status."""
+
+
+async def schedule_post(
+    session: AsyncSession,
+    account_id: uuid.UUID,
+    post_id: uuid.UUID,
+    data: ScheduleSocialPostIn,
+) -> SocialPost:
+    """Move a DRAFT post to SCHEDULED status. Only DRAFT posts may be scheduled;
+    `data.scheduled_at` must be strictly in the future (UTC). Mirrors
+    campaigns.services.schedule_campaign exactly, plus the same has-media check
+    publish_now enforces (Instagram has no text-only posts)."""
+    post = await repositories.get_post(session, account_id, post_id)
+    if post is None:
+        raise SocialPostNotFoundError
+    if post.status != "DRAFT":
+        raise PostAlreadyScheduledError(
+            f"Post is in status '{post.status}' and cannot be scheduled"
+        )
+    if data.scheduled_at.astimezone(UTC) <= datetime.now(UTC):
+        raise ValueError("scheduled_at must be a future datetime")
+    media = await repositories.list_post_media(session, account_id, post_id)
+    if len(media) == 0:
+        raise PostHasNoMediaError
+
+    post = await repositories.update_post_fields(
+        session, post, {"status": "SCHEDULED", "scheduled_at": data.scheduled_at}
+    )
+    await session.commit()
+    await session.refresh(post)
+    return post
+
+
+async def cancel_post(
+    session: AsyncSession, account_id: uuid.UUID, post_id: uuid.UUID
+) -> SocialPost:
+    """Cancel a DRAFT or SCHEDULED post before it is dispatched. Mirrors
+    campaigns.services.cancel_campaign exactly."""
+    post = await repositories.get_post(session, account_id, post_id)
+    if post is None:
+        raise SocialPostNotFoundError
+    if post.status not in {"DRAFT", "SCHEDULED"}:
+        raise PostNotCancellableError(f"Post is in status '{post.status}' and cannot be cancelled")
+
+    post = await repositories.update_post_fields(
+        session, post, {"status": "CANCELLED", "cancelled_at": datetime.now(UTC)}
+    )
+    await session.commit()
+    await session.refresh(post)
+    return post
+
+
+async def retry_post(
+    session: AsyncSession, account_id: uuid.UUID, post_id: uuid.UUID
+) -> JobEnvelope:
+    """Re-dispatches a FAILED post through the scheduled-dispatch pipeline (not the
+    fire-once publish-now queue), so it gets the worker's own retry/DLQ ladder for this
+    fresh attempt. Reuses the post's own fixed `idempotency_key` -- safe because the
+    worker's idempotency guard (a Redis 'done' marker set only after success, backed by
+    a DB-level SocialPostVersion existence check) never marks a FAILED attempt as done,
+    so a retry with the same key is never mistaken for an already-processed one."""
+    post = await repositories.get_post(session, account_id, post_id)
+    if post is None:
+        raise SocialPostNotFoundError
+    if post.status != "FAILED":
+        raise PostNotRetryableError(f"Post is in status '{post.status}' and cannot be retried")
+
+    post.status = "DISPATCHING"
+    post.last_error = None
+    await session.commit()
+
+    envelope = JobEnvelope(
+        idempotency_key=str(post.idempotency_key),
+        job_type=scheduler.DISPATCH_QUEUE,
+        payload={"social_post_id": str(post.id)},
+    )
+    await publish_job(scheduler.DISPATCH_QUEUE, envelope)
     return envelope
