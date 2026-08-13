@@ -49,6 +49,12 @@ class AnthropicProvider:
 
         data = _extract_or_raise(response)
         text = "".join(block.get("text", "") for block in data.get("content", []))
+        if not text:
+            raise AIProviderError(
+                f"Anthropic returned no content (stop_reason={data.get('stop_reason')!r}) "
+                f"— the response may have been truncated before completion; try a "
+                f"higher max_tokens"
+            )
         usage = data.get("usage", {})
         return AIGenerationResult(
             text=text,

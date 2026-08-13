@@ -60,6 +60,12 @@ class OllamaProvider:
 
         data = _extract_or_raise(response)
         text = str(data.get("message", {}).get("content", ""))
+        if not text:
+            raise AIProviderError(
+                f"Ollama returned no content (done_reason={data.get('done_reason')!r}) "
+                f"— the response may have been truncated before completion; try a "
+                f"higher max_tokens"
+            )
         return AIGenerationResult(
             text=text,
             prompt_tokens=int(data.get("prompt_eval_count", 0)),

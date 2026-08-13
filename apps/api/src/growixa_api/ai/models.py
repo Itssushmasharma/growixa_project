@@ -58,7 +58,11 @@ class AIGeneration(Base):
     model: Mapped[str] = mapped_column(Text, nullable=False)
     prompt_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
     completion_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    estimated_cost_usd: Mapped[float | None] = mapped_column(Numeric, nullable=True)
+    # Fixed precision/scale (not plain Numeric) -- an unscaled NUMERIC column stores a
+    # Python float's exact binary representation, producing long floating-point
+    # artifacts (e.g. 0.000569999999999999977...) instead of the intended rounded
+    # value. Found live: a real generation's estimated_cost_usd came back this way.
+    estimated_cost_usd: Mapped[float | None] = mapped_column(Numeric(10, 6), nullable=True)
     status: Mapped[str] = mapped_column(Text, nullable=False)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     # Optional provenance -- which campaign/social_post this generation was made from, set

@@ -4,12 +4,21 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from growixa_api.ai.providers.base import InsecureBaseUrlError
-from growixa_api.ai.schemas import AIProviderConnectionIn, AIProviderConnectionOut
+from growixa_api.ai.providers.factory import AINotConfiguredError
+from growixa_api.ai.schemas import (
+    AICapability,
+    AIGenerationOut,
+    AIProviderConnectionIn,
+    AIProviderConnectionOut,
+    GenerateContentIn,
+)
 from growixa_api.ai.services import (
     AIProviderConnectionNotFoundError,
+    GenerationFailedError,
     MissingBaseUrlError,
     create_connection,
     deactivate_connection,
+    generate,
     list_connections,
 )
 from growixa_api.db import get_session
@@ -20,6 +29,7 @@ router = APIRouter(prefix="/ai", tags=["ai"])
 # BYO connection management reuses integrations.manage (Super-Admin-only) — the same
 # class of action as connecting Postmark/Instagram, not a new permission (DEC-GRX-026).
 _require_manage = require_permission("integrations.manage")
+_require_generate = require_permission("ai.manage")
 
 
 @router.get("/connections", response_model=list[AIProviderConnectionOut])
@@ -61,3 +71,34 @@ async def deactivate_ai_connection_route(
     except AIProviderConnectionNotFoundError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, str(exc)) from exc
     return AIProviderConnectionOut.model_validate(connection)
+
+
+@router.post("/generate/{capability}", response_model=AIGenerationOut)
+async def generate_content_route(
+    capability: AICapability,
+    payload: GenerateContentIn,
+    actor_id: uuid.UUID = Depends(_require_generate),
+    account_id: uuid.UUID = Depends(get_current_account_id),
+    session: AsyncSession = Depends(get_session),
+) -> AIGenerationOut:
+    """Always assistive — the response is a suggestion for the caller to review and
+    insert into a campaign/social post draft, never sent or published automatically
+    (DEC-GRX-006). This route has no code path that calls campaigns.send/
+    social.publish."""
+    try:
+        result = await generate(
+            session,
+            account_id=account_id,
+            actor_id=actor_id,
+            capability=capability,
+            brief=payload.brief,
+            existing_text=payload.existing_text,
+            instruction=payload.instruction,
+            linked_entity_type=payload.linked_entity_type,
+            linked_entity_id=payload.linked_entity_id,
+        )
+    except AINotConfiguredError as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
+    except GenerationFailedError as exc:
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, f"Generation failed: {exc}") from exc
+    return AIGenerationOut.model_validate(result)

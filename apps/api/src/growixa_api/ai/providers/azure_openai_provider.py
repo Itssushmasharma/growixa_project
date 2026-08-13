@@ -63,10 +63,21 @@ class AzureOpenAIProvider:
             raise AIProviderError(str(exc)) from exc
 
         data = _extract_or_raise(response)
-        choice = data["choices"][0]["message"]["content"]
+        choice = data["choices"][0]
+        text = choice["message"]["content"]
+        if not text:
+            # Same truncated-before-content failure mode OpenAIProvider guards
+            # against (reasoning models can hit max_tokens mid-thought) — surface it
+            # as an error rather than silently returning blank text.
+            finish_reason = choice.get("finish_reason")
+            raise AIProviderError(
+                f"Azure OpenAI returned no content (finish_reason={finish_reason!r}) — "
+                f"the response may have been truncated before completion; try a "
+                f"higher max_tokens"
+            )
         usage = data.get("usage", {})
         return AIGenerationResult(
-            text=choice,
+            text=text,
             prompt_tokens=int(usage.get("prompt_tokens", 0)),
             completion_tokens=int(usage.get("completion_tokens", 0)),
         )

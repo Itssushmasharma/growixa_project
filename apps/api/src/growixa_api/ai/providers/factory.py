@@ -32,7 +32,7 @@ def _build_adapter(
     if provider_name == "OPENAI":
         if api_key is None:
             raise AINotConfiguredError("OpenAI connection is missing its API key")
-        return OpenAIProvider(api_key=api_key)
+        return OpenAIProvider(api_key=api_key, base_url=base_url)
     if provider_name == "ANTHROPIC":
         if api_key is None:
             raise AINotConfiguredError("Anthropic connection is missing its API key")
