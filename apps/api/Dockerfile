@@ -16,6 +16,7 @@ RUN pip install --no-cache-dir -e ".[dev]"
 
 EXPOSE 8000
 
-# Use --reload only in development (controlled via RELOAD_ENABLED env var).
-# Production deployments (like Render) should NOT use --reload to avoid file descriptor exhaustion.
-CMD sh -c 'uvicorn growixa_api.main:app --host 0.0.0.0 --port 8000 ${RELOAD_ENABLED:+--reload}'
+# Run DB migrations then start the server.
+# alembic upgrade head is idempotent — safe on every deploy (already-applied
+# migrations are skipped). Use --reload only in development.
+CMD sh -c 'alembic upgrade head && uvicorn growixa_api.main:app --host 0.0.0.0 --port 8000 ${RELOAD_ENABLED:+--reload}'
