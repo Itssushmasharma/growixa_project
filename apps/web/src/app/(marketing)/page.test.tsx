@@ -13,6 +13,6 @@ describe("LandingPage", () => {
     expect(screen.getByText(/Grow Faster. Market Smarter./i)).toBeInTheDocument();
     expect(screen.getByText(/Meet Your AI Marketing Team/i)).toBeInTheDocument();
     expect(screen.getByText(/Automate Entire Marketing Pipelines/i)).toBeInTheDocument();
-    expect(screen.getByText(/Simple Plans for Every Stage/i)).toBeInTheDocument();
+    expect(screen.getByText(/Simple Plans That Scale With Your Growth/i)).toBeInTheDocument();
   });
 });
