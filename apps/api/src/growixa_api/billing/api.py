@@ -5,9 +5,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from growixa_api.billing.providers.razorpay_provider import RazorpayProvider
 from growixa_api.billing.schemas import (
+    AccountSubscriptionOut,
+    CreditBalanceOut,
+    CreditPackOut,
     RazorpayWebhookPayload,
     SubscribeIn,
     SubscribeOut,
+    SubscriptionPlanOut,
     TopUpIn,
     TopUpOut,
 )
@@ -17,6 +21,9 @@ from growixa_api.billing.services import (
     PlanNotFoundError,
     create_subscription_checkout,
     create_topup_checkout,
+    get_billing_overview,
+    list_credit_pack_catalog,
+    list_plan_catalog,
     process_razorpay_webhook,
 )
 from growixa_api.config import get_settings
@@ -27,6 +34,44 @@ router = APIRouter(prefix="/billing", tags=["billing"])
 public_router = APIRouter(tags=["billing-public"])
 
 _require_manage = require_permission("billing.manage")
+_require_view = require_permission("billing.view")
+
+
+@router.get("/subscription", response_model=AccountSubscriptionOut)
+async def get_subscription_route(
+    _actor_id: uuid.UUID = Depends(_require_view),
+    account_id: uuid.UUID = Depends(get_current_account_id),
+    session: AsyncSession = Depends(get_session),
+) -> AccountSubscriptionOut:
+    subscription, plan, balances = await get_billing_overview(session, account_id)
+    return AccountSubscriptionOut(
+        plan=SubscriptionPlanOut.model_validate(plan),
+        status=subscription.status,
+        currency=subscription.currency,  # type: ignore[arg-type]
+        current_period_start=subscription.current_period_start,
+        current_period_end=subscription.current_period_end,
+        period_email_used=subscription.period_email_used,
+        period_ai_used=subscription.period_ai_used,
+        credit_balances=[CreditBalanceOut.model_validate(b) for b in balances],
+    )
+
+
+@router.get("/plans", response_model=list[SubscriptionPlanOut])
+async def list_plans_route(
+    _actor_id: uuid.UUID = Depends(_require_view),
+    session: AsyncSession = Depends(get_session),
+) -> list[SubscriptionPlanOut]:
+    plans = await list_plan_catalog(session)
+    return [SubscriptionPlanOut.model_validate(plan) for plan in plans]
+
+
+@router.get("/credit-packs", response_model=list[CreditPackOut])
+async def list_credit_packs_route(
+    _actor_id: uuid.UUID = Depends(_require_view),
+    session: AsyncSession = Depends(get_session),
+) -> list[CreditPackOut]:
+    packs = await list_credit_pack_catalog(session)
+    return [CreditPackOut.model_validate(pack) for pack in packs]
 
 
 def _gateway() -> RazorpayProvider:

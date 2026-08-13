@@ -463,6 +463,46 @@ server-side from the DB only — never from client input (`THREAT_MODEL.md` T62)
 Both routes are live-verified against the real Razorpay Test Mode account (INR) —
 see `GRX-BILL-004`'s `MASTER_TASK_TRACKER.md` evidence for the full round-trip.
 
+## 4c. Billing read endpoints + customer billing page (`GRX-BILL-007`)
+
+Every route/schema/repository/service function built through `GRX-BILL-006` was
+write-side only — nothing existed yet for a page to actually *read* the account's
+current plan, usage, or the plan/pack catalogs, so this task added three `billing.view`
+read routes alongside the frontend page:
+
+- `GET /billing/subscription` → current plan (nested, full `SubscriptionPlanOut`),
+  `status`, `currency`, `current_period_start`/`current_period_end`,
+  `period_email_used`/`period_ai_used`, and every `account_credit_balances` row the
+  account has (a credit type with no purchase/grant yet simply has no row — the
+  frontend defaults it to `0`, not a `404`).
+- `GET /billing/plans` → the full `subscription_plans` catalog, ascending by
+  `price_usd` (Enterprise's `NULL` price last).
+- `GET /billing/credit-packs` → the active `credit_packs` catalog.
+
+All three reuse `billing.view` (not `billing.manage`) — matching RBAC.md's own framing
+("View the account's current plan, usage/quota bars, and billing history") and this
+codebase's read/write permission split everywhere else in this module. Read-only, no
+row lock (unlike `check_and_consume_quota`'s `get_locked_account_subscription_with_plan`)
+— `get_account_subscription_with_plan` is the unlocked counterpart used here.
+
+**Frontend**: `/dashboard/billing` (`apps/web/src/app/(dashboard)/dashboard/billing/`)
+— current plan card with usage bars and credit balances, a plan comparison grid
+(Subscribe/Upgrade, gated `billing.manage`), a credit-pack top-up grid (Buy, gated
+`billing.manage`), and a currency toggle (defaults to the account's own
+`subscription.currency`). Both actions call their respective `POST` route then open
+Razorpay's real Checkout.js widget client-side (`apps/web/src/lib/razorpay.ts`, a thin
+typed wrapper, script loaded lazily from Razorpay's CDN — not bundled, matching this
+codebase's thin-adapter convention for every other third-party integration). Checkout's
+own success callback only means the customer submitted payment details — the actual
+plan/credit change still lands via the webhook (§5) asynchronously, so the page does a
+best-effort re-fetch of `/billing/subscription` a few seconds later rather than
+optimistically updating state itself.
+
+Live-verified against the real Razorpay Test Mode account: `/billing/subscribe` opened
+a real Checkout.js session showing the correct plan/price/recurring terms; `/billing/topup`
+opened a real order-based session; both correctly flipped the account's real DB state
+beforehand (`PENDING`/target plan for subscribe, no DB write for topup, per §4a).
+
 ---
 
 ## 5. Razorpay Subscriptions webhook + cancellation-downgrade ticker

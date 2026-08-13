@@ -1,4 +1,5 @@
 import uuid
+from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import select
@@ -38,6 +39,48 @@ async def get_account_subscription(
         select(AccountSubscription).where(AccountSubscription.account_id == account_id)
     )
     return result.scalar_one_or_none()
+
+
+async def get_account_subscription_with_plan(
+    session: AsyncSession, account_id: uuid.UUID
+) -> tuple[AccountSubscription, SubscriptionPlan] | None:
+    """Unlocked read-only counterpart to get_locked_account_subscription_with_plan
+    (GRX-BILL-005) -- for the billing overview GET route (GRX-BILL-007), which has
+    nothing to write and shouldn't hold a row lock just to display the page."""
+    result = await session.execute(
+        select(AccountSubscription, SubscriptionPlan)
+        .join(SubscriptionPlan, AccountSubscription.plan_id == SubscriptionPlan.id)
+        .where(AccountSubscription.account_id == account_id)
+    )
+    row = result.first()
+    return (row[0], row[1]) if row is not None else None
+
+
+async def list_plans(session: AsyncSession) -> Sequence[SubscriptionPlan]:
+    """The self-serve catalog a billing page picks an upgrade/downgrade from -- every
+    plan, in ascending price order (NULLs -- Enterprise's contact-sales tier -- last)."""
+    result = await session.execute(
+        select(SubscriptionPlan).order_by(SubscriptionPlan.price_usd.nulls_last())
+    )
+    return result.scalars().all()
+
+
+async def list_active_credit_packs(session: AsyncSession) -> Sequence[CreditPack]:
+    result = await session.execute(
+        select(CreditPack)
+        .where(CreditPack.is_active.is_(True))
+        .order_by(CreditPack.credit_type, CreditPack.credits)
+    )
+    return result.scalars().all()
+
+
+async def list_credit_balances(
+    session: AsyncSession, account_id: uuid.UUID
+) -> Sequence[AccountCreditBalance]:
+    result = await session.execute(
+        select(AccountCreditBalance).where(AccountCreditBalance.account_id == account_id)
+    )
+    return result.scalars().all()
 
 
 async def create_default_free_subscription(

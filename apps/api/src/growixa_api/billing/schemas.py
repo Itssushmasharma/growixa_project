@@ -1,3 +1,5 @@
+import uuid
+from datetime import datetime
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict
@@ -40,3 +42,56 @@ class TopUpOut(BaseModel):
     razorpay_key_id: str
     amount_smallest_unit: int
     currency: Literal["USD", "INR"]
+
+
+class SubscriptionPlanOut(BaseModel):
+    """The catalog shape a customer's billing page picks an upgrade/downgrade from --
+    same fields as SubscriptionPlan minus the Razorpay Plan ids, which are an internal
+    checkout-time implementation detail the frontend has no use for (GRX-BILL-007)."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    slug: str
+    name: str
+    price_usd: float | None
+    price_inr: float | None
+    max_contacts: int | None
+    max_monthly_emails: int | None
+    max_monthly_ai_runs: int | None
+    max_social_accounts: int | None
+    max_user_seats: int | None
+    allow_byo_ai_key: bool
+    allow_byo_smtp: bool
+    audit_export_enabled: bool
+    audit_api_enabled: bool
+
+
+class CreditPackOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    slug: str
+    name: str
+    credit_type: str
+    credits: int
+    price_usd: float | None
+    price_inr: float | None
+
+
+class CreditBalanceOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    credit_type: str
+    remaining_credits: int
+
+
+class AccountSubscriptionOut(BaseModel):
+    plan: SubscriptionPlanOut
+    status: str
+    currency: Literal["USD", "INR"]
+    current_period_start: datetime
+    current_period_end: datetime
+    period_email_used: int
+    period_ai_used: int
+    credit_balances: list[CreditBalanceOut]

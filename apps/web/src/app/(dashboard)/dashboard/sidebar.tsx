@@ -96,6 +96,12 @@ const NAV_SECTIONS: NavSection[] = [
       { label: "Company", href: "/dashboard/company-settings", icon: "🏢" },
       { label: "Team", href: "/dashboard/team", icon: "👥", requiresPermission: "users.manage" },
       {
+        label: "Billing",
+        href: "/dashboard/billing",
+        icon: "💳",
+        requiresPermission: "billing.view",
+      },
+      {
         label: "Audit Log",
         href: "/dashboard/audit",
         icon: "📜",

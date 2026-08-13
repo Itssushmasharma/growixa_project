@@ -1,5 +1,6 @@
 import logging
 import uuid
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any, Literal
@@ -7,14 +8,23 @@ from typing import Any, Literal
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from growixa_api.billing.models import AccountSubscription, SubscriptionPlan
+from growixa_api.billing.models import (
+    AccountCreditBalance,
+    AccountSubscription,
+    CreditPack,
+    SubscriptionPlan,
+)
 from growixa_api.billing.providers.base import PaymentGatewayProvider
 from growixa_api.billing.repositories import (
     get_account_subscription,
     get_account_subscription_by_razorpay_subscription_id,
+    get_account_subscription_with_plan,
     get_credit_pack_by_slug,
     get_locked_account_subscription_with_plan,
     get_plan_by_slug,
+    list_active_credit_packs,
+    list_credit_balances,
+    list_plans,
     record_credit_purchase_idempotent,
     set_pending_subscription,
 )
@@ -368,3 +378,24 @@ async def create_topup_checkout(
         },
     )
     return gateway_order.gateway_order_id, amount_smallest_unit
+
+
+async def get_billing_overview(
+    session: AsyncSession, account_id: uuid.UUID
+) -> tuple[AccountSubscription, SubscriptionPlan, Sequence[AccountCreditBalance]]:
+    """Read model for the customer billing page (`GRX-BILL-007`): the account's current
+    plan, subscription state, and every credit balance it has (a credit type with no
+    purchase/grant yet simply has no row -- the frontend defaults it to 0)."""
+    result = await get_account_subscription_with_plan(session, account_id)
+    assert result is not None, "every account has exactly one row (GRX-BILL-002)"
+    subscription, plan = result
+    balances = await list_credit_balances(session, account_id)
+    return subscription, plan, balances
+
+
+async def list_plan_catalog(session: AsyncSession) -> Sequence[SubscriptionPlan]:
+    return await list_plans(session)
+
+
+async def list_credit_pack_catalog(session: AsyncSession) -> Sequence[CreditPack]:
+    return await list_active_credit_packs(session)
