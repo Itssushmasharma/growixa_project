@@ -885,6 +885,71 @@ Decision statuses: `PROPOSED`, `UNDER_REVIEW`, `APPROVED`, `REJECTED`, `SUPERSED
 - Supersedes: none.
 - Supersedes: none.
 
+## DEC-GRX-029: Payment gateway for billing (`GRX-SAAS-004`) is Razorpay, not Stripe, with dual-currency support and a usage top-up concept — plan tiers/pricing/charge model still pending
+
+- Status: PARTIALLY APPROVED — resolves the vendor/currency/shape question; the exact
+  plan tiers, prices, subscription charge type, and top-up calculation rules are
+  explicitly deferred by the product owner (see Open item below), tracked as
+  [OQ-013](OPEN_QUESTIONS.md).
+- Date: 2026-08-13
+- Context: `GRX-SAAS-004`'s tracker row shipped with "Stripe assumed, confirm before
+  starting" as an explicit placeholder — [OQ-007](OPEN_QUESTIONS.md) asked whether
+  there's a billing requirement for MVP at all, or whether usage stays internal-only
+  (per `ASM-008`). The product owner confirmed directly: they already hold a Razorpay
+  account, and billing must support **both** Indian (₹) and international ($) customers
+  from one integration. They also want, in addition to recurring subscriptions, a
+  **usage top-up/credit** purchase path, and confirmed that **feature availability, not
+  just usage limits, varies by plan tier** (some features exist only on higher tiers).
+  Exact plan names, prices, which Razorpay billing primitive to use (Subscriptions API
+  vs. self-managed Orders), and how top-ups are priced/consumed are all still
+  unspecified — the product owner will provide these later, not guessed here.
+- Options considered (vendor):
+  1. Stripe, as the tracker row's original placeholder assumed — global reach, mature
+     Subscriptions API and docs, but the product owner has no existing Stripe account
+     and does hold a working Razorpay account; standing up a second vendor relationship
+     for no stated benefit is wasted setup cost.
+  2. Razorpay, INR-only — matches the vendor's native currency and is the simplest
+     integration, but shuts out the international customers the product owner
+     explicitly wants to bill, and doesn't match the marketing site's existing
+     $-denominated pricing (`(marketing)/pricing-section.tsx`, built under
+     `GRX-WEB-002`).
+  3. Razorpay, dual-currency (INR for Indian customers, USD for international via
+     Razorpay's international payment methods) — matches the product owner's explicit
+     requirement directly, keeps a single vendor integration.
+- Decision: Option 3 for the vendor/currency shape. The exact billing primitive
+  (Razorpay Subscriptions vs. self-managed Orders + own renewal tracking), plan
+  tiers/pricing, and top-up mechanics remain **open** — see
+  [OQ-013](OPEN_QUESTIONS.md). `GRX-SAAS-004`'s schema/threat-model design work may
+  proceed on the *shape* implied here (multi-currency, subscription + top-up ledger,
+  plan→feature mapping), but no plan-limit values, prices, or Razorpay Plan IDs may be
+  hardcoded until OQ-013 resolves.
+- Rationale: Directly matches the product owner's own account and stated dual-market
+  requirement; avoids maintaining two payment-vendor integrations for one product.
+- Consequences:
+  1. The `subscriptions` (and any top-up/credit ledger) table needs a `currency` column
+     — no assumption of a single global currency anywhere in the billing schema.
+  2. Razorpay webhook signature verification is the one authenticated inbound path,
+     built once and reused regardless of currency (mirrors the existing Postmark
+     webhook's "verify before touching any table" shape, per `GRX-SAAS-004`'s own
+     tracker description).
+  3. The eventual schema needs a plan→feature-flag mapping, not just a plan→price
+     mapping, since the product owner confirmed some features are tier-gated, not only
+     usage limits — worth designing the join shape for now even before the actual flags
+     are named, so `GRX-SAAS-006`/`GRX-SAAS-009` (both of which read this schema) aren't
+     built against a shape that has to change later.
+  4. A top-up/credit concept sits alongside recurring subscriptions, not instead of
+     them — likely its own ledger table (e.g. a `credit_balance` + `credit_transactions`
+     shape) rather than overloading `subscriptions`, but the exact mechanic (what
+     top-ups buy — AI generation credits? email sends? something else?) is unspecified
+     pending OQ-013.
+  5. `GRX-SAAS-004`, and its dependents `GRX-SAAS-006`/`GRX-SAAS-009`, move from
+     `BACKLOG` to `BLOCKED` in `MASTER_TASK_TRACKER.md`, per this doc's own stated rule
+     that a task depending on an unresolved `OPEN_QUESTIONS.md` entry must be marked
+     `BLOCKED`, not guessed at.
+- Related tasks: `GRX-SAAS-004`, `GRX-SAAS-006`, `GRX-SAAS-009` in
+  `MASTER_TASK_TRACKER.md`.
+- Supersedes: none.
+
 ---
 
 *Decisions DEC-GRX-026 onward will be logged as they are made — e.g., resolutions to
