@@ -243,7 +243,7 @@ export function PricingSection() {
       {/* Pricing Grid */}
       <div
         className={styles.pricingGrid}
-        style={{ gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "1.5rem" }}
+        style={{ gridTemplateColumns: "repeat(auto-fit, minmax(270px, 1fr))", gap: "1.5rem" }}
       >
         {plans.map((plan) => (
           <Card3D key={plan.slug} depth={12}>
@@ -269,7 +269,7 @@ export function PricingSection() {
                     </span>
                   )}
                   <div className={styles.planName}>{plan.name}</div>
-                  <div>
+                  <div style={{ display: "flex", alignItems: "baseline", flexWrap: "wrap", gap: "0.25rem" }}>
                     <span className={styles.priceValue}>{getPriceDisplay(plan)}</span>
                     <span className={styles.pricePeriod}>/month</span>
                   </div>
