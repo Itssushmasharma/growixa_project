@@ -15,13 +15,13 @@ def _normalize_database_url(url: str) -> str:
     if url.startswith("psql "):
         url = url[5:].strip().strip("'\"")
     if url.startswith("postgres://"):
-        return "postgresql+asyncpg://" + url[len("postgres://"):]
+        return "postgresql+asyncpg://" + url[len("postgres://") :]
     if url.startswith("postgresql://"):
-        return "postgresql+asyncpg://" + url[len("postgresql://"):]
+        return "postgresql+asyncpg://" + url[len("postgresql://") :]
     if url.startswith("postgresql+psycopg2://"):
-        return "postgresql+asyncpg://" + url[len("postgresql+psycopg2://"):]
+        return "postgresql+asyncpg://" + url[len("postgresql+psycopg2://") :]
     if url.startswith("postgresql+psycopg://"):
-        return "postgresql+asyncpg://" + url[len("postgresql+psycopg://"):]
+        return "postgresql+asyncpg://" + url[len("postgresql+psycopg://") :]
     return url
 
 
