@@ -53,3 +53,6 @@ dummy/
 
 # Linked git worktrees (each is its own checkout; must not be tracked as a gitlink)
 .worktrees/
+
+# Local review docs — never commit
+need_review_docs/

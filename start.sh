@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -e
 
+echo "=== Running Database Migrations ==="
+alembic -c /app/apps/api/alembic.ini upgrade head
+
 echo "=== Starting Growixa Worker Process ==="
 python -m growixa_worker.main &
 WORKER_PID=$!

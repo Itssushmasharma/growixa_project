@@ -18,7 +18,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     env:
-      HF_SPACE_ID: ${{ vars.HF_SPACE_ID || secrets.HF_SPACE_ID || 'iitdeveloper/growixa-backend' }}
+      HF_SPACE_ID: ${{ vars.HF_SPACE_ID || secrets.HF_SPACE_ID || 'iitdeveloper/growixa' }}
       HF_TOKEN: ${{ secrets.HF_TOKEN }}
     steps:
       - uses: actions/checkout@v4
