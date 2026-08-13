@@ -40,6 +40,12 @@ const NAV_ITEMS: NavItem[] = [
     icon: "⚙️",
     requiresPermission: "platform.ai.manage",
   },
+  {
+    label: "Subscriptions",
+    href: "/platform/subscriptions",
+    icon: "💳",
+    requiresPermission: "platform.billing.manage",
+  },
 ];
 
 export function Sidebar({ permissions }: { permissions: string[] }) {

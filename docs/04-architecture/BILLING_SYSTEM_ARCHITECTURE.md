@@ -587,45 +587,74 @@ had:
 
 ---
 
-## 6. Platform-admin subscription management (`GRX-SAAS-006`)
+## 6. Platform-admin subscription management (`GRX-SAAS-006`, shipped)
 
 Not new scope — this is exactly what `GRX-SAAS-006`'s tracker row already describes
 ("View/change plans, trial extensions, usage credits"). `DEC-GRX-030` makes it
-concrete. All four actions bypass Razorpay entirely — no payment, no webhook required
-— and are gated the same way `GRX-SAAS-005`/`006` already gate platform-admin routes
-(`require_platform_permission`, `platform.finance`/`platform.admin` roles per that
-row's own acceptance criterion).
+concrete. Every action bypasses Razorpay entirely — no payment, no webhook required —
+and is gated `platform.billing.manage` (owner + finance only, `RBAC.md`), via
+`require_platform_permission` same as every other platform-admin route.
 
-### 6.1 Manual plan override
+`platform_admin/api.py`/`services.py` never write `billing/`'s tables directly
+(`MODULE_BOUNDARIES.md`) — every route below calls into a new `billing/services.py`
+`admin_*` function (`admin_override_subscription`, `admin_grant_credits`,
+`admin_create_plan`/`admin_update_plan`, `admin_create_credit_pack`/
+`admin_update_credit_pack`), which does the actual table write but deliberately does
+**not** commit — the platform_admin wrapper adds an audit-log entry
+(`account.subscription_overridden`, `account.credits_granted`,
+`subscription_plan.created`/`updated`, `credit_pack.created`/`updated`) and commits
+both together in one transaction, matching `update_account_status`/`pause_campaign`'s
+existing shape exactly.
 
-`PATCH /platform/accounts/{id}/subscription` — sets `plan_id` (and optionally
-`status`) directly, stamping `set_by_platform_admin_id`. Used for Enterprise
-activation (§2), trial extensions, support-driven upgrades/downgrades, or comping an
-account.
+### 6.1 Manual plan/status override
+
+`GET`/`PATCH /platform/accounts/{account_id}/subscription` — sets `plan_id` (looked up
+by slug, no `Literal` restriction unlike `SubscribeIn`) and/or `status` directly,
+stamping `set_by_platform_admin_id`. §6.1 and §6.3 from the original draft are
+**merged into this one endpoint** — a separate `PATCH /platform/accounts/{id}/status`
+already exists for `accounts.status` (`GRX-SAAS-005`), so a same-shaped billing-status
+route would have collided on path; one call accepting either field (or both) avoided
+the collision and is more ergonomic besides. Used for Enterprise activation (§2),
+trial extensions, support-driven upgrades/downgrades, or comping an account.
 
 ### 6.2 Manual credit grant
 
-`POST /platform/accounts/{id}/credits/grant` — atomically increments
+`POST /platform/accounts/{account_id}/credits/grant` — atomically increments
 `account_credit_balances` (same table, same shape §4 reads from — no separate code
 path for "admin credits" vs "purchased credits"), inserts an
 `account_credit_purchases` row with `razorpay_payment_id = NULL` and
 `granted_by_platform_admin_id` set, so grants remain distinguishable from real
 purchases in the receipt history without needing a different balance mechanism.
 
-### 6.3 Subscription status control
+### 6.3 Plan catalog: create + edit
 
-`PATCH /platform/accounts/{id}/status` (billing-specific status, distinct from
-`accounts.status` which `GRX-SAAS-005` already controls) — sets `ACTIVE`/`PAST_DUE`/
-`HALTED`/`CANCELED` directly, for support cases where Razorpay's own state needs a
-manual override (e.g. a payment dispute resolved outside Razorpay).
+`GET`/`POST /platform/subscription-plans`, `PUT /platform/subscription-plans/{id}` —
+a genuine *create*, not just edit, per the product owner's explicit request. This
+required widening `subscription_plans.slug`'s CHECK constraint (migration
+`e3e939e991f4`) from a fixed 4-value whitelist to a plain slug-format check — the old
+constraint made "create a new tier" a lie, since any admin-authored slug beyond
+free/starter/pro/enterprise would have violated it at insert time. A newly-created
+tier is **not** automatically self-serve-checkout-able: `POST /billing/subscribe`'s
+`SubscribeIn.plan_slug` (`GRX-BILL-004`) stays a deliberate `Literal["starter", "pro"]`
+until wiring a new tier into customer-facing checkout is a real, separate ask (open
+item, §8) — an admin can still grant a new plan to any account directly via §6.1 today,
+and it shows up in the customer billing page's plan grid (`GRX-BILL-007`) without a
+Subscribe button. `slug` is immutable on edit (only settable at creation) — it's
+referenced by string literal elsewhere in the codebase (the Free-plan bootstrap
+lookup, `SubscribeIn`'s Literal).
 
-### 6.4 Plan-wide quota/price editing
+### 6.4 Credit pack catalog: create + edit
 
-`PUT /platform/subscription-plans/{id}` — edits a plan's quotas and prices platform-
-wide (affects every account on that plan going forward; does not retroactively change
-`account_subscriptions` rows already past their `current_period_start`). This is how
-Enterprise accounts get individually-negotiated terms in practice: either a dedicated
-per-account plan row, or a direct `account_subscriptions` override via §6.1.
+`GET`/`POST /platform/credit-packs`, `PUT /platform/credit-packs/{id}` — same
+create/edit shape as plans. The admin-facing `GET` deliberately does **not** filter to
+`is_active` (unlike the customer-facing `GET /billing/credit-packs`, `GRX-BILL-007`) —
+an admin managing the catalog needs to see (and reactivate) deactivated packs too.
+
+Editing a plan/pack affects every account on it going forward; it does not
+retroactively change `account_subscriptions` rows already past their
+`current_period_start`. This is how Enterprise accounts get individually-negotiated
+terms in practice: either a dedicated per-account plan row, or a direct
+`account_subscriptions` override via §6.1.
 
 ---
 
@@ -658,8 +687,8 @@ never touch Razorpay at all — they call the same crediting path as §6.2.
 
 ## 8. Open items
 
-Implementation is underway (`GRX-BILL-002`/`003`/`004`/`005` are `DONE` as of this
-update). Remaining open items:
+Implementation is underway (`GRX-BILL-002`–`007` and `GRX-SAAS-006` are `DONE` as of
+this update). Remaining open items:
 
 1. **USD/international payments are not yet enabled on the Razorpay account** — found
    live while running `GRX-BILL-002`'s plan-sync CLI: Razorpay rejects `currency: USD`
@@ -705,3 +734,9 @@ update). Remaining open items:
    out of `GRX-BILL-005` rather than inventing an uncommitted business rule (e.g. would
    it be a lifetime cap or a monthly one?); revisit only if the product owner
    confirms real demand for it.
+8. **A platform-admin-created plan tier isn't wired into self-serve checkout** (§6.3)
+   — `POST /billing/subscribe`'s `plan_slug` stays `Literal["starter", "pro"]`
+   deliberately. An admin can still grant a new tier to any account directly (§6.1),
+   and it shows up read-only in the customer billing page's plan grid, but a customer
+   can't self-serve-subscribe to it yet. Revisit once the product owner actually wants
+   a fifth self-serve tier, rather than guessing at the checkout-eligibility rule now.

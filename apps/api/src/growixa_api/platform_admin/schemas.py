@@ -118,3 +118,75 @@ class SupportSessionContactUpdateIn(BaseModel):
     first_name: str | None = None
     last_name: str | None = None
     phone: str | None = None
+
+
+# --- Billing (GRX-SAAS-006, BILLING_SYSTEM_ARCHITECTURE.md §6) ---
+
+
+class AccountSubscriptionOverrideIn(BaseModel):
+    """At least one of plan_slug/status must be set -- validated in
+    billing/services.py's admin_override_subscription, not here, since a Pydantic
+    model-level "at least one of" check has no precedent elsewhere in this codebase."""
+
+    plan_slug: str | None = None
+    status: Literal["ACTIVE", "PAST_DUE", "HALTED", "CANCELED"] | None = None
+
+
+class GrantCreditsIn(BaseModel):
+    credit_type: Literal["AI_RUNS", "EMAIL_SENDS", "CONTACT_SLOTS", "SOCIAL_POSTS"]
+    credits: int
+
+
+class SubscriptionPlanCreateIn(BaseModel):
+    # No Literal restriction (unlike SubscribeIn.plan_slug, GRX-BILL-004) -- creating a
+    # genuinely new tier is the point of this route; subscription_plans.slug's CHECK
+    # (e3e939e991f4) is a plain format check, not a fixed whitelist.
+    slug: str
+    name: str
+    price_usd: float | None = None
+    price_inr: float | None = None
+    max_contacts: int | None = None
+    max_monthly_emails: int | None = None
+    max_monthly_ai_runs: int | None = None
+    max_social_accounts: int | None = None
+    max_user_seats: int | None = None
+    allow_byo_ai_key: bool = False
+    allow_byo_smtp: bool = False
+    audit_export_enabled: bool = False
+    audit_api_enabled: bool = False
+
+
+class SubscriptionPlanUpdateIn(BaseModel):
+    # slug is deliberately not editable -- it's a stable identifier referenced by
+    # string literal elsewhere (SubscribeIn's Literal, the Free-plan bootstrap lookup).
+    name: str
+    price_usd: float | None
+    price_inr: float | None
+    max_contacts: int | None
+    max_monthly_emails: int | None
+    max_monthly_ai_runs: int | None
+    max_social_accounts: int | None
+    max_user_seats: int | None
+    allow_byo_ai_key: bool
+    allow_byo_smtp: bool
+    audit_export_enabled: bool
+    audit_api_enabled: bool
+
+
+class CreditPackCreateIn(BaseModel):
+    slug: str
+    name: str
+    credit_type: Literal["AI_RUNS", "EMAIL_SENDS", "CONTACT_SLOTS", "SOCIAL_POSTS"]
+    credits: int
+    price_usd: float | None = None
+    price_inr: float | None = None
+    is_active: bool = True
+
+
+class CreditPackUpdateIn(BaseModel):
+    name: str
+    credit_type: Literal["AI_RUNS", "EMAIL_SENDS", "CONTACT_SLOTS", "SOCIAL_POSTS"]
+    credits: int
+    price_usd: float | None
+    price_inr: float | None
+    is_active: bool

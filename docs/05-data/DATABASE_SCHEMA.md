@@ -779,7 +779,7 @@ See [DATA_MODEL.md §Slice 7 entities](DATA_MODEL.md#slice-7-entities-full-detai
 | Column | Type | Constraints |
 |---|---|---|
 | id | uuid | PK |
-| slug | text | NOT NULL, UNIQUE, CHECK IN ('free','starter','pro','enterprise') |
+| slug | text | NOT NULL, UNIQUE, CHECK `slug ~ '^[a-z0-9_-]+$'` |
 | name | text | NOT NULL |
 | price_usd | numeric(10,2) | NULL |
 | price_inr | numeric(10,2) | NULL |
@@ -796,6 +796,11 @@ See [DATA_MODEL.md §Slice 7 entities](DATA_MODEL.md#slice-7-entities-full-detai
 | razorpay_plan_id_inr | text | NULL |
 | created_at | timestamptz | NOT NULL, DEFAULT now() |
 | updated_at | timestamptz | NOT NULL, DEFAULT now() |
+
+Migration `e3e939e991f4` (`GRX-SAAS-006`) widened `slug`'s CHECK from a fixed 4-value
+whitelist (`IN ('free','starter','pro','enterprise')`) to this plain format check — a
+platform admin can genuinely create new tiers via `POST /platform/subscription-plans`
+now, not just edit the four seeded ones.
 
 Same migration seeds `billing.manage`/`billing.view` (customer RBAC) and
 `platform.billing.manage` (platform RBAC) permission codes, their role grants, and the
@@ -998,8 +1003,9 @@ forward, `BILLING_SYSTEM_ARCHITECTURE.md §3.4`).
 
 `GRX-BILL-004` adds two more migrations on top: `60f7c30ff18a` widens
 `account_subscriptions.status`'s CHECK to add `PENDING`; `b6eed962fd56` creates
-`credit_packs` (+ seeds five draft packs). Both depend only on the Slice 7 migration
-above.
+`credit_packs` (+ seeds five draft packs). `GRX-SAAS-006` adds one more:
+`e3e939e991f4` widens `subscription_plans.slug`'s CHECK from a fixed 4-value whitelist
+to a plain format check. All three depend only on the Slice 7 migration above.
 
 See
 [DATA_MODEL.md §Slice 7 entities](DATA_MODEL.md#slice-7-entities-full-detail) and

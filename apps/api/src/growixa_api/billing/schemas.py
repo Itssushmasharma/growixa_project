@@ -77,6 +77,11 @@ class CreditPackOut(BaseModel):
     credits: int
     price_usd: float | None
     price_inr: float | None
+    # Every customer-facing GET /billing/credit-packs response is already filtered to
+    # is_active rows only, so this was always true there and easy to omit -- but the
+    # platform-admin catalog view (GRX-SAAS-006) lists *every* pack including
+    # deactivated ones, and needs this field to tell them apart.
+    is_active: bool
 
 
 class CreditBalanceOut(BaseModel):

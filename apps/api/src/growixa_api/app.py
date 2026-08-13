@@ -29,6 +29,7 @@ from growixa_api.health import router as health_router
 from growixa_api.integrations.api import router as integrations_router
 from growixa_api.jobs.api import router as jobs_router
 from growixa_api.platform_admin.api import ai_config_router as platform_admin_ai_config_router
+from growixa_api.platform_admin.api import billing_router as platform_admin_billing_router
 from growixa_api.platform_admin.api import router as platform_admin_router
 from growixa_api.platform_admin.api import (
     support_session_router as platform_admin_support_session_router,
@@ -96,6 +97,7 @@ def create_app() -> FastAPI:
     app.include_router(platform_admin_usage_router)
     app.include_router(platform_admin_support_session_router)
     app.include_router(platform_admin_ai_config_router)
+    app.include_router(platform_admin_billing_router)
     app.include_router(accounts_router)
     app.include_router(company_router)
     app.include_router(brand_router)

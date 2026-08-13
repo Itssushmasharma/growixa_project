@@ -701,11 +701,17 @@ column-level detail.
 ### `subscription_plans`
 
 - Purpose: the platform-wide plan catalog — one row per tier (`free`/`starter`/`pro`/
-  `enterprise`), editable by a platform admin (`platform.billing.manage`) without a
-  redeploy, same "DB-backed admin-editable setting" pattern `platform_ai_provider_config`
+  `enterprise` are the four seeded rows; a platform admin can create genuinely new
+  tiers beyond these four via `POST /platform/subscription-plans`, `GRX-SAAS-006`),
+  create/editable by a platform admin (`platform.billing.manage`) without a redeploy,
+  same "DB-backed admin-editable setting" pattern `platform_ai_provider_config`
   established in Slice 6.
 - Primary key: `id` (UUID)
-- Required fields: `slug`, `name`
+- Required fields: `slug` (unique; CHECK is a plain format check —
+  `slug ~ '^[a-z0-9_-]+$'` — not a fixed whitelist, since `GRX-SAAS-006`'s migration
+  `e3e939e991f4` widened it specifically to allow new tiers; immutable once created,
+  since it's referenced by string literal elsewhere, e.g. the Free-plan bootstrap
+  lookup), `name`
 - Optional fields: `price_usd`/`price_inr` (nullable — `NULL` for Enterprise's
   contact-sales tier, no fixed self-serve price), `max_contacts`/`max_monthly_emails`/
   `max_monthly_ai_runs`/`max_social_accounts`/`max_user_seats` (nullable — `NULL` =

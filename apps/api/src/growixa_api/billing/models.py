@@ -24,14 +24,16 @@ _CREDIT_TYPE_CHECK = "credit_type IN ('AI_RUNS', 'EMAIL_SENDS', 'CONTACT_SLOTS',
 class SubscriptionPlan(Base):
     """The platform-wide plan catalog -- one row per tier, editable by a platform admin
     (platform.billing.manage) without a redeploy, same DB-backed-admin-editable-setting
-    pattern PlatformAIProviderConfig established in Slice 6 (DEC-GRX-029/030)."""
+    pattern PlatformAIProviderConfig established in Slice 6 (DEC-GRX-029/030).
+
+    slug's CHECK is a plain format check, not a fixed whitelist (GRX-SAAS-006) -- a
+    platform admin can genuinely create new tiers beyond free/starter/pro/enterprise via
+    POST /platform/subscription-plans. A new tier isn't automatically self-serve
+    checkout-able (billing/schemas.py's SubscribeIn.plan_slug stays a deliberate
+    Literal["starter", "pro"]) until that's wired in separately."""
 
     __tablename__ = "subscription_plans"
-    __table_args__ = (
-        CheckConstraint(
-            "slug IN ('free', 'starter', 'pro', 'enterprise')", name="ck_subscription_plans_slug"
-        ),
-    )
+    __table_args__ = (CheckConstraint("slug ~ '^[a-z0-9_-]+$'", name="ck_subscription_plans_slug"),)
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     slug: Mapped[str] = mapped_column(Text, unique=True, nullable=False)

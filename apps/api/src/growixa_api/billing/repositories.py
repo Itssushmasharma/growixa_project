@@ -1,6 +1,7 @@
 import uuid
 from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -70,6 +71,16 @@ async def list_active_credit_packs(session: AsyncSession) -> Sequence[CreditPack
         select(CreditPack)
         .where(CreditPack.is_active.is_(True))
         .order_by(CreditPack.credit_type, CreditPack.credits)
+    )
+    return result.scalars().all()
+
+
+async def list_all_credit_packs(session: AsyncSession) -> Sequence[CreditPack]:
+    """Every pack regardless of `is_active` -- for the platform-admin catalog view
+    (`GRX-SAAS-006`); unlike `list_active_credit_packs` (customer-facing, GRX-BILL-007),
+    an admin managing the catalog needs to see (and reactivate) deactivated packs too."""
+    result = await session.execute(
+        select(CreditPack).order_by(CreditPack.credit_type, CreditPack.credits)
     )
     return result.scalars().all()
 
@@ -207,3 +218,100 @@ async def record_credit_purchase_idempotent(
     )
     await session.execute(balance_stmt)
     return True
+
+
+async def grant_credits(
+    session: AsyncSession,
+    *,
+    account_id: uuid.UUID,
+    credit_type: str,
+    credits: int,
+    granted_by_platform_admin_id: uuid.UUID,
+) -> None:
+    """Platform-admin free credit grant (`GRX-SAAS-006`) -- same two-write shape as
+    `record_credit_purchase_idempotent` above (a receipt row + the balance increment),
+    but with no `razorpay_payment_id` to dedupe against: an admin clicking "grant"
+    twice is two real grants, there's no webhook-replay risk to guard against here."""
+    session.add(
+        AccountCreditPurchase(
+            account_id=account_id,
+            credit_type=credit_type,
+            credits_added=credits,
+            razorpay_payment_id=None,
+            granted_by_platform_admin_id=granted_by_platform_admin_id,
+        )
+    )
+    balance_stmt = (
+        pg_insert(AccountCreditBalance)
+        .values(account_id=account_id, credit_type=credit_type, remaining_credits=credits)
+        .on_conflict_do_update(
+            index_elements=["account_id", "credit_type"],
+            set_={
+                "remaining_credits": AccountCreditBalance.remaining_credits + credits,
+                "updated_at": datetime.now(UTC),
+            },
+        )
+    )
+    await session.execute(balance_stmt)
+
+
+async def get_credit_balance(
+    session: AsyncSession, account_id: uuid.UUID, credit_type: str
+) -> AccountCreditBalance | None:
+    result = await session.execute(
+        select(AccountCreditBalance).where(
+            AccountCreditBalance.account_id == account_id,
+            AccountCreditBalance.credit_type == credit_type,
+        )
+    )
+    return result.scalar_one_or_none()
+
+
+async def get_plan_by_id(session: AsyncSession, plan_id: uuid.UUID) -> SubscriptionPlan | None:
+    result = await session.execute(select(SubscriptionPlan).where(SubscriptionPlan.id == plan_id))
+    return result.scalar_one_or_none()
+
+
+async def create_plan(session: AsyncSession, fields: dict[str, Any]) -> SubscriptionPlan:
+    plan = SubscriptionPlan(**fields)
+    session.add(plan)
+    await session.flush()
+    return plan
+
+
+async def update_plan(
+    session: AsyncSession, plan: SubscriptionPlan, fields: dict[str, Any]
+) -> SubscriptionPlan:
+    for key, value in fields.items():
+        setattr(plan, key, value)
+    await session.flush()
+    return plan
+
+
+async def get_credit_pack_by_id(session: AsyncSession, pack_id: uuid.UUID) -> CreditPack | None:
+    result = await session.execute(select(CreditPack).where(CreditPack.id == pack_id))
+    return result.scalar_one_or_none()
+
+
+async def get_credit_pack_by_slug_any_status(session: AsyncSession, slug: str) -> CreditPack | None:
+    """Unlike `get_credit_pack_by_slug`, doesn't filter to `is_active` -- used for the
+    admin create route's slug-uniqueness pre-check (`GRX-SAAS-006`), which must catch a
+    collision against a *deactivated* pack too, not just active ones."""
+    result = await session.execute(select(CreditPack).where(CreditPack.slug == slug))
+    return result.scalar_one_or_none()
+
+
+async def create_credit_pack(session: AsyncSession, fields: dict[str, Any]) -> CreditPack:
+    pack = CreditPack(**fields)
+    session.add(pack)
+    await session.flush()
+    return pack
+
+
+async def update_credit_pack(
+    session: AsyncSession, pack: CreditPack, fields: dict[str, Any]
+) -> CreditPack:
+    for key, value in fields.items():
+        setattr(pack, key, value)
+    await session.flush()
+    return pack

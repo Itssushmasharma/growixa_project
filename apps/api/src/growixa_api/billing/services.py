@@ -16,17 +16,27 @@ from growixa_api.billing.models import (
 )
 from growixa_api.billing.providers.base import PaymentGatewayProvider
 from growixa_api.billing.repositories import (
+    create_credit_pack,
+    create_plan,
     get_account_subscription,
     get_account_subscription_by_razorpay_subscription_id,
     get_account_subscription_with_plan,
+    get_credit_balance,
+    get_credit_pack_by_id,
     get_credit_pack_by_slug,
+    get_credit_pack_by_slug_any_status,
     get_locked_account_subscription_with_plan,
+    get_plan_by_id,
     get_plan_by_slug,
+    grant_credits,
     list_active_credit_packs,
+    list_all_credit_packs,
     list_credit_balances,
     list_plans,
     record_credit_purchase_idempotent,
     set_pending_subscription,
+    update_credit_pack,
+    update_plan,
 )
 
 logger = logging.getLogger(__name__)
@@ -38,6 +48,18 @@ class PlanNotFoundError(Exception):
 
 class CreditPackNotFoundError(Exception):
     pass
+
+
+class PlanSlugAlreadyExistsError(Exception):
+    def __init__(self, slug: str) -> None:
+        self.slug = slug
+        super().__init__(f"a plan with slug {slug!r} already exists")
+
+
+class CreditPackSlugAlreadyExistsError(Exception):
+    def __init__(self, slug: str) -> None:
+        self.slug = slug
+        super().__init__(f"a credit pack with slug {slug!r} already exists")
 
 
 class CurrencyNotAvailableError(Exception):
@@ -399,3 +421,124 @@ async def list_plan_catalog(session: AsyncSession) -> Sequence[SubscriptionPlan]
 
 async def list_credit_pack_catalog(session: AsyncSession) -> Sequence[CreditPack]:
     return await list_active_credit_packs(session)
+
+
+async def list_credit_pack_catalog_for_admin(session: AsyncSession) -> Sequence[CreditPack]:
+    """Unlike list_credit_pack_catalog (customer-facing), includes deactivated packs
+    too -- a platform admin managing the catalog (GRX-SAAS-006) needs to see and
+    reactivate them, not just the currently-purchasable set."""
+    return await list_all_credit_packs(session)
+
+
+class NoOverrideFieldsProvidedError(Exception):
+    """The platform-admin subscription-override request supplied neither plan_slug nor
+    status -- there's nothing to change."""
+
+
+async def admin_override_subscription(
+    session: AsyncSession,
+    *,
+    account_id: uuid.UUID,
+    plan_slug: str | None,
+    status: str | None,
+    platform_admin_id: uuid.UUID,
+) -> tuple[AccountSubscription, SubscriptionPlan]:
+    """Platform-admin manual plan/status override (`GRX-SAAS-006`,
+    `BILLING_SYSTEM_ARCHITECTURE.md` §6.1/§6.3 -- merged into one call here since the
+    original draft's two separate routes collided with the pre-existing
+    `PATCH /platform/accounts/{id}/status` account-status route). Bypasses Razorpay
+    entirely -- no payment, no webhook. Deliberately does NOT commit -- the caller
+    (`platform_admin/services.py`) writes an audit-log entry for this action and commits
+    both together in one transaction, matching every other platform-admin mutation's
+    "state change + audit event, one commit" shape; it's also responsible for
+    confirming the account itself exists before calling this, so the assert below only
+    guards the `GRX-BILL-002` "every account has exactly one subscription row"
+    invariant, not a bad `account_id`."""
+    if plan_slug is None and status is None:
+        raise NoOverrideFieldsProvidedError
+
+    subscription = await get_account_subscription(session, account_id)
+    assert subscription is not None, "every account has exactly one row (GRX-BILL-002)"
+
+    if plan_slug is not None:
+        plan = await get_plan_by_slug(session, plan_slug)
+        if plan is None:
+            raise PlanNotFoundError(plan_slug)
+        subscription.plan_id = plan.id
+    if status is not None:
+        subscription.status = status
+    subscription.set_by_platform_admin_id = platform_admin_id
+    await session.flush()
+
+    result = await get_account_subscription_with_plan(session, account_id)
+    assert result is not None
+    return result
+
+
+async def admin_grant_credits(
+    session: AsyncSession,
+    *,
+    account_id: uuid.UUID,
+    credit_type: str,
+    credits: int,
+    platform_admin_id: uuid.UUID,
+) -> AccountCreditBalance:
+    """Platform-admin free credit grant (`GRX-SAAS-006` §6.2) -- e.g. support/VIP
+    comps. Same underlying table writes as a real top-up purchase
+    (`account_credit_balances`/`account_credit_purchases`), distinguishable in the
+    receipt history by `razorpay_payment_id IS NULL` and `granted_by_platform_admin_id`
+    being set instead. No internal commit -- see `admin_override_subscription`'s
+    docstring for why."""
+    await grant_credits(
+        session,
+        account_id=account_id,
+        credit_type=credit_type,
+        credits=credits,
+        granted_by_platform_admin_id=platform_admin_id,
+    )
+    await session.flush()
+    balance = await get_credit_balance(session, account_id, credit_type)
+    assert balance is not None, "grant_credits always leaves a row for this (account, credit_type)"
+    return balance
+
+
+async def admin_create_plan(session: AsyncSession, *, fields: dict[str, Any]) -> SubscriptionPlan:
+    """`GRX-SAAS-006` §6.4 -- a genuine *create*, not just edit, per the product
+    owner's explicit request. `subscription_plans.slug`'s CHECK was widened
+    (`e3e939e991f4`) from a fixed 4-value whitelist to a plain format check
+    specifically so this isn't limited to editing the four seeded tiers. No internal
+    commit -- see `admin_override_subscription`'s docstring for why."""
+    existing = await get_plan_by_slug(session, fields["slug"])
+    if existing is not None:
+        raise PlanSlugAlreadyExistsError(fields["slug"])
+    return await create_plan(session, fields)
+
+
+async def admin_update_plan(
+    session: AsyncSession, *, plan_id: uuid.UUID, fields: dict[str, Any]
+) -> SubscriptionPlan:
+    """Edits a plan's quotas/prices/features platform-wide -- affects every account on
+    that plan going forward, does not retroactively touch `account_subscriptions` rows
+    already mid-period (§6.4). No internal commit."""
+    plan = await get_plan_by_id(session, plan_id)
+    if plan is None:
+        raise PlanNotFoundError(str(plan_id))
+    return await update_plan(session, plan, fields)
+
+
+async def admin_create_credit_pack(session: AsyncSession, *, fields: dict[str, Any]) -> CreditPack:
+    """No internal commit -- see `admin_override_subscription`'s docstring for why."""
+    existing = await get_credit_pack_by_slug_any_status(session, fields["slug"])
+    if existing is not None:
+        raise CreditPackSlugAlreadyExistsError(fields["slug"])
+    return await create_credit_pack(session, fields)
+
+
+async def admin_update_credit_pack(
+    session: AsyncSession, *, pack_id: uuid.UUID, fields: dict[str, Any]
+) -> CreditPack:
+    """No internal commit -- see `admin_override_subscription`'s docstring for why."""
+    pack = await get_credit_pack_by_id(session, pack_id)
+    if pack is None:
+        raise CreditPackNotFoundError(str(pack_id))
+    return await update_credit_pack(session, pack, fields)

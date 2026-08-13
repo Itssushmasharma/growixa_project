@@ -9,6 +9,24 @@ from growixa_api.accounts.models import Account
 from growixa_api.audit.models import AuditLog
 from growixa_api.audit.services import list_events, record_event
 from growixa_api.auth.services import revoke_all_active_sessions
+from growixa_api.billing.models import AccountCreditBalance, AccountSubscription, CreditPack
+from growixa_api.billing.models import SubscriptionPlan as SubscriptionPlanModel
+from growixa_api.billing.services import CreditPackNotFoundError as BillingCreditPackNotFoundError
+from growixa_api.billing.services import (
+    CreditPackSlugAlreadyExistsError,
+    PlanSlugAlreadyExistsError,
+    get_billing_overview,
+)
+from growixa_api.billing.services import NoOverrideFieldsProvidedError as BillingNoFieldsError
+from growixa_api.billing.services import PlanNotFoundError as BillingPlanNotFoundError
+from growixa_api.billing.services import admin_create_credit_pack as billing_create_credit_pack
+from growixa_api.billing.services import admin_create_plan as billing_create_plan
+from growixa_api.billing.services import admin_grant_credits as billing_grant_credits
+from growixa_api.billing.services import (
+    admin_override_subscription as billing_override_subscription,
+)
+from growixa_api.billing.services import admin_update_credit_pack as billing_update_credit_pack
+from growixa_api.billing.services import admin_update_plan as billing_update_plan
 from growixa_api.campaigns.models import Campaign
 from growixa_api.campaigns.services import CampaignNotCancellableError, cancel_campaign
 from growixa_api.campaigns.services import CampaignNotFoundError as CampaignRowNotFoundError
@@ -105,6 +123,27 @@ class SupportSessionWriteGateError(Exception):
     """The write action was attempted through a READ-level session, or by an admin
     who never held platform.support_session.write (THREAT_MODEL.md T40 -- two
     independent checks, either one alone blocks it)."""
+
+
+class SubscriptionOverrideMissingFieldsError(Exception):
+    """Neither plan_slug nor status was provided to the subscription-override route
+    (GRX-SAAS-006) -- there's nothing to change."""
+
+
+class SubscriptionPlanNotFoundError(Exception):
+    """The target plan id/slug doesn't match any existing plan."""
+
+
+class SubscriptionPlanSlugConflictError(Exception):
+    """A plan with this slug already exists."""
+
+
+class CreditPackNotFoundError(Exception):
+    """The target credit pack id doesn't match any existing pack."""
+
+
+class CreditPackSlugConflictError(Exception):
+    """A credit pack with this slug already exists."""
 
 
 async def list_accounts_with_user_counts(session: AsyncSession) -> list[tuple[Account, int]]:
@@ -369,3 +408,195 @@ async def update_contact_via_support_session(
         custom_fields=None,
         audit_metadata=metadata,
     )
+
+
+# --- Billing (GRX-SAAS-006, BILLING_SYSTEM_ARCHITECTURE.md §6) ---
+#
+# Every write below delegates the actual table mutation to billing/services.py's own
+# admin_* functions (MODULE_BOUNDARIES.md: platform_admin calls the owning module's
+# services, never writes its tables directly) and adds one audit-log entry in the same
+# transaction, mirroring update_account_status/pause_campaign above exactly.
+
+
+async def get_account_subscription_overview(
+    session: AsyncSession, *, account_id: uuid.UUID
+) -> tuple[AccountSubscription, SubscriptionPlanModel, Sequence[AccountCreditBalance]]:
+    account = await get_account_by_id(session, account_id)
+    if account is None:
+        raise AccountNotFoundError
+    return await get_billing_overview(session, account_id)
+
+
+async def override_account_subscription(
+    session: AsyncSession,
+    *,
+    account_id: uuid.UUID,
+    platform_admin_id: uuid.UUID,
+    plan_slug: str | None,
+    status: str | None,
+) -> tuple[AccountSubscription, SubscriptionPlanModel]:
+    account = await get_account_by_id(session, account_id)
+    if account is None:
+        raise AccountNotFoundError
+
+    try:
+        subscription, plan = await billing_override_subscription(
+            session,
+            account_id=account_id,
+            plan_slug=plan_slug,
+            status=status,
+            platform_admin_id=platform_admin_id,
+        )
+    except BillingNoFieldsError as exc:
+        raise SubscriptionOverrideMissingFieldsError from exc
+    except BillingPlanNotFoundError as exc:
+        raise SubscriptionPlanNotFoundError(str(exc)) from exc
+
+    metadata = await _admin_metadata(session, platform_admin_id)
+    metadata.update({"plan_slug": plan_slug, "status": status})
+    await record_event(
+        session,
+        account_id=account_id,
+        actor_user_id=None,
+        action="account.subscription_overridden",
+        entity_type="account_subscription",
+        entity_id=subscription.id,
+        metadata=metadata,
+    )
+    await session.commit()
+    return subscription, plan
+
+
+async def grant_account_credits(
+    session: AsyncSession,
+    *,
+    account_id: uuid.UUID,
+    platform_admin_id: uuid.UUID,
+    credit_type: str,
+    credits: int,
+) -> AccountCreditBalance:
+    account = await get_account_by_id(session, account_id)
+    if account is None:
+        raise AccountNotFoundError
+
+    balance = await billing_grant_credits(
+        session,
+        account_id=account_id,
+        credit_type=credit_type,
+        credits=credits,
+        platform_admin_id=platform_admin_id,
+    )
+
+    metadata = await _admin_metadata(session, platform_admin_id)
+    metadata.update({"credit_type": credit_type, "credits": credits})
+    await record_event(
+        session,
+        account_id=account_id,
+        actor_user_id=None,
+        action="account.credits_granted",
+        entity_type="account_credit_balance",
+        entity_id=account_id,
+        metadata=metadata,
+    )
+    await session.commit()
+    return balance
+
+
+async def create_subscription_plan(
+    session: AsyncSession, *, platform_admin_id: uuid.UUID, fields: dict[str, object]
+) -> SubscriptionPlanModel:
+    try:
+        plan = await billing_create_plan(session, fields=fields)
+    except PlanSlugAlreadyExistsError as exc:
+        raise SubscriptionPlanSlugConflictError(str(exc)) from exc
+
+    metadata = await _admin_metadata(session, platform_admin_id)
+    metadata["slug"] = fields["slug"]
+    await record_event(
+        session,
+        account_id=None,
+        actor_user_id=None,
+        action="subscription_plan.created",
+        entity_type="subscription_plan",
+        entity_id=plan.id,
+        metadata=metadata,
+    )
+    await session.commit()
+    return plan
+
+
+async def update_subscription_plan(
+    session: AsyncSession,
+    *,
+    plan_id: uuid.UUID,
+    platform_admin_id: uuid.UUID,
+    fields: dict[str, object],
+) -> SubscriptionPlanModel:
+    try:
+        plan = await billing_update_plan(session, plan_id=plan_id, fields=fields)
+    except BillingPlanNotFoundError as exc:
+        raise SubscriptionPlanNotFoundError(str(exc)) from exc
+
+    metadata = await _admin_metadata(session, platform_admin_id)
+    metadata["fields"] = fields
+    await record_event(
+        session,
+        account_id=None,
+        actor_user_id=None,
+        action="subscription_plan.updated",
+        entity_type="subscription_plan",
+        entity_id=plan.id,
+        metadata=metadata,
+    )
+    await session.commit()
+    return plan
+
+
+async def create_credit_pack_catalog_entry(
+    session: AsyncSession, *, platform_admin_id: uuid.UUID, fields: dict[str, object]
+) -> CreditPack:
+    try:
+        pack = await billing_create_credit_pack(session, fields=fields)
+    except CreditPackSlugAlreadyExistsError as exc:
+        raise CreditPackSlugConflictError(str(exc)) from exc
+
+    metadata = await _admin_metadata(session, platform_admin_id)
+    metadata["slug"] = fields["slug"]
+    await record_event(
+        session,
+        account_id=None,
+        actor_user_id=None,
+        action="credit_pack.created",
+        entity_type="credit_pack",
+        entity_id=pack.id,
+        metadata=metadata,
+    )
+    await session.commit()
+    return pack
+
+
+async def update_credit_pack_catalog_entry(
+    session: AsyncSession,
+    *,
+    pack_id: uuid.UUID,
+    platform_admin_id: uuid.UUID,
+    fields: dict[str, object],
+) -> CreditPack:
+    try:
+        pack = await billing_update_credit_pack(session, pack_id=pack_id, fields=fields)
+    except BillingCreditPackNotFoundError as exc:
+        raise CreditPackNotFoundError(str(exc)) from exc
+
+    metadata = await _admin_metadata(session, platform_admin_id)
+    metadata["fields"] = fields
+    await record_event(
+        session,
+        account_id=None,
+        actor_user_id=None,
+        action="credit_pack.updated",
+        entity_type="credit_pack",
+        entity_id=pack.id,
+        metadata=metadata,
+    )
+    await session.commit()
+    return pack

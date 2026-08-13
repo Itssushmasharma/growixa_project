@@ -13,6 +13,14 @@ from growixa_api.ai.services import (
     set_platform_config,
     test_connection,
 )
+from growixa_api.billing.models import AccountSubscription
+from growixa_api.billing.schemas import AccountSubscriptionOut, CreditBalanceOut, CreditPackOut
+from growixa_api.billing.schemas import SubscriptionPlanOut as BillingSubscriptionPlanOut
+from growixa_api.billing.services import get_billing_overview
+from growixa_api.billing.services import (
+    list_credit_pack_catalog_for_admin as list_credit_packs_service,
+)
+from growixa_api.billing.services import list_plan_catalog as list_plans_service
 from growixa_api.campaigns.models import Campaign
 from growixa_api.contacts.services import ContactNotFoundError, DuplicateEmailError
 from growixa_api.db import get_session
@@ -20,10 +28,16 @@ from growixa_api.platform_admin.models import SupportSession
 from growixa_api.platform_admin.schemas import (
     AccountDetailOut,
     AccountListItemOut,
+    AccountSubscriptionOverrideIn,
     AccountUserOut,
     AuditEventOut,
     CampaignOversightItemOut,
+    CreditPackCreateIn,
+    CreditPackUpdateIn,
+    GrantCreditsIn,
     SecurityEventOut,
+    SubscriptionPlanCreateIn,
+    SubscriptionPlanUpdateIn,
     SupportSessionCompanyOut,
     SupportSessionContactOut,
     SupportSessionContactUpdateIn,
@@ -36,6 +50,11 @@ from growixa_api.platform_admin.schemas import (
 from growixa_api.platform_admin.services import (
     AccountNotFoundError,
     CampaignNotPausableError,
+    CreditPackNotFoundError,
+    CreditPackSlugConflictError,
+    SubscriptionOverrideMissingFieldsError,
+    SubscriptionPlanNotFoundError,
+    SubscriptionPlanSlugConflictError,
     SupportSessionAccessDeniedError,
     SupportSessionExpiredError,
     SupportSessionNotFoundError,
@@ -44,11 +63,19 @@ from growixa_api.platform_admin.services import (
     list_support_sessions_for_account_service,
 )
 from growixa_api.platform_admin.services import CampaignNotFoundError as CampaignRowNotFoundError
+from growixa_api.platform_admin.services import (
+    create_credit_pack_catalog_entry as create_credit_pack_service,
+)
+from growixa_api.platform_admin.services import create_subscription_plan as create_plan_service
 from growixa_api.platform_admin.services import end_support_session as end_support_session_service
 from growixa_api.platform_admin.services import get_account_detail as get_account_detail_service
 from growixa_api.platform_admin.services import (
+    get_account_subscription_overview as get_account_subscription_overview_service,
+)
+from growixa_api.platform_admin.services import (
     get_support_session_overview as get_support_session_overview_service,
 )
+from growixa_api.platform_admin.services import grant_account_credits as grant_credits_service
 from growixa_api.platform_admin.services import (
     list_accounts_with_user_counts as list_accounts_service,
 )
@@ -57,6 +84,9 @@ from growixa_api.platform_admin.services import (
 )
 from growixa_api.platform_admin.services import (
     list_usage_summary_rows as list_usage_summary_rows_service,
+)
+from growixa_api.platform_admin.services import (
+    override_account_subscription as override_subscription_service,
 )
 from growixa_api.platform_admin.services import pause_campaign as pause_campaign_service
 from growixa_api.platform_admin.services import (
@@ -68,18 +98,24 @@ from growixa_api.platform_admin.services import (
 from growixa_api.platform_admin.services import (
     update_contact_via_support_session as update_contact_via_support_session_service,
 )
+from growixa_api.platform_admin.services import (
+    update_credit_pack_catalog_entry as update_credit_pack_service,
+)
+from growixa_api.platform_admin.services import update_subscription_plan as update_plan_service
 from growixa_api.platform_auth.dependencies import require_platform_permission
 
 router = APIRouter(prefix="/platform/accounts", tags=["platform_admin"])
 usage_router = APIRouter(prefix="/platform", tags=["platform_admin"])
 support_session_router = APIRouter(prefix="/platform", tags=["platform_admin"])
 ai_config_router = APIRouter(prefix="/platform", tags=["platform_admin"])
+billing_router = APIRouter(prefix="/platform", tags=["platform_admin"])
 
 _require_manage = require_platform_permission("platform.accounts.manage")
 _require_usage_manage = require_platform_permission("platform.usage.manage")
 _require_support_session_create = require_platform_permission("platform.support_session.create")
 _require_support_session_write = require_platform_permission("platform.support_session.write")
 _require_ai_manage = require_platform_permission("platform.ai.manage")
+_require_billing_manage = require_platform_permission("platform.billing.manage")
 
 
 def _to_list_item(account: Account, user_count: int) -> AccountListItemOut:
@@ -161,6 +197,107 @@ async def update_account_status_route(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Account not found") from exc
 
     return _to_list_item(account, user_count)
+
+
+def _to_subscription_out(
+    subscription: AccountSubscription,
+    plan: BillingSubscriptionPlanOut,
+    balances: list[CreditBalanceOut],
+) -> AccountSubscriptionOut:
+    return AccountSubscriptionOut(
+        plan=plan,
+        status=subscription.status,
+        currency=subscription.currency,  # type: ignore[arg-type]
+        current_period_start=subscription.current_period_start,
+        current_period_end=subscription.current_period_end,
+        period_email_used=subscription.period_email_used,
+        period_ai_used=subscription.period_ai_used,
+        credit_balances=balances,
+    )
+
+
+@router.get("/{account_id}/subscription", response_model=AccountSubscriptionOut)
+async def get_account_subscription_route(
+    account_id: uuid.UUID,
+    _platform_admin_id: uuid.UUID = Depends(_require_billing_manage),
+    session: AsyncSession = Depends(get_session),
+) -> AccountSubscriptionOut:
+    try:
+        subscription, plan, balances = await get_account_subscription_overview_service(
+            session, account_id=account_id
+        )
+    except AccountNotFoundError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Account not found") from exc
+
+    return _to_subscription_out(
+        subscription,
+        BillingSubscriptionPlanOut.model_validate(plan),
+        [CreditBalanceOut.model_validate(b) for b in balances],
+    )
+
+
+@router.patch("/{account_id}/subscription", response_model=AccountSubscriptionOut)
+async def override_account_subscription_route(
+    account_id: uuid.UUID,
+    payload: AccountSubscriptionOverrideIn,
+    platform_admin_id: uuid.UUID = Depends(_require_billing_manage),
+    session: AsyncSession = Depends(get_session),
+) -> AccountSubscriptionOut:
+    """Manual plan/status override (`GRX-SAAS-006`, `BILLING_SYSTEM_ARCHITECTURE.md`
+    §6.1/§6.3) -- bypasses Razorpay entirely, no payment or webhook involved. Used for
+    Enterprise activation, trial extensions, support-driven upgrades/downgrades, or
+    comping an account."""
+    try:
+        await override_subscription_service(
+            session,
+            account_id=account_id,
+            platform_admin_id=platform_admin_id,
+            plan_slug=payload.plan_slug,
+            status=payload.status,
+        )
+    except AccountNotFoundError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Account not found") from exc
+    except SubscriptionOverrideMissingFieldsError as exc:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST, "At least one of plan_slug/status must be provided"
+        ) from exc
+    except SubscriptionPlanNotFoundError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Plan not found") from exc
+
+    subscription, plan, balances = await get_billing_overview(session, account_id)
+    return _to_subscription_out(
+        subscription,
+        BillingSubscriptionPlanOut.model_validate(plan),
+        [CreditBalanceOut.model_validate(b) for b in balances],
+    )
+
+
+@router.post(
+    "/{account_id}/credits/grant",
+    response_model=CreditBalanceOut,
+    status_code=status.HTTP_201_CREATED,
+)
+async def grant_account_credits_route(
+    account_id: uuid.UUID,
+    payload: GrantCreditsIn,
+    platform_admin_id: uuid.UUID = Depends(_require_billing_manage),
+    session: AsyncSession = Depends(get_session),
+) -> CreditBalanceOut:
+    """Free top-up credit grant (`GRX-SAAS-006` §6.2) -- e.g. support/VIP comps.
+    Distinguishable from a real purchase in the receipt history by
+    `razorpay_payment_id IS NULL`/`granted_by_platform_admin_id` being set."""
+    try:
+        balance = await grant_credits_service(
+            session,
+            account_id=account_id,
+            platform_admin_id=platform_admin_id,
+            credit_type=payload.credit_type,
+            credits=payload.credits,
+        )
+    except AccountNotFoundError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Account not found") from exc
+
+    return CreditBalanceOut.model_validate(balance)
 
 
 def _to_campaign_item(campaign: Campaign, account_name: str) -> CampaignOversightItemOut:
@@ -461,3 +598,105 @@ async def test_platform_ai_config_route(
         raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
     except AIProviderError as exc:
         raise HTTPException(status.HTTP_502_BAD_GATEWAY, f"Connection test failed: {exc}") from exc
+
+
+@billing_router.get("/subscription-plans", response_model=list[BillingSubscriptionPlanOut])
+async def list_subscription_plans_route(
+    _platform_admin_id: uuid.UUID = Depends(_require_billing_manage),
+    session: AsyncSession = Depends(get_session),
+) -> list[BillingSubscriptionPlanOut]:
+    plans = await list_plans_service(session)
+    return [BillingSubscriptionPlanOut.model_validate(plan) for plan in plans]
+
+
+@billing_router.get("/credit-packs", response_model=list[CreditPackOut])
+async def list_credit_packs_route(
+    _platform_admin_id: uuid.UUID = Depends(_require_billing_manage),
+    session: AsyncSession = Depends(get_session),
+) -> list[CreditPackOut]:
+    """Unlike the customer-facing `GET /billing/credit-packs`, this is not filtered to
+    `is_active` -- a platform admin editing the catalog needs to see (and reactivate)
+    deactivated packs too."""
+    packs = await list_credit_packs_service(session)
+    return [CreditPackOut.model_validate(pack) for pack in packs]
+
+
+@billing_router.post(
+    "/subscription-plans",
+    response_model=BillingSubscriptionPlanOut,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_subscription_plan_route(
+    payload: SubscriptionPlanCreateIn,
+    platform_admin_id: uuid.UUID = Depends(_require_billing_manage),
+    session: AsyncSession = Depends(get_session),
+) -> BillingSubscriptionPlanOut:
+    """Creates a genuinely new plan tier (`GRX-SAAS-006` §6.4) -- not limited to editing
+    the four seeded plans. A new tier isn't automatically self-serve-checkout-able
+    (`POST /billing/subscribe`'s `plan_slug` stays a deliberate
+    `Literal["starter", "pro"]`) until that's wired in separately."""
+    try:
+        plan = await create_plan_service(
+            session, platform_admin_id=platform_admin_id, fields=payload.model_dump()
+        )
+    except SubscriptionPlanSlugConflictError as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
+    return BillingSubscriptionPlanOut.model_validate(plan)
+
+
+@billing_router.put("/subscription-plans/{plan_id}", response_model=BillingSubscriptionPlanOut)
+async def update_subscription_plan_route(
+    plan_id: uuid.UUID,
+    payload: SubscriptionPlanUpdateIn,
+    platform_admin_id: uuid.UUID = Depends(_require_billing_manage),
+    session: AsyncSession = Depends(get_session),
+) -> BillingSubscriptionPlanOut:
+    """Edits a plan's quotas/prices/features platform-wide -- affects every account on
+    that plan going forward, does not retroactively touch `account_subscriptions` rows
+    already mid-period (§6.4)."""
+    try:
+        plan = await update_plan_service(
+            session,
+            plan_id=plan_id,
+            platform_admin_id=platform_admin_id,
+            fields=payload.model_dump(),
+        )
+    except SubscriptionPlanNotFoundError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Plan not found") from exc
+    return BillingSubscriptionPlanOut.model_validate(plan)
+
+
+@billing_router.post(
+    "/credit-packs", response_model=CreditPackOut, status_code=status.HTTP_201_CREATED
+)
+async def create_credit_pack_route(
+    payload: CreditPackCreateIn,
+    platform_admin_id: uuid.UUID = Depends(_require_billing_manage),
+    session: AsyncSession = Depends(get_session),
+) -> CreditPackOut:
+    try:
+        pack = await create_credit_pack_service(
+            session, platform_admin_id=platform_admin_id, fields=payload.model_dump()
+        )
+    except CreditPackSlugConflictError as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
+    return CreditPackOut.model_validate(pack)
+
+
+@billing_router.put("/credit-packs/{pack_id}", response_model=CreditPackOut)
+async def update_credit_pack_route(
+    pack_id: uuid.UUID,
+    payload: CreditPackUpdateIn,
+    platform_admin_id: uuid.UUID = Depends(_require_billing_manage),
+    session: AsyncSession = Depends(get_session),
+) -> CreditPackOut:
+    try:
+        pack = await update_credit_pack_service(
+            session,
+            pack_id=pack_id,
+            platform_admin_id=platform_admin_id,
+            fields=payload.model_dump(),
+        )
+    except CreditPackNotFoundError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Credit pack not found") from exc
+    return CreditPackOut.model_validate(pack)
