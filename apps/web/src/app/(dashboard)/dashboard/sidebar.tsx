@@ -82,6 +82,12 @@ const NAV_SECTIONS: NavSection[] = [
         icon: "📸",
         requiresPermission: "social.view",
       },
+      {
+        label: "AI Assistant",
+        href: "/dashboard/ai",
+        icon: "✨",
+        requiresPermission: "ai.view",
+      },
     ],
   },
   {

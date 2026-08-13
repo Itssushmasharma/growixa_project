@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type ChangeEvent, type FormEvent, useEffect, useState } from "react";
 
+import { AIGenerateButton } from "@/components/ai/ai-generate-button";
 import { useToast } from "@/components/toast/toast-context";
 import { ApiError, apiFetch } from "@/lib/api-client";
 
@@ -13,6 +14,7 @@ import type { MeResponse, SocialConnection, SocialPost } from "./types";
 const VIEW_PERMISSION = "social.view";
 const MANAGE_PERMISSION = "social.manage";
 const PUBLISH_PERMISSION = "social.publish";
+const AI_MANAGE_PERMISSION = "ai.manage";
 
 function parseApiErrorDetail(error: unknown, fallback: string): string {
   if (error instanceof ApiError) {
@@ -39,6 +41,7 @@ export function PostFormPage({ mode, postId }: PostFormPageProps) {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [canManage, setCanManage] = useState(false);
   const [canPublish, setCanPublish] = useState(false);
+  const [canGenerateAI, setCanGenerateAI] = useState(false);
 
   const [connections, setConnections] = useState<SocialConnection[]>([]);
   const [post, setPost] = useState<SocialPost | null>(null);
@@ -65,6 +68,7 @@ export function PostFormPage({ mode, postId }: PostFormPageProps) {
         const hasManage = me.permissions.includes(MANAGE_PERMISSION);
         setCanManage(hasManage);
         setCanPublish(me.permissions.includes(PUBLISH_PERMISSION));
+        setCanGenerateAI(me.permissions.includes(AI_MANAGE_PERMISSION));
 
         if (mode === "create" && !hasManage) {
           setLoading(false);
@@ -330,9 +334,31 @@ export function PostFormPage({ mode, postId }: PostFormPageProps) {
           )}
 
           <div className={styles.field}>
-            <label className={styles.label} htmlFor="post-caption">
-              Caption
-            </label>
+            <div className={styles.fieldHeader}>
+              <label className={styles.label} htmlFor="post-caption">
+                Caption
+              </label>
+              {editable && canGenerateAI && (
+                <div className={styles.fieldActions}>
+                  <AIGenerateButton
+                    capability="SOCIAL_CAPTION"
+                    triggerLabel="Generate with AI"
+                    briefPlaceholder="e.g. a 20% off sale on running shoes this weekend"
+                    onInsert={(text) => setCaption(text)}
+                    linkedEntityType="social_post"
+                    linkedEntityId={postId}
+                  />
+                  <AIGenerateButton
+                    capability="HASHTAGS"
+                    triggerLabel="Suggest hashtags"
+                    briefPlaceholder="e.g. running shoes sale"
+                    onInsert={(text) => setCaption((prev) => (prev ? `${prev}\n\n${text}` : text))}
+                    linkedEntityType="social_post"
+                    linkedEntityId={postId}
+                  />
+                </div>
+              )}
+            </div>
             <textarea
               id="post-caption"
               className={styles.textarea}

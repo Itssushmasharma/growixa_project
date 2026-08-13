@@ -105,6 +105,23 @@
   margin-bottom: 6px;
 }
 
+.fieldHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.fieldHeader .label {
+  margin-bottom: 0;
+}
+
+.fieldActions {
+  display: flex;
+  gap: 6px;
+}
+
 .input,
 .textarea {
   width: 100%;

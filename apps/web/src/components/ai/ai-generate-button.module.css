@@ -1,0 +1,111 @@
+.wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.trigger {
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(124, 58, 237, 0.35);
+  background: rgba(124, 58, 237, 0.08);
+  color: #7c3aed;
+  font-weight: 600;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.trigger:hover {
+  background: rgba(124, 58, 237, 0.15);
+}
+
+.panel {
+  margin-top: 8px;
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(124, 58, 237, 0.25);
+  background: rgba(124, 58, 237, 0.04);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.panelLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-dark-text);
+}
+
+.panelTextarea {
+  width: 100%;
+  min-height: 60px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(15, 42, 86, 0.14);
+  font-size: 13px;
+  font-family: inherit;
+  resize: vertical;
+}
+
+.generateButton {
+  align-self: flex-start;
+  padding: 6px 14px;
+  border: none;
+  border-radius: var(--pill-radius, 999px);
+  background: #7c3aed;
+  color: #fff;
+  font-weight: 600;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.generateButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.resultBox {
+  margin-top: 4px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #fff;
+  border: 1px solid rgba(124, 58, 237, 0.2);
+}
+
+.resultText {
+  font-size: 13px;
+  color: var(--color-dark-text);
+  white-space: pre-wrap;
+  margin: 0 0 8px;
+}
+
+.resultActions {
+  display: flex;
+  gap: 6px;
+}
+
+.insertButton {
+  padding: 5px 12px;
+  border: none;
+  border-radius: 999px;
+  background: #7c3aed;
+  color: #fff;
+  font-weight: 600;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.regenerateButton {
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 42, 86, 0.14);
+  background: #fff;
+  color: var(--color-slate);
+  font-weight: 600;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.regenerateButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

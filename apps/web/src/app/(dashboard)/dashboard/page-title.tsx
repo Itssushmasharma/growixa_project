@@ -19,6 +19,7 @@ const PAGE_TITLES: Record<string, string> = {
   "/dashboard/campaigns": "Campaigns",
   "/dashboard/social": "Social",
   "/dashboard/social/calendar": "Content Calendar",
+  "/dashboard/ai": "AI Assistant",
 };
 
 export function PageTitle() {

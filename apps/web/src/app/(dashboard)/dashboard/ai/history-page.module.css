@@ -1,0 +1,133 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.card {
+  background: #fff;
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
+  padding: 24px;
+}
+
+.heading {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--color-dark-text);
+}
+
+.tabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.tab,
+.tabActive {
+  padding: 8px 14px;
+  border: none;
+  border-radius: var(--pill-radius);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  background: #fff;
+  color: var(--color-slate);
+  box-shadow: var(--card-shadow);
+}
+
+.tabActive {
+  background: var(--color-dark-text);
+  color: #fff;
+}
+
+.emptyState {
+  background: #fff;
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
+  padding: 32px 24px;
+  text-align: center;
+}
+
+.hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--color-slate-light);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.row {
+  background: #fff;
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rowHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.capabilityBadge {
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(124, 58, 237, 0.1);
+  color: #7c3aed;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.statusComplete,
+.statusFailed {
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.statusComplete {
+  background: rgba(16, 185, 129, 0.12);
+  color: #059669;
+}
+
+.statusFailed {
+  background: rgba(239, 68, 68, 0.12);
+  color: #dc2626;
+}
+
+.timestamp {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--color-slate-light);
+}
+
+.outputText {
+  margin: 0;
+  font-size: 14px;
+  color: var(--color-dark-text);
+  white-space: pre-wrap;
+}
+
+.errorText {
+  margin: 0;
+  font-size: 13px;
+  color: #dc2626;
+}
+
+.rowFooter {
+  display: flex;
+  gap: 14px;
+  font-size: 11px;
+  color: var(--color-slate-light);
+}

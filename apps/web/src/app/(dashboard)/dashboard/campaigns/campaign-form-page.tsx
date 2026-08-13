@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useEffect, useState } from "react";
 
+import { AIGenerateButton } from "@/components/ai/ai-generate-button";
 import { useToast } from "@/components/toast/toast-context";
 import { ApiError, apiFetch } from "@/lib/api-client";
 import { formatHtml } from "@/lib/format-html";
@@ -23,6 +24,7 @@ import type {
 const VIEW_PERMISSION = "campaigns.view";
 const MANAGE_PERMISSION = "campaigns.manage";
 const SEND_PERMISSION = "campaigns.send";
+const AI_MANAGE_PERMISSION = "ai.manage";
 
 interface FormState {
   name: string;
@@ -72,6 +74,7 @@ export function CampaignFormPage({ mode, campaignId }: CampaignFormPageProps) {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [canManage, setCanManage] = useState(false);
   const [canSend, setCanSend] = useState(false);
+  const [canGenerateAI, setCanGenerateAI] = useState(false);
 
   const [campaign, setCampaign] = useState<Campaign | null>(null);
   const [report, setReport] = useState<CampaignReport | null>(null);
@@ -101,6 +104,7 @@ export function CampaignFormPage({ mode, campaignId }: CampaignFormPageProps) {
         const hasManage = me.permissions.includes(MANAGE_PERMISSION);
         setCanManage(hasManage);
         setCanSend(me.permissions.includes(SEND_PERMISSION));
+        setCanGenerateAI(me.permissions.includes(AI_MANAGE_PERMISSION));
 
         if (mode === "create" && !hasManage) {
           setLoading(false);
@@ -379,9 +383,21 @@ export function CampaignFormPage({ mode, campaignId }: CampaignFormPageProps) {
           </div>
 
           <div className={styles.field}>
-            <label className={styles.label} htmlFor="campaign-subject">
-              Email subject
-            </label>
+            <div className={styles.fieldHeader}>
+              <label className={styles.label} htmlFor="campaign-subject">
+                Email subject
+              </label>
+              {editable && canGenerateAI && (
+                <AIGenerateButton
+                  capability="SUBJECT_LINE"
+                  triggerLabel="Generate with AI"
+                  briefPlaceholder="e.g. a 20% off sale on running shoes this weekend"
+                  onInsert={(text) => setForm((prev) => ({ ...prev, subject: text }))}
+                  linkedEntityType="campaign"
+                  linkedEntityId={campaignId}
+                />
+              )}
+            </div>
             <input
               id="campaign-subject"
               className={styles.input}
@@ -506,6 +522,24 @@ export function CampaignFormPage({ mode, campaignId }: CampaignFormPageProps) {
                   <button type="button" className={styles.miniButton} onClick={handleCopyHtml}>
                     Copy
                   </button>
+                  {canGenerateAI && (
+                    <AIGenerateButton
+                      capability="BODY_COPY"
+                      triggerLabel="Generate with AI"
+                      briefPlaceholder="e.g. a 20% off sale on running shoes this weekend"
+                      onInsert={(text) =>
+                        setForm((prev) => ({
+                          ...prev,
+                          body_html: text
+                            .split(/\n\n+/)
+                            .map((paragraph) => `<p>${paragraph.replace(/\n/g, "<br>")}</p>`)
+                            .join("\n"),
+                        }))
+                      }
+                      linkedEntityType="campaign"
+                      linkedEntityId={campaignId}
+                    />
+                  )}
                 </div>
               )}
             </div>
