@@ -2,11 +2,22 @@ import uuid
 from collections.abc import Sequence
 from datetime import datetime
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from growixa_api.roles.models import Role
 from growixa_api.users.models import User, UserInvitation, UserRole
+
+
+async def count_active_users(session: AsyncSession, account_id: uuid.UUID) -> int:
+    """Feeds the plan's `max_user_seats` cap check (`GRX-BILL-005`) -- a disabled user
+    frees up their seat."""
+    result = await session.execute(
+        select(func.count())
+        .select_from(User)
+        .where(User.account_id == account_id, User.status == "ACTIVE")
+    )
+    return result.scalar_one()
 
 
 async def get_user_by_email(session: AsyncSession, email: str) -> User | None:

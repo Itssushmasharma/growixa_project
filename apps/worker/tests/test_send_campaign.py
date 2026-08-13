@@ -12,7 +12,7 @@ from datetime import UTC, datetime
 
 import pytest
 from cryptography.fernet import Fernet
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from growixa_worker import send_campaign as send_campaign_module
@@ -20,6 +20,7 @@ from growixa_worker.config import get_settings
 from growixa_worker.db import get_session_factory
 from growixa_worker.email_sender import EmailSendError
 from growixa_worker.models import (
+    AccountSubscription,
     Campaign,
     CampaignRecipient,
     CampaignVersion,
@@ -128,6 +129,15 @@ async def _cleanup(session: AsyncSession) -> None:
     await session.execute(delete(SenderIdentity))
     await session.execute(delete(EmailProviderConnection))
     await session.execute(delete(UsageRecord))
+    # The seed account's account_subscriptions row is shared across every test run
+    # (GRX-BILL-002's backfill, not something this suite creates/deletes itself) --
+    # reset its GRX-BILL-005 email counter so repeated runs don't accumulate real
+    # quota usage against it and eventually start failing sends non-deterministically.
+    await session.execute(
+        update(AccountSubscription)
+        .where(AccountSubscription.account_id == _ACCOUNT_ID)
+        .values(period_email_used=0)
+    )
     await session.commit()
 
 

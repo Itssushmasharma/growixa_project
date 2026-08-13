@@ -5,6 +5,7 @@ from collections.abc import Sequence
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from growixa_api.billing.services import PlanLimitExceededError
 from growixa_api.contacts.models import (
     Contact,
     ContactCustomField,
@@ -493,6 +494,15 @@ async def create_contact_route(
     except UnknownCustomFieldError as exc:
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST, f"Unknown custom field key: {exc.key}"
+        ) from exc
+    except PlanLimitExceededError as exc:
+        raise HTTPException(
+            status.HTTP_402_PAYMENT_REQUIRED,
+            {
+                "error": "QUOTA_EXCEEDED",
+                "message": "You have reached your plan's contact limit.",
+                "upgrade_url": "/dashboard/billing",
+            },
         ) from exc
 
     return _to_out(contact, fields, tags, suppressed)

@@ -54,6 +54,17 @@ async def get_contact_by_id(
     return result.scalar_one_or_none()
 
 
+async def count_active_contacts(session: AsyncSession, account_id: uuid.UUID) -> int:
+    """Feeds the plan's `max_contacts` cap check (`GRX-BILL-005`) -- archived contacts
+    don't count against it, only live ones."""
+    result = await session.execute(
+        select(func.count())
+        .select_from(Contact)
+        .where(Contact.account_id == account_id, Contact.status == "ACTIVE")
+    )
+    return result.scalar_one()
+
+
 async def list_contacts(session: AsyncSession, account_id: uuid.UUID) -> Sequence[Contact]:
     result = await session.execute(
         select(Contact).where(Contact.account_id == account_id).order_by(Contact.created_at.desc())

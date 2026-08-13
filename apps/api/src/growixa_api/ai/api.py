@@ -24,6 +24,7 @@ from growixa_api.ai.services import (
     list_generation_history,
     test_connection,
 )
+from growixa_api.billing.services import QuotaExceededError
 from growixa_api.db import get_session
 from growixa_api.permissions.dependencies import get_current_account_id, require_permission
 
@@ -126,6 +127,15 @@ async def generate_content_route(
         raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
     except GenerationFailedError as exc:
         raise HTTPException(status.HTTP_502_BAD_GATEWAY, f"Generation failed: {exc}") from exc
+    except QuotaExceededError as exc:
+        raise HTTPException(
+            status.HTTP_402_PAYMENT_REQUIRED,
+            {
+                "error": "QUOTA_EXCEEDED",
+                "message": "You have reached your monthly AI run limit.",
+                "upgrade_url": "/dashboard/billing",
+            },
+        ) from exc
     return AIGenerationOut.model_validate(result)
 
 

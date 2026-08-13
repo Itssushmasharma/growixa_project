@@ -1,5 +1,6 @@
 import uuid
 from dataclasses import dataclass
+from typing import Literal
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -24,6 +25,10 @@ class ResolvedAIProvider:
     provider: AIModelProvider
     provider_name: str
     model: str
+    # Which branch resolved this call -- BILLING_SYSTEM_ARCHITECTURE.md §4.1's AI-run
+    # quota only applies to PLATFORM_DEFAULT; an account's own bring-your-own key costs
+    # Growixa nothing, so it's never metered (GRX-BILL-005).
+    source: Literal["ACCOUNT_BYO", "PLATFORM_DEFAULT"]
 
 
 def _build_adapter(
@@ -67,7 +72,10 @@ async def get_effective_ai_provider(
             provider_name=connection.provider, api_key=api_key, base_url=base_url
         )
         return ResolvedAIProvider(
-            provider=adapter, provider_name=connection.provider, model=connection.default_model
+            provider=adapter,
+            provider_name=connection.provider,
+            model=connection.default_model,
+            source="ACCOUNT_BYO",
         )
 
     platform_config = await repositories.get_active_platform_config(session)
@@ -80,6 +88,7 @@ async def get_effective_ai_provider(
             provider=adapter,
             provider_name=platform_config.provider,
             model=platform_config.default_model,
+            source="PLATFORM_DEFAULT",
         )
 
     raise AINotConfiguredError(

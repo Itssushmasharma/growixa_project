@@ -64,6 +64,24 @@ async def create_default_free_subscription(
     return subscription
 
 
+async def get_locked_account_subscription_with_plan(
+    session: AsyncSession, account_id: uuid.UUID
+) -> tuple[AccountSubscription, SubscriptionPlan]:
+    """Locks the account's one subscription row (`SELECT ... FOR UPDATE`) joined to its
+    plan -- the atomic quota evaluator (`GRX-BILL-005`) needs both the running counter
+    and the limit to decide, and the lock closes the race between two concurrent
+    metered requests both reading "under the limit" before either writes back
+    (`BILLING_SYSTEM_ARCHITECTURE.md` §4)."""
+    result = await session.execute(
+        select(AccountSubscription, SubscriptionPlan)
+        .join(SubscriptionPlan, AccountSubscription.plan_id == SubscriptionPlan.id)
+        .where(AccountSubscription.account_id == account_id)
+        .with_for_update(of=AccountSubscription)
+    )
+    subscription, plan = result.one()
+    return subscription, plan
+
+
 async def get_account_subscription_by_razorpay_subscription_id(
     session: AsyncSession, razorpay_subscription_id: str
 ) -> AccountSubscription | None:

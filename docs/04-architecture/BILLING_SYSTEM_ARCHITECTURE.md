@@ -212,41 +212,69 @@ creation elsewhere would make that failure mode reachable in production.
 
 ---
 
-## 4. Atomic quota evaluator
+## 4. Atomic quota evaluator (`GRX-BILL-005`, shipped)
 
 Single running balance (Table 3) makes the "was the overage covered by credits"
-check a single atomic `UPDATE`, with no multi-batch traversal needed:
+check a single atomic `UPDATE`, with no multi-batch traversal needed. The shape below
+is what actually shipped in `billing/services.py` — it corrects one bug an earlier
+draft of this section had (the `f"..."` string-formatting trick doesn't actually match
+this schema: `"ai_run".upper()` is `"AI_RUN"`, but the real `credit_type` value is
+`"AI_RUNS"`; `check_and_consume_quota` uses an explicit per-operation table instead)
+and adds one rule the earlier draft never specified: **which subscription statuses get
+to use their `plan_id`'s real limits.**
 
 ```python
+@dataclass(frozen=True)
+class _MeteredOperation:
+    period_used_attr: str
+    plan_limit_attr: str
+    credit_type: str
+
+_METERED_OPERATIONS = {
+    "email": _MeteredOperation("period_email_used", "max_monthly_emails", "EMAIL_SENDS"),
+    "ai_run": _MeteredOperation("period_ai_used", "max_monthly_ai_runs", "AI_RUNS"),
+}
+
+# PENDING (checkout not yet confirmed -- plan_id already points at the *target* plan
+# per set_pending_subscription, §4a, so it must not be trusted yet) and HALTED (billing
+# broken) both fall back to the Free plan's allowance instead of plan_id's. CANCELED
+# stays here deliberately: the webhook handler (§5) leaves current_period_end untouched
+# on cancellation so the account keeps its plan's features until the period genuinely
+# ends -- the cancellation-downgrade ticker (GRX-BILL-006) is what actually rewrites
+# plan_id, not this evaluator.
+_STATUSES_HONORING_PLAN_LIMITS = frozenset({"ACTIVE", "PAST_DUE", "CANCELED"})
+
+
 async def check_and_consume_quota(
-    session: AsyncSession, account_id: UUID, operation: str, qty: int = 1
-) -> bool:
+    session: AsyncSession, *, account_id: UUID, operation: Literal["email", "ai_run"], qty: int = 1
+) -> None:
+    spec = _METERED_OPERATIONS[operation]
+
     # 1. Lock the subscription row & read the running monthly counter + plan limit
-    sub = await session.execute(
-        select(AccountSubscription, SubscriptionPlan)
-        .join(SubscriptionPlan)
-        .where(AccountSubscription.account_id == account_id)
-        .with_for_update()
+    subscription, plan = await get_locked_account_subscription_with_plan(session, account_id)
+    limit = (
+        getattr(plan, spec.plan_limit_attr)
+        if subscription.status in _STATUSES_HONORING_PLAN_LIMITS
+        else getattr(await get_plan_by_slug(session, "free"), spec.plan_limit_attr)
     )
-    sub_row, plan = sub.one()  # raises if the bootstrap in §3.4 was ever skipped
+    current_used = getattr(subscription, spec.period_used_attr)
 
-    current_used = getattr(sub_row, f"period_{operation}_used")
-    plan_limit = getattr(plan, f"max_monthly_{operation}s")
-
-    # NULL plan_limit = unlimited (Enterprise, or an admin-overridden plan)
-    if plan_limit is None:
-        setattr(sub_row, f"period_{operation}_used", current_used + qty)
-        return True
+    # NULL limit = unlimited (Enterprise, or an admin-overridden plan)
+    if limit is None:
+        setattr(subscription, spec.period_used_attr, current_used + qty)
+        await session.commit()
+        return
 
     # Case A: fully covered by the monthly plan allowance
-    if current_used + qty <= plan_limit:
-        setattr(sub_row, f"period_{operation}_used", current_used + qty)
-        return True
+    if current_used + qty <= limit:
+        setattr(subscription, spec.period_used_attr, current_used + qty)
+        await session.commit()
+        return
 
     # Case B: plan allowance partially or fully exhausted -- cover the exact overage
     # from the credit balance, not the full qty (fixes the double-charge bug found
     # reviewing an earlier draft of this design).
-    already_covered = max(0, plan_limit - current_used)
+    already_covered = max(0, limit - current_used)
     needed_extra = qty - already_covered
 
     result = await session.execute(
@@ -258,27 +286,36 @@ async def check_and_consume_quota(
               AND remaining_credits >= :needed
             RETURNING remaining_credits
         """),
-        {"needed": needed_extra, "account_id": account_id, "credit_type": operation.upper()},
+        {"needed": needed_extra, "account_id": account_id, "credit_type": spec.credit_type},
     )
 
-    if result.rowcount > 0:
-        setattr(sub_row, f"period_{operation}_used", plan_limit)  # monthly side maxed out
-        return True
+    if result.first() is not None:
+        setattr(subscription, spec.period_used_attr, limit)  # monthly side maxed out
+        await session.commit()
+        return
 
     # Case C: neither the plan allowance nor credits cover it -- block
-    raise HTTPException(
-        status_code=402,
-        detail={
-            "error": "QUOTA_EXCEEDED",
-            "message": f"You have reached your limit for {operation}.",
-            "upgrade_url": "/dashboard/billing",
-        },
-    )
+    await session.rollback()
+    raise QuotaExceededError(operation)  # the route layer maps this to HTTP 402
 ```
 
 `with_for_update()` on the subscription row plus the single atomic credit `UPDATE`
 closes the race condition an earlier draft had (two concurrent requests both reading
-"under the limit" before either wrote back).
+"under the limit" before either wrote back). `check_and_consume_quota` commits its own
+transaction on every path (success or `QuotaExceededError`) — callers must call it
+before any other uncommitted work they want to survive a block, same as `generate()`
+below calling it before the provider call.
+
+**Duplicated on the worker side.** The email path is metered from
+`apps/worker/send_campaign.py`, not `apps/api` — the worker has its own thin,
+hand-kept-in-sync copy of this logic (`growixa_worker/billing_quota.py`,
+`check_and_consume_email_quota`), consistent with how `apps/worker/models.py` already
+duplicates the handful of `growixa_api` tables it touches rather than depending on
+`growixa_api` as a library (`MODULE_BOUNDARIES.md`). It's called once per recipient,
+immediately before the real SMTP send, inside `handle_send_campaign`'s existing loop —
+a blocked recipient gets a `FAILED` `MessageDelivery`/`DeliveryAttempt` with an
+explanatory `error_message`, and the loop continues to the next recipient rather than
+aborting the whole campaign.
 
 ### 4.1 AI credit metering only applies when Growixa is paying for the call
 
@@ -318,7 +355,7 @@ class ResolvedAIProvider:
 ```python
 resolved = await get_effective_ai_provider(session, account_id)
 if resolved.source == "PLATFORM_DEFAULT":
-    await check_and_consume_quota(session, account_id, operation="ai_run", qty=1)
+    await check_and_consume_quota(session, account_id=account_id, operation="ai_run", qty=1)
 # else: ACCOUNT_BYO -- no quota check, unlimited by design
 result = await capability_module.run(capability_input, resolved.provider, resolved.model)
 ```
@@ -326,11 +363,65 @@ result = await capability_module.run(capability_input, resolved.provider, resolv
 Quota is checked **before** the provider call (a flat "1 generation = 1 credit," not
 token-metered — matches the pricing table's "10 / 150 / 1,000 AI runs/mo" framing) so
 an over-quota account is blocked before Growixa spends real platform LLM budget on a
-call that was never going to be allowed. This is a distinct, new counter from the
-`usage_records` row `generate()` already writes on every call — that one is Sprint 1's
-raw usage telemetry (what the platform-admin usage dashboard reads); `period_ai_used`
-and `account_credit_balances` are the new billing-specific counters this document
-adds. Both are written on the same successful call; neither replaces the other.
+call that was never going to be allowed. `QuotaExceededError` propagates out of
+`generate()` uncaught (no `ai_generations` row is written for a blocked call, same
+shape as the pre-existing `AINotConfiguredError` case) — `ai/api.py`'s
+`generate_content_route` maps it to `HTTP 402` with the same
+`{"error": "QUOTA_EXCEEDED", "message": ..., "upgrade_url": "/dashboard/billing"}` body
+shape every other quota-blocked route in this document uses. This is a distinct, new
+counter from the `usage_records` row `generate()` already writes on every call — that
+one is Sprint 1's raw usage telemetry (what the platform-admin usage dashboard reads);
+`period_ai_used` and `account_credit_balances` are the new billing-specific counters
+this document adds. Both are written on the same successful call; neither replaces the
+other.
+
+### 4b. Point-in-time cap checks (inventory-style resources)
+
+Contacts, social accounts, and user seats aren't period-metered — there's no monthly
+counter to reset, just "how many do you have right now vs. your plan's limit." A
+second, simpler function handles these:
+
+```python
+async def check_plan_limit(
+    session: AsyncSession, *, account_id: UUID, limit_attr: str, current_count: int, resource: str
+) -> None:
+    subscription = await get_account_subscription(session, account_id)
+    plan = await session.get(SubscriptionPlan, subscription.plan_id)
+    limit = (
+        getattr(plan, limit_attr)
+        if subscription.status in _STATUSES_HONORING_PLAN_LIMITS
+        else getattr(await get_plan_by_slug(session, "free"), limit_attr)
+    )
+    if limit is not None and current_count >= limit:
+        raise PlanLimitExceededError(resource)  # the route layer maps this to HTTP 402
+```
+
+No row lock here (unlike `check_and_consume_quota`) — there's no counter to
+increment-and-commit, and a lock on `account_subscriptions` wouldn't serialize a
+`COUNT(*)` against an unrelated table anyway. This is a deliberately best-effort,
+not-strictly-serializable check: two simultaneous creates for the same account right at
+the boundary could both pass, the same tolerance most soft plan-limit enforcement
+accepts. Wired into three creation endpoints, each supplying its own `COUNT(*)`:
+
+- `POST /contacts` (`contacts/services.py`'s `create_or_update_contact`, create branch
+  only) — `limit_attr="max_contacts"`, counting `contacts` rows with `status = 'ACTIVE'`.
+- `GET /social/oauth/callback` (`social/services.py`'s `complete_oauth_callback`) —
+  `limit_attr="max_social_accounts"`, counting `social_connections` rows with
+  `is_active = true`, **excluding** the provider being (re)connected right now, so
+  refreshing an already-connected platform's token never trips the cap (one active
+  connection per provider, `DEC-GRX-025` — a reconnect deactivates-then-recreates, it
+  never grows the count).
+- `POST /users/invitations/accept` (`users/services.py`'s `accept_invitation` — the
+  actual seat-creation point, not `invite_user`, which only creates a pending
+  invitation and costs nothing) — `limit_attr="max_user_seats"`, counting `users` rows
+  with `status = 'ACTIVE'`.
+
+**Known gap, deliberately out of this pass's scope:** CSV bulk contact import
+(`POST /contacts/import`, `contacts/services.py`'s `import_contacts_from_csv`) is not
+capped. Wiring it in raises a real product question this task didn't have an answer
+for — does one over-cap row abort the whole import, or import up to the cap and mark
+the rest `SKIPPED`? — rather than a mechanical repeat of the single-create wiring
+above. Follow-up, not silently dropped.
 
 ---
 
@@ -482,8 +573,8 @@ never touch Razorpay at all — they call the same crediting path as §6.2.
 
 ## 8. Open items
 
-Implementation is underway (`GRX-BILL-002`/`003`/`004` are `DONE` as of this update).
-Remaining open items:
+Implementation is underway (`GRX-BILL-002`/`003`/`004`/`005` are `DONE` as of this
+update). Remaining open items:
 
 1. **USD/international payments are not yet enabled on the Razorpay account** — found
    live while running `GRX-BILL-002`'s plan-sync CLI: Razorpay rejects `currency: USD`
@@ -519,3 +610,13 @@ Remaining open items:
    `subscription.activated`/`charged` webhook). Not a security issue — `PENDING`
    grants nothing — but worth a follow-up ticker or TTL if it becomes an operational
    annoyance (e.g. a stale subscribe attempt blocking a later real one).
+6. **CSV bulk contact import isn't capped** (§4b) — only the single-contact-create
+   endpoint is. Needs a product decision (abort vs. partial-import-then-skip) before
+   it can be wired in, not just a mechanical repeat of the other point-in-time checks.
+7. **"Social posts" is not a capped resource, despite `GRX-BILL-005`'s original
+   tracker description grouping it with contacts/social-accounts/user-seats.** There's
+   no `max_social_posts` column on `subscription_plans`, and §2's pricing table caps
+   only email/AI quotas — no plan-level post limit was ever actually decided. Scoped
+   out of `GRX-BILL-005` rather than inventing an uncommitted business rule (e.g. would
+   it be a lifetime cap or a monthly one?); revisit only if the product owner
+   confirms real demand for it.

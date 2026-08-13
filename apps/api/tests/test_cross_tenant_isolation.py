@@ -36,6 +36,7 @@ from growixa_api.integrations.models import EmailProviderConnection, SenderIdent
 from growixa_api.social.models import SocialConnection, SocialPost, SocialPostMedia
 from growixa_api.templates.models import EmailTemplate, EmailTemplateVersion
 from growixa_api.users.models import User
+from tests.conftest import grant_unlimited_plan
 
 
 def _access_token_cookie(user_id: uuid.UUID) -> dict[str, str]:
@@ -170,6 +171,7 @@ async def test_invited_user_joins_the_inviting_admins_account(
     admin_a = await user_factory(
         full_name="Inviting Admin", role_name="Admin", account_id=account_a
     )
+    await grant_unlimited_plan(account_a)
 
     transport = ASGITransport(app=create_app())
     async with AsyncClient(

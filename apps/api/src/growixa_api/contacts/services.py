@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from growixa_api.audit.services import record_event
+from growixa_api.billing.services import check_plan_limit
 from growixa_api.contacts.models import (
     ConsentRecord,
     Contact,
@@ -27,6 +28,7 @@ from growixa_api.contacts.repositories import (
     add_segment_members,
     apply_contact_fields,
     attach_tag,
+    count_active_contacts,
     count_dynamic_segment_members,
     count_list_members,
     count_saved_segment_members,
@@ -167,6 +169,14 @@ async def create_or_update_contact(
     """
     existing = await get_contact_by_email(session, account_id, email)
     if existing is None:
+        current_count = await count_active_contacts(session, account_id)
+        await check_plan_limit(
+            session,
+            account_id=account_id,
+            limit_attr="max_contacts",
+            current_count=current_count,
+            resource="contacts",
+        )
         contact = await create_contact(
             session,
             account_id=account_id,

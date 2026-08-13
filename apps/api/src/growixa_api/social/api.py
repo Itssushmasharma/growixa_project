@@ -5,6 +5,7 @@ from fastapi.responses import RedirectResponse
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from growixa_api.billing.services import PlanLimitExceededError
 from growixa_api.config import get_settings
 from growixa_api.db import get_session
 from growixa_api.files.storage_client import StorageError
@@ -113,6 +114,10 @@ async def callback_route(
     except InstagramApiError:
         return RedirectResponse(
             f"{integrations_url}?instagram=error&reason=graph_api_error", status_code=302
+        )
+    except PlanLimitExceededError:
+        return RedirectResponse(
+            f"{integrations_url}?instagram=error&reason=plan_limit_reached", status_code=302
         )
 
     return RedirectResponse(f"{integrations_url}?instagram=connected", status_code=302)

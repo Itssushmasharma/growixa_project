@@ -8,6 +8,7 @@ from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from growixa_api.auth.encryption import encrypt_secret
+from growixa_api.billing.services import check_plan_limit
 from growixa_api.config import get_settings
 from growixa_api.files import storage_client
 from growixa_api.jobs.producer import publish_job
@@ -107,6 +108,22 @@ async def complete_oauth_callback(
         user_access_token=long_lived_token,
         api_version=settings.instagram_graph_api_version,
     )
+
+    # Only a genuinely new platform connection counts against the cap -- reconnecting an
+    # already-connected provider deactivates-then-recreates (one active row per provider,
+    # DEC-GRX-025) so it must not double-count. Reflects only *this* provider's active row
+    # in the "would-be total after this operation" instead of the current total, so
+    # reconnecting at the cap never spuriously blocks a refresh.
+    existing_connection = await repositories.get_active_connection(session, account_id, _PROVIDER)
+    if existing_connection is None:
+        current_count = await repositories.count_active_connections(session, account_id)
+        await check_plan_limit(
+            session,
+            account_id=account_id,
+            limit_attr="max_social_accounts",
+            current_count=current_count,
+            resource="social_accounts",
+        )
 
     await repositories.deactivate_active_connections(session, account_id, _PROVIDER)
     connection = await repositories.create_connection(

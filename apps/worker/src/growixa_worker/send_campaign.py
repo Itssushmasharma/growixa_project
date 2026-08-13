@@ -6,6 +6,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from growixa_worker.billing_quota import QuotaExceededError, check_and_consume_email_quota
 from growixa_worker.config import get_settings
 from growixa_worker.email_sender import EmailSendError, send_email
 from growixa_worker.encryption import decrypt_secret
@@ -138,6 +139,27 @@ async def handle_send_campaign(session: AsyncSession, payload: dict[str, Any]) -
         )
         session.add(delivery)
         await session.flush()
+
+        try:
+            await check_and_consume_email_quota(session, account_id=campaign.account_id)
+        except QuotaExceededError:
+            delivery.status = "FAILED"
+            recipient.status = "FAILED"
+            session.add(
+                DeliveryAttempt(
+                    account_id=campaign.account_id,
+                    message_delivery_id=delivery.id,
+                    attempt_number=1,
+                    status="FAILED",
+                    error_message="Monthly email quota exceeded and no credits available",
+                )
+            )
+            logger.warning(
+                "send_campaign: recipient %s blocked, account %s over email quota",
+                recipient.email,
+                campaign.account_id,
+            )
+            continue
 
         body_html, body_text = _with_unsubscribe_footer(
             campaign.body_html, campaign.body_text, recipient.id

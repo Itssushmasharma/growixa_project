@@ -2,10 +2,20 @@ import uuid
 from collections.abc import Sequence
 from typing import Any
 
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from growixa_api.social.models import SocialConnection, SocialPost, SocialPostMedia
+
+
+async def count_active_connections(session: AsyncSession, account_id: uuid.UUID) -> int:
+    """Feeds the plan's `max_social_accounts` cap check (`GRX-BILL-005`)."""
+    result = await session.execute(
+        select(func.count())
+        .select_from(SocialConnection)
+        .where(SocialConnection.account_id == account_id, SocialConnection.is_active.is_(True))
+    )
+    return result.scalar_one()
 
 
 async def get_active_connection(

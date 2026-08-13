@@ -1,14 +1,19 @@
 import logging
 import uuid
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any, Literal
 
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from growixa_api.billing.models import AccountSubscription, SubscriptionPlan
 from growixa_api.billing.providers.base import PaymentGatewayProvider
 from growixa_api.billing.repositories import (
+    get_account_subscription,
     get_account_subscription_by_razorpay_subscription_id,
     get_credit_pack_by_slug,
+    get_locked_account_subscription_with_plan,
     get_plan_by_slug,
     record_credit_purchase_idempotent,
     set_pending_subscription,
@@ -30,6 +35,148 @@ class CurrencyNotAvailableError(Exception):
     currency yet -- e.g. USD before international payments are approved on the
     Razorpay account (a real limitation hit live while building this task, not a
     hypothetical)."""
+
+
+class QuotaExceededError(Exception):
+    """Neither the plan's monthly allowance nor the account's credit balance covers a
+    period-metered operation (email send / AI run). Callers map this to HTTP 402."""
+
+    def __init__(self, operation: str) -> None:
+        self.operation = operation
+        super().__init__(f"quota exceeded for {operation!r}")
+
+
+class PlanLimitExceededError(Exception):
+    """The account is already at its plan's cap for an inventory-style resource
+    (contacts / social accounts / user seats). Callers map this to HTTP 402."""
+
+    def __init__(self, resource: str) -> None:
+        self.resource = resource
+        super().__init__(f"plan limit reached for {resource!r}")
+
+
+@dataclass(frozen=True)
+class _MeteredOperation:
+    period_used_attr: str
+    plan_limit_attr: str
+    credit_type: str
+
+
+# email/ai_run's three names (the AccountSubscription counter column, the
+# SubscriptionPlan limit column, and the account_credit_balances.credit_type value)
+# don't share a single naming convention with each other -- deliberately explicit here
+# rather than derived via string formatting, which BILLING_SYSTEM_ARCHITECTURE.md §4's
+# original pseudocode did and got wrong (e.g. "ai_run".upper() == "AI_RUN", not the
+# real credit_type "AI_RUNS").
+_METERED_OPERATIONS: dict[str, _MeteredOperation] = {
+    "email": _MeteredOperation("period_email_used", "max_monthly_emails", "EMAIL_SENDS"),
+    "ai_run": _MeteredOperation("period_ai_used", "max_monthly_ai_runs", "AI_RUNS"),
+}
+
+# Statuses under which an account keeps its plan_id's real limits. PENDING (checkout
+# not yet confirmed -- plan_id already points at the *target* plan per
+# set_pending_subscription, so it must not be trusted yet) and HALTED (billing broken)
+# both fall back to the Free plan's allowance instead. CANCELED stays here deliberately:
+# the webhook handler below leaves current_period_end untouched on cancellation so the
+# account keeps its plan's features until the period genuinely ends -- GRX-BILL-006's
+# ticker is what actually downgrades plan_id, not this evaluator.
+_STATUSES_HONORING_PLAN_LIMITS = frozenset({"ACTIVE", "PAST_DUE", "CANCELED"})
+
+
+async def _resolve_effective_limit(
+    session: AsyncSession,
+    subscription: AccountSubscription,
+    plan: SubscriptionPlan,
+    limit_attr: str,
+) -> int | None:
+    if subscription.status in _STATUSES_HONORING_PLAN_LIMITS:
+        return getattr(plan, limit_attr)  # type: ignore[no-any-return]
+    free_plan = await get_plan_by_slug(session, "free")
+    assert free_plan is not None, "the free plan is always seeded"
+    return getattr(free_plan, limit_attr)  # type: ignore[no-any-return]
+
+
+async def check_and_consume_quota(
+    session: AsyncSession,
+    *,
+    account_id: uuid.UUID,
+    operation: Literal["email", "ai_run"],
+    qty: int = 1,
+) -> None:
+    """Atomic quota evaluator (`BILLING_SYSTEM_ARCHITECTURE.md` §4): consumes `qty`
+    units of a period-metered operation against the account's monthly plan allowance,
+    falling back to its non-expiring credit balance for any overage. Locks the
+    subscription row for the duration and commits its own transaction on every path --
+    callers must call this before any other uncommitted work they want to survive a
+    QuotaExceededError, matching how `ai/services.py`'s `generate()` calls this before
+    spending any real provider budget."""
+    spec = _METERED_OPERATIONS[operation]
+    subscription, plan = await get_locked_account_subscription_with_plan(session, account_id)
+    limit = await _resolve_effective_limit(session, subscription, plan, spec.plan_limit_attr)
+    current_used: int = getattr(subscription, spec.period_used_attr)
+
+    if limit is None:  # NULL = unlimited (Enterprise, or an admin override)
+        setattr(subscription, spec.period_used_attr, current_used + qty)
+        await session.commit()
+        return
+
+    if current_used + qty <= limit:
+        setattr(subscription, spec.period_used_attr, current_used + qty)
+        await session.commit()
+        return
+
+    # Plan allowance partially or fully exhausted -- cover only the exact overage from
+    # credits, not the full qty.
+    already_covered = max(0, limit - current_used)
+    needed_extra = qty - already_covered
+
+    credit_result = await session.execute(
+        text(
+            """
+            UPDATE account_credit_balances
+            SET remaining_credits = remaining_credits - :needed, updated_at = NOW()
+            WHERE account_id = :account_id
+              AND credit_type = :credit_type
+              AND remaining_credits >= :needed
+            RETURNING remaining_credits
+            """
+        ),
+        {"needed": needed_extra, "account_id": account_id, "credit_type": spec.credit_type},
+    )
+    if credit_result.first() is not None:
+        setattr(subscription, spec.period_used_attr, limit)  # monthly side maxed out
+        await session.commit()
+        return
+
+    await session.rollback()  # release the row lock; nothing here was actually changed
+    raise QuotaExceededError(operation)
+
+
+async def check_plan_limit(
+    session: AsyncSession,
+    *,
+    account_id: uuid.UUID,
+    limit_attr: str,
+    current_count: int,
+    resource: str,
+) -> None:
+    """Point-in-time cap check (current count vs. plan limit, no period reset) for
+    inventory-style resources -- contacts / social accounts / user seats. Unlike
+    `check_and_consume_quota`, there's no counter to decrement and no credit fallback,
+    so this is a plain read (no row lock): the caller supplies its own
+    already-computed current count from its own table (a lock on `account_subscriptions`
+    wouldn't serialize a `COUNT(*)` against an unrelated table anyway). Best-effort, not
+    strictly serializable -- two simultaneous creates for the same account right at the
+    boundary could both pass, the same tolerance most soft plan-limit enforcement
+    accepts."""
+    subscription = await get_account_subscription(session, account_id)
+    assert subscription is not None, "every account has exactly one row (GRX-BILL-002)"
+    plan = await session.get(SubscriptionPlan, subscription.plan_id)
+    assert plan is not None, "account_subscriptions.plan_id always references a real plan"
+
+    limit = await _resolve_effective_limit(session, subscription, plan, limit_attr)
+    if limit is not None and current_count >= limit:
+        raise PlanLimitExceededError(resource)
 
 
 # Event types this handler actively acts on -- Razorpay sends many other event types

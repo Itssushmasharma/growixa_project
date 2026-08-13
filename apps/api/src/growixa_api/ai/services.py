@@ -13,6 +13,7 @@ from growixa_api.ai.providers.base import AIProviderError, InsecureBaseUrlError,
 from growixa_api.ai.providers.factory import AINotConfiguredError, get_effective_ai_provider
 from growixa_api.ai.schemas import AIProviderConnectionIn, PlatformAIProviderConfigIn
 from growixa_api.auth.encryption import encrypt_secret
+from growixa_api.billing.services import check_and_consume_quota
 from growixa_api.brand.repositories import get_brand_profile
 from growixa_api.usage.models import UsageRecord
 
@@ -180,6 +181,14 @@ async def generate(
     failure (AINotConfiguredError) never gets that far, since there's no provider/model
     to record yet."""
     resolved = await get_effective_ai_provider(session, account_id)
+
+    # AI-run quota only applies to platform-provided generations -- an account's own
+    # bring-your-own key costs Growixa nothing, so it's never metered
+    # (BILLING_SYSTEM_ARCHITECTURE.md §4.1, GRX-BILL-005). Checked before the provider
+    # call so an over-quota account is blocked before any real platform LLM budget is
+    # spent on a call that was never going to be allowed.
+    if resolved.source == "PLATFORM_DEFAULT":
+        await check_and_consume_quota(session, account_id=account_id, operation="ai_run", qty=1)
 
     brand_profile = await get_brand_profile(session, account_id)
     capability_input = CapabilityInput(
