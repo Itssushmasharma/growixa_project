@@ -12,6 +12,15 @@ def _normalize_database_url(url: str) -> str:
     if not url:
         return url
     url = url.strip().strip("'\"")
+    for prefix in (
+        "export DATABASE_URL=",
+        "DATABASE_URL=",
+        "DATABASE_URL:",
+        "DATABASE_URL = ",
+        "DATABASE_URL : ",
+    ):
+        if url.startswith(prefix):
+            url = url[len(prefix) :].strip().strip("'\"")
     if url.startswith("psql "):
         url = url[5:].strip().strip("'\"")
     if url.startswith("postgres://"):

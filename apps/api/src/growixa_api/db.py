@@ -12,12 +12,21 @@ class Base(DeclarativeBase):
 
 def _normalize_database_url(url: str) -> str:
     """
-    Normalize DATABASE_URL to use asyncpg driver if no dialect is specified.
-    Handles postgres://, postgresql://, surrounding quotes, and whitespace.
+    Normalize DATABASE_URL to use asyncpg driver and handle quotes, spaces, schemes,
+    and accidentally pasted key prefixes (e.g. DATABASE_URL=...).
     """
     if not url:
         return url
     url = url.strip().strip("'\"")
+    for prefix in (
+        "export DATABASE_URL=",
+        "DATABASE_URL=",
+        "DATABASE_URL:",
+        "DATABASE_URL = ",
+        "DATABASE_URL : ",
+    ):
+        if url.startswith(prefix):
+            url = url[len(prefix) :].strip().strip("'\"")
     if url.startswith("psql "):
         url = url[5:].strip().strip("'\"")
     if url.startswith("postgres://"):
