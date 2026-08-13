@@ -8,6 +8,7 @@ from growixa_api.ai.providers.factory import AINotConfiguredError
 from growixa_api.ai.schemas import (
     AICapability,
     AIGenerationOut,
+    AILinkedEntityType,
     AIProviderConnectionIn,
     AIProviderConnectionOut,
     GenerateContentIn,
@@ -20,6 +21,7 @@ from growixa_api.ai.services import (
     deactivate_connection,
     generate,
     list_connections,
+    list_generation_history,
 )
 from growixa_api.db import get_session
 from growixa_api.permissions.dependencies import get_current_account_id, require_permission
@@ -30,6 +32,7 @@ router = APIRouter(prefix="/ai", tags=["ai"])
 # class of action as connecting Postmark/Instagram, not a new permission (DEC-GRX-026).
 _require_manage = require_permission("integrations.manage")
 _require_generate = require_permission("ai.manage")
+_require_view = require_permission("ai.view")
 
 
 @router.get("/connections", response_model=list[AIProviderConnectionOut])
@@ -102,3 +105,22 @@ async def generate_content_route(
     except GenerationFailedError as exc:
         raise HTTPException(status.HTTP_502_BAD_GATEWAY, f"Generation failed: {exc}") from exc
     return AIGenerationOut.model_validate(result)
+
+
+@router.get("/generations", response_model=list[AIGenerationOut])
+async def list_ai_generations_route(
+    capability: AICapability | None = None,
+    linked_entity_type: AILinkedEntityType | None = None,
+    linked_entity_id: uuid.UUID | None = None,
+    _actor_id: uuid.UUID = Depends(_require_view),
+    account_id: uuid.UUID = Depends(get_current_account_id),
+    session: AsyncSession = Depends(get_session),
+) -> list[AIGenerationOut]:
+    generations = await list_generation_history(
+        session,
+        account_id,
+        capability=capability,
+        linked_entity_type=linked_entity_type,
+        linked_entity_id=linked_entity_id,
+    )
+    return [AIGenerationOut.model_validate(generation) for generation in generations]

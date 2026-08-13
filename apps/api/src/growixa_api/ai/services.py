@@ -253,6 +253,23 @@ async def generate(
     return generation
 
 
+async def list_generation_history(
+    session: AsyncSession,
+    account_id: uuid.UUID,
+    *,
+    capability: str | None = None,
+    linked_entity_type: str | None = None,
+    linked_entity_id: uuid.UUID | None = None,
+) -> Sequence[AIGeneration]:
+    return await repositories.list_generations(
+        session,
+        account_id,
+        capability=capability,
+        linked_entity_type=linked_entity_type,
+        linked_entity_id=linked_entity_id,
+    )
+
+
 __all__ = [
     "AIProviderConnectionNotFoundError",
     "AINotConfiguredError",
@@ -264,5 +281,6 @@ __all__ = [
     "generate",
     "get_platform_config",
     "list_connections",
+    "list_generation_history",
     "set_platform_config",
 ]
