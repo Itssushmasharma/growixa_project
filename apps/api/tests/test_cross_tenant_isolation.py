@@ -21,6 +21,7 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import delete
 
+from growixa_api.ai.models import AIGeneration, AIProviderConnection
 from growixa_api.app import create_app
 from growixa_api.audit.models import AuditLog
 from growixa_api.auth.encryption import encrypt_secret
@@ -966,3 +967,121 @@ async def test_creating_a_post_against_another_accounts_connection_404s(
         assert create_response.status_code == 404
     finally:
         await _clear_social_fixtures()
+
+
+# --- ai (Slice 6, GRX-AI-002/004/006) ---
+
+
+async def _clear_ai_fixtures() -> None:
+    async with async_session_factory() as session:
+        await session.execute(delete(AIGeneration))
+        await session.execute(delete(AIProviderConnection))
+        await session.commit()
+
+
+async def _create_ai_connection(account_id: uuid.UUID) -> uuid.UUID:
+    async with async_session_factory() as session:
+        connection = AIProviderConnection(
+            account_id=account_id,
+            provider="OPENAI",
+            api_key_encrypted=encrypt_secret("fake-api-key"),
+            default_model="gpt-4o-mini",
+        )
+        session.add(connection)
+        await session.commit()
+        return connection.id
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_admin_cannot_list_another_accounts_ai_connections(
+    user_factory: Callable[..., Awaitable[uuid.UUID]],
+    account_factory: Callable[..., Awaitable[uuid.UUID]],
+) -> None:
+    account_a = await account_factory()
+    account_b = await account_factory()
+    admin_a = await user_factory(
+        full_name="Account A Super Admin", role_name="Super Admin", account_id=account_a
+    )
+    await _create_ai_connection(account_b)
+
+    transport = ASGITransport(app=create_app())
+    try:
+        async with AsyncClient(
+            transport=transport, base_url="http://test", cookies=_access_token_cookie(admin_a)
+        ) as client_a:
+            list_response = await client_a.get("/ai/connections")
+
+        assert list_response.status_code == 200
+        assert list_response.json() == []
+    finally:
+        await _clear_ai_fixtures()
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_admin_gets_404_not_403_deactivating_another_accounts_ai_connection(
+    user_factory: Callable[..., Awaitable[uuid.UUID]],
+    account_factory: Callable[..., Awaitable[uuid.UUID]],
+) -> None:
+    account_a = await account_factory()
+    account_b = await account_factory()
+    admin_a = await user_factory(
+        full_name="Account A Super Admin", role_name="Super Admin", account_id=account_a
+    )
+    connection_b = await _create_ai_connection(account_b)
+
+    transport = ASGITransport(app=create_app())
+    try:
+        async with AsyncClient(
+            transport=transport, base_url="http://test", cookies=_access_token_cookie(admin_a)
+        ) as client_a:
+            deactivate_response = await client_a.post(f"/ai/connections/{connection_b}/deactivate")
+
+        assert deactivate_response.status_code == 404
+    finally:
+        await _clear_ai_fixtures()
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_admin_cannot_see_another_accounts_generation_history(
+    user_factory: Callable[..., Awaitable[uuid.UUID]],
+    account_factory: Callable[..., Awaitable[uuid.UUID]],
+) -> None:
+    account_a = await account_factory()
+    account_b = await account_factory()
+    admin_a = await user_factory(
+        full_name="Account A Super Admin", role_name="Super Admin", account_id=account_a
+    )
+    manager_b = await user_factory(
+        full_name="Account B Manager", role_name="Marketing Manager", account_id=account_b
+    )
+
+    async with async_session_factory() as session:
+        session.add(
+            AIGeneration(
+                account_id=account_b,
+                created_by_user_id=manager_b,
+                capability="SUBJECT_LINE",
+                prompt_template_key="subject_line.v1",
+                input_context={"brief": "B's brief"},
+                output={"text": "B's subject line"},
+                provider="OPENAI",
+                model="gpt-4o-mini",
+                status="COMPLETE",
+            )
+        )
+        await session.commit()
+
+    transport = ASGITransport(app=create_app())
+    try:
+        async with AsyncClient(
+            transport=transport, base_url="http://test", cookies=_access_token_cookie(admin_a)
+        ) as client_a:
+            list_response = await client_a.get("/ai/generations")
+
+        assert list_response.status_code == 200
+        assert list_response.json() == []
+    finally:
+        await _clear_ai_fixtures()
