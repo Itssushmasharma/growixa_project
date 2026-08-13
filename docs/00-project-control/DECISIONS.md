@@ -950,6 +950,89 @@ Decision statuses: `PROPOSED`, `UNDER_REVIEW`, `APPROVED`, `REJECTED`, `SUPERSED
   `MASTER_TASK_TRACKER.md`.
 - Supersedes: none.
 
+## DEC-GRX-030: Billing architecture — Razorpay Subscriptions API, non-expiring credits, permanent audit logs, contact-sales Enterprise, admin override UI, coupon engine (resolves `OQ-013`)
+
+- Status: APPROVED
+- Date: 2026-08-13
+- Context: `DEC-GRX-029` confirmed the vendor (Razorpay, dual-currency) but left the
+  billing primitive, credit-expiry policy, audit-retention behavior, and the
+  Enterprise tier's sales model open as `OQ-013`. The product owner was asked four
+  direct questions and answered all four with the recommended option; two further
+  scope confirmations (platform-admin override UI, coupon/discount codes) were given
+  in the same conversation. This decision also corrects two internal inconsistencies
+  found in `BILLING_SYSTEM_ARCHITECTURE.md`'s working draft, which had drifted out of
+  sync with the answers given here (still showing tiered audit deletion and a
+  self-serve-priced Enterprise tier).
+- Decisions (five, each independently confirmed):
+  1. **Billing primitive: Razorpay Subscriptions API**, not self-managed Orders.
+     Razorpay owns the recurring charge and auto-billing; Growixa reacts to webhook
+     events (`subscription.activated`/`charged`/`cancelled`/`halted`) rather than
+     initiating charges itself. Trade-off accepted: renewal-cycle timing is partly
+     defined by Razorpay's own Plan objects, not purely our DB.
+  2. **Top-up credits never expire.** One running balance per
+     `(account_id, credit_type)` (`account_credit_balances`), not per-purchase batches
+     with expiry dates. A separate `account_credit_purchases` table still exists, but
+     purely as a receipt/audit trail — it is never read by the quota evaluator, which
+     only ever touches the summed balance. This also resolves the earlier
+     multi-batch-FIFO bug (a single atomic `UPDATE ... SET remaining_credits =
+     remaining_credits - :needed WHERE remaining_credits >= :needed` is now correct
+     with no batch-spanning logic needed).
+  3. **Audit logs stay permanent for every plan tier — no tiered deletion, no purge
+     job.** This matches the "insert-only audit log" compliance feature already
+     advertised on the public marketing site (`(marketing)/security-section.tsx`);
+     silently deleting a paying (or free) customer's compliance trail after 7–365 days
+     was never something the product actually promised, and building a job whose sole
+     purpose is permanently destroying audit data is a real liability to get wrong.
+     `subscription_plans.audit_retention_days` and the `purge_audit_logs` worker job
+     are both **removed** from the architecture. Tier differentiation on this feature
+     row is replaced with **audit log export/API access** (Free: UI view only;
+     Starter+: CSV export; Pro+: programmatic API access) — a real, safe way to keep
+     this as a paid-tier value driver without deleting anyone's data.
+  4. **Enterprise is contact-sales / platform-admin-activated, not a self-serve
+     Razorpay checkout tier.** Matches the marketing site's existing "Custom pricing /
+     Contact Sales" framing (`pricing-section.tsx`, `GRX-WEB-002`) rather than the
+     draft's fixed `$149`/`₹11,999` self-serve price. A platform admin sets an
+     account's plan to Enterprise directly (see decision 5) — `subscriptions.plan_id`
+     can point at the Enterprise `subscription_plans` row with
+     `razorpay_subscription_id` left `NULL` (no recurring Razorpay charge object at
+     all), or with one if the admin separately arranges Razorpay billing for that
+     specific enterprise customer. Either is valid; the schema doesn't force a choice.
+  5. **Platform-admin subscription management is in scope — and it isn't new scope.**
+     It's exactly what `GRX-SAAS-006`'s tracker row already describes ("View/change
+     plans, trial extensions, usage credits"). This decision makes it concrete: a
+     platform admin (`platform.finance`/`platform.admin` role, per that row's own
+     acceptance criterion) can, for any account, at any time: override the plan
+     directly (no payment/webhook required), grant free top-up credits, change
+     subscription status (`ACTIVE`/`PAST_DUE`/`HALTED`/`CANCELED`), and edit a plan's
+     quotas/prices platform-wide. All four are additive to the customer-facing
+     Razorpay checkout flow, not a replacement for it.
+  6. **Coupon/discount codes are new, additional scope** — not previously in
+     `MASTER_TASK_TRACKER.md` under any task. Percentage discount, fixed-amount
+     discount, and free-credit-grant coupon types, redeemable at Razorpay checkout
+     time, admin-managed (create/disable/track redemptions), account- or plan-
+     eligibility-restricted. Tracked as new task `GRX-SAAS-012`.
+- Rationale: Every choice here is the one the product owner picked directly (four via
+  explicit A/B question, two by direct confirmation) except the audit-retention
+  reversal, which is a correction — the working draft's tiered-deletion design
+  contradicted the product owner's own answer in the same conversation, and
+  contradicted this codebase's own already-shipped compliance positioning.
+- Consequences:
+  1. `BILLING_SYSTEM_ARCHITECTURE.md` is rewritten to match all six points exactly,
+     replacing the inconsistent working draft.
+  2. `subscription_plans_matrix.csv`'s "Audit Log Retention" row is replaced with
+     "Audit Log Export/API Access"; the Enterprise pricing cells read "Custom / Contact
+     Sales" instead of fixed `$149`/`₹11,999`.
+  3. `OQ-013` moves from `OPEN` to `RESOLVED` for the *architecture/model* questions.
+     The specific plan quota numbers and Starter/Pro prices in the CSV remain a working
+     draft, not yet confirmed as final by the product owner — `GRX-SAAS-004` stays
+     `BLOCKED` until that final confirmation, at which point it can move to `READY`.
+  4. `GRX-SAAS-006`'s row is extended with the four concrete admin-override endpoints
+     from decision 5. New task `GRX-SAAS-012` (Coupon/discount engine) is added,
+     depending on `GRX-SAAS-004`.
+- Related tasks: `GRX-SAAS-004`, `GRX-SAAS-006`, `GRX-SAAS-009`, `GRX-SAAS-012` (new) in
+  `MASTER_TASK_TRACKER.md`.
+- Supersedes: none (refines `DEC-GRX-029`, does not replace it).
+
 ---
 
 *Decisions DEC-GRX-026 onward will be logged as they are made — e.g., resolutions to

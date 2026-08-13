@@ -1,0 +1,18 @@
+Category,Feature Name,Free Plan,"Starter Plan ($19/mo | ₹1,499/mo)","Pro Plan ($49/mo | ₹3,999/mo)",Enterprise Plan (Custom — Contact Sales),Add-On Credit Top-Up Option (never expires),Backend Permission Code / Tech Note
+Audience,Total Contacts,250 contacts,"2,500 contacts","15,000 contacts",Negotiated per account,"+$10 for +2,500 Extra Contacts",contacts.manage / contacts table
+Audience,Contact Lists & Segments,2 Lists,"10 Lists / 5 Segments",Unlimited,Unlimited,N/A,contacts.view / segments table
+Audience,CSV Contact Import,Yes,Yes,Yes,Yes,N/A,contacts.import
+Email Marketing,Monthly Email Sends,"1,000 emails/mo","15,000 emails/mo","100,000 emails/mo",Unlimited,"+$10 for +10,000 Email Credits",usage_records / message_deliveries / account_subscriptions.period_email_used
+Email Marketing,Campaign Scheduling,Instant only,Scheduled Sends,Scheduled Sends,Scheduled Sends,N/A,campaigns.manage / scheduler
+Email Marketing,Custom Sender Identities,1 Sender,3 Senders,10 Senders,Unlimited,"+$5/mo per Extra Sender Identity",email_provider_connections
+Email Marketing,BYO SMTP Integration,Platform Only,Custom SMTP,Postmark + Custom SMTP,Dedicated IPs,N/A,integrations.manage
+Social Media,Connected Accounts,1 Instagram Account,3 Social Accounts,10 Social Accounts,Unlimited,"+$5/mo for +3 Social Accounts",social.manage / social_connections
+Social Media,Scheduled Social Posts,3 pending posts,25 pending posts,Unlimited,Unlimited,"+$5 for +50 Extra Social Posts",social.publish / social_posts
+AI Assistant,AI Generation Credits (platform-provided model only — BYO below is always unlimited),10 AI runs/mo,150 AI runs/mo,"1,000 AI runs/mo",Unlimited,"+$5 for +250 AI Runs ($15 for 1,000)",ai.manage / ai_generations / account_subscriptions.period_ai_used
+AI Assistant,AI Capabilities,Subject Line & Caption only,All 6 AI Capabilities,All 6 AI Capabilities,All 6 AI Capabilities,N/A,ai.manage / capabilities module
+AI Assistant,Custom Brand Voice,Default,1 Brand Voice,5 Brand Voices,Unlimited,N/A,"brand_profiles table (currently one per account — multi-voice is unbuilt, see BILLING_SYSTEM_ARCHITECTURE.md §8)"
+AI Assistant,Bring Your Own AI Key (always unlimited — Growixa pays $0 for these calls),Platform LLM Only,Platform LLM Only,BYO API Key (OpenAI / Azure OpenAI / Anthropic / Ollama),BYO API Key (OpenAI / Azure OpenAI / Anthropic / Ollama),N/A (unlimited via own key),integrations.manage / ai_provider_connections table
+Team & Security,Team User Seats,1 User seat,3 User seats,10 User seats,Unlimited,"+$10/mo per Extra User Seat",users.manage / users table
+Team & Security,Role-Based Access (RBAC),Standard User,Standard User,Full RBAC (6 Roles),Custom Roles,N/A,roles / permissions tables
+Team & Security,Audit Log Access (retention is permanent for every tier — never deleted),UI view only,+ CSV export,+ API access,+ API access,N/A,audit.view / audit_logs table
+Team & Security,Support Level,Email Support,Email Support,Priority Support,Dedicated Support Session,N/A,platform.support_session
