@@ -7,13 +7,20 @@ import httpx
 
 from growixa_api.billing.providers.base import (
     TIMEOUT_SECONDS,
+    GatewayOrder,
     GatewayPlan,
+    GatewaySubscription,
     PaymentGatewayError,
 )
 
 _API_BASE = "https://api.razorpay.com/v1"
 _PERIOD = "monthly"
 _INTERVAL = 1
+# Razorpay requires a total_count (number of billing cycles) on every subscription --
+# there's no "renews forever" option. 1200 monthly cycles (100 years) is the standard
+# way integrations represent "until cancelled"; a real cancellation still works via the
+# subscription.cancelled webhook/GRX-BILL-006's ticker regardless of this number.
+_INDEFINITE_TOTAL_COUNT = 1200
 
 
 def _extract_or_raise(response: httpx.Response) -> dict[str, Any]:
@@ -71,3 +78,44 @@ class RazorpayProvider:
         avoids a timing side-channel on the comparison itself."""
         expected = hmac.new(secret.encode(), payload, hashlib.sha256).hexdigest()
         return hmac.compare_digest(expected, signature)
+
+    async def create_subscription(
+        self, *, gateway_plan_id: str, notes: dict[str, Any]
+    ) -> GatewaySubscription:
+        try:
+            async with httpx.AsyncClient(timeout=TIMEOUT_SECONDS) as client:
+                response = await client.post(
+                    f"{_API_BASE}/subscriptions",
+                    auth=(self.key_id, self.key_secret),
+                    json={
+                        "plan_id": gateway_plan_id,
+                        "customer_notify": 1,
+                        "total_count": _INDEFINITE_TOTAL_COUNT,
+                        "notes": notes,
+                    },
+                )
+        except httpx.HTTPError as exc:
+            raise PaymentGatewayError(str(exc)) from exc
+
+        data = _extract_or_raise(response)
+        return GatewaySubscription(gateway_subscription_id=data["id"])
+
+    async def create_order(
+        self, *, amount_smallest_unit: int, currency: Literal["USD", "INR"], notes: dict[str, Any]
+    ) -> GatewayOrder:
+        try:
+            async with httpx.AsyncClient(timeout=TIMEOUT_SECONDS) as client:
+                response = await client.post(
+                    f"{_API_BASE}/orders",
+                    auth=(self.key_id, self.key_secret),
+                    json={
+                        "amount": amount_smallest_unit,
+                        "currency": currency,
+                        "notes": notes,
+                    },
+                )
+        except httpx.HTTPError as exc:
+            raise PaymentGatewayError(str(exc)) from exc
+
+        data = _extract_or_raise(response)
+        return GatewayOrder(gateway_order_id=data["id"])

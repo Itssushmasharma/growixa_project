@@ -572,6 +572,7 @@ erDiagram
     COUPON_CODES ||--o{ COUPON_REDEMPTIONS : "redeemed via"
     PLATFORM_ADMINS ||--o{ SUBSCRIPTION_PLANS : edits
     PLATFORM_ADMINS ||--o{ COUPON_CODES : creates
+    PLATFORM_ADMINS ||--o{ CREDIT_PACKS : edits
 
     SUBSCRIPTION_PLANS {
         uuid id PK
@@ -633,10 +634,27 @@ erDiagram
         uuid account_id FK
         timestamp redeemed_at
     }
+    CREDIT_PACKS {
+        uuid id PK
+        string slug
+        string name
+        string credit_type
+        int credits
+        numeric price_usd
+        numeric price_inr
+        boolean is_active
+    }
 ```
 
 `ACCOUNT_SUBSCRIPTIONS` is the one table with a hard `1:1` relationship to `ACCOUNTS` —
 every account gets exactly one row, created automatically at registration
-(`BILLING_SYSTEM_ARCHITECTURE.md §3.4`), never zero. `ACCOUNT_CREDIT_PURCHASES` is a
+(`BILLING_SYSTEM_ARCHITECTURE.md §3.4`), never zero. `status` gained a `PENDING` value
+(`GRX-BILL-004`) — set the instant a checkout creates the Razorpay Subscription and
+stores its id, before the customer authorizes payment; `plan_id`/`currency` point at the
+*target* plan while `PENDING`, but nothing is granted (the quota evaluator, `GRX-BILL-005`,
+must only honor `ACTIVE`/`PAST_DUE`). `ACCOUNT_CREDIT_PURCHASES` is a
 pure receipt log, never read by the quota evaluator — only
 `ACCOUNT_CREDIT_BALANCES.remaining_credits` gates anything at request time.
+`CREDIT_PACKS` has no FK relationship drawn above — like `SUBSCRIPTION_PLANS`, it's a
+platform-admin-managed catalog table read by slug at checkout time
+(`billing/repositories.py`'s `get_credit_pack_by_slug`), not joined to any other table.

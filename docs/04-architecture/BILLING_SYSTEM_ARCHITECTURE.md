@@ -118,7 +118,11 @@ active plan and a running usage counter for the current billing period.
 - `id` (UUID, PK)
 - `account_id` (UUID, FK → `accounts.id`, **unique**)
 - `plan_id` (UUID, FK → `subscription_plans.id`)
-- `status` (Text: `ACTIVE`, `PAST_DUE`, `CANCELED`, `HALTED`)
+- `status` (Text: `PENDING`, `ACTIVE`, `PAST_DUE`, `CANCELED`, `HALTED` — `PENDING` added
+  in `GRX-BILL-004`: set the instant checkout creates the Razorpay Subscription and
+  stores its id here, before the customer has actually authorized payment; `plan_id`
+  already points at the *target* plan while `PENDING`, but nothing is granted — the
+  quota evaluator (§4) only honors `ACTIVE`/`PAST_DUE`)
 - `currency` (Text: `USD` or `INR`)
 - `current_period_start` / `current_period_end` (DateTime)
 - `period_email_used` / `period_ai_used` (Integer, default 0 — running counters, reset
@@ -153,7 +157,27 @@ One row per `(account_id, credit_type)` — a plain running balance, never expir
 - `granted_by_platform_admin_id` (UUID, FK → `platform_admins.id`, nullable — set when
   §6.2 was used instead of a real purchase)
 
-### Table 5: `coupon_codes` (new — `DEC-GRX-030` point 6, `GRX-SAAS-012`)
+### Table 5: `credit_packs` (the top-up catalog — DB-backed, not code-defined)
+
+One row per purchasable top-up pack, editable by a platform admin
+(`platform.billing.manage`) without a redeploy — same pattern as `subscription_plans`.
+Originally scoped as a code-defined constant (mirroring `DEC-GRX-028`'s prompt-template
+precedent); reconsidered before shipping, since a priced catalog is the same *shape* of
+thing as `subscription_plans`, not developer-authored text, and the product owner
+explicitly wants it admin-editable the same way (`GRX-SAAS-006`).
+
+- `id` (UUID, PK)
+- `slug` (Text, unique, e.g. `ai_runs_250`)
+- `name` (Text, e.g. "250 AI Runs")
+- `credit_type` (Text: `AI_RUNS`, `EMAIL_SENDS`, `CONTACT_SLOTS`, `SOCIAL_POSTS`)
+- `credits` (Integer — how many units this pack adds)
+- `price_usd` / `price_inr` (Numeric(10, 2), nullable — `NULL` = not purchasable in that
+  currency yet; every pack is INR-only today, USD pending Razorpay's international
+  payments approval, §8)
+- `is_active` (Boolean, default true)
+- `created_at` / `updated_at`
+
+### Table 6: `coupon_codes` (new — `DEC-GRX-030` point 6, `GRX-SAAS-012`)
 
 - `id` (UUID, PK)
 - `code` (Text, unique, e.g. `WELCOME20`)
@@ -169,7 +193,7 @@ One row per `(account_id, credit_type)` — a plain running balance, never expir
 - `created_by_platform_admin_id` (UUID, FK → `platform_admins.id`)
 - `created_at` / `updated_at`
 
-### Table 6: `coupon_redemptions` (one row per use — enforces per-account redemption limits, gives real usage analytics)
+### Table 7: `coupon_redemptions` (one row per use — enforces per-account redemption limits, gives real usage analytics)
 
 - `id` (UUID, PK)
 - `coupon_code_id` (UUID, FK → `coupon_codes.id`)
@@ -310,6 +334,46 @@ adds. Both are written on the same successful call; neither replaces the other.
 
 ---
 
+## 4a. Customer checkout (`GRX-BILL-004`)
+
+Two authenticated routes, both gated `billing.manage`, both resolving price/plan
+server-side from the DB only — never from client input (`THREAT_MODEL.md` T62):
+
+### `POST /billing/subscribe` — subscribe or change plan
+
+1. Looks up `subscription_plans` by `plan_slug` (`starter`/`pro` only — Free needs no
+   checkout, Enterprise is contact-sales/admin-only, §2).
+2. Reads that plan's `razorpay_plan_id_usd`/`_inr` for the requested currency; `NULL`
+   (not yet synced for that currency, e.g. USD before international payments are
+   approved, §8) is a `400`, not a crash.
+3. Calls Razorpay to create the Subscription (`total_count` set to a large fixed number
+   of monthly cycles — Razorpay has no "renews forever" option; a real cancellation
+   still works via the webhook regardless of this number).
+4. **Immediately** stores the returned `razorpay_subscription_id` on the account's row
+   and sets `status = PENDING`, `plan_id` = the target plan. This has to happen before
+   the customer even sees Razorpay's checkout widget — the webhook (§5) finds this row
+   by `razorpay_subscription_id`, and if that column were still empty when
+   `subscription.charged` fires, the webhook would have nothing to update.
+5. Returns `{razorpay_subscription_id, razorpay_key_id}` for the frontend's Checkout.js
+   widget. Nothing is granted yet — only the webhook flips `PENDING` → `ACTIVE`.
+
+### `POST /billing/topup` — buy a top-up credit pack
+
+1. Looks up `credit_packs` by `pack_slug`; `NULL` price for the requested currency is a
+   `400`, same as above.
+2. Creates a one-time Razorpay Order (not a Subscription — top-ups are single
+   payments), with `notes = {kind: "credit_topup", account_id, credit_type, credits}` —
+   this is the exact marker `payment.captured`'s handler (§5) looks for.
+3. Returns `{razorpay_order_id, razorpay_key_id, amount_smallest_unit, currency}`.
+   **No DB write happens here at all** — unlike subscribing, there's no `PENDING` state
+   to worry about, since credits are only ever granted by the webhook once payment is
+   actually captured.
+
+Both routes are live-verified against the real Razorpay Test Mode account (INR) —
+see `GRX-BILL-004`'s `MASTER_TASK_TRACKER.md` evidence for the full round-trip.
+
+---
+
 ## 5. Razorpay Subscriptions webhook + cancellation-downgrade ticker
 
 ### Webhook handler (`POST /billing/razorpay`)
@@ -416,20 +480,32 @@ never touch Razorpay at all — they call the same crediting path as §6.2.
 
 ---
 
-## 8. Open items before `GRX-SAAS-004` can move from `BLOCKED` to `READY`
+## 8. Open items
 
-Per `DEC-GRX-030`, everything in this document is architecturally decided **except**:
+Implementation is underway (`GRX-BILL-002`/`003`/`004` are `DONE` as of this update).
+Remaining open items:
 
-1. **Final plan quota numbers and Starter/Pro prices** (§2's table is a working
-   draft).
-2. **Whether "Bring Your Own AI Key" and self-hosted/Modal-style providers should be
+1. **USD/international payments are not yet enabled on the Razorpay account** — found
+   live while running `GRX-BILL-002`'s plan-sync CLI: Razorpay rejects `currency: USD`
+   outright ("Currency provided is not supported"). This is an account-level approval
+   Razorpay requires beyond basic signup, not something fixable in code. Every plan
+   and credit pack today only has an INR price (`price_usd` is `NULL` everywhere) —
+   checkout (§4a) correctly returns `400` for a USD request rather than a confusing
+   gateway error. USD support is on the product owner to request from Razorpay
+   directly; the code path is already built and will work the moment a USD
+   `razorpay_plan_id`/price exists.
+2. **Final plan quota numbers and Starter/Pro/credit-pack prices** (§2's table, §3
+   Table 5) remain a working draft, accepted by the product owner as the starting
+   point — changeable anytime via `platform.billing.manage` (`GRX-SAAS-006`, which
+   also needs *create*, not just edit, per the product owner's explicit request).
+3. **Whether "Bring Your Own AI Key" and self-hosted/Modal-style providers should be
    treated as one of the four existing adapters** (`OpenAI`/`Azure OpenAI`/
    `Anthropic`/`Ollama`, per `DEC-GRX-026`) **or need a fifth adapter** — a
    self-hosted model server (e.g. on Modal) can already work today *if* it exposes an
    OpenAI- or Ollama-compatible endpoint (the same mechanism Krutrim uses via the
    `OpenAIProvider`'s `base_url` override), but that's a specific technical path, not
    an automatic "Modal support" checkbox. Not yet confirmed with the product owner.
-3. **Whether multiple named "Brand Voices" per account (as implied by the pricing
+4. **Whether multiple named "Brand Voices" per account (as implied by the pricing
    table's "1 / 5 / Unlimited Brand Voices" row) is real scope for this pass.**
    `brand_profiles` today is one row per account, read as a single value in every AI
    generation call (`ai/services.py`) — supporting several *selectable* brand voices
@@ -437,7 +513,9 @@ Per `DEC-GRX-030`, everything in this document is architecturally decided **exce
    change, not a billing-layer concern. Recommend scoping this out of the billing
    work and treating it as a separate, later `GRX-AI-*` follow-up task if the product
    owner still wants it, rather than blocking billing on it.
-
-Once (1) is confirmed, `GRX-SAAS-004` can move to `READY` and implementation
-(schema migration, Razorpay webhook receiver, quota-evaluator middleware, the
-`/dashboard/billing` page) can begin.
+5. **Abandoned checkouts leave a row in `PENDING` indefinitely** — if a customer
+   starts `POST /billing/subscribe` but never completes Razorpay's Checkout widget,
+   nothing currently cleans that row up (it just never receives a
+   `subscription.activated`/`charged` webhook). Not a security issue — `PENDING`
+   grants nothing — but worth a follow-up ticker or TTL if it becomes an operational
+   annoyance (e.g. a stale subscribe attempt blocking a later real one).

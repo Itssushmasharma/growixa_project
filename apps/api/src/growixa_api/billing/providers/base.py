@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Literal, Protocol
+from typing import Any, Literal, Protocol
 
 TIMEOUT_SECONDS = 30.0
 
@@ -14,6 +14,16 @@ class GatewayPlan:
     gateway_plan_id: str
 
 
+@dataclass
+class GatewaySubscription:
+    gateway_subscription_id: str
+
+
+@dataclass
+class GatewayOrder:
+    gateway_order_id: str
+
+
 class PaymentGatewayProvider(Protocol):
     """Adapter interface for a recurring-billing payment gateway, deliberately the same
     shape as AIModelProvider (DEC-GRX-005/026): one concrete implementation per vendor,
@@ -22,10 +32,10 @@ class PaymentGatewayProvider(Protocol):
     switching gateways later is a new adapter file, not a rewrite of billing/services.py,
     the quota evaluator, or the webhook handler's event-mapping logic.
 
-    Grown incrementally, task by task, not speculatively: only create_plan() exists yet
-    (GRX-BILL-002, needed by the plan-sync script). create_subscription()/
-    verify_webhook_signature()/parse_webhook_event() are added when GRX-BILL-003/004
-    actually need them.
+    Grown incrementally, task by task, not speculatively: create_plan()/
+    verify_webhook_signature() were added in GRX-BILL-002/003; create_subscription()/
+    create_order() are added here in GRX-BILL-004, the first task that actually
+    initiates a checkout.
     """
 
     async def create_plan(
@@ -38,4 +48,24 @@ class PaymentGatewayProvider(Protocol):
         Stripe adapter would need its own timestamp-plus-signature scheme), so this
         stays gateway-specific rather than living in the webhook route itself, which
         should never need to know which vendor it's talking to (GRX-BILL-003)."""
+        ...
+
+    async def create_subscription(
+        self, *, gateway_plan_id: str, notes: dict[str, Any]
+    ) -> GatewaySubscription:
+        """Creates a not-yet-authorized subscription against an existing Plan
+        (GRX-BILL-002's plan-sync CLI is what creates Plans; this never does). The
+        returned id is handed to the frontend's checkout widget for the customer to
+        actually authorize -- nothing is granted server-side until the
+        subscription.activated/charged webhook confirms (GRX-BILL-003)."""
+        ...
+
+    async def create_order(
+        self, *, amount_smallest_unit: int, currency: Literal["USD", "INR"], notes: dict[str, Any]
+    ) -> GatewayOrder:
+        """One-time payment (top-up credit packs) -- unlike a subscription, there's no
+        pre-created Plan; the amount is set directly per order. `notes` is where the
+        webhook handler's `kind=credit_topup` marker and crediting details
+        (account_id/credit_type/credits) travel through to `payment.captured`
+        (`billing/services.py::_handle_payment_captured`)."""
         ...

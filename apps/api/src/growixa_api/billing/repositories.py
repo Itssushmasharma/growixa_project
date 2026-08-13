@@ -9,6 +9,7 @@ from growixa_api.billing.models import (
     AccountCreditBalance,
     AccountCreditPurchase,
     AccountSubscription,
+    CreditPack,
     SubscriptionPlan,
 )
 
@@ -17,6 +18,13 @@ _FREE_PLAN_PERIOD_DAYS = 30
 
 async def get_plan_by_slug(session: AsyncSession, slug: str) -> SubscriptionPlan | None:
     result = await session.execute(select(SubscriptionPlan).where(SubscriptionPlan.slug == slug))
+    return result.scalar_one_or_none()
+
+
+async def get_credit_pack_by_slug(session: AsyncSession, slug: str) -> CreditPack | None:
+    result = await session.execute(
+        select(CreditPack).where(CreditPack.slug == slug, CreditPack.is_active.is_(True))
+    )
     return result.scalar_one_or_none()
 
 
@@ -65,6 +73,31 @@ async def get_account_subscription_by_razorpay_subscription_id(
         )
     )
     return result.scalar_one_or_none()
+
+
+async def set_pending_subscription(
+    session: AsyncSession,
+    *,
+    account_id: uuid.UUID,
+    plan_id: uuid.UUID,
+    currency: str,
+    razorpay_subscription_id: str,
+) -> AccountSubscription:
+    """Called the moment checkout creates the Razorpay Subscription
+    (`POST /billing/subscribe`, GRX-BILL-004) -- stores its id immediately so the
+    webhook can find this row by `razorpay_subscription_id` once the customer actually
+    authorizes payment. `plan_id` already points at the target plan while `PENDING`;
+    nothing is granted until the webhook flips status to `ACTIVE`."""
+    subscription = await get_account_subscription(session, account_id)
+    assert subscription is not None, "every account has exactly one row (GRX-BILL-002)"
+
+    subscription.plan_id = plan_id
+    subscription.currency = currency
+    subscription.razorpay_subscription_id = razorpay_subscription_id
+    subscription.status = "PENDING"
+    await session.commit()
+    await session.refresh(subscription)
+    return subscription
 
 
 async def record_credit_purchase_idempotent(

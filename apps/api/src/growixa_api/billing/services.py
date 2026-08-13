@@ -1,16 +1,36 @@
 import logging
 import uuid
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, Literal
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from growixa_api.billing.providers.base import PaymentGatewayProvider
 from growixa_api.billing.repositories import (
     get_account_subscription_by_razorpay_subscription_id,
+    get_credit_pack_by_slug,
+    get_plan_by_slug,
     record_credit_purchase_idempotent,
+    set_pending_subscription,
 )
 
 logger = logging.getLogger(__name__)
+
+
+class PlanNotFoundError(Exception):
+    pass
+
+
+class CreditPackNotFoundError(Exception):
+    pass
+
+
+class CurrencyNotAvailableError(Exception):
+    """The plan/pack exists, but has no Razorpay Plan (or price) for the requested
+    currency yet -- e.g. USD before international payments are approved on the
+    Razorpay account (a real limitation hit live while building this task, not a
+    hypothetical)."""
+
 
 # Event types this handler actively acts on -- Razorpay sends many other event types
 # (refund.*, order.paid, subscription.pending, subscription.completed, etc.) that this
@@ -130,3 +150,74 @@ async def _handle_payment_captured(session: AsyncSession, payload: dict[str, Any
             "razorpay webhook: payment %r already processed, skipping duplicate credit",
             entity["id"],
         )
+
+
+async def create_subscription_checkout(
+    session: AsyncSession,
+    *,
+    account_id: uuid.UUID,
+    plan_slug: str,
+    currency: Literal["USD", "INR"],
+    gateway: PaymentGatewayProvider,
+) -> str:
+    """Creates the Razorpay Subscription and immediately stores its id on the
+    account's row as `PENDING` (BILLING_SYSTEM_ARCHITECTURE.md §6, GRX-BILL-004) --
+    the row must be findable by `razorpay_subscription_id` the moment the
+    `subscription.activated`/`charged` webhook fires, which can happen seconds after
+    the customer completes Razorpay's Checkout widget. Returns the subscription id the
+    frontend hands to that widget; nothing is granted until the webhook confirms."""
+    plan = await get_plan_by_slug(session, plan_slug)
+    if plan is None:
+        raise PlanNotFoundError(plan_slug)
+
+    gateway_plan_id = plan.razorpay_plan_id_usd if currency == "USD" else plan.razorpay_plan_id_inr
+    if gateway_plan_id is None:
+        raise CurrencyNotAvailableError(f"{plan_slug} is not available in {currency} yet")
+
+    gateway_subscription = await gateway.create_subscription(
+        gateway_plan_id=gateway_plan_id,
+        notes={"account_id": str(account_id), "plan_slug": plan_slug},
+    )
+    await set_pending_subscription(
+        session,
+        account_id=account_id,
+        plan_id=plan.id,
+        currency=currency,
+        razorpay_subscription_id=gateway_subscription.gateway_subscription_id,
+    )
+    return gateway_subscription.gateway_subscription_id
+
+
+async def create_topup_checkout(
+    session: AsyncSession,
+    *,
+    account_id: uuid.UUID,
+    pack_slug: str,
+    currency: Literal["USD", "INR"],
+    gateway: PaymentGatewayProvider,
+) -> tuple[str, int]:
+    """Creates a one-time Razorpay Order for a top-up credit pack -- unlike
+    subscribing, nothing is written to any table here; the account is only ever
+    credited by the `payment.captured` webhook handler above, keyed off the
+    `notes.kind=credit_topup` marker set here. Returns (razorpay_order_id,
+    amount_smallest_unit) for the frontend's checkout widget."""
+    pack = await get_credit_pack_by_slug(session, pack_slug)
+    if pack is None:
+        raise CreditPackNotFoundError(pack_slug)
+
+    price = pack.price_usd if currency == "USD" else pack.price_inr
+    if price is None:
+        raise CurrencyNotAvailableError(f"{pack_slug} is not available in {currency} yet")
+
+    amount_smallest_unit = int(price * 100)
+    gateway_order = await gateway.create_order(
+        amount_smallest_unit=amount_smallest_unit,
+        currency=currency,
+        notes={
+            "kind": "credit_topup",
+            "account_id": str(account_id),
+            "credit_type": pack.credit_type,
+            "credits": str(pack.credits),
+        },
+    )
+    return gateway_order.gateway_order_id, amount_smallest_unit

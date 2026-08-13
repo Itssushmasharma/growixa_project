@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict
 
@@ -14,3 +14,29 @@ class RazorpayWebhookPayload(BaseModel):
 
     event: str
     payload: dict[str, Any] = {}
+
+
+class SubscribeIn(BaseModel):
+    # No "free" (default at registration, no checkout needed) or "enterprise"
+    # (contact-sales, platform-admin-activated only, DEC-GRX-030 point 4).
+    plan_slug: Literal["starter", "pro"]
+    currency: Literal["USD", "INR"]
+
+
+class SubscribeOut(BaseModel):
+    razorpay_subscription_id: str
+    # The frontend's Checkout.js widget needs the public key alongside the
+    # subscription id -- never the secret, which never leaves the server.
+    razorpay_key_id: str
+
+
+class TopUpIn(BaseModel):
+    pack_slug: str
+    currency: Literal["USD", "INR"]
+
+
+class TopUpOut(BaseModel):
+    razorpay_order_id: str
+    razorpay_key_id: str
+    amount_smallest_unit: int
+    currency: Literal["USD", "INR"]

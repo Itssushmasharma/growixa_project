@@ -802,6 +802,27 @@ Same migration seeds `billing.manage`/`billing.view` (customer RBAC) and
 four `subscription_plans` rows (`free`/`starter`/`pro`/`enterprise` — see
 `BILLING_SYSTEM_ARCHITECTURE.md §2` for the working-draft quota/price values).
 
+## `credit_packs`
+
+| Column | Type | Constraints |
+|---|---|---|
+| id | uuid | PK |
+| slug | text | NOT NULL, UNIQUE |
+| name | text | NOT NULL |
+| credit_type | text | NOT NULL, CHECK IN ('AI_RUNS','EMAIL_SENDS','CONTACT_SLOTS','SOCIAL_POSTS') |
+| credits | integer | NOT NULL |
+| price_usd | numeric(10,2) | NULL |
+| price_inr | numeric(10,2) | NULL |
+| is_active | boolean | NOT NULL, DEFAULT true |
+| created_at | timestamptz | NOT NULL, DEFAULT now() |
+| updated_at | timestamptz | NOT NULL, DEFAULT now() |
+
+Migration `b6eed962fd56` (`GRX-BILL-004`) seeds five draft packs, all with
+`price_usd = NULL` — international payments aren't yet approved on the Razorpay
+account (`BILLING_SYSTEM_ARCHITECTURE.md §8`). Read by `get_credit_pack_by_slug`
+(filtered to `is_active`) at `POST /billing/topup` checkout time; no FK from any other
+billing table.
+
 ## `account_subscriptions`
 
 | Column | Type | Constraints |
@@ -809,7 +830,7 @@ four `subscription_plans` rows (`free`/`starter`/`pro`/`enterprise` — see
 | id | uuid | PK |
 | account_id | uuid | FK → accounts.id ON DELETE CASCADE, NOT NULL, UNIQUE |
 | plan_id | uuid | FK → subscription_plans.id, NOT NULL |
-| status | text | NOT NULL, CHECK IN ('ACTIVE','PAST_DUE','CANCELED','HALTED') |
+| status | text | NOT NULL, CHECK IN ('PENDING','ACTIVE','PAST_DUE','CANCELED','HALTED') |
 | currency | text | NOT NULL, CHECK IN ('USD','INR') |
 | current_period_start | timestamptz | NOT NULL |
 | current_period_end | timestamptz | NOT NULL |
@@ -826,6 +847,14 @@ registration, `GRX-BILL-003`, never left absent per
 `BILLING_SYSTEM_ARCHITECTURE.md §3.4`). Every metered request takes
 `SELECT ... FOR UPDATE` on this row before reading/writing `period_email_used`/
 `period_ai_used`.
+
+Migration `60f7c30ff18a` (`GRX-BILL-004`) added `PENDING` to the `status` CHECK — set
+the instant `POST /billing/subscribe` creates the Razorpay Subscription and stores its
+id, before the customer completes Razorpay's Checkout widget (the webhook handler looks
+up this row by `razorpay_subscription_id`, which must already be populated when
+`subscription.activated`/`charged` arrives). `plan_id`/`currency` point at the *target*
+plan while `PENDING`; nothing is granted until a webhook moves status to `ACTIVE`. The
+quota evaluator (`GRX-BILL-005`) must only honor `ACTIVE`/`PAST_DUE`.
 
 ## `account_credit_balances`
 
@@ -965,6 +994,13 @@ plan rows) → `account_subscriptions` → `account_credit_balances` →
 `GRX-SAAS-001`'s `accounts` table and Phase B's `platform_admins` table both existing.
 The same migration backfills a `Free`-tier `account_subscriptions` row for every
 pre-existing account (new accounts get one automatically at registration going
-forward, `BILLING_SYSTEM_ARCHITECTURE.md §3.4`). See
+forward, `BILLING_SYSTEM_ARCHITECTURE.md §3.4`).
+
+`GRX-BILL-004` adds two more migrations on top: `60f7c30ff18a` widens
+`account_subscriptions.status`'s CHECK to add `PENDING`; `b6eed962fd56` creates
+`credit_packs` (+ seeds five draft packs). Both depend only on the Slice 7 migration
+above.
+
+See
 [DATA_MODEL.md §Slice 7 entities](DATA_MODEL.md#slice-7-entities-full-detail) and
 [DECISIONS.md §DEC-GRX-029/030](../00-project-control/DECISIONS.md).

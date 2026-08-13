@@ -723,15 +723,42 @@ column-level detail.
 - Primary key: `id` (UUID)
 - Required fields: `account_id` (FK → `accounts.id` CASCADE, **unique** — exactly one
   row per account, never zero, never more than one), `plan_id` (FK →
-  `subscription_plans.id`), `status` (`CHECK IN ('ACTIVE', 'PAST_DUE', 'CANCELED',
-  'HALTED')`), `currency` (`CHECK IN ('USD', 'INR')`), `current_period_start`/
-  `current_period_end`, `period_email_used`/`period_ai_used` (default `0`, reset to `0`
-  on each `subscription.charged` webhook)
+  `subscription_plans.id`), `status` (`CHECK IN ('PENDING', 'ACTIVE', 'PAST_DUE',
+  'CANCELED', 'HALTED')`), `currency` (`CHECK IN ('USD', 'INR')`),
+  `current_period_start`/`current_period_end`, `period_email_used`/`period_ai_used`
+  (default `0`, reset to `0` on each `subscription.charged` webhook)
 - Optional fields: `razorpay_customer_id`/`razorpay_subscription_id` (nullable — `NULL`
   for accounts on an admin-assigned plan with no real Razorpay object, e.g. most
   Enterprise accounts), `set_by_platform_admin_id` (FK → `platform_admins.id`,
   nullable — set when the current plan came from an admin override, not a real
   checkout)
+- `PENDING` (`GRX-BILL-004`): set the instant `POST /billing/subscribe` creates the
+  Razorpay Subscription and stores its id, before the customer completes Razorpay's
+  Checkout widget — required because the webhook handler looks up this row by
+  `razorpay_subscription_id`, which must already be populated when
+  `subscription.activated`/`charged` arrives. `plan_id`/`currency` point at the
+  *target* plan while `PENDING`, but nothing is granted; the quota evaluator
+  (`GRX-BILL-005`) must only honor `ACTIVE`/`PAST_DUE`.
+
+### `credit_packs`
+
+- Purpose: the platform-wide top-up catalog — one row per purchasable credit pack
+  (e.g. "250 AI Runs"), editable by a platform admin (`platform.billing.manage`)
+  without a redeploy, the same admin-editable-table shape as `subscription_plans`
+  above (a priced catalog, not developer-authored text — corrected during
+  `GRX-BILL-004` from an earlier code-defined-dict draft).
+- Primary key: `id` (UUID)
+- Required fields: `slug` (unique), `name`, `credit_type` (`CHECK IN ('AI_RUNS',
+  'EMAIL_SENDS', 'CONTACT_SLOTS', 'SOCIAL_POSTS')`), `credits` (int), `is_active`
+  (default `true`)
+- Optional fields: `price_usd`/`price_inr` (nullable — `NULL` for a currency not yet
+  priced; today every seeded pack has `price_usd = NULL` since international payments
+  aren't yet approved on the Razorpay account, `BILLING_SYSTEM_ARCHITECTURE.md §8`)
+- Read by `billing/repositories.py`'s `get_credit_pack_by_slug` (filtered to
+  `is_active`) at checkout time (`POST /billing/topup`); no FK relationship to any
+  other billing table — a purchase against it is only ever recorded in
+  `account_credit_purchases`/`account_credit_balances` via the `payment.captured`
+  webhook, keyed by the pack's `credit_type`/`credits`, not by a foreign key.
 
 ### `account_credit_balances`
 

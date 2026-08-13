@@ -63,16 +63,52 @@ class SubscriptionPlan(Base):
     )
 
 
+class CreditPack(Base):
+    """The top-up credit pack catalog -- one row per purchasable pack, editable by a
+    platform admin (`platform.billing.manage`) without a redeploy, same pattern as
+    `SubscriptionPlan` above. Originally scoped as a code-defined constant (mirroring
+    `DEC-GRX-028`'s prompt-template precedent), reconsidered before shipping: a priced
+    catalog is the same *shape* of thing as `subscription_plans`, not developer-authored
+    text, and the product owner explicitly wants it admin-editable the same way."""
+
+    __tablename__ = "credit_packs"
+    __table_args__ = (CheckConstraint(_CREDIT_TYPE_CHECK, name="ck_credit_packs_credit_type"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    slug: Mapped[str] = mapped_column(Text, unique=True, nullable=False)
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    credit_type: Mapped[str] = mapped_column(Text, nullable=False)
+    credits: Mapped[int] = mapped_column(Integer, nullable=False)
+    # NULL = not purchasable in that currency yet (e.g. USD before international
+    # payments are approved on the Razorpay account -- a real, current limitation).
+    price_usd: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
+    price_inr: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="true")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+
 class AccountSubscription(Base):
     """Exactly one row per account -- created automatically at registration
     (BILLING_SYSTEM_ARCHITECTURE.md §3.4), never zero, never more than one. The running
     period_email_used/period_ai_used counters here are what the atomic quota evaluator
-    (GRX-BILL-005) locks with SELECT ... FOR UPDATE before reading or writing."""
+    (GRX-BILL-005) locks with SELECT ... FOR UPDATE before reading or writing.
+
+    `PENDING` (GRX-BILL-004): set the moment a checkout creates the Razorpay
+    Subscription and stores its id here -- required so the webhook (GRX-BILL-003) can
+    find this row by razorpay_subscription_id once the customer actually authorizes
+    payment. `plan_id` already points at the *target* plan while PENDING; nothing is
+    granted until the webhook flips this to ACTIVE -- GRX-BILL-005's quota evaluator
+    must treat only ACTIVE/PAST_DUE as "use this plan_id's limits"."""
 
     __tablename__ = "account_subscriptions"
     __table_args__ = (
         CheckConstraint(
-            "status IN ('ACTIVE', 'PAST_DUE', 'CANCELED', 'HALTED')",
+            "status IN ('PENDING', 'ACTIVE', 'PAST_DUE', 'CANCELED', 'HALTED')",
             name="ck_account_subscriptions_status",
         ),
         CheckConstraint("currency IN ('USD', 'INR')", name="ck_account_subscriptions_currency"),
