@@ -38,12 +38,12 @@ beforeEach(() => {
 
 describe("RegisterPage", () => {
   it("defaults the plan selection from the ?plan= query param", () => {
-    mockSearchParams = new URLSearchParams("plan=growth");
+    mockSearchParams = new URLSearchParams("plan=pro");
 
     renderRegisterPage();
 
-    const growthRadio = screen.getByRole("radio", { name: /Growth/ });
-    expect(growthRadio).toBeChecked();
+    const proRadio = screen.getByRole("radio", { name: /Pro/ });
+    expect(proRadio).toBeChecked();
   });
 
   it("submits the form and shows the check-your-email confirmation", async () => {
@@ -76,7 +76,7 @@ describe("RegisterPage", () => {
           full_name: "Ada Owner",
           email: "ada@acme.example",
           password: "Test-Password-123!",
-          plan_slug: "starter",
+          plan_slug: "free",
         }),
       }),
     );

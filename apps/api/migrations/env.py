@@ -12,6 +12,7 @@ from growixa_api.accounts import models as accounts_models  # noqa: F401
 from growixa_api.ai import models as ai_models  # noqa: F401
 from growixa_api.audit import models as audit_models  # noqa: F401
 from growixa_api.auth import models as auth_models  # noqa: F401
+from growixa_api.billing import models as billing_models  # noqa: F401
 from growixa_api.brand import models as brand_models  # noqa: F401
 from growixa_api.campaigns import models as campaigns_models  # noqa: F401
 from growixa_api.company import models as company_models  # noqa: F401

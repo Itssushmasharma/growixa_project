@@ -570,9 +570,13 @@ and [DECISIONS.md §DEC-GRX-019](../00-project-control/DECISIONS.md).
 | id | uuid | PK |
 | name | text | NOT NULL |
 | status | text | NOT NULL, CHECK IN ('ACTIVE','SUSPENDED','CLOSED'), DEFAULT 'ACTIVE' |
-| plan_id | uuid | NULL, no FK yet (reserved for Phase D) |
-| selected_plan_slug | text | NULL, CHECK IN ('starter', 'growth') |
+| selected_plan_slug | text | NULL, CHECK IN ('free', 'starter', 'pro') — registration-time intent signal only, not real entitlement (see `account_subscriptions` below) |
 | created_at | timestamptz | NOT NULL, DEFAULT now() |
+
+The speculative `plan_id` column reserved for Phase D (added in `3186b6c66a6d`, never used) is
+**dropped** by `GRX-BILL-002`'s migration — real entitlement lives in
+`account_subscriptions.plan_id` below instead, which needs `status`/`currency`/period
+counters/Razorpay IDs that don't belong on the core `accounts` identity table.
 
 ## `account_verification_tokens`
 
@@ -950,14 +954,17 @@ seed migration adding `ai.manage` / `ai.view` and their role grants, and
 See [DATA_MODEL.md §Slice 6 entities](DATA_MODEL.md#slice-6-entities-full-detail) and
 [DECISIONS.md §DEC-GRX-026/027/028](../00-project-control/DECISIONS.md).
 
-Slice 7: `subscription_plans` (+ seed migration adding `billing.manage` / `billing.view`
-and their role grants, `platform.billing.manage` granted to `platform.owner`/
-`platform.finance`, and the four `free`/`starter`/`pro`/`enterprise` plan rows) →
-`account_subscriptions` → `account_credit_balances` → `account_credit_purchases` →
-`coupon_codes` → `coupon_redemptions`. Depends on `GRX-SAAS-001`'s `accounts` table and
-Phase B's `platform_admins` table both existing. A follow-up data-only migration
-backfills a `Free`-tier `account_subscriptions` row for every pre-existing account
-(new accounts get one automatically at registration going forward,
-`BILLING_SYSTEM_ARCHITECTURE.md §3.4`). See
+Slice 7: same migration also drops `accounts.plan_id` (the unused Phase-D placeholder
+from `3186b6c66a6d`) and widens `accounts.selected_plan_slug`'s CHECK from
+`('starter', 'growth')` to `('free', 'starter', 'pro')` to match the real plan catalog
+— then creates `subscription_plans` (+ seed migration adding `billing.manage` /
+`billing.view` and their role grants, `platform.billing.manage` granted to
+`platform.owner`/`platform.finance`, and the four `free`/`starter`/`pro`/`enterprise`
+plan rows) → `account_subscriptions` → `account_credit_balances` →
+`account_credit_purchases` → `coupon_codes` → `coupon_redemptions`. Depends on
+`GRX-SAAS-001`'s `accounts` table and Phase B's `platform_admins` table both existing.
+The same migration backfills a `Free`-tier `account_subscriptions` row for every
+pre-existing account (new accounts get one automatically at registration going
+forward, `BILLING_SYSTEM_ARCHITECTURE.md §3.4`). See
 [DATA_MODEL.md §Slice 7 entities](DATA_MODEL.md#slice-7-entities-full-detail) and
 [DECISIONS.md §DEC-GRX-029/030](../00-project-control/DECISIONS.md).

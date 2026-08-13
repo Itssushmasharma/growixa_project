@@ -11,15 +11,18 @@ import { ApiError, apiFetch } from "@/lib/api-client";
 
 import styles from "./register.module.css";
 
-type PlanSlug = "starter" | "growth";
+// Matches the real subscription_plans catalog (GRX-BILL-002) -- Enterprise is
+// contact-sales, never a self-serve registration option (DEC-GRX-030).
+type PlanSlug = "free" | "starter" | "pro";
 
 const PLANS: { slug: PlanSlug; name: string; price: string }[] = [
-  { slug: "starter", name: "Starter", price: "$0/mo" },
-  { slug: "growth", name: "Growth", price: "$29/mo" },
+  { slug: "free", name: "Free", price: "$0/mo" },
+  { slug: "starter", name: "Starter", price: "$19/mo" },
+  { slug: "pro", name: "Pro", price: "$49/mo" },
 ];
 
 function isPlanSlug(value: string | null): value is PlanSlug {
-  return value === "starter" || value === "growth";
+  return value === "free" || value === "starter" || value === "pro";
 }
 
 export default function RegisterPage() {
@@ -40,7 +43,7 @@ function RegisterContent() {
   const [password, setPassword] = useState("");
   const [planSlug, setPlanSlug] = useState<PlanSlug>(() => {
     const fromQuery = searchParams.get("plan");
-    return isPlanSlug(fromQuery) ? fromQuery : "starter";
+    return isPlanSlug(fromQuery) ? fromQuery : "free";
   });
   const [submitting, setSubmitting] = useState(false);
   const [registeredEmail, setRegisteredEmail] = useState<string | null>(null);

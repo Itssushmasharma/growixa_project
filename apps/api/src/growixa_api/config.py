@@ -110,6 +110,16 @@ class Settings(BaseSettings):
     # equivalent, running as a second independent ticker.
     social_scheduler_poll_interval_seconds: float = 5.0
 
+    # Slice 7 (Billing, DEC-GRX-029): Razorpay Test/Live Mode API credentials. Empty
+    # defaults mean "not configured yet" -- the plan-sync CLI and, later, the webhook
+    # receiver and checkout routes fail cleanly (not with a confusing auth error) until
+    # real Test Mode credentials are set. Never used directly by
+    # billing/providers/razorpay_provider.py's callers -- always passed through
+    # RazorpayProvider(key_id=..., key_secret=...), matching the AI providers'
+    # constructor-injection convention rather than a global client singleton.
+    razorpay_key_id: str = ""
+    razorpay_key_secret: str = ""
+
 
 @lru_cache
 def get_settings() -> Settings:

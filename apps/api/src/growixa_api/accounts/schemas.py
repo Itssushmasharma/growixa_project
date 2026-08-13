@@ -12,7 +12,10 @@ class RegisterIn(BaseModel):
     password: str
     # Rejected at the API boundary (Pydantic) and the DB (CHECK) alike -- matches this
     # codebase's existing double-validation pattern for email_provider_connections.provider.
-    plan_slug: Literal["starter", "growth"]
+    # Recorded only, a UX intent signal -- real entitlement is always Free at
+    # registration regardless of this value (GRX-BILL-002). No "enterprise" option:
+    # that tier is contact-sales, never self-serve at registration (DEC-GRX-030).
+    plan_slug: Literal["free", "starter", "pro"]
 
 
 class RegisterOut(BaseModel):

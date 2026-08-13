@@ -47,6 +47,9 @@ EXPECTED_PERMISSIONS = {
     # Slice 6 additions (GRX-AI-002) — see RBAC.md §Slice 6 permission codes.
     "ai.manage",
     "ai.view",
+    # Slice 7 additions (GRX-BILL-002) — see RBAC.md §Slice 7 permission codes.
+    "billing.manage",
+    "billing.view",
 }
 
 # permission code -> set of role names granted that permission, per RBAC.md's Sprint 1 and
@@ -88,6 +91,8 @@ EXPECTED_MATRIX: dict[str, set[str]] = {
         "Content Creator",
         "Analyst",
     },
+    "billing.manage": {"Super Admin"},
+    "billing.view": EXPECTED_ROLES,
 }
 
 
