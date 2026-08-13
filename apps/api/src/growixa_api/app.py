@@ -14,6 +14,7 @@ from growixa_api.ai.api import router as ai_router
 from growixa_api.analytics.api import router as analytics_router
 from growixa_api.audit.api import router as audit_router
 from growixa_api.auth.api import router as auth_router
+from growixa_api.billing.api import public_router as billing_public_router
 from growixa_api.brand.api import router as brand_router
 from growixa_api.campaigns.api import router as campaigns_router
 from growixa_api.campaigns.scheduler import run_scheduler_loop
@@ -104,4 +105,5 @@ def create_app() -> FastAPI:
     app.include_router(email_delivery_public_router)
     app.include_router(analytics_router)
     app.include_router(ai_router)
+    app.include_router(billing_public_router)
     return app

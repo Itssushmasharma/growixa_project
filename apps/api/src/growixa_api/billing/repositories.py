@@ -2,9 +2,15 @@ import uuid
 from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from growixa_api.billing.models import AccountSubscription, SubscriptionPlan
+from growixa_api.billing.models import (
+    AccountCreditBalance,
+    AccountCreditPurchase,
+    AccountSubscription,
+    SubscriptionPlan,
+)
 
 _FREE_PLAN_PERIOD_DAYS = 30
 
@@ -48,3 +54,59 @@ async def create_default_free_subscription(
     session.add(subscription)
     await session.flush()
     return subscription
+
+
+async def get_account_subscription_by_razorpay_subscription_id(
+    session: AsyncSession, razorpay_subscription_id: str
+) -> AccountSubscription | None:
+    result = await session.execute(
+        select(AccountSubscription).where(
+            AccountSubscription.razorpay_subscription_id == razorpay_subscription_id
+        )
+    )
+    return result.scalar_one_or_none()
+
+
+async def record_credit_purchase_idempotent(
+    session: AsyncSession,
+    *,
+    account_id: uuid.UUID,
+    credit_type: str,
+    credits_added: int,
+    razorpay_payment_id: str,
+) -> bool:
+    """Credits `account_credit_balances` for a top-up purchase, but only once per
+    `razorpay_payment_id` -- a webhook redelivery of the same `payment.captured` event
+    must never double-credit (THREAT_MODEL.md T61). The `account_credit_purchases`
+    unique constraint on `razorpay_payment_id` is what makes this atomic: the receipt
+    insert is attempted first (`ON CONFLICT DO NOTHING`), and the balance is only
+    incremented if that insert actually happened. Returns True if this call was the
+    one that credited the account, False if it was a no-op replay."""
+    receipt_stmt = (
+        pg_insert(AccountCreditPurchase)
+        .values(
+            account_id=account_id,
+            credit_type=credit_type,
+            credits_added=credits_added,
+            razorpay_payment_id=razorpay_payment_id,
+        )
+        .on_conflict_do_nothing(index_elements=["razorpay_payment_id"])
+        .returning(AccountCreditPurchase.id)
+    )
+    result = await session.execute(receipt_stmt)
+    if result.first() is None:
+        return False  # already processed this exact payment
+
+    balance_stmt = (
+        pg_insert(AccountCreditBalance)
+        .values(account_id=account_id, credit_type=credit_type, remaining_credits=credits_added)
+        .on_conflict_do_update(
+            index_elements=["account_id", "credit_type"],
+            set_={
+                "remaining_credits": AccountCreditBalance.remaining_credits + credits_added,
+                "updated_at": datetime.now(UTC),
+            },
+        )
+    )
+    await session.execute(balance_stmt)
+    return True

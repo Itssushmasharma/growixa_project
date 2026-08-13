@@ -119,6 +119,11 @@ class Settings(BaseSettings):
     # constructor-injection convention rather than a global client singleton.
     razorpay_key_id: str = ""
     razorpay_key_secret: str = ""
+    # Set once the webhook is registered in the Razorpay dashboard (GRX-BILL-003) --
+    # verifies POST /billing/razorpay's payload actually came from Razorpay
+    # (THREAT_MODEL.md T60), distinct from key_id/key_secret which authenticate
+    # outbound API calls, not inbound webhook deliveries.
+    razorpay_webhook_secret: str = ""
 
 
 @lru_cache

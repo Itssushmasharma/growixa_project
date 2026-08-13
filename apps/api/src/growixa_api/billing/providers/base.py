@@ -31,3 +31,11 @@ class PaymentGatewayProvider(Protocol):
     async def create_plan(
         self, *, name: str, amount_smallest_unit: int, currency: Literal["USD", "INR"]
     ) -> GatewayPlan: ...
+
+    def verify_webhook_signature(self, *, payload: bytes, signature: str, secret: str) -> bool:
+        """Synchronous, pure -- no I/O. Each gateway signs webhook payloads
+        differently (Razorpay: plain HMAC-SHA256 hex digest of the raw body; a future
+        Stripe adapter would need its own timestamp-plus-signature scheme), so this
+        stays gateway-specific rather than living in the webhook route itself, which
+        should never need to know which vendor it's talking to (GRX-BILL-003)."""
+        ...

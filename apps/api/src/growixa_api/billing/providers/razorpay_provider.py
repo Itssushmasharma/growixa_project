@@ -1,3 +1,5 @@
+import hashlib
+import hmac
 from dataclasses import dataclass
 from typing import Any, Literal
 
@@ -60,3 +62,12 @@ class RazorpayProvider:
 
         data = _extract_or_raise(response)
         return GatewayPlan(gateway_plan_id=data["id"])
+
+    def verify_webhook_signature(self, *, payload: bytes, signature: str, secret: str) -> bool:
+        """Razorpay's own scheme: HMAC-SHA256 hex digest of the raw request body,
+        keyed with the webhook secret configured in the dashboard -- sent in the
+        `X-Razorpay-Signature` header. See
+        https://razorpay.com/docs/webhooks/validate-test/. `hmac.compare_digest`
+        avoids a timing side-channel on the comparison itself."""
+        expected = hmac.new(secret.encode(), payload, hashlib.sha256).hexdigest()
+        return hmac.compare_digest(expected, signature)
