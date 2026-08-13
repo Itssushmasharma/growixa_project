@@ -86,3 +86,20 @@ async def get_effective_ai_provider(
         "No AI provider is configured for this account, and the platform has no default "
         "configured either"
     )
+
+
+async def test_connection(
+    *, provider_name: str, api_key: str | None, base_url: str | None, model: str
+) -> None:
+    """Builds an adapter from the given (not-yet-saved) credentials and makes one real,
+    minimal generation call to confirm they actually work -- connects and validates
+    only, nothing is persisted. Raises AIProviderError/InsecureBaseUrlError on failure,
+    same "test before save" convention as integrations/smtp_transport.py's
+    test_connection (GRX-EMAIL-012)."""
+    adapter = _build_adapter(provider_name=provider_name, api_key=api_key, base_url=base_url)
+    await adapter.generate(
+        system_prompt="You are a connection test. Reply with the single word OK.",
+        user_prompt="Reply with OK.",
+        model=model,
+        max_tokens=200,
+    )

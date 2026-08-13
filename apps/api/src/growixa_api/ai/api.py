@@ -3,7 +3,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from growixa_api.ai.providers.base import InsecureBaseUrlError
+from growixa_api.ai.providers.base import AIProviderError, InsecureBaseUrlError
 from growixa_api.ai.providers.factory import AINotConfiguredError
 from growixa_api.ai.schemas import (
     AICapability,
@@ -22,6 +22,7 @@ from growixa_api.ai.services import (
     generate,
     list_connections,
     list_generation_history,
+    test_connection,
 )
 from growixa_api.db import get_session
 from growixa_api.permissions.dependencies import get_current_account_id, require_permission
@@ -60,6 +61,27 @@ async def create_ai_connection_route(
         raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
     await session.commit()
     return AIProviderConnectionOut.model_validate(connection)
+
+
+@router.post("/connections/test", status_code=status.HTTP_204_NO_CONTENT)
+async def test_ai_connection_route(
+    payload: AIProviderConnectionIn,
+    _actor_id: uuid.UUID = Depends(_require_manage),
+) -> None:
+    """Validates credentials via a real, minimal generation call — nothing is
+    persisted. Lets the frontend check a connection before (or instead of) saving it,
+    same convention as /integrations/email-providers/test (GRX-EMAIL-012)."""
+    try:
+        await test_connection(
+            provider=payload.provider,
+            api_key=payload.api_key,
+            base_url=payload.base_url,
+            default_model=payload.default_model,
+        )
+    except (MissingBaseUrlError, InsecureBaseUrlError) as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
+    except AIProviderError as exc:
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, f"Connection test failed: {exc}") from exc
 
 
 @router.post("/connections/{connection_id}/deactivate", response_model=AIProviderConnectionOut)

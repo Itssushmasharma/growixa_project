@@ -34,6 +34,12 @@ const NAV_ITEMS: NavItem[] = [
     icon: "📧",
     requiresPermission: "platform.usage.manage",
   },
+  {
+    label: "AI & LLM Config",
+    href: "/platform/ai-config",
+    icon: "⚙️",
+    requiresPermission: "platform.ai.manage",
+  },
 ];
 
 export function Sidebar({ permissions }: { permissions: string[] }) {

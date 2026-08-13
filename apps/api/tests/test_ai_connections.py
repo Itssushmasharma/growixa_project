@@ -14,7 +14,9 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import delete
 
+from growixa_api.ai import services as ai_services
 from growixa_api.ai.models import AIProviderConnection
+from growixa_api.ai.providers.base import AIGenerationResult, AIProviderError
 from growixa_api.app import create_app
 from growixa_api.config import get_settings
 from growixa_api.db import async_session_factory
@@ -201,3 +203,57 @@ async def test_deactivating_an_unknown_connection_404s(
         response = await client.post(f"/ai/connections/{uuid.uuid4()}/deactivate")
 
     assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_connection_test_succeeds_and_persists_nothing(
+    monkeypatch: pytest.MonkeyPatch,
+    user_factory: Callable[..., Awaitable[uuid.UUID]],
+    ai_account_id: uuid.UUID,
+) -> None:
+    async def _fake_test_connection(**kwargs: object) -> AIGenerationResult:
+        return AIGenerationResult(text="OK", prompt_tokens=5, completion_tokens=1)
+
+    monkeypatch.setattr(ai_services.factory, "test_connection", _fake_test_connection)
+    admin_id = await user_factory(
+        full_name="Super Admin", role_name="Super Admin", account_id=ai_account_id
+    )
+    transport = ASGITransport(app=create_app())
+    async with AsyncClient(
+        transport=transport, base_url="http://test", cookies=_access_token_cookie(admin_id)
+    ) as client:
+        response = await client.post(
+            "/ai/connections/test",
+            json={"provider": "OPENAI", "api_key": "sk-fake", "default_model": "gpt-4o-mini"},
+        )
+        list_response = await client.get("/ai/connections")
+
+    assert response.status_code == 204
+    assert list_response.json() == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_connection_test_failure_returns_502(
+    monkeypatch: pytest.MonkeyPatch,
+    user_factory: Callable[..., Awaitable[uuid.UUID]],
+    ai_account_id: uuid.UUID,
+) -> None:
+    async def _fake_test_connection(**kwargs: object) -> None:
+        raise AIProviderError("invalid api key")
+
+    monkeypatch.setattr(ai_services.factory, "test_connection", _fake_test_connection)
+    admin_id = await user_factory(
+        full_name="Super Admin", role_name="Super Admin", account_id=ai_account_id
+    )
+    transport = ASGITransport(app=create_app())
+    async with AsyncClient(
+        transport=transport, base_url="http://test", cookies=_access_token_cookie(admin_id)
+    ) as client:
+        response = await client.post(
+            "/ai/connections/test",
+            json={"provider": "OPENAI", "api_key": "sk-fake", "default_model": "gpt-4o-mini"},
+        )
+
+    assert response.status_code == 502

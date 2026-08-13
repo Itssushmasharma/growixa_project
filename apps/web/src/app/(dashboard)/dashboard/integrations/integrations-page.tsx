@@ -9,6 +9,9 @@ import { getApiUrl } from "@/lib/env";
 
 import styles from "./integrations-page.module.css";
 import {
+  AI_PROVIDER_DEFINITIONS,
+  type AIProvider,
+  type AIProviderConnection,
   type EmailProvider,
   type EmailProviderConnection,
   type MeResponse,
@@ -46,6 +49,33 @@ const BLANK_CONNECTION_FORM: ConnectionFormState = {
   smtp_password: "",
 };
 
+interface AIConnectionFormState {
+  provider: AIProvider;
+  base_url: string;
+  api_key: string;
+  default_model: string;
+}
+
+function blankAIConnectionForm(): AIConnectionFormState {
+  return { provider: "OPENAI", base_url: "", api_key: "", default_model: "" };
+}
+
+function aiDefinitionFor(provider: AIProvider) {
+  return AI_PROVIDER_DEFINITIONS.find((d) => d.key === provider) ?? AI_PROVIDER_DEFINITIONS[0]!;
+}
+
+function apiErrorDetail(error: unknown, fallback: string): string {
+  if (error instanceof ApiError) {
+    try {
+      const parsed = JSON.parse(error.message) as { detail?: string };
+      if (parsed.detail) return parsed.detail;
+    } catch {
+      // Not JSON
+    }
+  }
+  return fallback;
+}
+
 interface IdentityFormState {
   from_email: string;
   from_name: string;
@@ -80,6 +110,7 @@ function ProviderIcon({ name }: { name: string }) {
   if (name.includes("Twilio")) icon = "💬";
   if (name.includes("Webhook")) icon = "🔗";
   if (name.includes("Instagram")) icon = "📸";
+  if (name.includes("AI Model")) icon = "🤖";
 
   return <span className={styles.providerIcon}>{icon}</span>;
 }
@@ -96,6 +127,13 @@ export function IntegrationsPage() {
   >({});
   const [identities, setIdentities] = useState<SenderIdentity[]>([]);
   const [socialConnection, setSocialConnection] = useState<SocialConnection | null>(null);
+  const [aiConnection, setAiConnection] = useState<AIProviderConnection | null>(null);
+  const [aiFormOpen, setAiFormOpen] = useState(false);
+  const [aiForm, setAiForm] = useState<AIConnectionFormState>(blankAIConnectionForm());
+  const [showAiApiKey, setShowAiApiKey] = useState(false);
+  const [aiTesting, setAiTesting] = useState(false);
+  const [aiSaving, setAiSaving] = useState(false);
+  const [aiDeactivating, setAiDeactivating] = useState(false);
 
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("All Transports");
 
@@ -123,11 +161,13 @@ export function IntegrationsPage() {
         setCanManage(hasAccess);
 
         if (hasAccess) {
-          const [connectionList, identityList, socialConnections] = await Promise.all([
-            apiFetch<EmailProviderConnection[]>("/integrations/email-providers"),
-            apiFetch<SenderIdentity[]>("/integrations/sender-identities"),
-            apiFetch<SocialConnection[]>("/social/connections"),
-          ]);
+          const [connectionList, identityList, socialConnections, aiConnections] =
+            await Promise.all([
+              apiFetch<EmailProviderConnection[]>("/integrations/email-providers"),
+              apiFetch<SenderIdentity[]>("/integrations/sender-identities"),
+              apiFetch<SocialConnection[]>("/social/connections"),
+              apiFetch<AIProviderConnection[]>("/ai/connections"),
+            ]);
           const byProvider: Partial<Record<EmailProvider, EmailProviderConnection>> = {};
           for (const connection of connectionList) {
             byProvider[connection.provider] = connection;
@@ -135,6 +175,7 @@ export function IntegrationsPage() {
           setConnections(byProvider);
           setIdentities(identityList);
           setSocialConnection(socialConnections[0] ?? null);
+          setAiConnection(aiConnections[0] ?? null);
         }
       } catch {
         setLoadError("Could not load integration settings.");
@@ -277,6 +318,75 @@ export function IntegrationsPage() {
     }
   }
 
+  function openAiConnectionForm() {
+    setAiForm(blankAIConnectionForm());
+    setShowAiApiKey(false);
+    setAiFormOpen(true);
+  }
+
+  function handleAiProviderChange(provider: AIProvider) {
+    setAiForm((current) => ({ ...current, provider, base_url: "" }));
+  }
+
+  async function handleAiTestConnection() {
+    setAiTesting(true);
+    try {
+      await apiFetch<void>("/ai/connections/test", {
+        method: "POST",
+        body: JSON.stringify({
+          provider: aiForm.provider,
+          api_key: aiForm.api_key || null,
+          base_url: aiForm.base_url || null,
+          default_model: aiForm.default_model,
+        }),
+      });
+      showToast("success", "Connection successful — credentials are valid.");
+    } catch (error) {
+      showToast("error", apiErrorDetail(error, "Connection test failed."));
+    } finally {
+      setAiTesting(false);
+    }
+  }
+
+  async function handleAiConnectionSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setAiSaving(true);
+    try {
+      const created = await apiFetch<AIProviderConnection>("/ai/connections", {
+        method: "POST",
+        body: JSON.stringify({
+          provider: aiForm.provider,
+          api_key: aiForm.api_key || null,
+          base_url: aiForm.base_url || null,
+          default_model: aiForm.default_model,
+        }),
+      });
+      setAiConnection(created);
+      setAiFormOpen(false);
+      showToast("success", "AI provider connection saved.");
+    } catch (error) {
+      showToast("error", apiErrorDetail(error, "Could not save the AI provider connection."));
+    } finally {
+      setAiSaving(false);
+    }
+  }
+
+  async function handleAiDisconnect() {
+    if (!aiConnection) return;
+    setAiDeactivating(true);
+    try {
+      await apiFetch<AIProviderConnection>(`/ai/connections/${aiConnection.id}/deactivate`, {
+        method: "POST",
+      });
+      setAiConnection(null);
+      showToast("success", "AI provider connection removed — the platform default will be used.");
+    } catch {
+      showToast("error", "Could not remove the AI provider connection.");
+    } finally {
+      setAiDeactivating(false);
+    }
+  }
+
   const activeConnectionsCount = useMemo(
     () => Object.values(connections).filter(Boolean).length,
     [connections],
@@ -407,6 +517,198 @@ export function IntegrationsPage() {
             >
               {socialConnection ? "Reconnect Instagram" : "+ Connect Instagram"}
             </a>
+          </div>
+        </div>
+
+        {/* AI Model Provider (Slice 6, GRX-AI-010) -- bring-your-own AI credentials for
+            this account, overriding the platform-wide default (DEC-GRX-026). */}
+        <div className={styles.card}>
+          <div className={styles.header}>
+            <div className={styles.headerTitleGroup}>
+              <ProviderIcon name="AI Model" />
+              <div>
+                <h3 className={styles.headerTitle}>AI Model Provider</h3>
+                <p className={styles.headerSubtitle}>
+                  Bring your own OpenAI, Azure OpenAI, Anthropic, or Ollama credentials — overrides
+                  the platform default for this account.
+                </p>
+              </div>
+            </div>
+            <span
+              className={`${styles.statusBadge} ${
+                aiConnection ? styles.statusActive : styles.statusUnconfigured
+              }`}
+            >
+              {aiConnection ? "Connected" : "Unconfigured"}
+            </span>
+          </div>
+
+          {aiConnection && !aiFormOpen && (
+            <div className={styles.connectionDetails}>
+              <div className={styles.summaryRow}>
+                <span className={styles.summaryLabel}>Provider</span>
+                <span>{aiDefinitionFor(aiConnection.provider).displayName}</span>
+              </div>
+              <div className={styles.summaryRow}>
+                <span className={styles.summaryLabel}>Model</span>
+                <span>{aiConnection.default_model}</span>
+              </div>
+              {aiConnection.base_url && (
+                <div className={styles.summaryRow}>
+                  <span className={styles.summaryLabel}>Base URL</span>
+                  <span style={{ wordBreak: "break-all" }}>{aiConnection.base_url}</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {!aiConnection && !aiFormOpen && (
+            <p className={styles.hint}>No AI provider connected — the platform default is used.</p>
+          )}
+
+          {aiFormOpen && (
+            <form className={styles.form} onSubmit={handleAiConnectionSubmit}>
+              {aiConnection && (
+                <p className={styles.replaceNotice}>
+                  Saving replaces the current connection — the previous one is deactivated, not
+                  deleted.
+                </p>
+              )}
+              <div className={styles.field}>
+                <label className={styles.label} htmlFor="ai-connection-provider">
+                  Provider
+                </label>
+                <select
+                  id="ai-connection-provider"
+                  className={styles.select}
+                  value={aiForm.provider}
+                  onChange={(event) => handleAiProviderChange(event.target.value as AIProvider)}
+                >
+                  {AI_PROVIDER_DEFINITIONS.map((option) => (
+                    <option key={option.key} value={option.key}>
+                      {option.displayName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {(aiDefinitionFor(aiForm.provider).requiresBaseUrl ||
+                aiForm.provider === "OPENAI") && (
+                <div className={styles.field}>
+                  <label className={styles.label} htmlFor="ai-connection-base-url">
+                    Base URL
+                    {aiDefinitionFor(aiForm.provider).requiresBaseUrl ? "" : " (optional)"}
+                  </label>
+                  <input
+                    id="ai-connection-base-url"
+                    className={styles.input}
+                    required={aiDefinitionFor(aiForm.provider).requiresBaseUrl}
+                    placeholder={
+                      aiDefinitionFor(aiForm.provider).requiresBaseUrl
+                        ? "https://your-resource.openai.azure.com"
+                        : "https://api.openai.com (leave blank for the default)"
+                    }
+                    value={aiForm.base_url}
+                    onChange={(event) => setAiForm({ ...aiForm, base_url: event.target.value })}
+                  />
+                </div>
+              )}
+
+              <div className={styles.field}>
+                <label className={styles.label} htmlFor="ai-connection-api-key">
+                  API key{aiForm.provider === "OLLAMA" ? " (optional)" : ""}
+                </label>
+                <div style={{ display: "flex", gap: "8px" }}>
+                  <input
+                    id="ai-connection-api-key"
+                    type={showAiApiKey ? "text" : "password"}
+                    className={styles.input}
+                    required={aiForm.provider !== "OLLAMA"}
+                    value={aiForm.api_key}
+                    onChange={(event) => setAiForm({ ...aiForm, api_key: event.target.value })}
+                    placeholder="sk-..."
+                  />
+                  <button
+                    type="button"
+                    className={styles.secondaryButton}
+                    onClick={() => setShowAiApiKey((v) => !v)}
+                  >
+                    {showAiApiKey ? "Hide" : "Show"}
+                  </button>
+                </div>
+              </div>
+
+              <div className={styles.field}>
+                <label className={styles.label} htmlFor="ai-connection-model">
+                  Default model
+                </label>
+                <input
+                  id="ai-connection-model"
+                  className={styles.input}
+                  required
+                  placeholder={aiDefinitionFor(aiForm.provider).modelPlaceholder}
+                  value={aiForm.default_model}
+                  onChange={(event) => setAiForm({ ...aiForm, default_model: event.target.value })}
+                />
+              </div>
+
+              <div className={styles.formActions}>
+                <button
+                  type="button"
+                  className={styles.secondaryButton}
+                  disabled={
+                    aiTesting ||
+                    !aiForm.default_model ||
+                    (aiForm.provider !== "OLLAMA" && !aiForm.api_key) ||
+                    (aiDefinitionFor(aiForm.provider).requiresBaseUrl && !aiForm.base_url)
+                  }
+                  onClick={handleAiTestConnection}
+                >
+                  {aiTesting ? "Testing…" : "Test connection"}
+                </button>
+                <button
+                  type="submit"
+                  className={styles.actionButton}
+                  disabled={
+                    aiSaving ||
+                    !aiForm.default_model ||
+                    (aiForm.provider !== "OLLAMA" && !aiForm.api_key) ||
+                    (aiDefinitionFor(aiForm.provider).requiresBaseUrl && !aiForm.base_url)
+                  }
+                >
+                  {aiSaving ? "Saving…" : "Save connection"}
+                </button>
+                <button
+                  type="button"
+                  className={styles.secondaryButton}
+                  onClick={() => setAiFormOpen(false)}
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          )}
+
+          <div className={styles.cardActions}>
+            {!aiFormOpen && (
+              <button
+                type="button"
+                className={styles.secondaryButton}
+                onClick={openAiConnectionForm}
+              >
+                {aiConnection ? "Replace connection" : "+ Configure connection"}
+              </button>
+            )}
+            {aiConnection && !aiFormOpen && (
+              <button
+                type="button"
+                className={styles.secondaryButton}
+                disabled={aiDeactivating}
+                onClick={handleAiDisconnect}
+              >
+                {aiDeactivating ? "Removing…" : "Use platform default instead"}
+              </button>
+            )}
           </div>
         </div>
       </div>

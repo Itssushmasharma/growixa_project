@@ -8,6 +8,7 @@ from growixa_api.ai.capabilities import body_copy, hashtags, posting_time, rewri
 from growixa_api.ai.capabilities import subject_line as subject_line_capability
 from growixa_api.ai.capabilities.types import CapabilityInput
 from growixa_api.ai.models import AIGeneration, AIProviderConnection, PlatformAIProviderConfig
+from growixa_api.ai.providers import factory as factory
 from growixa_api.ai.providers.base import AIProviderError, InsecureBaseUrlError, validate_base_url
 from growixa_api.ai.providers.factory import AINotConfiguredError, get_effective_ai_provider
 from growixa_api.ai.schemas import AIProviderConnectionIn, PlatformAIProviderConfigIn
@@ -71,6 +72,19 @@ def _validate_provider_config(*, provider: str, base_url: str | None) -> None:
         # OpenAI-compatible-third-party-endpoint override. Re-validated again at call
         # time by the adapter itself, defeating DNS rebinding.
         validate_base_url(base_url)
+
+
+async def test_connection(
+    *, provider: str, api_key: str | None, base_url: str | None, default_model: str
+) -> None:
+    """Validates credentials via a real, minimal generation call before they're saved
+    (or resaved) — nothing is persisted. Shared by the account BYO connection route and
+    the platform-admin config route, mirroring integrations/smtp_transport.py's
+    test_connection (GRX-EMAIL-012)."""
+    _validate_provider_config(provider=provider, base_url=base_url)
+    await factory.test_connection(
+        provider_name=provider, api_key=api_key, base_url=base_url, model=default_model
+    )
 
 
 async def list_connections(
@@ -283,4 +297,5 @@ __all__ = [
     "list_connections",
     "list_generation_history",
     "set_platform_config",
+    "test_connection",
 ]

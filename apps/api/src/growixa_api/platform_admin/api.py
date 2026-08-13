@@ -4,12 +4,14 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from growixa_api.accounts.models import Account
+from growixa_api.ai.providers.base import AIProviderError
 from growixa_api.ai.schemas import PlatformAIProviderConfigIn, PlatformAIProviderConfigOut
 from growixa_api.ai.services import (
     InsecureBaseUrlError,
     MissingBaseUrlError,
     get_platform_config,
     set_platform_config,
+    test_connection,
 )
 from growixa_api.campaigns.models import Campaign
 from growixa_api.contacts.services import ContactNotFoundError, DuplicateEmailError
@@ -438,3 +440,24 @@ async def set_platform_ai_config_route(
         raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
     await session.commit()
     return PlatformAIProviderConfigOut.model_validate(config)
+
+
+@ai_config_router.post("/ai-config/test", status_code=status.HTTP_204_NO_CONTENT)
+async def test_platform_ai_config_route(
+    payload: PlatformAIProviderConfigIn,
+    _platform_admin_id: uuid.UUID = Depends(_require_ai_manage),
+) -> None:
+    """Validates credentials via a real, minimal generation call before saving —
+    nothing is persisted (GRX-EMAIL-012's SMTP test-connection convention, applied
+    here)."""
+    try:
+        await test_connection(
+            provider=payload.provider,
+            api_key=payload.api_key,
+            base_url=payload.base_url,
+            default_model=payload.default_model,
+        )
+    except (MissingBaseUrlError, InsecureBaseUrlError) as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
+    except AIProviderError as exc:
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, f"Connection test failed: {exc}") from exc

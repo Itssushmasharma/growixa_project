@@ -64,6 +64,48 @@ export interface SocialConnection {
   last_error: string | null;
 }
 
+// Slice 6 (AI Assistant) -- account-level bring-your-own AI provider connection (see
+// integrations-page.tsx's "AI Model Provider" card). Mirrors the platform-admin
+// ai-config page's own copy of this same shape (DEC-GRX-026: both are the exact same
+// {provider, api_key, base_url, default_model} config, one platform-wide, one per
+// account). An account brings *one* model at a time, so this is a single optional
+// connection, not a per-provider registry like PROVIDER_REGISTRY above.
+export type AIProvider = "OPENAI" | "AZURE_OPENAI" | "ANTHROPIC" | "OLLAMA";
+
+export interface AIProviderConnection {
+  id: string;
+  provider: AIProvider;
+  base_url: string | null;
+  default_model: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AIProviderDefinition {
+  key: AIProvider;
+  displayName: string;
+  requiresBaseUrl: boolean;
+  modelPlaceholder: string;
+}
+
+export const AI_PROVIDER_DEFINITIONS: AIProviderDefinition[] = [
+  { key: "OPENAI", displayName: "OpenAI", requiresBaseUrl: false, modelPlaceholder: "gpt-4o-mini" },
+  {
+    key: "ANTHROPIC",
+    displayName: "Anthropic",
+    requiresBaseUrl: false,
+    modelPlaceholder: "claude-sonnet-4-5",
+  },
+  {
+    key: "AZURE_OPENAI",
+    displayName: "Azure OpenAI",
+    requiresBaseUrl: true,
+    modelPlaceholder: "your-deployment-name",
+  },
+  { key: "OLLAMA", displayName: "Ollama", requiresBaseUrl: true, modelPlaceholder: "llama3" },
+];
+
 export const PROVIDER_REGISTRY: ProviderDefinition[] = [
   {
     key: "POSTMARK",

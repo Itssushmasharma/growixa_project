@@ -11,7 +11,9 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import delete, select
 
+from growixa_api.ai import services as ai_services
 from growixa_api.ai.models import PlatformAIProviderConfig
+from growixa_api.ai.providers.base import AIGenerationResult
 from growixa_api.app import create_app
 from growixa_api.db import async_session_factory
 from growixa_api.platform_auth.models import PlatformAdmin
@@ -166,3 +168,29 @@ async def test_platform_support_role_is_denied_ai_manage(
         response = await client.get("/platform/ai-config")
 
     assert response.status_code == 403
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_ai_config_test_connection_succeeds_and_persists_nothing(
+    monkeypatch: pytest.MonkeyPatch,
+    platform_admin_factory: Callable[..., Awaitable[uuid.UUID]],
+) -> None:
+    async def _fake_test_connection(**kwargs: object) -> AIGenerationResult:
+        return AIGenerationResult(text="OK", prompt_tokens=5, completion_tokens=1)
+
+    monkeypatch.setattr(ai_services.factory, "test_connection", _fake_test_connection)
+    admin_id = await platform_admin_factory(role="platform.owner")
+    admin_email = await _get_platform_admin_email(admin_id)
+
+    transport = ASGITransport(app=create_app())
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        await _platform_login(client, admin_email)
+        response = await client.post(
+            "/platform/ai-config/test",
+            json={"provider": "OPENAI", "api_key": "sk-fake", "default_model": "gpt-4o-mini"},
+        )
+        get_response = await client.get("/platform/ai-config")
+
+    assert response.status_code == 204
+    assert get_response.json() is None

@@ -7,6 +7,7 @@ import { ToastProvider } from "@/components/toast/toast-context";
 
 import { IntegrationsPage } from "./integrations-page";
 import type {
+  AIProviderConnection,
   EmailProviderConnection,
   MeResponse,
   SenderIdentity,
@@ -78,6 +79,16 @@ const SOCIAL_CONNECTION: SocialConnection = {
   last_error: null,
 };
 
+const AI_CONNECTION: AIProviderConnection = {
+  id: "ai-conn-1",
+  provider: "ANTHROPIC",
+  base_url: null,
+  default_model: "claude-sonnet-4-5",
+  is_active: true,
+  created_at: "2026-08-12T00:00:00Z",
+  updated_at: "2026-08-12T00:00:00Z",
+};
+
 const IDENTITY: SenderIdentity = {
   id: "identity-1",
   email_provider_connection_id: "conn-postmark",
@@ -124,6 +135,7 @@ describe("IntegrationsPage", () => {
       if (path === "/integrations/email-providers") return Promise.resolve([]);
       if (path === "/integrations/sender-identities") return Promise.resolve([]);
       if (path === "/social/connections") return Promise.resolve([]);
+      if (path === "/ai/connections") return Promise.resolve([]);
       throw new Error(`unexpected path: ${path}`);
     });
 
@@ -131,8 +143,9 @@ describe("IntegrationsPage", () => {
 
     expect(await screen.findByText("Postmark")).toBeInTheDocument();
     expect(screen.getByText("Custom SMTP")).toBeInTheDocument();
-    // 3, not 2 -- includes the Instagram card (GRX-SOCIAL-010), also unconfigured here.
-    expect(screen.getAllByText("Unconfigured")).toHaveLength(3);
+    // 4, not 2 -- includes the Instagram card (GRX-SOCIAL-010) and the AI Model
+    // Provider card (GRX-AI-010), also unconfigured here.
+    expect(screen.getAllByText("Unconfigured")).toHaveLength(4);
   });
 
   it("configuring Postmark leaves Custom SMTP still Unconfigured", async () => {
@@ -142,6 +155,7 @@ describe("IntegrationsPage", () => {
       if (path === "/integrations/email-providers" && !init) return Promise.resolve([]);
       if (path === "/integrations/sender-identities") return Promise.resolve([]);
       if (path === "/social/connections") return Promise.resolve([]);
+      if (path === "/ai/connections") return Promise.resolve([]);
       if (path === "/integrations/email-provider" && init?.method === "POST") {
         return Promise.resolve({
           ...POSTMARK_CONNECTION,
@@ -154,10 +168,11 @@ describe("IntegrationsPage", () => {
     renderIntegrationsPage();
     await screen.findByText("Postmark");
 
-    // Registry order is Postmark first, Custom SMTP second — both cards start
-    // Unconfigured, so the first "+ Configure connection" button belongs to Postmark.
+    // Card order is Instagram, then AI Model Provider (GRX-AI-010), then the
+    // PROVIDER_REGISTRY cards (Postmark, Custom SMTP) -- all four start Unconfigured,
+    // so the "+ Configure connection" button at index 1 belongs to Postmark.
     const configureButtons = screen.getAllByRole("button", { name: "+ Configure connection" });
-    await user.click(configureButtons[0]!);
+    await user.click(configureButtons[1]!);
     await user.type(screen.getByLabelText("SMTP username"), "postmark-token");
     await user.type(screen.getByLabelText("SMTP password / server token"), "server-token");
     await user.click(screen.getByRole("button", { name: "Save connection" }));
@@ -166,9 +181,10 @@ describe("IntegrationsPage", () => {
       expect(screen.getByText(/Webhook credentials generated/)).toBeInTheDocument(),
     );
     const statuses = screen.getAllByText(/Connected|Unconfigured/);
-    // Instagram card renders first (unconfigured here), then Postmark (now Connected),
-    // then Custom SMTP (still Unconfigured) -- see GRX-SOCIAL-010.
+    // Instagram and AI Model Provider render first (both unconfigured here), then
+    // Postmark (now Connected), then Custom SMTP (still Unconfigured).
     expect(statuses.map((el) => el.textContent)).toEqual([
+      "Unconfigured",
       "Unconfigured",
       "Connected",
       "Unconfigured",
@@ -182,6 +198,7 @@ describe("IntegrationsPage", () => {
       if (path === "/integrations/email-providers") return Promise.resolve([]);
       if (path === "/integrations/sender-identities") return Promise.resolve([]);
       if (path === "/social/connections") return Promise.resolve([]);
+      if (path === "/ai/connections") return Promise.resolve([]);
       if (path === "/integrations/email-providers/test" && init?.method === "POST") {
         return Promise.resolve(undefined);
       }
@@ -191,8 +208,10 @@ describe("IntegrationsPage", () => {
     renderIntegrationsPage();
     await screen.findByText("Postmark");
 
+    // Index 1: the AI Model Provider card (GRX-AI-010) also renders a
+    // "+ Configure connection" button ahead of Postmark's, at index 0.
     const configureButtons = screen.getAllByRole("button", { name: "+ Configure connection" });
-    await user.click(configureButtons[0]!);
+    await user.click(configureButtons[1]!);
     await user.type(screen.getByLabelText("SMTP username"), "postmark-token");
     await user.type(screen.getByLabelText("SMTP password / server token"), "server-token");
     await user.click(screen.getByRole("button", { name: "Test connection" }));
@@ -209,6 +228,7 @@ describe("IntegrationsPage", () => {
       if (path === "/integrations/email-providers") return Promise.resolve([]);
       if (path === "/integrations/sender-identities") return Promise.resolve([]);
       if (path === "/social/connections") return Promise.resolve([]);
+      if (path === "/ai/connections") return Promise.resolve([]);
       if (path === "/integrations/email-providers/test" && init?.method === "POST") {
         return Promise.reject(
           new ApiError(
@@ -223,8 +243,10 @@ describe("IntegrationsPage", () => {
     renderIntegrationsPage();
     await screen.findByText("Postmark");
 
+    // Index 1: the AI Model Provider card (GRX-AI-010) also renders a
+    // "+ Configure connection" button ahead of Postmark's, at index 0.
     const configureButtons = screen.getAllByRole("button", { name: "+ Configure connection" });
-    await user.click(configureButtons[0]!);
+    await user.click(configureButtons[1]!);
     await user.type(screen.getByLabelText("SMTP username"), "postmark-token");
     await user.type(screen.getByLabelText("SMTP password / server token"), "server-token");
     await user.click(screen.getByRole("button", { name: "Test connection" }));
@@ -242,6 +264,7 @@ describe("IntegrationsPage", () => {
         return Promise.resolve([POSTMARK_CONNECTION, CUSTOM_SMTP_CONNECTION]);
       if (path === "/integrations/sender-identities") return Promise.resolve([IDENTITY]);
       if (path === "/social/connections") return Promise.resolve([]);
+      if (path === "/ai/connections") return Promise.resolve([]);
       throw new Error(`unexpected path: ${path}`);
     });
 
@@ -264,6 +287,7 @@ describe("IntegrationsPage", () => {
       if (path === "/integrations/email-providers") return Promise.resolve([POSTMARK_CONNECTION]);
       if (path === "/integrations/sender-identities" && !init) return Promise.resolve([]);
       if (path === "/social/connections") return Promise.resolve([]);
+      if (path === "/ai/connections") return Promise.resolve([]);
       if (path === "/integrations/sender-identities" && init?.method === "POST") {
         return Promise.resolve(IDENTITY);
       }
@@ -289,6 +313,7 @@ describe("IntegrationsPage", () => {
       if (path === "/integrations/email-providers") return Promise.resolve([POSTMARK_CONNECTION]);
       if (path === "/integrations/sender-identities" && !init) return Promise.resolve([IDENTITY]);
       if (path === "/social/connections") return Promise.resolve([]);
+      if (path === "/ai/connections") return Promise.resolve([]);
       if (
         path === "/integrations/sender-identities/identity-1/status" &&
         init?.method === "PATCH"
@@ -320,6 +345,7 @@ describe("IntegrationsPage", () => {
       if (path === "/integrations/email-providers") return Promise.resolve([]);
       if (path === "/integrations/sender-identities") return Promise.resolve([]);
       if (path === "/social/connections") return Promise.resolve([]);
+      if (path === "/ai/connections") return Promise.resolve([]);
       throw new Error(`unexpected path: ${path}`);
     });
 
@@ -335,6 +361,7 @@ describe("IntegrationsPage", () => {
       if (path === "/integrations/email-providers") return Promise.resolve([]);
       if (path === "/integrations/sender-identities") return Promise.resolve([]);
       if (path === "/social/connections") return Promise.resolve([SOCIAL_CONNECTION]);
+      if (path === "/ai/connections") return Promise.resolve([]);
       throw new Error(`unexpected path: ${path}`);
     });
 
@@ -351,6 +378,7 @@ describe("IntegrationsPage", () => {
       if (path === "/integrations/email-providers") return Promise.resolve([]);
       if (path === "/integrations/sender-identities") return Promise.resolve([]);
       if (path === "/social/connections") return Promise.resolve([SOCIAL_CONNECTION]);
+      if (path === "/ai/connections") return Promise.resolve([]);
       throw new Error(`unexpected path: ${path}`);
     });
 
@@ -369,6 +397,7 @@ describe("IntegrationsPage", () => {
       if (path === "/integrations/email-providers") return Promise.resolve([]);
       if (path === "/integrations/sender-identities") return Promise.resolve([]);
       if (path === "/social/connections") return Promise.resolve([]);
+      if (path === "/ai/connections") return Promise.resolve([]);
       throw new Error(`unexpected path: ${path}`);
     });
 
@@ -379,5 +408,92 @@ describe("IntegrationsPage", () => {
     ).toBeInTheDocument();
 
     mockSearchParams = new URLSearchParams();
+  });
+
+  it("shows the AI Model Provider card as Connected with its provider and model", async () => {
+    mockedApiFetch.mockImplementation((path: string) => {
+      if (path === "/auth/me") return Promise.resolve(meWithPermissions(["integrations.manage"]));
+      if (path === "/integrations/email-providers") return Promise.resolve([]);
+      if (path === "/integrations/sender-identities") return Promise.resolve([]);
+      if (path === "/social/connections") return Promise.resolve([]);
+      if (path === "/ai/connections") return Promise.resolve([AI_CONNECTION]);
+      throw new Error(`unexpected path: ${path}`);
+    });
+
+    renderIntegrationsPage();
+
+    expect(await screen.findByText("AI Model Provider")).toBeInTheDocument();
+    expect(screen.getByText("Anthropic")).toBeInTheDocument();
+    expect(screen.getByText("claude-sonnet-4-5")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Replace connection" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Use platform default instead" }),
+    ).toBeInTheDocument();
+  });
+
+  it("saves a new AI provider connection", async () => {
+    const user = userEvent.setup();
+    mockedApiFetch.mockImplementation((path: string, init?: RequestInit) => {
+      if (path === "/auth/me") return Promise.resolve(meWithPermissions(["integrations.manage"]));
+      if (path === "/integrations/email-providers") return Promise.resolve([]);
+      if (path === "/integrations/sender-identities") return Promise.resolve([]);
+      if (path === "/social/connections") return Promise.resolve([]);
+      if (path === "/ai/connections" && !init) return Promise.resolve([]);
+      if (path === "/ai/connections" && init?.method === "POST") {
+        return Promise.resolve(AI_CONNECTION);
+      }
+      throw new Error(`unexpected call: ${path}`);
+    });
+
+    renderIntegrationsPage();
+    await screen.findByText("AI Model Provider");
+
+    await user.click(screen.getAllByRole("button", { name: "+ Configure connection" })[0]!);
+    await user.selectOptions(screen.getByLabelText("Provider"), "ANTHROPIC");
+    await user.type(screen.getByLabelText("API key"), "sk-fake");
+    await user.type(screen.getByLabelText("Default model"), "claude-sonnet-4-5");
+    await user.click(screen.getByRole("button", { name: "Save connection" }));
+
+    await waitFor(() => {
+      expect(mockedApiFetch).toHaveBeenCalledWith("/ai/connections", {
+        method: "POST",
+        body: JSON.stringify({
+          provider: "ANTHROPIC",
+          api_key: "sk-fake",
+          base_url: null,
+          default_model: "claude-sonnet-4-5",
+        }),
+      });
+    });
+    expect(await screen.findByText("AI provider connection saved.")).toBeInTheDocument();
+  });
+
+  it("removes the AI provider connection to fall back to the platform default", async () => {
+    const user = userEvent.setup();
+    mockedApiFetch.mockImplementation((path: string, init?: RequestInit) => {
+      if (path === "/auth/me") return Promise.resolve(meWithPermissions(["integrations.manage"]));
+      if (path === "/integrations/email-providers") return Promise.resolve([]);
+      if (path === "/integrations/sender-identities") return Promise.resolve([]);
+      if (path === "/social/connections") return Promise.resolve([]);
+      if (path === "/ai/connections" && !init) return Promise.resolve([AI_CONNECTION]);
+      if (path === "/ai/connections/ai-conn-1/deactivate" && init?.method === "POST") {
+        return Promise.resolve({ ...AI_CONNECTION, is_active: false });
+      }
+      throw new Error(`unexpected call: ${path}`);
+    });
+
+    renderIntegrationsPage();
+    await screen.findByText("AI Model Provider");
+
+    await user.click(screen.getByRole("button", { name: "Use platform default instead" }));
+
+    expect(
+      await screen.findByText(
+        "AI provider connection removed — the platform default will be used.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("No AI provider connected — the platform default is used."),
+    ).toBeInTheDocument();
   });
 });
