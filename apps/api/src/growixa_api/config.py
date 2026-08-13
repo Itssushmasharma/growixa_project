@@ -125,6 +125,14 @@ class Settings(BaseSettings):
     # outbound API calls, not inbound webhook deliveries.
     razorpay_webhook_secret: str = ""
 
+    # GRX-BILL-006: how often the cancellation-downgrade ticker polls for CANCELED
+    # subscriptions past their current_period_end. Unlike scheduler_poll_interval_seconds
+    # (campaigns/social posts, where a few seconds of lateness is user-visible), a
+    # downgrade only ever needs to land sometime within the day its period actually
+    # ends -- an hourly poll is more than precise enough and avoids an otherwise-always-
+    # empty query running every 5s forever.
+    billing_downgrade_poll_interval_seconds: float = 3600.0
+
 
 @lru_cache
 def get_settings() -> Settings:

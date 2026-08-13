@@ -16,6 +16,7 @@ from growixa_api.audit.api import router as audit_router
 from growixa_api.auth.api import router as auth_router
 from growixa_api.billing.api import public_router as billing_public_router
 from growixa_api.billing.api import router as billing_router
+from growixa_api.billing.scheduler import run_downgrade_loop as run_billing_downgrade_loop
 from growixa_api.brand.api import router as brand_router
 from growixa_api.campaigns.api import router as campaigns_router
 from growixa_api.campaigns.scheduler import run_scheduler_loop
@@ -51,15 +52,21 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     social_task = asyncio.create_task(
         run_social_scheduler_loop(get_settings().social_scheduler_poll_interval_seconds)
     )
+    billing_downgrade_task = asyncio.create_task(
+        run_billing_downgrade_loop(get_settings().billing_downgrade_poll_interval_seconds)
+    )
     try:
         yield
     finally:
         task.cancel()
         social_task.cancel()
+        billing_downgrade_task.cancel()
         with contextlib.suppress(asyncio.CancelledError):
             await task
         with contextlib.suppress(asyncio.CancelledError):
             await social_task
+        with contextlib.suppress(asyncio.CancelledError):
+            await billing_downgrade_task
 
 
 def create_app() -> FastAPI:

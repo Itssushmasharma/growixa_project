@@ -13,7 +13,10 @@ from growixa_api.billing.models import (
     SubscriptionPlan,
 )
 
-_FREE_PLAN_PERIOD_DAYS = 30
+# Not private -- also used by billing/scheduler.py's cancellation-downgrade ticker
+# (GRX-BILL-006) to give a downgraded account the same fresh period length a
+# brand-new Free signup gets.
+FREE_PLAN_PERIOD_DAYS = 30
 
 
 async def get_plan_by_slug(session: AsyncSession, slug: str) -> SubscriptionPlan | None:
@@ -57,7 +60,7 @@ async def create_default_free_subscription(
         status="ACTIVE",
         currency="USD",
         current_period_start=now,
-        current_period_end=now + timedelta(days=_FREE_PLAN_PERIOD_DAYS),
+        current_period_end=now + timedelta(days=FREE_PLAN_PERIOD_DAYS),
     )
     session.add(subscription)
     await session.flush()

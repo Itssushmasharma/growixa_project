@@ -479,26 +479,71 @@ Signature-verified before touching any table (mirrors the existing Postmark webh
 | `subscription.cancelled` | `status = CANCELED`; account **keeps** its current plan's features until `current_period_end` — no immediate downgrade |
 | `payment.captured` (top-up order, not a subscription charge) | Atomically increments `account_credit_balances.remaining_credits`; inserts one `account_credit_purchases` receipt row |
 
-### Cancellation-downgrade ticker (`apps/worker`)
+### Cancellation-downgrade ticker (`GRX-BILL-006`, shipped)
 
 A `CANCELED` subscription isn't downgraded by the webhook itself — nothing fires again
-at `current_period_end`. Following this codebase's established ticker pattern
-(`GRX-SCHED-002`, `GRX-SOCIAL-007`), a daily worker job performs the actual downgrade:
+at `current_period_end`. This codebase's established ticker pattern
+(`GRX-SCHED-002`, `GRX-SOCIAL-007`) is **not** a separate `apps/worker` CLI job on a
+cron schedule — both existing tickers (campaigns, social) run as an in-process asyncio
+loop started from `app.py`'s FastAPI `lifespan`, polling on an interval, alongside the
+main API process. `billing/scheduler.py`'s `run_downgrade_loop` follows the exact same
+shape, registered as a third background task in `lifespan` next to the other two. The
+poll interval is deliberately coarse (`billing_downgrade_poll_interval_seconds`,
+default 3600s/hourly) — unlike a scheduled send/post where a few seconds of lateness is
+user-visible, a subscription downgrade only ever needs to land sometime within the day
+its period actually ends.
 
 ```python
-# python -m growixa_worker.jobs.subscription_downgrade_ticker (daily, 00:30 UTC)
-async def process_expired_cancellation_downgrades(session: AsyncSession) -> None:
-    free_plan_id = await get_free_plan_id(session)
-    await session.execute(
+async def downgrade_expired_cancellations(session: AsyncSession) -> int:
+    free_plan = await get_plan_by_slug(session, "free")
+    now = datetime.now(UTC)
+    result = await session.execute(
         text("""
             UPDATE account_subscriptions
-            SET plan_id = :free_plan_id, status = 'ACTIVE'
-            WHERE status = 'CANCELED' AND current_period_end <= NOW()
+            SET plan_id = :free_plan_id,
+                status = 'ACTIVE',
+                current_period_start = :period_start,
+                current_period_end = :period_end,
+                period_email_used = 0,
+                period_ai_used = 0,
+                razorpay_subscription_id = NULL,
+                set_by_platform_admin_id = NULL,
+                updated_at = :now
+            WHERE status = 'CANCELED' AND current_period_end <= :now
+            RETURNING account_id
         """),
-        {"free_plan_id": free_plan_id},
+        {
+            "free_plan_id": free_plan.id,
+            "period_start": now,
+            "period_end": now + timedelta(days=FREE_PLAN_PERIOD_DAYS),
+            "now": now,
+        },
     )
+    downgraded_count = len(result.fetchall())
     await session.commit()
+    return downgraded_count
 ```
+
+This corrects two gaps the earlier draft's minimal `SET plan_id, status` pseudocode
+had:
+
+- **A downgraded account would otherwise never get a fresh billing period again.** Its
+  monthly counters (`period_email_used`/`period_ai_used`) only ever reset via a real
+  `subscription.charged` webhook (§5's table above) — but a downgraded-to-Free account
+  has no real Razorpay Subscription left to ever send one. The ticker has to do what
+  that webhook would have done: reset both counters to `0` and roll
+  `current_period_start`/`current_period_end` forward by a fresh
+  `FREE_PLAN_PERIOD_DAYS` (30) days, the same period length a brand-new signup gets
+  (§3.4).
+- **`razorpay_subscription_id` is cleared**, not left pointing at the now-fully-dead
+  subscription — closes a low-probability but real edge case where a delayed or
+  replayed webhook event for that same id could otherwise flip status back to `ACTIVE`
+  on the old paid `plan_id` (the webhook handlers, §5's table, look up purely by
+  `razorpay_subscription_id` and trust whatever they find). `razorpay_customer_id` is
+  deliberately *not* cleared — that's the person's durable Razorpay identity, reusable
+  if they resubscribe later. `set_by_platform_admin_id` is cleared too, since it no
+  longer reflects who set the plan the account is actually on once the ticker is what
+  changed it.
 
 ---
 
