@@ -201,6 +201,46 @@ Restart the `api` and `worker` containers after changing `.env`
 (`podman compose restart api worker` / `docker compose restart api worker`) — Compose
 only re-reads `.env` on container start, not on file save.
 
+### AI Assistant setup (Slice 6, GRX-AI-011)
+
+Unlike every other external integration in this project, the AI provider
+([DEC-GRX-026](../00-project-control/DECISIONS.md)) is **not** configured via `.env` at
+all — it's DB-backed and editable at runtime, on purpose, so a platform admin can change
+providers without a redeploy. Without it configured, the app still runs: customers can
+use every other feature, but `POST /ai/generate/{capability}` returns a 409
+("AI not configured") until a default is set.
+
+**1. Configure the platform-wide default**
+
+Sign in as a platform admin with `platform.ai.manage` (`platform.owner`/`platform.admin`)
+and either use the **AI & LLM Config** page in the platform admin panel
+(`/platform/ai-config`), or call the API directly:
+
+```bash
+curl -X PUT http://localhost:8000/platform/ai-config \
+  -H "Content-Type: application/json" \
+  --cookie "platform_access_token=<your platform admin session token>" \
+  -d '{"provider": "OPENAI", "api_key": "sk-...", "default_model": "gpt-4o-mini"}'
+```
+
+`provider` is one of `OPENAI` / `AZURE_OPENAI` / `ANTHROPIC` / `OLLAMA`. `AZURE_OPENAI`
+and `OLLAMA` also require `base_url` (Azure's resource endpoint / your Ollama host) —
+both platform-admin and account-level `base_url` values are SSRF-validated
+([DEC-GRX-027](../00-project-control/DECISIONS.md)): private, loopback, link-local, and
+cloud-metadata addresses are rejected. Use the page's (or `POST
+/platform/ai-config/test`'s) Test Connection action to verify credentials before saving
+— it makes one real, minimal generation call and persists nothing.
+
+**2. Optional: an account brings its own provider instead**
+
+Any account's Super Admin can override the platform default for that account alone, via
+the Integrations page's **AI Model Provider** card (or `POST /ai/connections` directly)
+— the account's own connection always takes priority over the platform default when
+both exist.
+
+No env vars, no container restart required for either step — changes take effect
+immediately on the next generation request.
+
 ## Backend commands
 
 ```bash
