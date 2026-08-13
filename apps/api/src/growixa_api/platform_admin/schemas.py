@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class AccountListItemOut(BaseModel):
@@ -190,3 +190,41 @@ class CreditPackUpdateIn(BaseModel):
     price_usd: float | None
     price_inr: float | None
     is_active: bool
+
+
+# --- Coupons (GRX-SAAS-012, BILLING_SYSTEM_ARCHITECTURE.md §7) ---
+
+
+class CouponCreateIn(BaseModel):
+    code: str
+    discount_type: Literal["PERCENTAGE", "FIXED_AMOUNT", "CREDIT_GRANT"]
+    # PERCENTAGE: 0-100. FIXED_AMOUNT: major currency unit (dollars/rupees), applied to
+    # whichever currency the checkout is in. CREDIT_GRANT: number of credits.
+    discount_value: float
+    # Required (and only meaningful) when discount_type = CREDIT_GRANT.
+    credit_type: Literal["AI_RUNS", "EMAIL_SENDS", "CONTACT_SLOTS", "SOCIAL_POSTS"] | None = None
+    # None = eligible on every plan/pack (coupons aren't plan-scoped at the checkout
+    # layer beyond this optional allowlist).
+    applicable_plan_slugs: list[str] | None = None
+    max_redemptions: int | None = None
+    expires_at: datetime | None = None
+
+
+class CouponUpdateActiveIn(BaseModel):
+    is_active: bool
+
+
+class CouponOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    code: str
+    discount_type: str
+    discount_value: float
+    credit_type: str | None
+    applicable_plan_slugs: list[str] | None
+    max_redemptions: int | None
+    redemption_count: int
+    expires_at: datetime | None
+    is_active: bool
+    created_at: datetime

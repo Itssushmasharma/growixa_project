@@ -11,16 +11,21 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from growixa_api.billing.models import (
     AccountCreditBalance,
     AccountSubscription,
+    CouponCode,
     CreditPack,
     SubscriptionPlan,
 )
 from growixa_api.billing.providers.base import PaymentGatewayProvider
 from growixa_api.billing.repositories import (
+    create_coupon,
     create_credit_pack,
     create_plan,
     get_account_subscription,
     get_account_subscription_by_razorpay_subscription_id,
     get_account_subscription_with_plan,
+    get_coupon_by_code,
+    get_coupon_by_id,
+    get_coupon_redemption,
     get_credit_balance,
     get_credit_pack_by_id,
     get_credit_pack_by_slug,
@@ -31,9 +36,12 @@ from growixa_api.billing.repositories import (
     grant_credits,
     list_active_credit_packs,
     list_all_credit_packs,
+    list_coupons,
     list_credit_balances,
     list_plans,
+    record_coupon_redemption,
     record_credit_purchase_idempotent,
+    set_coupon_active,
     set_pending_subscription,
     update_credit_pack,
     update_plan,
@@ -67,6 +75,62 @@ class CurrencyNotAvailableError(Exception):
     currency yet -- e.g. USD before international payments are approved on the
     Razorpay account (a real limitation hit live while building this task, not a
     hypothetical)."""
+
+
+class CouponNotFoundError(Exception):
+    def __init__(self, code: str) -> None:
+        self.code = code
+        super().__init__(f"coupon {code!r} not found")
+
+
+class CouponInactiveError(Exception):
+    def __init__(self, code: str) -> None:
+        self.code = code
+        super().__init__(f"coupon {code!r} is not active")
+
+
+class CouponExpiredError(Exception):
+    def __init__(self, code: str) -> None:
+        self.code = code
+        super().__init__(f"coupon {code!r} has expired")
+
+
+class CouponRedemptionLimitReachedError(Exception):
+    def __init__(self, code: str) -> None:
+        self.code = code
+        super().__init__(f"coupon {code!r} has reached its redemption limit")
+
+
+class CouponNotEligibleForPlanError(Exception):
+    def __init__(self, code: str) -> None:
+        self.code = code
+        super().__init__(f"coupon {code!r} is not eligible for this plan")
+
+
+class CouponAlreadyRedeemedError(Exception):
+    def __init__(self, code: str) -> None:
+        self.code = code
+        super().__init__(f"coupon {code!r} has already been redeemed by this account")
+
+
+class CouponWrongTypeForActionError(Exception):
+    """The coupon exists and is otherwise valid, but its discount_type doesn't fit
+    where it's being applied -- e.g. a CREDIT_GRANT code passed to a top-up checkout,
+    or a PERCENTAGE/FIXED_AMOUNT code passed to /billing/redeem-coupon."""
+
+    def __init__(self, message: str) -> None:
+        super().__init__(message)
+
+
+class CouponMissingCreditTypeError(Exception):
+    """A CREDIT_GRANT coupon is being created without credit_type set -- there'd be
+    nothing to credit on redemption."""
+
+
+class CouponCodeAlreadyExistsError(Exception):
+    def __init__(self, code: str) -> None:
+        self.code = code
+        super().__init__(f"a coupon with code {code!r} already exists")
 
 
 class QuotaExceededError(Exception):
@@ -367,19 +431,103 @@ async def create_subscription_checkout(
     return gateway_subscription.gateway_subscription_id
 
 
+async def _validate_coupon_for_redemption(
+    session: AsyncSession, *, code: str, account_id: uuid.UUID, plan_slug: str | None
+) -> CouponCode:
+    """Every constraint from `BILLING_SYSTEM_ARCHITECTURE.md` §7.3 in one place:
+    `is_active`, not expired, under `max_redemptions`, plan-eligible (if restricted),
+    and not already redeemed by this account (`THREAT_MODEL.md` T65's one-redemption-
+    per-account rule -- the real enforcement is `coupon_redemptions`' unique
+    constraint; this is the pre-check that gives a clean error instead of a raw
+    `IntegrityError`)."""
+    coupon = await get_coupon_by_code(session, code)
+    if coupon is None:
+        raise CouponNotFoundError(code)
+    if not coupon.is_active:
+        raise CouponInactiveError(code)
+    if coupon.expires_at is not None and coupon.expires_at <= datetime.now(UTC):
+        raise CouponExpiredError(code)
+    if coupon.max_redemptions is not None and coupon.redemption_count >= coupon.max_redemptions:
+        raise CouponRedemptionLimitReachedError(code)
+    if (
+        coupon.applicable_plan_slugs is not None
+        and plan_slug is not None
+        and plan_slug not in coupon.applicable_plan_slugs
+    ):
+        raise CouponNotEligibleForPlanError(code)
+    if await get_coupon_redemption(session, coupon.id, account_id) is not None:
+        raise CouponAlreadyRedeemedError(code)
+    return coupon
+
+
+def _apply_coupon_discount(amount_smallest_unit: int, coupon: CouponCode) -> int:
+    if coupon.discount_type == "PERCENTAGE":
+        discounted = amount_smallest_unit * (1 - float(coupon.discount_value) / 100)
+    else:  # FIXED_AMOUNT -- discount_value is in the major currency unit (e.g. dollars/rupees)
+        discounted = amount_smallest_unit - int(coupon.discount_value) * 100
+    # Razorpay rejects near-zero amounts outright -- a coupon can discount a top-up
+    # deeply, but never to "free" (that's what a CREDIT_GRANT coupon is for).
+    return max(100, round(discounted))
+
+
+async def redeem_credit_grant_coupon(
+    session: AsyncSession, *, account_id: uuid.UUID, code: str
+) -> AccountCreditBalance:
+    """`POST /billing/redeem-coupon` -- the dedicated path for `CREDIT_GRANT` coupons
+    (`BILLING_SYSTEM_ARCHITECTURE.md` §7.3: "credit-grant coupons never touch Razorpay
+    at all"). `PERCENTAGE`/`FIXED_AMOUNT` codes are rejected here -- they're applied at
+    checkout instead (`create_topup_checkout` below)."""
+    coupon = await _validate_coupon_for_redemption(
+        session, code=code, account_id=account_id, plan_slug=None
+    )
+    if coupon.discount_type != "CREDIT_GRANT":
+        raise CouponWrongTypeForActionError(
+            f"{code} is a {coupon.discount_type} coupon -- apply it at checkout instead"
+        )
+    assert coupon.credit_type is not None, "CREDIT_GRANT coupons always have credit_type set"
+
+    await grant_credits(
+        session,
+        account_id=account_id,
+        credit_type=coupon.credit_type,
+        credits=int(coupon.discount_value),
+        granted_by_platform_admin_id=None,
+    )
+    await record_coupon_redemption(session, coupon=coupon, account_id=account_id)
+    await session.commit()
+
+    balance = await get_credit_balance(session, account_id, coupon.credit_type)
+    assert balance is not None, "grant_credits always leaves a row for this (account, credit_type)"
+    return balance
+
+
 async def create_topup_checkout(
     session: AsyncSession,
     *,
     account_id: uuid.UUID,
     pack_slug: str,
     currency: Literal["USD", "INR"],
+    coupon_code: str | None,
     gateway: PaymentGatewayProvider,
 ) -> tuple[str, int]:
     """Creates a one-time Razorpay Order for a top-up credit pack -- unlike
-    subscribing, nothing is written to any table here; the account is only ever
-    credited by the `payment.captured` webhook handler above, keyed off the
-    `notes.kind=credit_topup` marker set here. Returns (razorpay_order_id,
-    amount_smallest_unit) for the frontend's checkout widget."""
+    subscribing, nothing about the pack purchase itself is written to any table here;
+    the account is only ever credited by the `payment.captured` webhook handler above,
+    keyed off the `notes.kind=credit_topup` marker set here. Returns
+    (razorpay_order_id, amount_smallest_unit) for the frontend's checkout widget.
+
+    A `PERCENTAGE`/`FIXED_AMOUNT` coupon, if given, discounts `amount_smallest_unit`
+    directly -- Razorpay Orders take an arbitrary amount, so this needs no Razorpay-side
+    "offer" mechanism (unlike a Subscription, whose recurring amount is fixed by its
+    immutable Plan object; `GRX-BILL-004`/§4a, `POST /billing/subscribe` does not
+    accept a coupon for this reason -- verified against Razorpay's own Checkout.js
+    parameter reference, which documents no offer/discount parameter for subscription
+    checkout). The redemption is recorded only *after* the real Razorpay Order call
+    succeeds, so a failed gateway call never consumes the coupon -- but *before* the
+    customer completes Razorpay's Checkout widget, so an abandoned checkout does
+    consume it (a deliberate, accepted tradeoff: recording it later, only once
+    `payment.captured` fires, would let the same account create multiple discounted
+    Orders in parallel before paying for any of them)."""
     pack = await get_credit_pack_by_slug(session, pack_slug)
     if pack is None:
         raise CreditPackNotFoundError(pack_slug)
@@ -389,6 +537,19 @@ async def create_topup_checkout(
         raise CurrencyNotAvailableError(f"{pack_slug} is not available in {currency} yet")
 
     amount_smallest_unit = int(price * 100)
+
+    coupon: CouponCode | None = None
+    if coupon_code is not None:
+        coupon = await _validate_coupon_for_redemption(
+            session, code=coupon_code, account_id=account_id, plan_slug=None
+        )
+        if coupon.discount_type not in ("PERCENTAGE", "FIXED_AMOUNT"):
+            raise CouponWrongTypeForActionError(
+                f"{coupon_code} can't be applied to a top-up purchase -- "
+                "redeem it via /billing/redeem-coupon instead"
+            )
+        amount_smallest_unit = _apply_coupon_discount(amount_smallest_unit, coupon)
+
     gateway_order = await gateway.create_order(
         amount_smallest_unit=amount_smallest_unit,
         currency=currency,
@@ -399,6 +560,9 @@ async def create_topup_checkout(
             "credits": str(pack.credits),
         },
     )
+    if coupon is not None:
+        await record_coupon_redemption(session, coupon=coupon, account_id=account_id)
+        await session.commit()
     return gateway_order.gateway_order_id, amount_smallest_unit
 
 
@@ -542,3 +706,32 @@ async def admin_update_credit_pack(
     if pack is None:
         raise CreditPackNotFoundError(str(pack_id))
     return await update_credit_pack(session, pack, fields)
+
+
+async def list_coupon_catalog(session: AsyncSession) -> Sequence[CouponCode]:
+    return await list_coupons(session)
+
+
+async def admin_create_coupon(
+    session: AsyncSession, *, created_by_platform_admin_id: uuid.UUID, fields: dict[str, Any]
+) -> CouponCode:
+    """`GRX-SAAS-012` §7.2. No internal commit -- see `admin_override_subscription`'s
+    docstring for why."""
+    if fields["discount_type"] == "CREDIT_GRANT" and fields.get("credit_type") is None:
+        raise CouponMissingCreditTypeError
+    existing = await get_coupon_by_code(session, fields["code"])
+    if existing is not None:
+        raise CouponCodeAlreadyExistsError(fields["code"])
+    return await create_coupon(
+        session, {**fields, "created_by_platform_admin_id": created_by_platform_admin_id}
+    )
+
+
+async def admin_set_coupon_active(
+    session: AsyncSession, *, coupon_id: uuid.UUID, is_active: bool
+) -> CouponCode:
+    """No internal commit -- see `admin_override_subscription`'s docstring for why."""
+    coupon = await get_coupon_by_id(session, coupon_id)
+    if coupon is None:
+        raise CouponNotFoundError(str(coupon_id))
+    return await set_coupon_active(session, coupon, is_active)

@@ -662,26 +662,88 @@ terms in practice: either a dedicated per-account plan row, or a direct
 
 ### 7.1 Coupon types
 
-- **Percentage discount** (`WELCOME20` → 20% off the first charge)
+- **Percentage discount** (`WELCOME20` → 20% off) — **top-up (`POST /billing/topup`)
+  only**, see the Razorpay constraint below.
 - **Fixed-amount discount** (`LAUNCH10` → $10 / ₹800 off, in the account's currency)
+  — **top-up only**, same constraint.
 - **Free credit grant** (`FREEAI250` → +250 `AI_RUNS` credited directly to
-  `account_credit_balances`, no discount on the subscription price itself)
+  `account_credit_balances`, redeemed via `POST /billing/redeem-coupon`, no discount
+  on any checkout)
+
+**Corrected from this section's original draft**: percentage/fixed-amount coupons
+are *not* applied to `POST /billing/subscribe`. Verified against Razorpay's own docs
+(`razorpay.com/docs/payments/offers/` and the Checkout.js integration reference) —
+Offers/discounts are an Orders-API (one-time payment) feature; Checkout.js documents
+no `offer_id`/`discount`/`coupon` parameter for Subscription checkout, and a
+Subscription's price is fixed by its Razorpay `Plan`. `SubscribeIn` therefore has no
+`coupon_code` field. Percentage/fixed-amount coupons apply cleanly to
+`POST /billing/topup` instead, since a top-up is a `Razorpay Order` whose amount is
+computed server-side before the order is created — `create_topup_checkout`
+(`billing/services.py`) applies the discount to `amount_smallest_unit` before calling
+the gateway.
 
 ### 7.2 Platform-admin management (`/platform/coupons`)
 
-Create (code, discount type/value, expiry, `max_redemptions`,
-`applicable_plan_slugs`), toggle `is_active`, and view redemption analytics
-(`coupon_redemptions` count vs. `max_redemptions`) — same list/detail shape as the
-existing `/platform/accounts` pages.
+- `GET /platform/coupons` — list the full catalog (active and inactive), gated
+  `platform.billing.manage`.
+- `POST /platform/coupons` — create (`code`, `discount_type`, `discount_value`,
+  `credit_type` — required and only meaningful for `CREDIT_GRANT`,
+  `applicable_plan_slugs`, `max_redemptions`, `expires_at`). Rejects a duplicate
+  `code` (`409`) and a `CREDIT_GRANT` coupon missing `credit_type` (`400`).
+- `PATCH /platform/coupons/{id}` — toggle `is_active` only; there is no field-editing
+  PUT (mirrors "coupons are created right or deactivated," not silently mutated
+  mid-campaign). `404` if the id doesn't exist.
+- Each write records a `coupon.created`/`coupon.updated` audit-log entry
+  (`platform_admin/services.py`, same one-transaction commit pattern as
+  `admin_override_subscription`/`admin_create_plan`) and shows `redemption_count`
+  directly on `CouponOut` for at-a-glance redemption analytics — same list shape as
+  `/platform/subscriptions`.
+- Frontend: `/platform/coupons` (sidebar entry under `platform.billing.manage`).
 
-### 7.3 Customer-facing redemption (`/dashboard/billing`)
+### 7.3 Customer-facing redemption
 
-A code entered at checkout/upgrade is validated (`is_active`, not expired,
-`redemption_count < max_redemptions`, plan eligibility, and the
+Two distinct paths, matching the type split in §7.1:
+
+- **`POST /billing/redeem-coupon`** (`{code}`) — `CREDIT_GRANT` coupons only. Credits
+  the account immediately via the same `grant_credits` path platform-admin grants use
+  (`granted_by_platform_admin_id` is `NULL` for a coupon-driven grant; the
+  `coupon_redemptions` row is the real provenance record for that case — see the
+  known minor ambiguity noted in §7.4). Never touches Razorpay. A `PERCENTAGE`/
+  `FIXED_AMOUNT` code here returns `400` (`CouponWrongTypeForActionError`).
+  Frontend: a coupon-code field under "Credit balances" on `/dashboard/billing`.
+- **`POST /billing/topup`'s optional `coupon_code`** — `PERCENTAGE`/`FIXED_AMOUNT`
+  coupons only (`CREDIT_GRANT` here also returns `400`). Frontend: a coupon-code
+  field above the "Top up credits" pack grid, applied to whichever pack is bought.
+
+Both paths run the same validation (`_validate_coupon_for_redemption`,
+`billing/services.py`): `is_active`, not expired, `redemption_count <
+max_redemptions`, plan eligibility (`applicable_plan_slugs`, when set), and the
 `(coupon_code_id, account_id)` uniqueness constraint — one redemption per account per
-code) before being applied. Percentage/fixed-amount coupons are passed to Razorpay's
-checkout as a discount on the subscription's first invoice; credit-grant coupons
-never touch Razorpay at all — they call the same crediting path as §6.2.
+code, enforced by both an app-level pre-check and `coupon_redemptions`' unique index.
+Both routes are also rate-limited (`THREAT_MODEL.md` T65) via the same Redis-backed
+fixed-window limiter `auth/api.py` uses for login, keyed on source IP rather than
+account_id/email — coupon farming defeats the per-account uniqueness constraint
+precisely by using many real accounts, so the limiter needs to key on something an
+attacker can't cheaply multiply the way they can spin up accounts.
+
+**Redemption-timing tradeoff**: `record_coupon_redemption` is called *after* the real
+Razorpay gateway call succeeds (a failed gateway call never wastes a coupon) but
+*before* the customer completes the Checkout.js widget payment. This accepts
+"abandoned checkout wastes the coupon" (same class of gap as open item §8.5) in
+exchange for closing a worse race: two parallel top-up requests both reading
+`redemption_count` before either writes would otherwise let one coupon apply twice.
+
+### 7.4 Known minor ambiguity
+
+A coupon-driven `CREDIT_GRANT` redemption produces the same `NULL
+razorpay_payment_id` + `NULL granted_by_platform_admin_id` shape in
+`account_credit_purchases` as would any other non-payment, non-admin grant, if one
+existed. There isn't a schema column that alone distinguishes "platform-admin grant"
+from "coupon redemption" today, both of which are already-possible states —
+`coupon_redemptions` is the real provenance source of truth for the coupon case.
+Not fixed with a new column here; the two grant paths are already fully
+distinguishable by joining `coupon_redemptions`, and no operational need for a
+denormalized marker has come up yet.
 
 ---
 

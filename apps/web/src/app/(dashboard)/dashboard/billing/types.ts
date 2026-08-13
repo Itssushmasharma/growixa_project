@@ -71,6 +71,13 @@ export interface TopUpResponse {
   currency: BillingCurrency;
 }
 
+// --- Coupons (GRX-SAAS-012) ---
+
+export interface CreditBalanceResponse {
+  credit_type: CreditType;
+  remaining_credits: number;
+}
+
 export const CREDIT_TYPE_LABEL: Record<CreditType, string> = {
   AI_RUNS: "AI runs",
   EMAIL_SENDS: "Email sends",

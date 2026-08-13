@@ -32,6 +32,9 @@ from growixa_api.platform_admin.schemas import (
     AccountUserOut,
     AuditEventOut,
     CampaignOversightItemOut,
+    CouponCreateIn,
+    CouponOut,
+    CouponUpdateActiveIn,
     CreditPackCreateIn,
     CreditPackUpdateIn,
     GrantCreditsIn,
@@ -50,6 +53,9 @@ from growixa_api.platform_admin.schemas import (
 from growixa_api.platform_admin.services import (
     AccountNotFoundError,
     CampaignNotPausableError,
+    CouponCodeConflictError,
+    CouponMissingCreditTypeError,
+    CouponNotFoundError,
     CreditPackNotFoundError,
     CreditPackSlugConflictError,
     SubscriptionOverrideMissingFieldsError,
@@ -63,6 +69,7 @@ from growixa_api.platform_admin.services import (
     list_support_sessions_for_account_service,
 )
 from growixa_api.platform_admin.services import CampaignNotFoundError as CampaignRowNotFoundError
+from growixa_api.platform_admin.services import create_coupon as create_coupon_service
 from growixa_api.platform_admin.services import (
     create_credit_pack_catalog_entry as create_credit_pack_service,
 )
@@ -82,6 +89,7 @@ from growixa_api.platform_admin.services import (
 from growixa_api.platform_admin.services import (
     list_campaigns_for_oversight as list_campaigns_for_oversight_service,
 )
+from growixa_api.platform_admin.services import list_coupons_for_admin as list_coupons_service
 from growixa_api.platform_admin.services import (
     list_usage_summary_rows as list_usage_summary_rows_service,
 )
@@ -89,6 +97,7 @@ from growixa_api.platform_admin.services import (
     override_account_subscription as override_subscription_service,
 )
 from growixa_api.platform_admin.services import pause_campaign as pause_campaign_service
+from growixa_api.platform_admin.services import set_coupon_active as set_coupon_active_service
 from growixa_api.platform_admin.services import (
     start_support_session as start_support_session_service,
 )
@@ -700,3 +709,54 @@ async def update_credit_pack_route(
     except CreditPackNotFoundError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Credit pack not found") from exc
     return CreditPackOut.model_validate(pack)
+
+
+@billing_router.get("/coupons", response_model=list[CouponOut])
+async def list_coupons_route(
+    _platform_admin_id: uuid.UUID = Depends(_require_billing_manage),
+    session: AsyncSession = Depends(get_session),
+) -> list[CouponOut]:
+    coupons = await list_coupons_service(session)
+    return [CouponOut.model_validate(coupon) for coupon in coupons]
+
+
+@billing_router.post("/coupons", response_model=CouponOut, status_code=status.HTTP_201_CREATED)
+async def create_coupon_route(
+    payload: CouponCreateIn,
+    platform_admin_id: uuid.UUID = Depends(_require_billing_manage),
+    session: AsyncSession = Depends(get_session),
+) -> CouponOut:
+    """Percentage/fixed-amount coupons apply at `POST /billing/topup` only --
+    Razorpay's Checkout.js documents no discount parameter for subscription checkout
+    (`GRX-SAAS-012`, verified against Razorpay's own docs). `CREDIT_GRANT` coupons are
+    redeemed via `POST /billing/redeem-coupon`."""
+    try:
+        coupon = await create_coupon_service(
+            session, platform_admin_id=platform_admin_id, fields=payload.model_dump()
+        )
+    except CouponCodeConflictError as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
+    except CouponMissingCreditTypeError as exc:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST, "credit_type is required for CREDIT_GRANT coupons"
+        ) from exc
+    return CouponOut.model_validate(coupon)
+
+
+@billing_router.patch("/coupons/{coupon_id}", response_model=CouponOut)
+async def set_coupon_active_route(
+    coupon_id: uuid.UUID,
+    payload: CouponUpdateActiveIn,
+    platform_admin_id: uuid.UUID = Depends(_require_billing_manage),
+    session: AsyncSession = Depends(get_session),
+) -> CouponOut:
+    try:
+        coupon = await set_coupon_active_service(
+            session,
+            coupon_id=coupon_id,
+            platform_admin_id=platform_admin_id,
+            is_active=payload.is_active,
+        )
+    except CouponNotFoundError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Coupon not found") from exc
+    return CouponOut.model_validate(coupon)

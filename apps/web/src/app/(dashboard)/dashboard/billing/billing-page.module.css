@@ -259,3 +259,22 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+.couponRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.couponInput {
+  padding: 9px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(15, 42, 86, 0.14);
+  font-size: 13.5px;
+  font-family: inherit;
+  color: var(--color-dark-text);
+  background: #fff;
+  min-width: 180px;
+  text-transform: uppercase;
+}

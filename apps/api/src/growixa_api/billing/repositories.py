@@ -11,6 +11,8 @@ from growixa_api.billing.models import (
     AccountCreditBalance,
     AccountCreditPurchase,
     AccountSubscription,
+    CouponCode,
+    CouponRedemption,
     CreditPack,
     SubscriptionPlan,
 )
@@ -226,11 +228,14 @@ async def grant_credits(
     account_id: uuid.UUID,
     credit_type: str,
     credits: int,
-    granted_by_platform_admin_id: uuid.UUID,
+    granted_by_platform_admin_id: uuid.UUID | None,
 ) -> None:
-    """Platform-admin free credit grant (`GRX-SAAS-006`) -- same two-write shape as
-    `record_credit_purchase_idempotent` above (a receipt row + the balance increment),
-    but with no `razorpay_payment_id` to dedupe against: an admin clicking "grant"
+    """Free credit grant with no purchase behind it -- either a platform admin
+    (`GRX-SAAS-006`, `granted_by_platform_admin_id` set) or a redeemed `CREDIT_GRANT`
+    coupon (`GRX-SAAS-012`, left `None` -- the `coupon_redemptions` row recorded
+    alongside is the real provenance record for that case, not this column). Same
+    two-write shape as `record_credit_purchase_idempotent` above (a receipt row + the
+    balance increment), but with no `razorpay_payment_id` to dedupe against: granting
     twice is two real grants, there's no webhook-replay risk to guard against here."""
     session.add(
         AccountCreditPurchase(
@@ -315,3 +320,62 @@ async def update_credit_pack(
         setattr(pack, key, value)
     await session.flush()
     return pack
+
+
+# --- Coupons (GRX-SAAS-012, BILLING_SYSTEM_ARCHITECTURE.md §7) ---
+
+
+async def get_coupon_by_code(session: AsyncSession, code: str) -> CouponCode | None:
+    result = await session.execute(select(CouponCode).where(CouponCode.code == code))
+    return result.scalar_one_or_none()
+
+
+async def get_coupon_by_id(session: AsyncSession, coupon_id: uuid.UUID) -> CouponCode | None:
+    result = await session.execute(select(CouponCode).where(CouponCode.id == coupon_id))
+    return result.scalar_one_or_none()
+
+
+async def list_coupons(session: AsyncSession) -> Sequence[CouponCode]:
+    result = await session.execute(select(CouponCode).order_by(CouponCode.created_at.desc()))
+    return result.scalars().all()
+
+
+async def create_coupon(session: AsyncSession, fields: dict[str, Any]) -> CouponCode:
+    coupon = CouponCode(**fields)
+    session.add(coupon)
+    await session.flush()
+    return coupon
+
+
+async def set_coupon_active(
+    session: AsyncSession, coupon: CouponCode, is_active: bool
+) -> CouponCode:
+    coupon.is_active = is_active
+    await session.flush()
+    return coupon
+
+
+async def get_coupon_redemption(
+    session: AsyncSession, coupon_code_id: uuid.UUID, account_id: uuid.UUID
+) -> CouponRedemption | None:
+    result = await session.execute(
+        select(CouponRedemption).where(
+            CouponRedemption.coupon_code_id == coupon_code_id,
+            CouponRedemption.account_id == account_id,
+        )
+    )
+    return result.scalar_one_or_none()
+
+
+async def record_coupon_redemption(
+    session: AsyncSession, *, coupon: CouponCode, account_id: uuid.UUID
+) -> None:
+    """Inserts the `(coupon_code_id, account_id)` redemption row (its unique
+    constraint is the real one-redemption-per-account enforcement, `THREAT_MODEL.md`
+    T65) and increments `redemption_count` on the same `CouponCode` row the caller
+    already loaded -- both writes belong in the same transaction as whatever action
+    the redemption is actually for (a credit grant, or a discounted top-up Order),
+    so this never commits on its own."""
+    session.add(CouponRedemption(coupon_code_id=coupon.id, account_id=account_id))
+    coupon.redemption_count += 1
+    await session.flush()

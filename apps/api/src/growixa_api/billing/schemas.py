@@ -35,6 +35,9 @@ class SubscribeOut(BaseModel):
 class TopUpIn(BaseModel):
     pack_slug: str
     currency: Literal["USD", "INR"]
+    # PERCENTAGE/FIXED_AMOUNT coupons only (GRX-SAAS-012) -- a CREDIT_GRANT code is
+    # rejected here, redeem it via POST /billing/redeem-coupon instead.
+    coupon_code: str | None = None
 
 
 class TopUpOut(BaseModel):
@@ -42,6 +45,10 @@ class TopUpOut(BaseModel):
     razorpay_key_id: str
     amount_smallest_unit: int
     currency: Literal["USD", "INR"]
+
+
+class RedeemCouponIn(BaseModel):
+    code: str
 
 
 class SubscriptionPlanOut(BaseModel):

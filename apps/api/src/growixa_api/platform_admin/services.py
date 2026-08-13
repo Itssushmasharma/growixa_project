@@ -9,24 +9,39 @@ from growixa_api.accounts.models import Account
 from growixa_api.audit.models import AuditLog
 from growixa_api.audit.services import list_events, record_event
 from growixa_api.auth.services import revoke_all_active_sessions
-from growixa_api.billing.models import AccountCreditBalance, AccountSubscription, CreditPack
+from growixa_api.billing.models import (
+    AccountCreditBalance,
+    AccountSubscription,
+    CouponCode,
+    CreditPack,
+)
 from growixa_api.billing.models import SubscriptionPlan as SubscriptionPlanModel
-from growixa_api.billing.services import CreditPackNotFoundError as BillingCreditPackNotFoundError
 from growixa_api.billing.services import (
+    CouponCodeAlreadyExistsError,
     CreditPackSlugAlreadyExistsError,
     PlanSlugAlreadyExistsError,
     get_billing_overview,
 )
+from growixa_api.billing.services import (
+    CouponMissingCreditTypeError as BillingCouponMissingCreditTypeError,
+)
+from growixa_api.billing.services import CouponNotFoundError as BillingCouponNotFoundError
+from growixa_api.billing.services import CreditPackNotFoundError as BillingCreditPackNotFoundError
 from growixa_api.billing.services import NoOverrideFieldsProvidedError as BillingNoFieldsError
 from growixa_api.billing.services import PlanNotFoundError as BillingPlanNotFoundError
+from growixa_api.billing.services import (
+    admin_create_coupon as billing_create_coupon,
+)
 from growixa_api.billing.services import admin_create_credit_pack as billing_create_credit_pack
 from growixa_api.billing.services import admin_create_plan as billing_create_plan
 from growixa_api.billing.services import admin_grant_credits as billing_grant_credits
 from growixa_api.billing.services import (
     admin_override_subscription as billing_override_subscription,
 )
+from growixa_api.billing.services import admin_set_coupon_active as billing_set_coupon_active
 from growixa_api.billing.services import admin_update_credit_pack as billing_update_credit_pack
 from growixa_api.billing.services import admin_update_plan as billing_update_plan
+from growixa_api.billing.services import list_coupon_catalog as billing_list_coupon_catalog
 from growixa_api.campaigns.models import Campaign
 from growixa_api.campaigns.services import CampaignNotCancellableError, cancel_campaign
 from growixa_api.campaigns.services import CampaignNotFoundError as CampaignRowNotFoundError
@@ -144,6 +159,18 @@ class CreditPackNotFoundError(Exception):
 
 class CreditPackSlugConflictError(Exception):
     """A credit pack with this slug already exists."""
+
+
+class CouponCodeConflictError(Exception):
+    """A coupon with this code already exists."""
+
+
+class CouponNotFoundError(Exception):
+    """The target coupon id doesn't match any existing coupon."""
+
+
+class CouponMissingCreditTypeError(Exception):
+    """A CREDIT_GRANT coupon was created without credit_type set."""
 
 
 async def list_accounts_with_user_counts(session: AsyncSession) -> list[tuple[Account, int]]:
@@ -600,3 +627,60 @@ async def update_credit_pack_catalog_entry(
     )
     await session.commit()
     return pack
+
+
+# --- Coupons (GRX-SAAS-012, BILLING_SYSTEM_ARCHITECTURE.md §7.2) ---
+
+
+async def list_coupons_for_admin(session: AsyncSession) -> Sequence[CouponCode]:
+    return await billing_list_coupon_catalog(session)
+
+
+async def create_coupon(
+    session: AsyncSession, *, platform_admin_id: uuid.UUID, fields: dict[str, object]
+) -> CouponCode:
+    try:
+        coupon = await billing_create_coupon(
+            session, created_by_platform_admin_id=platform_admin_id, fields=fields
+        )
+    except CouponCodeAlreadyExistsError as exc:
+        raise CouponCodeConflictError(str(exc)) from exc
+    except BillingCouponMissingCreditTypeError as exc:
+        raise CouponMissingCreditTypeError from exc
+
+    metadata = await _admin_metadata(session, platform_admin_id)
+    metadata["code"] = fields["code"]
+    await record_event(
+        session,
+        account_id=None,
+        actor_user_id=None,
+        action="coupon.created",
+        entity_type="coupon_code",
+        entity_id=coupon.id,
+        metadata=metadata,
+    )
+    await session.commit()
+    return coupon
+
+
+async def set_coupon_active(
+    session: AsyncSession, *, coupon_id: uuid.UUID, platform_admin_id: uuid.UUID, is_active: bool
+) -> CouponCode:
+    try:
+        coupon = await billing_set_coupon_active(session, coupon_id=coupon_id, is_active=is_active)
+    except BillingCouponNotFoundError as exc:
+        raise CouponNotFoundError(str(exc)) from exc
+
+    metadata = await _admin_metadata(session, platform_admin_id)
+    metadata["is_active"] = is_active
+    await record_event(
+        session,
+        account_id=None,
+        actor_user_id=None,
+        action="coupon.updated",
+        entity_type="coupon_code",
+        entity_id=coupon.id,
+        metadata=metadata,
+    )
+    await session.commit()
+    return coupon

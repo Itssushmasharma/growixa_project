@@ -11,6 +11,7 @@ import {
   type AccountSubscription,
   type BillingCurrency,
   CREDIT_TYPE_LABEL,
+  type CreditBalanceResponse,
   type CreditPack,
   type MeResponse,
   STATUS_LABEL,
@@ -111,6 +112,10 @@ export function BillingPage() {
   const [subscribingSlug, setSubscribingSlug] = useState<string | null>(null);
   const [buyingPackSlug, setBuyingPackSlug] = useState<string | null>(null);
 
+  const [topupCouponCode, setTopupCouponCode] = useState("");
+  const [redeemCode, setRedeemCode] = useState("");
+  const [redeeming, setRedeeming] = useState(false);
+
   const refreshSubscription = useCallback(async () => {
     try {
       const sub = await apiFetch<AccountSubscription>("/billing/subscription");
@@ -181,9 +186,14 @@ export function BillingPage() {
     if (!canManage) return;
     setBuyingPackSlug(pack.slug);
     try {
+      const trimmedCoupon = topupCouponCode.trim();
       const result = await apiFetch<TopUpResponse>("/billing/topup", {
         method: "POST",
-        body: JSON.stringify({ pack_slug: pack.slug, currency }),
+        body: JSON.stringify({
+          pack_slug: pack.slug,
+          currency,
+          coupon_code: trimmedCoupon === "" ? null : trimmedCoupon,
+        }),
       });
       await openRazorpayCheckout({
         key: result.razorpay_key_id,
@@ -202,6 +212,29 @@ export function BillingPage() {
       showToast("error", apiErrorDetail(error, "Could not start checkout."));
     } finally {
       setBuyingPackSlug(null);
+    }
+  }
+
+  async function handleRedeemCoupon() {
+    if (!canManage) return;
+    const code = redeemCode.trim();
+    if (code === "") return;
+    setRedeeming(true);
+    try {
+      const balance = await apiFetch<CreditBalanceResponse>("/billing/redeem-coupon", {
+        method: "POST",
+        body: JSON.stringify({ code }),
+      });
+      showToast(
+        "success",
+        `Redeemed! ${CREDIT_TYPE_LABEL[balance.credit_type]} balance is now ${balance.remaining_credits.toLocaleString()}.`,
+      );
+      setRedeemCode("");
+      await refreshSubscription();
+    } catch (error) {
+      showToast("error", apiErrorDetail(error, "Could not redeem that coupon code."));
+    } finally {
+      setRedeeming(false);
     }
   }
 
@@ -291,6 +324,24 @@ export function BillingPage() {
               </div>
             ))}
           </div>
+          {canManage && (
+            <div className={styles.couponRow}>
+              <input
+                className={styles.couponInput}
+                placeholder="Coupon code"
+                value={redeemCode}
+                onChange={(event) => setRedeemCode(event.target.value.toUpperCase())}
+              />
+              <button
+                type="button"
+                className={styles.secondaryButton}
+                disabled={redeeming || redeemCode.trim() === ""}
+                onClick={() => void handleRedeemCoupon()}
+              >
+                {redeeming ? "Redeeming…" : "Redeem"}
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -352,6 +403,17 @@ export function BillingPage() {
 
       <div>
         <h3 className={styles.sectionHeading}>Top up credits</h3>
+        {canManage && (
+          <div className={styles.couponRow}>
+            <input
+              className={styles.couponInput}
+              placeholder="Coupon code (optional)"
+              value={topupCouponCode}
+              onChange={(event) => setTopupCouponCode(event.target.value.toUpperCase())}
+            />
+            <p className={styles.hint}>Applies a discount to whichever pack you buy below.</p>
+          </div>
+        )}
         <div className={styles.plansGrid}>
           {creditPacks.map((pack) => {
             const price = packPrice(pack, currency);

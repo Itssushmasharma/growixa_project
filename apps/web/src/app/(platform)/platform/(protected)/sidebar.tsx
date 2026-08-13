@@ -46,6 +46,12 @@ const NAV_ITEMS: NavItem[] = [
     icon: "💳",
     requiresPermission: "platform.billing.manage",
   },
+  {
+    label: "Coupons",
+    href: "/platform/coupons",
+    icon: "🏷️",
+    requiresPermission: "platform.billing.manage",
+  },
 ];
 
 export function Sidebar({ permissions }: { permissions: string[] }) {

@@ -86,6 +86,24 @@ export interface AccountBillingOverview {
   credit_balances: BillingCreditBalance[];
 }
 
+// --- Coupons (GRX-SAAS-012) ---
+
+export type CouponDiscountType = "PERCENTAGE" | "FIXED_AMOUNT" | "CREDIT_GRANT";
+
+export interface Coupon {
+  id: string;
+  code: string;
+  discount_type: CouponDiscountType;
+  discount_value: number;
+  credit_type: BillingCreditType | null;
+  applicable_plan_slugs: string[] | null;
+  max_redemptions: number | null;
+  redemption_count: number;
+  expires_at: string | null;
+  is_active: boolean;
+  created_at: string;
+}
+
 export type SupportSessionAccessLevel = "READ" | "WRITE";
 
 export interface SupportSession {
