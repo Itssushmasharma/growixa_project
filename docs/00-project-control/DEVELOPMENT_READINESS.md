@@ -240,9 +240,29 @@ task).** The genuinely new prerequisites versus prior slices' gates were the thr
 decisions themselves (provider strategy, SSRF policy, schema simplification) — everything
 else follows the same per-slice pattern this document already establishes.
 
+## Readiness gate — Slice 7 (Billing)
+
+| Readiness item | Required | Status | Evidence |
+|---|---|---|---|
+| Payment vendor decision (OQ-007) | Yes — determines the entire integration shape | PASS | [DECISIONS.md §DEC-GRX-029](DECISIONS.md) — Razorpay (not Stripe), dual-currency (INR + international) |
+| Billing model/architecture decisions (OQ-013) | Yes — Subscriptions API vs. Orders, credit expiry, audit-retention behavior, and the Enterprise sales model each change the schema | PASS | [DECISIONS.md §DEC-GRX-030](DECISIONS.md) — Razorpay Subscriptions API, non-expiring credits, permanent audit logs, contact-sales Enterprise, admin-override UI + coupon engine confirmed in scope |
+| Data model additions | Yes | PASS | [DATA_MODEL.md §Slice 7 entities](../05-data/DATA_MODEL.md#slice-7-entities-full-detail), [DATABASE_SCHEMA.md §Slice 7](../05-data/DATABASE_SCHEMA.md#slice-7-billing-tables), [ERD.md §Slice 7 additions](../05-data/ERD.md#slice-7-billing-additions) |
+| RBAC additions | Yes | PASS | [RBAC.md §Slice 7](../08-security/RBAC.md#slice-7-billing-permission-codes) — `billing.manage`, `billing.view`; [RBAC.md §Slice 7 platform](../08-security/RBAC.md#slice-7-billing-platform-permission-codes-grx-saas-004006012) — `platform.billing.manage` |
+| Threat model addendum | Yes (first feature moving real money; first inbound webhook whose forgery/replay would grant paid features for free) | PASS | [THREAT_MODEL.md §Slice 7](../08-security/THREAT_MODEL.md#slice-7-billing-scope) — T60–T68 |
+| Module boundaries | Yes — `billing` row moves from "out of MVP scope" placeholder to real, and is foundational (other modules depend on it, not the reverse — same shape as `usage`) | PASS | [MODULE_BOUNDARIES.md](../04-architecture/MODULE_BOUNDARIES.md) — updated `billing` row |
+| Sprint 8 plan | Yes | PASS | [SPRINT_08_BILLING.md](../14-sprints/SPRINT_08_BILLING.md) |
+| Full architecture design | Yes — schema, atomic quota-evaluator logic, webhook event mapping, AI-credit/BYO-metering interaction, platform-admin overrides, coupon engine | PASS | [BILLING_SYSTEM_ARCHITECTURE.md](../04-architecture/BILLING_SYSTEM_ARCHITECTURE.md) |
+| Feature specs | No (written per-task, not upfront — same practice as every prior slice) | DEFERRED TO EACH TASK | [FEATURE_CATALOG.md](../02-features/FEATURE_CATALOG.md) |
+| Project tracker rows | Yes | PASS | [MASTER_TASK_TRACKER.md](MASTER_TASK_TRACKER.md) — `GRX-BILL-*`, `GRX-SAAS-004`/`006`/`009`/`012` |
+| Final plan quota numbers/prices | No — a working draft is sufficient to start building; the product owner confirmed proceeding with the current draft and can change prices later via the platform-admin UI without a redeploy | DRAFT ACCEPTED | [BILLING_SYSTEM_ARCHITECTURE.md §2](../04-architecture/BILLING_SYSTEM_ARCHITECTURE.md), `subscription_plans_matrix.csv` |
+| Razorpay Test Mode credentials for live verification | Not required to start — needed only before the webhook-receiver/checkout tasks are marked `DONE` | PENDING | Per `DEC-GRX-011`; product owner has generated a Test Mode API key as of this gate passing — Plan objects, webhook secret, and Test Mode key/secret env vars still to follow |
+
+**Overall status: READY — first task cleared: `GRX-BILL-001` (readiness-gate docs, this
+task).** Unlike Slice 5/6, this slice starts with a real external vendor account
+already in hand (Razorpay Test Mode) rather than waiting on it mid-slice.
+
 ## Gate for later slices/phases
 
-Sprint 5 Phase D and the remaining Phase E rows (`GRX-SAAS-006`, `GRX-SAAS-007`,
-`GRX-SAAS-009`), and any post-MVP slice, will each need their own readiness pass (data
-model additions, feature specs, etc.) before becoming `READY` — this table will be
-extended per slice/phase rather than re-litigated from scratch.
+Any post-MVP slice will need its own readiness pass (data model additions, feature
+specs, etc.) before becoming `READY` — this table will be extended per slice/phase
+rather than re-litigated from scratch.

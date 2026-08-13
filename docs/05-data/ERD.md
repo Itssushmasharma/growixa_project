@@ -559,3 +559,84 @@ erDiagram
 a generation call actually uses; `PLATFORM_AI_PROVIDER_CONFIG` (platform-level, no
 `account_id`) is the fallback. Neither table has a direct FK to the other — the
 resolution is a runtime lookup (`ai/providers/factory.py`), not a schema relationship.
+
+## Slice 7 (Billing) additions
+
+```mermaid
+erDiagram
+    SUBSCRIPTION_PLANS ||--o{ ACCOUNT_SUBSCRIPTIONS : "assigned to"
+    ACCOUNTS ||--|| ACCOUNT_SUBSCRIPTIONS : "has exactly one"
+    ACCOUNTS ||--o{ ACCOUNT_CREDIT_BALANCES : "holds"
+    ACCOUNTS ||--o{ ACCOUNT_CREDIT_PURCHASES : "purchased"
+    ACCOUNTS ||--o{ COUPON_REDEMPTIONS : redeemed
+    COUPON_CODES ||--o{ COUPON_REDEMPTIONS : "redeemed via"
+    PLATFORM_ADMINS ||--o{ SUBSCRIPTION_PLANS : edits
+    PLATFORM_ADMINS ||--o{ COUPON_CODES : creates
+
+    SUBSCRIPTION_PLANS {
+        uuid id PK
+        string slug
+        string name
+        numeric price_usd
+        numeric price_inr
+        int max_contacts
+        int max_monthly_emails
+        int max_monthly_ai_runs
+        int max_social_accounts
+        int max_user_seats
+        boolean allow_byo_ai_key
+        boolean allow_byo_smtp
+        string razorpay_plan_id_usd
+        string razorpay_plan_id_inr
+    }
+    ACCOUNT_SUBSCRIPTIONS {
+        uuid id PK
+        uuid account_id FK
+        uuid plan_id FK
+        string status
+        string currency
+        timestamp current_period_start
+        timestamp current_period_end
+        int period_email_used
+        int period_ai_used
+        string razorpay_customer_id
+        string razorpay_subscription_id
+        uuid set_by_platform_admin_id FK
+    }
+    ACCOUNT_CREDIT_BALANCES {
+        uuid id PK
+        uuid account_id FK
+        string credit_type
+        int remaining_credits
+    }
+    ACCOUNT_CREDIT_PURCHASES {
+        uuid id PK
+        uuid account_id FK
+        string credit_type
+        int credits_added
+        string razorpay_payment_id
+        uuid granted_by_platform_admin_id FK
+    }
+    COUPON_CODES {
+        uuid id PK
+        string code
+        string discount_type
+        numeric discount_value
+        int max_redemptions
+        int redemption_count
+        boolean is_active
+        uuid created_by_platform_admin_id FK
+    }
+    COUPON_REDEMPTIONS {
+        uuid id PK
+        uuid coupon_code_id FK
+        uuid account_id FK
+        timestamp redeemed_at
+    }
+```
+
+`ACCOUNT_SUBSCRIPTIONS` is the one table with a hard `1:1` relationship to `ACCOUNTS` —
+every account gets exactly one row, created automatically at registration
+(`BILLING_SYSTEM_ARCHITECTURE.md §3.4`), never zero. `ACCOUNT_CREDIT_PURCHASES` is a
+pure receipt log, never read by the quota evaluator — only
+`ACCOUNT_CREDIT_BALANCES.remaining_credits` gates anything at request time.

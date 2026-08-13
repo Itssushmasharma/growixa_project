@@ -200,6 +200,35 @@ an external LLM, and the first where a customer/admin can supply an arbitrary ou
 A proactive cost-cap/rate-limit enforcement mechanism (only visibility via `usage_records`
 this slice — see T58). A customer-facing prompt-template editor (`DEC-GRX-028` — templates
 are code-defined). Multi-step/autonomous agent workflows and LangGraph adoption
+
+## Slice 7 (Billing) scope
+
+Scope: Razorpay Subscriptions API integration, dual-currency plan tiers, atomic
+usage-quota metering, non-expiring top-up credits, a platform-admin override path that
+bypasses payment entirely, and a coupon/discount engine (`DEC-GRX-029`, `DEC-GRX-030`).
+The first feature in this codebase that moves real money, and the first with an
+inbound webhook whose payload — if forged — could grant paid features for free.
+
+| # | Threat | Vector | Mitigation |
+|---|---|---|---|
+| T60 | Forged Razorpay webhook | An attacker POSTs a crafted `subscription.charged`/`payment.captured` payload to `/billing/razorpay` to upgrade an account or grant credits without paying | HMAC-SHA256 signature verification of the raw request body against `RAZORPAY_WEBHOOK_SECRET`, rejected before any table is touched — same "verify before touching any table" shape as the existing Postmark webhook (`GRX-EMAIL-005`) |
+| T61 | Webhook replay | A legitimately-signed webhook payload (e.g. one `payment.captured` event for a top-up purchase) is captured and re-submitted multiple times to farm repeated credit grants from a single real payment | The Razorpay event/payment ID is stored on first processing (`account_credit_purchases.razorpay_payment_id` is unique); a duplicate event ID is a no-op, not a second credit grant |
+| T62 | Client-supplied price/plan tampering | A crafted checkout request specifies a lower price or different plan than what the account is actually being charged for | The Razorpay Order/Subscription is always created server-side from `subscription_plans` looked up by `plan_id`/`slug` — the price is never accepted as client input, only a plan selection is |
+| T63 | Quota-check race condition | Two concurrent requests both read "under quota" before either writes back, together exceeding the plan limit | `check_and_consume_quota`'s `with_for_update()` row lock on `account_subscriptions` plus a single atomic `UPDATE ... WHERE remaining_credits >= :needed` on the credit balance closes the read-then-write gap (`BILLING_SYSTEM_ARCHITECTURE.md §4`) |
+| T64 | Cross-account billing data access | Guessing another account's `account_subscriptions`/`account_credit_balances`/`coupon_redemptions` row | Standard `account_id`-scoped repository lookups, same convention as every other module (`test_cross_tenant_isolation.py`) — a cross-account guess 404s |
+| T65 | Coupon farming via disposable accounts | A `CREDIT_GRANT`-type coupon (free AI/email credits, no payment involved) is redeemed repeatedly by creating many throwaway accounts, since there's no payment to rate-limit against | `max_redemptions` caps total uses platform-wide; the `(coupon_code_id, account_id)` uniqueness constraint caps it to one redemption per account, so farming requires N distinct real accounts, not unlimited automation; the redemption endpoint gets the same rate-limiting treatment as login (`GRX-AUTH-004`) to slow scripted account-creation-and-redeem loops |
+| T66 | Platform-admin billing override abuse | A compromised or malicious `platform.billing.manage` session grants itself (or a colluding account) free plan upgrades or credit balances | Gated to `platform.owner`/`platform.finance` only, the narrowest applicable role per `RBAC.md` §Slice 7; every override (plan change, credit grant, status change, plan-price edit) is audit-logged with the acting platform admin's id/metadata, same `actor_user_id=None`-plus-`metadata` attribution pattern as `GRX-SAAS-005`/`008` |
+| T67 | Card/payment data exposure | Growixa's backend or logs ever handling raw card numbers/CVV | Not reachable by construction — Razorpay's own hosted Checkout captures card details directly; Growixa's backend only ever sees a `razorpay_payment_id`/`razorpay_subscription_id` reference and webhook events, keeping the application out of PCI-DSS SAQ D scope entirely |
+| T68 | Stuck cancellation leaving paid access active indefinitely | The daily cancellation-downgrade ticker job (`BILLING_SYSTEM_ARCHITECTURE.md §5`) fails to run or errors silently, leaving a `CANCELED` account on its paid plan's features past `current_period_end` | Not a security threat but a real revenue-leak risk; accepted for MVP with the same framing as other ticker-dependent features (`GRX-SCHED-*`) — a failed run is caught the same way as any other worker job failure (logs/monitoring), not a dedicated alert in this slice |
+
+## Explicitly out of scope for Slice 7
+
+Full PCI compliance program work beyond the SAQ-A-eligible "never touch card data"
+architecture (T67) — no self-hosted card entry is planned, ever. Proactive fraud
+detection beyond Razorpay's own (e.g. velocity checks on coupon redemption IP/device).
+A dedicated alert/paging mechanism for T68 (relies on existing worker-job monitoring).
+Refunds/chargebacks handling beyond what a platform admin can already do manually via
+the Razorpay dashboard itself — not a Growixa UI feature in this slice.
 (`DEC-GRX-012` — MVP AI is single-shot assistive generation only). A UI for picking
 per-generation model/temperature/other inference parameters beyond the connection's
 configured `default_model` — kept to what `MVP_SCOPE.md §E` actually asks for.

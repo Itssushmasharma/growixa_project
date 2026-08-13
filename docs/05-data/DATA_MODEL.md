@@ -688,11 +688,99 @@ tables, not the 4 the placeholder below originally speculated — see `DEC-GRX-0
   plus a `ux_platform_ai_provider_config_active` partial unique index on `WHERE
   is_active` (at most one active platform default at a time).
 
+## Slice 7 entities (full detail)
+
+Per `DEC-GRX-029`/`DEC-GRX-030`. Module ownership follows
+[MODULE_BOUNDARIES.md](../04-architecture/MODULE_BOUNDARIES.md): `billing`. Full
+narrative design (billing flow, atomic quota evaluator, webhook event mapping,
+platform-admin overrides, coupon engine, AI-credit-metering/BYO-bypass interaction) is
+in [BILLING_SYSTEM_ARCHITECTURE.md](../04-architecture/BILLING_SYSTEM_ARCHITECTURE.md)
+— this section is the entity summary; see `DATABASE_SCHEMA.md §Slice 7` for full
+column-level detail.
+
+### `subscription_plans`
+
+- Purpose: the platform-wide plan catalog — one row per tier (`free`/`starter`/`pro`/
+  `enterprise`), editable by a platform admin (`platform.billing.manage`) without a
+  redeploy, same "DB-backed admin-editable setting" pattern `platform_ai_provider_config`
+  established in Slice 6.
+- Primary key: `id` (UUID)
+- Required fields: `slug`, `name`
+- Optional fields: `price_usd`/`price_inr` (nullable — `NULL` for Enterprise's
+  contact-sales tier, no fixed self-serve price), `max_contacts`/`max_monthly_emails`/
+  `max_monthly_ai_runs`/`max_social_accounts`/`max_user_seats` (nullable — `NULL` =
+  unlimited), `allow_byo_ai_key`/`allow_byo_smtp`/`audit_export_enabled`/
+  `audit_api_enabled` (booleans), `razorpay_plan_id_usd`/`razorpay_plan_id_inr`
+  (nullable — the Razorpay Plan object to attach a new subscription to; `NULL` for
+  Free/Enterprise, neither of which self-serve-checkouts through Razorpay)
+
+### `account_subscriptions`
+
+- Purpose: one row per account (created automatically at registration, `GRX-BILL-003`),
+  tracking the active plan, billing status, currency, and a running counter for the
+  current period's metered usage (email sends, AI runs) — the counter the atomic quota
+  evaluator reads and locks (`with_for_update`) on every metered call.
+- Primary key: `id` (UUID)
+- Required fields: `account_id` (FK → `accounts.id` CASCADE, **unique** — exactly one
+  row per account, never zero, never more than one), `plan_id` (FK →
+  `subscription_plans.id`), `status` (`CHECK IN ('ACTIVE', 'PAST_DUE', 'CANCELED',
+  'HALTED')`), `currency` (`CHECK IN ('USD', 'INR')`), `current_period_start`/
+  `current_period_end`, `period_email_used`/`period_ai_used` (default `0`, reset to `0`
+  on each `subscription.charged` webhook)
+- Optional fields: `razorpay_customer_id`/`razorpay_subscription_id` (nullable — `NULL`
+  for accounts on an admin-assigned plan with no real Razorpay object, e.g. most
+  Enterprise accounts), `set_by_platform_admin_id` (FK → `platform_admins.id`,
+  nullable — set when the current plan came from an admin override, not a real
+  checkout)
+
+### `account_credit_balances`
+
+- Purpose: the number the quota evaluator actually reads once the monthly plan
+  allowance is exhausted — one running, non-expiring balance per account per credit
+  type (`DEC-GRX-030`: credits never expire, no per-purchase-batch FIFO).
+- Primary key: `id` (UUID)
+- Required fields: `account_id` (FK → `accounts.id` CASCADE), `credit_type` (`CHECK IN
+  ('AI_RUNS', 'EMAIL_SENDS', 'CONTACT_SLOTS', 'SOCIAL_POSTS')`), `remaining_credits`
+  (default `0`)
+- Constraint: unique on `(account_id, credit_type)` — the atomic
+  `UPDATE ... WHERE remaining_credits >= :needed` this table exists for depends on
+  there being exactly one row per account per credit type.
+
+### `account_credit_purchases`
+
+- Purpose: receipt/audit history of individual top-up purchases and admin-granted
+  credits. **Never read by the quota evaluator** — purely a record; `remaining_credits`
+  above is the only value that gates anything.
+- Primary key: `id` (UUID)
+- Required fields: `account_id` (FK → `accounts.id` CASCADE), `credit_type`,
+  `credits_added`, `purchased_at`
+- Optional fields: `razorpay_payment_id` (nullable, **unique** when set — the
+  idempotency guard against webhook replay, `THREAT_MODEL.md` T61; `NULL` for an
+  admin-granted credit rather than a real purchase), `granted_by_platform_admin_id`
+  (FK → `platform_admins.id`, nullable — set when `razorpay_payment_id` is `NULL`)
+
+### `coupon_codes` / `coupon_redemptions`
+
+- Purpose: platform-admin-managed discount/free-credit codes, redeemable once per
+  account.
+- `coupon_codes`: `id` (UUID PK), `code` (unique text, e.g. `WELCOME20`),
+  `discount_type` (`CHECK IN ('PERCENTAGE', 'FIXED_AMOUNT', 'CREDIT_GRANT')`),
+  `discount_value` (numeric — meaning depends on `discount_type`), `credit_type`
+  (nullable, only set when `discount_type = 'CREDIT_GRANT'`), `applicable_plan_slugs`
+  (JSONB array, nullable — `NULL` = all plans), `max_redemptions` (nullable —
+  `NULL` = unlimited), `redemption_count` (default `0`), `expires_at` (nullable),
+  `is_active` (default `true`), `created_by_platform_admin_id` (FK →
+  `platform_admins.id`)
+- `coupon_redemptions`: `id` (UUID PK), `coupon_code_id` (FK → `coupon_codes.id`),
+  `account_id` (FK → `accounts.id`), `redeemed_at`. Unique on
+  `(coupon_code_id, account_id)` — the one-redemption-per-account enforcement
+  (`THREAT_MODEL.md` T65).
+
 ## Full MVP entity landscape (target slice)
 
-Entities beyond Slice 5/6 are named here for continuity with `docs/02-features/` and
+Entities beyond Slice 5/6/7 are named here for continuity with `docs/02-features/` and
 future `docs/06-api/` work, but are **not** designed in field-level detail until the slice
-that needs them. Slice 3/5/6's own entities moved to full detail above; `campaign_schedules`
+that needs them. Slice 3/5/6/7's own entities moved to full detail above; `campaign_schedules`
 stays here since it's Slice 4:
 
 | Entity group | Target slice | Notes |
@@ -700,7 +788,6 @@ stays here since it's Slice 4:
 | `campaign_schedules` | Slice 4 | Scheduled Email — future send-time, cancellation, scheduling-specific retry |
 | `notifications` | Slice 1 stub, still no real writer after Slice 3 | Notification center |
 | `webhook_endpoints`, `webhook_events`, `webhook_deliveries` | Deferred indefinitely — see Slice 3's "explicitly deferred" note | Only revisit with a second email/social provider |
-| `feature_entitlements` | Alongside `usage_records`, expanded when a real limit needs enforcing | |
 | `analytics_events` | Deferred — see Slice 3's "explicitly deferred" note | Read-side aggregation, computed from existing tables for now |
 | `system_settings` | Sprint 1 (minimal), expanded over time | |
 | `automation_workflows`, `workflow_versions`, `workflow_nodes`, `workflow_edges`, `workflow_executions`, `workflow_step_executions` | Out of MVP ([OQ-012](../00-project-control/OPEN_QUESTIONS.md)) | Not scheduled |

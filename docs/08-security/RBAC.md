@@ -199,6 +199,51 @@ gets `ai.manage` (including Content Creator, honoring its "AI generation" scope
 explicitly), and everyone except Viewer gets `ai.view`. Unlike `social.publish`/
 `campaigns.send`, there is no restricted third tier here — see the rationale above.
 
+## Slice 7 (Billing) permission codes
+
+| Code | Meaning |
+|---|---|
+| `billing.manage` | Subscribe/change the account's plan, buy top-up credit packs, redeem a coupon code — any action that actually charges (or credits) the account via Razorpay |
+| `billing.view` | View the account's current plan, usage/quota bars, and billing history |
+
+`billing.manage` is Super-Admin-only, kept to the same trust tier as
+`integrations.manage` (`DEC-GRX-030`) rather than `company.settings.edit`'s
+Admin-inclusive grant — unlike editing a company profile, this code authorizes a real
+charge against the account's payment method, the same class of action as connecting a
+third-party credential. `billing.view` is granted broadly, matching
+`company.settings.view`'s all-roles precedent — knowing how much of the plan's quota
+is left (emails, AI runs, contacts) is routine operational information every role
+benefits from, not administrative-only data.
+
+## Slice 7 (Billing) role → permission matrix
+
+| Permission | Super Admin | Admin | Marketing Manager | Content Creator | Analyst | Viewer |
+|---|---|---|---|---|---|---|
+| `billing.manage` | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `billing.view` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+
+## Slice 7 (Billing) platform permission codes (`GRX-SAAS-004`/`006`/`012`)
+
+| Code | Meaning |
+|---|---|
+| `platform.billing.manage` | View/change any account's plan, subscription status, and credit balance without a payment; edit plan-wide quotas/prices; create/manage coupon codes |
+
+This is the `platform.billing.manage` code `platform.finance`'s Sprint 5 Phase B role
+description already named in advance ("Subscription/billing visibility and changes").
+Granted to `platform.owner`/`platform.finance` only — deliberately **not**
+`platform.admin`, unlike `platform.accounts.manage`/`platform.ai.manage` — billing is
+`platform.finance`'s stated domain specifically, and `platform.admin`'s own scope is
+explicitly "no billing" per its role description. Coupon management reuses this same
+code rather than a separate `platform.coupons.manage` — it's the same class of action
+(a financial lever affecting subscription price/credits), not a conceptually distinct
+capability.
+
+## Slice 7 (Billing) platform role → permission matrix
+
+| Permission | platform.owner | platform.admin | platform.support | platform.finance | platform.operations |
+|---|---|---|---|---|---|
+| `platform.billing.manage` | ✅ | ❌ | ❌ | ✅ | ❌ |
+
 ## Sprint 7 — Platform AI config (`GRX-AI-005`)
 
 | Code | Meaning |
