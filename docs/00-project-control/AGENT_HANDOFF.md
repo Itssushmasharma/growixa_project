@@ -3,9 +3,176 @@
 - Document ID: DOC-AGENT-HANDOFF
 - Status: ACTIVE (updated at the end of every work session)
 - Version: 1.0
-- Last updated: 2026-08-13
+- Last updated: 2026-08-14
 - Owner: Coding agent
 - Related documents: [MASTER_TASK_TRACKER](MASTER_TASK_TRACKER.md), [PROJECT_STATUS](PROJECT_STATUS.md), [CHANGELOG](CHANGELOG.md), [FEATURE_STATUS_MATRIX](FEATURE_STATUS_MATRIX.md)
+
+## Task worked on
+
+`GRX-BILL-001` through `GRX-BILL-010`, plus `GRX-SAAS-006`/`012` — Sprint 8 (Billing,
+product Slice 7), the first slice that moves real money. Spanned several work sessions;
+this entry covers the whole arc through to close-out, written at the point where the
+final three tasks (`GRX-BILL-008` backend tests, `GRX-BILL-009` settings/env docs,
+`GRX-BILL-010` full verification) were completed. User's authorization pattern
+throughout was a simple "yes"/"continue" after each completed task, plus one explicit
+"ok do that and complete all" to push through the final three closeout tasks
+back-to-back without pausing between them.
+
+## Work completed
+
+Full slice, backend through frontend through docs — see [CHANGELOG.md](CHANGELOG.md)'s
+2026-08-14 entry for the complete narrative. Summary:
+
+- Readiness-gate docs (`DEC-GRX-029` Razorpay/dual-currency, `DEC-GRX-030`
+  Subscriptions-API-as-primitive + non-expiring credits + coupon types,
+  `THREAT_MODEL.md` T60–T68, `SPRINT_08_BILLING.md`).
+- `subscription_plans`/`account_subscriptions`/`account_credit_balances`/
+  `account_credit_purchases`/`coupon_codes`/`coupon_redemptions` schema +
+  `billing.manage`/`billing.view`/`platform.billing.manage` RBAC seed.
+- Signature-verified, idempotent Razorpay webhook receiver (`POST /billing/razorpay`).
+- Real Razorpay Checkout for subscribe/upgrade (Subscriptions API) and top-up purchases
+  (Orders API).
+- Atomic quota evaluator (`SELECT ... FOR UPDATE`-locked) for email-sends/AI-runs,
+  falling back to non-expiring credit balances before a `402`; an account's own
+  bring-your-own AI key is never metered.
+- In-process cancellation-downgrade ticker (runs inside the `api` service's FastAPI
+  lifespan, same pattern as the campaigns/social schedulers).
+- Platform-admin override panel (`GRX-SAAS-006`): manual plan/status/credit overrides,
+  plan/credit-pack catalog CRUD, all bypassing Razorpay.
+- Coupon/discount engine (`GRX-SAAS-012`): percentage/fixed-amount coupons scoped to
+  top-ups only (verified against Razorpay's own Checkout.js docs — no subscription
+  discount parameter exists), free-credit-grant coupons redeemed directly.
+- Customer billing page (`/dashboard/billing`): plan/usage/credits, upgrade, top-up,
+  coupon redemption.
+- `GRX-BILL-008`: new `test_billing_{webhook,quota,coupons}.py` (23 tests) +
+  `test_cross_tenant_isolation.py` extension (2 tests).
+- `GRX-BILL-009`: `.env.example`/`compose.yaml`/`LOCAL_DEVELOPMENT.md` billing setup docs.
+- `GRX-BILL-010`: full verification sweep + live Razorpay Test Mode re-confirmation +
+  four-control-doc close-out (this update).
+
+**All ten `GRX-BILL-*` tasks plus `GRX-SAAS-006`/`012` are `DONE`. All seven MVP-scope
+product slices plus the Sprint 5 multi-tenancy retrofit are now complete.**
+
+## Real bugs found and fixed this session (GRX-BILL-008/009/010 specifically)
+
+1. **Dead eligibility check**: `_validate_coupon_for_redemption`'s `applicable_plan_slugs`
+   restriction was never actually enforced — both call sites (`redeem_credit_grant_coupon`,
+   `create_topup_checkout`) unconditionally passed `plan_slug=None`, so a coupon
+   restricted to specific plans was silently redeemable by every account regardless of
+   plan. Found while writing `test_coupon_not_eligible_for_accounts_current_plan_is_
+   rejected` — the test failed against the *actual* bug, not a test bug. Fixed by
+   resolving the account's real current plan (`get_account_subscription_with_plan`) at
+   both call sites before validating (`billing/services.py`).
+2. **`.env.example` never documented Razorpay at all**, despite `RAZORPAY_KEY_ID`/
+   `_KEY_SECRET`/`_WEBHOOK_SECRET` existing since `GRX-BILL-002`/`003` — a new
+   contributor cloning the repo would have no idea these env vars existed or what they
+   do. Added the full block with a pointer to the new `LOCAL_DEVELOPMENT.md` section.
+3. **`BILLING_DOWNGRADE_POLL_INTERVAL_SECONDS` had a real default in `config.py`
+   (`GRX-BILL-006`) but was never wired into `compose.yaml`'s `environment:` block** —
+   setting it in the root `.env` silently did nothing locally, the exact same class of
+   gap `GRX-BILL-003`'s own entry already found once for `RAZORPAY_WEBHOOK_SECRET`.
+   Fixed by adding the passthrough line.
+4. **(Found during earlier GRX-SAAS-012 work this same session, already committed
+   separately)**: `admin_create_coupon` never set `coupon_codes.created_by_
+   platform_admin_id` (a `NOT NULL` FK) — every `POST /platform/coupons` 500'd until
+   fixed. Also fixed a `THREAT_MODEL.md` T65 gap the same session: the doc already
+   promised rate-limiting on coupon redemption but it was never implemented.
+
+## Files changed (GRX-BILL-008/009/010)
+
+- `apps/api/tests/test_billing_webhook.py` (new, 4 tests)
+- `apps/api/tests/test_billing_quota.py` (new, 5 tests)
+- `apps/api/tests/test_billing_coupons.py` (new, 12 tests)
+- `apps/api/tests/test_cross_tenant_isolation.py` (extended, 2 tests)
+- `apps/api/src/growixa_api/billing/services.py` (bugfix: plan-eligibility resolution)
+- `apps/api/.env.example` (extended: Razorpay + poll-interval entries)
+- `compose.yaml` (extended: `BILLING_DOWNGRADE_POLL_INTERVAL_SECONDS` passthrough)
+- `docs/11-devops/LOCAL_DEVELOPMENT.md` (new "Billing (Razorpay) setup" section)
+- `docs/00-project-control/{MASTER_TASK_TRACKER,PROJECT_STATUS,CHANGELOG,AGENT_HANDOFF}.md`
+
+Earlier tasks in this arc (`GRX-BILL-001`–`007`, `GRX-SAAS-006`, `GRX-SAAS-012`) were
+committed individually in prior sessions/turns — see `git log` (commits `2b005ff`
+through `2378e70`) and their own `MASTER_TASK_TRACKER.md` rows for per-task file lists.
+
+## Commands executed
+
+```bash
+# apps/api (via uv on host, targeting growixa_test on the exposed Compose Postgres port)
+env $(grep -v '^#' .env.test | xargs) uv run pytest -q     # 306 passed, 8 skipped (up from 283)
+uv run ruff check . && uv run ruff format --check . && uv run mypy src tests   # clean
+env $(grep -v '^#' .env.test | xargs) uv run alembic check                     # no drift
+
+# apps/web
+npx eslint . && npx tsc --noEmit && npx prettier --check .   # clean (4 pre-existing warnings only)
+npx vitest run          # 204 passed (38 files)
+npx next build           # clean, /platform/coupons listed as a real compiled route
+
+# Live Compose stack (rebuilt api image twice this session for the coupon-FK and
+# plan-eligibility fixes)
+docker compose build api && docker compose up -d api
+docker compose exec api python -m growixa_api.cli.sync_razorpay_plans
+# -> starter/pro (INR) already had real razorpay_plan_id values from an earlier
+#    session; USD fails with the known, already-documented "Currency provided is not
+#    supported" account-approval gap, not a new bug.
+curl -X POST http://localhost:8000/billing/subscribe -d '{"plan_slug":"starter","currency":"INR"}'
+# -> real sub_... id returned, account_subscriptions row flipped to PENDING/starter
+```
+
+## Blockers
+
+None for the codebase itself.
+
+## Known issues / evidence gaps
+
+- **No genuine Razorpay-dashboard-originated webhook round-trip through a public
+  tunnel.** Every webhook code path is verified two ways instead: (a) a dedicated test
+  suite and earlier live `curl` calls send payloads with a signature computed via the
+  exact same HMAC-SHA256 scheme `RazorpayProvider.verify_webhook_signature` itself
+  implements, so the cryptographic verification logic is exercised for real, just not
+  against a Razorpay-originated network call; (b) every outbound Razorpay API call
+  (`Plan`/`Subscription`/`Order` creation) is made for real against Test Mode. Getting a
+  literal Razorpay-server-to-localhost webhook delivery working would require a public
+  tunnel (e.g. `ngrok`) plus registering it in the Razorpay dashboard — both require
+  interactive access this session doesn't have (dashboard login credentials). This is
+  the exact same evidence bar `GRX-BILL-003`'s own session already established and
+  accepted for the identical reason; not a new or lower bar introduced here.
+- USD payments remain blocked pending Razorpay's own account-level international-
+  payments approval — external, non-code, already documented in
+  `BILLING_SYSTEM_ARCHITECTURE.md §8` item 1.
+- Throwaway platform admin (`grx-bill-012-verify@growixa.local`) and customer
+  (`grx-bill-012-customer@growixa.local`) accounts, plus several throwaway coupons
+  (`SAVE20`, `FLAT5`, `FREEAI50`, `UITEST10`, etc.), are left in the dev DB from this
+  session's live verification — established convention for this project (matches
+  pre-existing `platform-smoketest@growixa.local`), not cleaned up.
+
+## Current state
+
+**Sprint 8 (Billing) is fully `DONE`. All seven MVP-scope product slices plus the
+Sprint 5 multi-tenancy retrofit are complete.**
+
+## Exact next task
+
+None assigned by this session. Candidates for whoever picks this up next: the
+platform-admin social oversight panel (deferred during Slice 5), the "LLM Token Usage
+Metrics" aggregation endpoint + charts flagged during Slice 6, `campaign-form-page.tsx`'s
+still-missing schedule/cancel UI (noted since Sprint 4), USD payments once Razorpay
+grants approval, or a new direction from the user now that both the MVP and billing are
+built out. Check `MASTER_TASK_TRACKER.md` for the current state of any of these before
+starting.
+
+## Resume commands
+
+```bash
+cd /Users/ravi/Projects/growixa
+git log --oneline -10
+cat docs/00-project-control/MASTER_TASK_TRACKER.md
+docker compose up -d
+docker compose logs api --tail 20
+```
+
+## Latest commit (superseded — see GRX-AI-001–011 section below)
+
+---
 
 ## Task worked on
 

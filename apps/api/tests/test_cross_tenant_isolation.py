@@ -25,6 +25,7 @@ from growixa_api.ai.models import AIGeneration, AIProviderConnection
 from growixa_api.app import create_app
 from growixa_api.audit.models import AuditLog
 from growixa_api.auth.encryption import encrypt_secret
+from growixa_api.billing.models import AccountCreditBalance, CouponCode, CouponRedemption
 from growixa_api.brand.models import BrandProfile
 from growixa_api.campaigns.models import Campaign, CampaignRecipient
 from growixa_api.company.models import CompanyProfile
@@ -1087,3 +1088,106 @@ async def test_admin_cannot_see_another_accounts_generation_history(
         assert list_response.json() == []
     finally:
         await _clear_ai_fixtures()
+
+
+# --- billing (Slice 7, GRX-BILL-002/GRX-SAAS-012) ---
+
+
+async def _clear_billing_fixtures(coupon_ids: list[uuid.UUID]) -> None:
+    async with async_session_factory() as session:
+        await session.execute(
+            delete(CouponRedemption).where(CouponRedemption.coupon_code_id.in_(coupon_ids))
+        )
+        await session.execute(delete(CouponCode).where(CouponCode.id.in_(coupon_ids)))
+        await session.execute(delete(AccountCreditBalance))
+        await session.commit()
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_admin_cannot_see_another_accounts_credit_balance_via_subscription_view(
+    user_factory: Callable[..., Awaitable[uuid.UUID]],
+    account_factory: Callable[..., Awaitable[uuid.UUID]],
+) -> None:
+    """GET /billing/subscription has no id parameter to guess -- it's always scoped to
+    the caller's own account via the access-token cookie. This proves that scoping
+    actually holds: crediting account B never surfaces in account A's own view."""
+    account_a = await account_factory()
+    account_b = await account_factory()
+    admin_a = await user_factory(
+        full_name="Account A Super Admin", role_name="Super Admin", account_id=account_a
+    )
+    async with async_session_factory() as session:
+        session.add(
+            AccountCreditBalance(account_id=account_b, credit_type="AI_RUNS", remaining_credits=500)
+        )
+        await session.commit()
+
+    transport = ASGITransport(app=create_app())
+    try:
+        async with AsyncClient(
+            transport=transport, base_url="http://test", cookies=_access_token_cookie(admin_a)
+        ) as client_a:
+            response = await client_a.get("/billing/subscription")
+
+        assert response.status_code == 200
+        balances = {
+            b["credit_type"]: b["remaining_credits"] for b in response.json()["credit_balances"]
+        }
+        assert balances.get("AI_RUNS", 0) == 0
+    finally:
+        await _clear_billing_fixtures(coupon_ids=[])
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_coupon_redemption_uniqueness_is_scoped_per_account_not_global(
+    user_factory: Callable[..., Awaitable[uuid.UUID]],
+    account_factory: Callable[..., Awaitable[uuid.UUID]],
+    platform_admin_factory: Callable[..., Awaitable[uuid.UUID]],
+) -> None:
+    """The (coupon_code_id, account_id) uniqueness constraint (THREAT_MODEL.md T65) must
+    not leak across accounts -- account B redeeming a code must never block account A
+    from redeeming the same code, same shape as test_same_email_is_allowed_across_two_
+    different_accounts above."""
+    account_a = await account_factory()
+    account_b = await account_factory()
+    admin_a = await user_factory(
+        full_name="Account A Super Admin", role_name="Super Admin", account_id=account_a
+    )
+    admin_b = await user_factory(
+        full_name="Account B Super Admin", role_name="Super Admin", account_id=account_b
+    )
+    platform_admin_id = await platform_admin_factory(role="platform.owner")
+
+    async with async_session_factory() as session:
+        coupon = CouponCode(
+            code="SHARED-ACROSS-ACCOUNTS",
+            discount_type="CREDIT_GRANT",
+            discount_value=10,
+            credit_type="AI_RUNS",
+            created_by_platform_admin_id=platform_admin_id,
+        )
+        session.add(coupon)
+        await session.commit()
+        coupon_id = coupon.id
+
+    transport = ASGITransport(app=create_app())
+    try:
+        async with AsyncClient(
+            transport=transport, base_url="http://test", cookies=_access_token_cookie(admin_a)
+        ) as client_a:
+            response_a = await client_a.post(
+                "/billing/redeem-coupon", json={"code": "SHARED-ACROSS-ACCOUNTS"}
+            )
+        async with AsyncClient(
+            transport=transport, base_url="http://test", cookies=_access_token_cookie(admin_b)
+        ) as client_b:
+            response_b = await client_b.post(
+                "/billing/redeem-coupon", json={"code": "SHARED-ACROSS-ACCOUNTS"}
+            )
+
+        assert response_a.status_code == 201
+        assert response_b.status_code == 201
+    finally:
+        await _clear_billing_fixtures(coupon_ids=[coupon_id])

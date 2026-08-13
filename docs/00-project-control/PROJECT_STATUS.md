@@ -2,8 +2,8 @@
 
 - Document ID: DOC-PROJECT-STATUS
 - Status: ACTIVE
-- Version: 1.46
-- Last updated: 2026-08-06
+- Version: 1.47
+- Last updated: 2026-08-14
 - Owner: Coding agent (on behalf of product owner)
 - Related documents: [MASTER_TASK_TRACKER](MASTER_TASK_TRACKER.md), [WORKTREE_TRACKER](WORKTREE_TRACKER.md), [DECISIONS](DECISIONS.md), [DEVELOPMENT_READINESS](DEVELOPMENT_READINESS.md), [FEATURE_STATUS_MATRIX](FEATURE_STATUS_MATRIX.md)
 
@@ -201,6 +201,45 @@ and a deliberate choice not to call the config-save endpoints via `curl` with fa
 credentials against the live environment, since that would have overwritten the user's
 real working Krutrim default with a keyless row.
 
+**Development Readiness Gate for Slice 7 (Sprint 8: Billing): PASS.** See
+[DEVELOPMENT_READINESS.md](DEVELOPMENT_READINESS.md) and
+[SPRINT_08_BILLING.md](../14-sprints/SPRINT_08_BILLING.md) — the first slice that moves
+real money. Resolved via [DEC-GRX-029](DECISIONS.md) (Razorpay, not Stripe, dual-currency)
+and [DEC-GRX-030](DECISIONS.md) (Subscriptions API as the billing primitive, non-expiring
+top-up credits, no per-batch FIFO). **All ten `GRX-BILL-*` tasks plus the three umbrella/
+platform-admin/coupon rows (`GRX-SAAS-004`/`006`/`012`) are `DONE`**: readiness-gate docs;
+`subscription_plans`/`account_subscriptions`/`account_credit_balances`/
+`account_credit_purchases`/`coupon_codes`/`coupon_redemptions` schema (every account gets
+a `Free`-tier subscription row automatically at registration) + `billing.manage`/
+`billing.view`/`platform.billing.manage` RBAC seed; a signature-verified, idempotent
+Razorpay webhook receiver (`POST /billing/razorpay`); real Razorpay Checkout for
+subscribe/upgrade and one-time top-up Orders; an atomic (`SELECT ... FOR UPDATE`-locked)
+quota evaluator for the two period-resetting metered dimensions (email sends, AI runs)
+that falls back to non-expiring credit balances before blocking with `402` — and never
+meters an account's own bring-your-own AI key; an in-process cancellation-downgrade
+ticker (same pattern as the campaigns/social schedulers, confirmed live via code reading
+to correct the architecture doc's draft claim that it ran worker-side); a platform-admin
+override panel (manual plan assignment incl. Enterprise activation, credit grants, status
+override, plan/credit-pack catalog CRUD) that bypasses Razorpay entirely; a coupon/
+discount engine (percentage/fixed-amount coupons scoped to top-ups only — verified
+against Razorpay's own docs that Checkout.js has no subscription-discount parameter —
+plus free-credit-grant coupons redeemed directly); the customer billing page (plan/usage/
+credits, upgrade, top-up, coupon redemption); a dedicated `test_billing_*.py` suite (23
+tests: webhook signature/replay, quota race-condition, BYO-vs-platform metering split,
+coupon validation) that found and fixed a real bug — coupon `applicable_plan_slugs`
+eligibility was silently dead code, never actually enforced by either call site; and
+env/settings docs (found and fixed a second real gap — `RAZORPAY_*` env vars were never
+in `.env.example` at all, and `BILLING_DOWNGRADE_POLL_INTERVAL_SECONDS` was never wired
+into `compose.yaml`'s passthrough despite having a real default in `config.py`).
+Live-verified end-to-end against real Razorpay Test Mode throughout: real `Plan`/
+`Subscription`/`Order` objects created via genuine API calls, a real Checkout.js modal
+opened in a browser with the correct (and correctly coupon-discounted) amount, real
+coupon redemption via both `curl` and the live UI with the credit balance visibly
+updating. USD payments remain blocked pending Razorpay's own account-level international-
+payments approval (an external, non-code blocker, not a bug) — INR-only for now, exactly
+as `BILLING_SYSTEM_ARCHITECTURE.md §8` already documented. **All seven MVP-scope product
+slices plus the Sprint 5 multi-tenancy retrofit are now complete.**
+
 ## Documents created so far
 
 | Document | Status |
@@ -348,11 +387,15 @@ real working Krutrim default with a keyless row.
    built after the user chose it over Slice 6 (AI Assistant) and explicitly scoped it to
    the customer-facing feature only, deferring platform-admin oversight.
 8. Sprint 7 (AI Assistant, product Slice 6) is now also fully `DONE` (`GRX-AI-001`–`011`)
-   — **all six MVP slices are complete.** Next up: the platform-admin social oversight
-   panel deferred under item 7, the "LLM Token Usage Metrics" aggregation endpoint +
-   charts flagged (not built) during Slice 6's frontend work, `campaign-form-page.tsx`'s
-   still-missing schedule/cancel UI gap noted under item 1 above, or a new direction the
-   user picks now that the MVP roadmap is built out.
+   — all six MVP slices were complete as of that session.
+9. Sprint 8 (Billing, product Slice 7) is now fully `DONE` (`GRX-BILL-001`–`010`, plus
+   `GRX-SAAS-006`/`012`) — **the MVP roadmap plus the first monetization slice are both
+   complete.** Next up: the platform-admin social oversight panel deferred under item 7,
+   the "LLM Token Usage Metrics" aggregation endpoint + charts flagged (not built) during
+   Slice 6's frontend work, `campaign-form-page.tsx`'s still-missing schedule/cancel UI
+   gap noted under item 1 above, USD payments once Razorpay grants international-payments
+   approval, or a new direction the user picks now that both the MVP and billing are
+   built out.
 
 ## Changelog
 

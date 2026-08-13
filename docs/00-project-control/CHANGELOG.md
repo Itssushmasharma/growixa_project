@@ -10,6 +10,83 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
+## 2026-08-14 — GRX-BILL-001–010, GRX-SAAS-006/012: Billing (Sprint 8 / Slice 7 complete — first monetization slice)
+
+- The first slice that moves real money. Readiness gate resolved via
+  [DEC-GRX-029](DECISIONS.md) (Razorpay, not Stripe, dual-currency USD/INR) and
+  [DEC-GRX-030](DECISIONS.md) (Subscriptions API as the billing primitive — Razorpay
+  owns the recurring charge, Growixa reacts to webhooks; non-expiring top-up credits,
+  no per-batch FIFO; percentage/fixed-amount/free-credit-grant coupon types).
+  `THREAT_MODEL.md` gained T60–T68. Sprint-file: `SPRINT_08_BILLING.md`.
+- New `subscription_plans`/`account_subscriptions`/`account_credit_balances`/
+  `account_credit_purchases`/`coupon_codes`/`coupon_redemptions` schema — every account
+  gets a `Free`-tier `account_subscriptions` row automatically at registration, never
+  zero. New `billing.manage`/`billing.view` customer RBAC and `platform.billing.manage`
+  platform RBAC (`platform.owner`/`platform.finance` only).
+- A signature-verified, idempotent Razorpay webhook receiver (`POST /billing/razorpay`,
+  same "verify before touching any table" shape as the Postmark webhook) handling
+  `subscription.activated`/`charged`/`halted`/`cancelled` and `payment.captured`;
+  idempotency for top-up credits enforced at the DB level (`account_credit_purchases.
+  razorpay_payment_id` unique constraint, not application locking).
+- Real Razorpay Checkout for subscribe/upgrade (Subscriptions API) and one-time top-up
+  purchases (Orders API) — `POST /billing/subscribe`/`/billing/topup`.
+- An atomic quota evaluator (`check_and_consume_quota`, `SELECT ... FOR UPDATE`-locked)
+  for the two period-resetting metered dimensions (email sends, AI runs): checks the
+  plan's monthly allowance first, falls back to the non-expiring credit balance for any
+  overage, then blocks with `402`. An account's own bring-your-own AI key is never
+  metered — only platform-provided generations are (`ai/services.py`'s `source ==
+  "PLATFORM_DEFAULT"` check).
+- An in-process cancellation-downgrade ticker (`GRX-BILL-006`, runs inside the `api`
+  service's FastAPI lifespan, same pattern as the campaigns/social schedulers —
+  confirmed by reading `campaigns/scheduler.py` directly, correcting the architecture
+  doc's draft claim that it ran worker-side) that downgrades a `CANCELED` subscription
+  to Free once its `current_period_end` passes.
+- A platform-admin override panel (`GRX-SAAS-006`): manual plan assignment including
+  Enterprise activation, free credit grants, billing-status override, and a genuine
+  create-not-just-edit plan/credit-pack catalog UI — all bypass Razorpay entirely,
+  gated `platform.billing.manage`. Widened `subscription_plans.slug`'s CHECK from a
+  fixed 4-value whitelist to a plain format check so a real new tier can be created
+  (self-serve checkout eligibility for a new tier is a deliberate, documented separate
+  follow-up, not wired automatically).
+- A coupon/discount engine (`GRX-SAAS-012`): percentage and fixed-amount coupons apply
+  to top-up purchases only — verified against Razorpay's own Checkout.js docs that
+  Subscription checkout has no discount parameter, correcting the architecture doc's
+  original draft claim — while free-credit-grant coupons redeem directly via `POST
+  /billing/redeem-coupon`, never touching Razorpay. Platform-admin CRUD at
+  `/platform/coupons` (create/toggle/redemption-analytics); customer redemption fields
+  on `/dashboard/billing`. Coupon-touching routes are rate-limited by source IP
+  (`THREAT_MODEL.md` T65), closing a gap where the threat model had already documented
+  this mitigation before it was actually built.
+- The customer billing page (`/dashboard/billing`, `GRX-BILL-007`): current plan card,
+  live quota usage bars, credit balances + coupon redemption, plan comparison grid with
+  real Razorpay Checkout.js, top-up purchase grid, currency toggle.
+- A dedicated `test_billing_{webhook,quota,coupons}.py` suite (`GRX-BILL-008`, 23 new
+  tests) plus a `test_cross_tenant_isolation.py` extension — **found and fixed a real
+  bug while writing the plan-eligibility test**: `_validate_coupon_for_redemption`'s
+  `applicable_plan_slugs` check was dead code, since both call sites unconditionally
+  passed `plan_slug=None`; fixed by resolving the account's real current plan before
+  validating. The route-protection-audit criterion needed no new test — the existing
+  generic `test_protected_routes_audit.py` already covers every new route automatically.
+- Settings/env docs (`GRX-BILL-009`) — **found and fixed a second real gap**:
+  `RAZORPAY_KEY_ID`/`_SECRET`/`_WEBHOOK_SECRET` had never been added to
+  `.env.example` despite existing since `GRX-BILL-002`/`003`, and
+  `BILLING_DOWNGRADE_POLL_INTERVAL_SECONDS` had a real default in `config.py` but was
+  never wired into `compose.yaml`'s passthrough, so setting it in `.env` silently did
+  nothing. New "Billing (Razorpay) setup" section in `LOCAL_DEVELOPMENT.md`.
+- Full verification (`GRX-BILL-010`): `ruff`/`mypy`/`alembic check` clean on `apps/api`
+  (306 passed, 8 skipped, up from 283 baseline, zero regressions);
+  `eslint`/`tsc`/`prettier`/`vitest`/`next build` clean on `apps/web` (204 passed).
+  Live-verified end-to-end against real Razorpay Test Mode throughout this whole slice:
+  real `Plan`/`Subscription`/`Order` objects via genuine API calls, a real Checkout.js
+  modal in a browser showing the correct (and correctly coupon-discounted) amount, real
+  coupon creation/redemption via both `curl` and the live UI. USD stays blocked pending
+  Razorpay's own account-level international-payments approval — an external, non-code
+  blocker already documented in `BILLING_SYSTEM_ARCHITECTURE.md §8`, not a bug.
+- **All seven MVP-scope product slices plus the Sprint 5 multi-tenancy retrofit are now
+  complete.**
+- Commits: `2b005ff`, `09fdcb7`, `cf978c1`, `16407a5`, `1400b4f`, `e44e7c4`, `befeef5`,
+  `b34657c`, `2378e70`, and this session's `GRX-BILL-008`/`009`/`010` closeout.
+
 ## 2026-08-13 — GRX-AI-001–011: AI Assistant (Sprint 7 / Slice 6 complete — all six MVP slices now built)
 
 - User chose Slice 6 (AI Assistant, the last unbuilt MVP slice) next, with three explicit

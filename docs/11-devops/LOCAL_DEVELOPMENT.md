@@ -241,6 +241,79 @@ both exist.
 No env vars, no container restart required for either step — changes take effect
 immediately on the next generation request.
 
+### Billing (Razorpay) setup (Slice 7, GRX-BILL-009)
+
+Real money/subscriptions ([DEC-GRX-029](../00-project-control/DECISIONS.md)) require a
+Razorpay account before checkout, top-ups, or the webhook receiver can work end to end.
+Without it configured, the app still runs: every account gets its automatic `Free`-tier
+`account_subscriptions` row at registration, the billing page displays normally, and
+`POST /billing/subscribe`/`/billing/topup` fail cleanly (`400`) rather than crashing —
+only real Razorpay Checkout sessions require the steps below.
+
+**1. Create a Razorpay account and get Test Mode API keys**
+
+- Sign up at [razorpay.com](https://razorpay.com/) and switch the dashboard to **Test
+  Mode** (top-left toggle) — never use Live Mode keys for local development.
+- Under Settings → API Keys, generate a Test Mode key pair
+  (`RAZORPAY_KEY_ID`/`RAZORPAY_KEY_SECRET`).
+- International (USD) payments require separate account-level approval from Razorpay
+  beyond basic signup — until that's granted, only INR plans/packs are purchasable (see
+  [BILLING_SYSTEM_ARCHITECTURE.md §8](../04-architecture/BILLING_SYSTEM_ARCHITECTURE.md)'s
+  open items; `price_usd` stays `NULL` on every seeded plan/pack until then).
+
+**2. Set the env vars and restart**
+
+Set `RAZORPAY_KEY_ID`/`RAZORPAY_KEY_SECRET` in the root `.env` (Compose passes them
+through to the `api` service — see `compose.yaml`), then restart:
+`podman compose restart api` / `docker compose restart api`.
+
+**3. Sync plans to Razorpay**
+
+Every paid `subscription_plans` row needs a matching Razorpay `Plan` object before a
+customer can subscribe (Free/Enterprise never get one — no fixed self-serve price for
+either). Run the idempotent sync CLI once your keys are set:
+
+```bash
+docker compose exec api python -m growixa_api.cli.sync_razorpay_plans
+```
+
+Re-run it any time a new paid plan tier is added via the platform-admin catalog. If you
+ever change a plan's price, don't edit the Razorpay Plan directly (Razorpay treats Plans
+as immutable, so existing subscribers' price never silently changes) — clear that plan's
+`razorpay_plan_id_usd`/`_inr` and re-run this command to mint a new one.
+
+**4. Register the webhook (needed for real checkout to actually credit an account)**
+
+`POST /billing/razorpay` is what activates a subscription or credits a top-up after
+payment — Razorpay calls it, so it needs a publicly reachable URL. Plain
+`localhost:8000` isn't reachable from Razorpay's servers; use a tunnel tool (e.g.
+`ngrok http 8000`) to test a real payment round-trip locally.
+
+- In the Razorpay dashboard, go to Settings → Webhooks → Add New Webhook.
+- Set the URL to your tunnel's HTTPS address plus `/billing/razorpay` (e.g.
+  `https://<your-tunnel>.ngrok.io/billing/razorpay`).
+- Subscribe to `subscription.activated`, `subscription.charged`, `subscription.halted`,
+  `subscription.cancelled`, and `payment.captured` (the events `process_razorpay_webhook`
+  actually handles — `billing/services.py`).
+- Copy the webhook secret Razorpay generates into `RAZORPAY_WEBHOOK_SECRET` and restart
+  the `api` service again. This secret authenticates inbound webhook calls
+  ([THREAT_MODEL.md](../08-security/THREAT_MODEL.md) T60) — it's separate from
+  `RAZORPAY_KEY_ID`/`_SECRET`, which authenticate outbound API calls.
+
+Without a webhook configured, `POST /billing/subscribe`/`/billing/topup` still create a
+real Checkout session, but the resulting payment never activates the subscription or
+credits the account (the row stays `PENDING` indefinitely) — a real limitation of
+testing locally without a tunnel, not a bug.
+
+**5. Optional: cancellation-downgrade ticker cadence**
+
+`BILLING_DOWNGRADE_POLL_INTERVAL_SECONDS` (default `3600`, i.e. hourly) controls how
+often the in-process ticker (`GRX-BILL-006`, runs inside the `api` service's FastAPI
+lifespan) checks for `CANCELED` subscriptions past their `current_period_end` and
+downgrades them to Free. The default is more than precise enough for a downgrade that
+only needs to land sometime within its period's final day; only override it for faster
+local iteration while testing the ticker itself.
+
 ## Backend commands
 
 ```bash

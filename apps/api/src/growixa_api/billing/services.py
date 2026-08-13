@@ -477,8 +477,10 @@ async def redeem_credit_grant_coupon(
     (`BILLING_SYSTEM_ARCHITECTURE.md` §7.3: "credit-grant coupons never touch Razorpay
     at all"). `PERCENTAGE`/`FIXED_AMOUNT` codes are rejected here -- they're applied at
     checkout instead (`create_topup_checkout` below)."""
+    current_subscription = await get_account_subscription_with_plan(session, account_id)
+    current_plan_slug = current_subscription[1].slug if current_subscription is not None else None
     coupon = await _validate_coupon_for_redemption(
-        session, code=code, account_id=account_id, plan_slug=None
+        session, code=code, account_id=account_id, plan_slug=current_plan_slug
     )
     if coupon.discount_type != "CREDIT_GRANT":
         raise CouponWrongTypeForActionError(
@@ -540,8 +542,12 @@ async def create_topup_checkout(
 
     coupon: CouponCode | None = None
     if coupon_code is not None:
+        current_subscription = await get_account_subscription_with_plan(session, account_id)
+        current_plan_slug = (
+            current_subscription[1].slug if current_subscription is not None else None
+        )
         coupon = await _validate_coupon_for_redemption(
-            session, code=coupon_code, account_id=account_id, plan_slug=None
+            session, code=coupon_code, account_id=account_id, plan_slug=current_plan_slug
         )
         if coupon.discount_type not in ("PERCENTAGE", "FIXED_AMOUNT"):
             raise CouponWrongTypeForActionError(
