@@ -13,11 +13,21 @@ class Base(DeclarativeBase):
 def _normalize_database_url(url: str) -> str:
     """
     Normalize DATABASE_URL to use asyncpg driver if no dialect is specified.
-    Render sets DATABASE_URL without a driver prefix (postgresql://...), which defaults to
-    psycopg2. This function ensures asyncpg is used explicitly.
+    Handles postgres://, postgresql://, surrounding quotes, and whitespace.
     """
+    if not url:
+        return url
+    url = url.strip().strip("'\"")
+    if url.startswith("psql "):
+        url = url[5:].strip().strip("'\"")
+    if url.startswith("postgres://"):
+        return "postgresql+asyncpg://" + url[len("postgres://"):]
     if url.startswith("postgresql://"):
-        return url.replace("postgresql://", "postgresql+asyncpg://", 1)
+        return "postgresql+asyncpg://" + url[len("postgresql://"):]
+    if url.startswith("postgresql+psycopg2://"):
+        return "postgresql+asyncpg://" + url[len("postgresql+psycopg2://"):]
+    if url.startswith("postgresql+psycopg://"):
+        return "postgresql+asyncpg://" + url[len("postgresql+psycopg://"):]
     return url
 
 

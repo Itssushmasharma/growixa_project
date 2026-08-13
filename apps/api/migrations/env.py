@@ -18,7 +18,7 @@ from growixa_api.campaigns import models as campaigns_models  # noqa: F401
 from growixa_api.company import models as company_models  # noqa: F401
 from growixa_api.config import get_settings
 from growixa_api.contacts import models as contacts_models  # noqa: F401
-from growixa_api.db import Base
+from growixa_api.db import Base, _normalize_database_url
 from growixa_api.email_delivery import models as email_delivery_models  # noqa: F401
 from growixa_api.integrations import models as integrations_models  # noqa: F401
 from growixa_api.permissions import models as permissions_models  # noqa: F401
@@ -39,7 +39,7 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-config.set_main_option("sqlalchemy.url", get_settings().database_url)
+config.set_main_option("sqlalchemy.url", _normalize_database_url(get_settings().database_url))
 
 target_metadata = Base.metadata
 

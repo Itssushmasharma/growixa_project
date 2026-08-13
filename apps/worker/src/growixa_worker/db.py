@@ -8,8 +8,27 @@ class Base(DeclarativeBase):
     pass
 
 
+def _normalize_database_url(url: str) -> str:
+    if not url:
+        return url
+    url = url.strip().strip("'\"")
+    if url.startswith("psql "):
+        url = url[5:].strip().strip("'\"")
+    if url.startswith("postgres://"):
+        return "postgresql+asyncpg://" + url[len("postgres://"):]
+    if url.startswith("postgresql://"):
+        return "postgresql+asyncpg://" + url[len("postgresql://"):]
+    if url.startswith("postgresql+psycopg2://"):
+        return "postgresql+asyncpg://" + url[len("postgresql+psycopg2://"):]
+    if url.startswith("postgresql+psycopg://"):
+        return "postgresql+asyncpg://" + url[len("postgresql+psycopg://"):]
+    return url
+
+
 def _make_session_factory() -> async_sessionmaker[AsyncSession]:
-    engine = create_async_engine(get_settings().database_url, pool_pre_ping=True)
+    engine = create_async_engine(
+        _normalize_database_url(get_settings().database_url), pool_pre_ping=True
+    )
     return async_sessionmaker(engine, expire_on_commit=False)
 
 
