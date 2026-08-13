@@ -3,120 +3,155 @@
 - Document ID: DOC-AGENT-HANDOFF
 - Status: ACTIVE (updated at the end of every work session)
 - Version: 1.0
-- Last updated: 2026-08-12
+- Last updated: 2026-08-13
 - Owner: Coding agent
 - Related documents: [MASTER_TASK_TRACKER](MASTER_TASK_TRACKER.md), [PROJECT_STATUS](PROJECT_STATUS.md), [CHANGELOG](CHANGELOG.md), [FEATURE_STATUS_MATRIX](FEATURE_STATUS_MATRIX.md)
 
 ## Task worked on
 
-`GRX-SOCIAL-001` through `GRX-SOCIAL-011` — Slice 5 (Social Publishing, Instagram
-Business only), chosen by the user over Slice 6 (AI Assistant) and explicitly scoped to
-the self-serve customer-facing feature only (platform-admin oversight deferred).
+`GRX-AI-001` through `GRX-AI-011` — Slice 6 (AI Assistant), the last unbuilt slice of
+the original 6-slice MVP roadmap. User's explicit scoping instructions: multi-provider
+(OpenAI/Azure OpenAI/Anthropic/Ollama, configurable), a platform-admin-set default plus
+per-account bring-your-own override, and code structured for a future multi-agent/
+LangGraph slice without adopting LangGraph itself yet.
 
 ## Work completed
 
-Full slice, backend through frontend through docs — see
-[CHANGELOG.md](CHANGELOG.md)'s 2026-08-12 entry for the complete narrative. Summary:
+Full slice, backend through frontend through docs — see [CHANGELOG.md](CHANGELOG.md)'s
+2026-08-13 entry for the complete narrative. Summary:
 
-- Readiness-gate docs (`DEC-GRX-023/024/025`, `THREAT_MODEL.md` T44–T51,
-  `SPRINT_06_SOCIAL_PUBLISHING.md`).
-- `social_connections`/`social_posts`/`social_post_media`/`social_post_versions` schema +
-  `social.manage`/`social.publish`/`social.view` RBAC seed.
-- Instagram OAuth connect flow, post CRUD + Supabase Storage single-JPEG media upload,
-  publish-now, and a full schedule/cancel/retry dispatch pipeline (API + worker),
-  mirroring the Slice 4 campaigns pipeline's patterns throughout.
-- Full backend+worker test suite (found and fixed two real schema bugs along the way).
-- Frontend: Instagram connect card, post composer, social-only content calendar, sidebar
-  wiring (19 new component tests, `next build` clean).
-- Env/settings docs, including a real `compose.yaml` env-passthrough gap found and fixed
-  during verification (Instagram/Supabase vars weren't being forwarded to the containers
-  at all).
-- One incidental fix found while running the final `mypy --strict` gate on
-  `apps/worker`: `publish_social_post.py`'s `from growixa_worker import instagram_client`
-  needed the `as instagram_client` explicit-reexport idiom so
-  `test_publish_social_post.py`'s `publish_social_post_module.instagram_client.*`
-  monkeypatching type-checks under `no_implicit_reexport` (implied by `strict = true`).
+- Readiness-gate docs (`DEC-GRX-026` multi-provider adapter + two-level config strategy,
+  `DEC-GRX-027` SSRF-safe `base_url` validation applied uniformly to platform-admin and
+  customer input, `THREAT_MODEL.md` T52–T59, `SPRINT_07_AI_ASSISTANT.md`).
+- `ai_generations`/`ai_provider_connections`/`platform_ai_provider_config` schema (3
+  tables, not the `DATA_MODEL.md` placeholder's speculative 4 — prompts are code-defined,
+  not a customer-editable DB table) + `ai.manage`/`ai.view` (customer) and
+  `platform.ai.manage` (platform, owner/admin-only) RBAC seed.
+- Provider adapters (`ai/providers/`) — raw `httpx`, no vendor SDKs, matching this
+  codebase's Postmark/Supabase/Instagram convention: `OpenAIProvider` (with an optional
+  SSRF-validated `base_url` override, added to reach the user's real Krutrim
+  OpenAI-compatible endpoint), `AzureOpenAIProvider`, `AnthropicProvider`,
+  `OllamaProvider`. All four raise on empty content after a "successful" response — a
+  real bug found live-testing `gpt-oss-120b` (a reasoning model that hit `max_tokens`
+  mid-chain-of-thought and returned `content: null`).
+- Account BYO provider connections and platform-admin default config — same
+  deactivate-then-insert convention as `email_provider_connections`, both SSRF-validated
+  at save time and again at call time (defeats DNS rebinding).
+- Six capability modules (`ai/capabilities/`: subject line, body copy, social caption,
+  rewrite, hashtags, posting time), each a `run(input, provider, model)` function with
+  prompt-building kept separate from the `provider.generate()` call — the concrete
+  answer to "structured for future multi-agent": a future LangGraph slice can wrap these
+  as tools/nodes without a rewrite (`DEC-GRX-012` still holds — MVP AI stays assistive
+  single-shot, not autonomous).
+- Generation endpoint + history: every call writes an `ai_generations` row
+  (`COMPLETE`/`FAILED`) and, on success, a `usage_records` row — fixing a real
+  pre-existing gap (that table has had a reader since Sprint 1 but zero writers).
+- Test Connection feature (added mid-slice, mirrors `GRX-EMAIL-012`'s SMTP precedent):
+  `POST /ai/connections/test` and `POST /platform/ai-config/test` build an adapter from
+  unsaved credentials and make one real minimal generation call, persisting nothing.
+- Full backend test suite: 283 passed, 8 skipped (up from 244) — SSRF validator
+  (private/loopback/link-local/metadata-IP + save-time/call-time/DNS-rebinding cases),
+  BYO-vs-platform-default resolution precedence, cross-tenant isolation extension, route-
+  protection audit.
+- Frontend: a reusable `AIGenerateButton` component wired into the campaign and post
+  composers (click-to-insert only, never auto-applied); a `/dashboard/ai` generation-
+  history page; a platform-admin AI-config page (`/platform/ai-config`, the real
+  platform-staff route group, light-themed to match the already-shipped panel rather
+  than the user's dark-themed mockup); an account-level "AI Model Provider" BYO card on
+  the Integrations page. 191 passed (up from 172 pre-slice), `next build` clean.
+- Settings/env docs: `.env.example` notes `ENCRYPTION_KEY` now also covers AI
+  credentials; `LOCAL_DEVELOPMENT.md` gets a new "AI Assistant setup" section — the only
+  integration in this codebase configured entirely via a DB-backed admin UI with zero
+  new env vars, by design (a platform admin can switch providers without a redeploy).
 
-**All eleven tasks are `DONE`.** Two evidence gaps remain per `DEC-GRX-011`: no live
-OAuth round-trip against a real Meta Developer App, and no live media upload/publish
-against real Supabase/Instagram accounts — both pending the user adding
-`INSTAGRAM_APP_ID`/`INSTAGRAM_APP_SECRET`/`SUPABASE_STORAGE_URL`/
-`SUPABASE_STORAGE_SERVICE_KEY` to `.env` themselves (asked, not yet confirmed done).
-Everything else was live-verified via `curl` against the real running Compose stack
-(login, permission grants, full post CRUD, publish/schedule validation, cross-tenant
-isolation).
+**All eleven tasks are `DONE`.** Live-verified end-to-end against a real Krutrim
+(OpenAI-compatible third-party) API key the user provided directly, routed through the
+platform-admin default config: real successful generations, real cost/token tracking,
+real `usage_records` writes. Anthropic was reachability/error-path-verified only (no real
+Anthropic key was available) — logged honestly per `DEC-GRX-011`, not blanket-marked
+DONE on partial evidence. One narrower gap remains: no interactive logged-in browser
+click-through of the two new provider-configuration forms' save/test-connection flows —
+same environment classifier block on typing a password into a login form encountered in
+`GRX-AI-009`/`GRX-SOCIAL-010`, plus a deliberate choice not to call `PUT`/`POST
+/platform/ai-config[/test]` via curl with fabricated credentials against the live
+environment (would have deactivated-and-replaced the user's real working Krutrim
+default with a keyless row).
 
 ## Files changed
 
-GRX-SOCIAL-001 through 009 (readiness docs, schema, OAuth, post CRUD/media, publish-now,
-schedule/cancel/retry, worker publish handler, backend+worker tests) were committed
-individually earlier in this session — see `git log` (`f3dabf5` through `0e11704`) and
-their own `MASTER_TASK_TRACKER.md` rows for per-task file lists. This final push
-(GRX-SOCIAL-010/011 + closeout) touched:
+GRX-AI-001 through 009 (readiness docs, schema, provider adapters, BYO connections,
+platform config, capability endpoints, history endpoint, backend tests, frontend
+generation UI) were committed individually earlier in this session — see `git log`
+(commits from `feat(api): ai schema + RBAC seed` through `feat(web): AI generation UI in
+composers + history page`) and their own `MASTER_TASK_TRACKER.md` rows for per-task file
+lists. The final two tasks (GRX-AI-010/011) touched:
 
-- `apps/web/src/app/(dashboard)/dashboard/social/` (new — `types.ts`, `social-page.tsx`,
-  `post-form-page.tsx`, `calendar-page.tsx` + `.module.css`/`.test.tsx` for each, plus
-  `page.tsx`/`new/page.tsx`/`[id]/page.tsx`/`calendar/page.tsx`)
-- `apps/web/src/app/(dashboard)/dashboard/integrations/{integrations-page.tsx,types.ts,integrations-page.test.tsx}` (extended: Instagram card)
-- `apps/web/src/app/(dashboard)/dashboard/{sidebar.tsx,page-title.tsx}` (extended)
-- `apps/web/package-lock.json` (resynced by `npm install`, no dependency version changes)
-- `.env.example`, `apps/api/.env.example`, `apps/worker/.env.example` (new Instagram/Supabase vars)
-- `compose.yaml` (env-passthrough fix for `api`/`worker` services — the real gap found this session)
-- `render.yaml` (commented entries)
-- `docs/11-devops/LOCAL_DEVELOPMENT.md` (new "Social Publishing (Instagram) setup" section)
-- `apps/worker/src/growixa_worker/publish_social_post.py` (mypy re-export fix)
+- `apps/api/src/growixa_api/ai/{api.py,providers/factory.py,services.py}` (extended:
+  Test Connection routes/logic)
+- `apps/api/src/growixa_api/platform_admin/api.py` (extended: `POST /platform/ai-config/test`)
+- `apps/api/tests/{test_ai_connections.py,test_platform_ai_config.py}` (extended: Test
+  Connection tests)
+- `apps/web/src/app/(platform)/platform/(protected)/ai-config/` (new — `types.ts`,
+  `ai-config-page.tsx` + `.module.css` + `.test.tsx`, `page.tsx`)
+- `apps/web/src/app/(platform)/platform/(protected)/sidebar.tsx` (extended: "AI & LLM Config" nav item)
+- `apps/web/src/app/(dashboard)/dashboard/integrations/{integrations-page.tsx,integrations-page.test.tsx,types.ts}` (extended: "AI Model Provider" card)
+- `apps/api/.env.example` (extended: `ENCRYPTION_KEY` note + AI Assistant comment block)
+- `docs/11-devops/LOCAL_DEVELOPMENT.md` (new "AI Assistant setup" section)
 - `docs/00-project-control/{MASTER_TASK_TRACKER,PROJECT_STATUS,CHANGELOG,AGENT_HANDOFF}.md`
 
 ## Commands executed
 
 ```bash
-# apps/api
+# apps/api (via uv on host, targeting growixa_test on the exposed Compose Postgres port)
+set -a && source .env.test && set +a
 uv run ruff check . && uv run ruff format --check . && uv run mypy .   # clean
-uv run pytest -q                                                        # 244 passed, 8 skipped
-docker compose exec api alembic check                                   # no drift
-
-# apps/worker
-uv run ruff check . && uv run ruff format --check . && uv run mypy .   # clean
-uv run pytest -q                                                        # 26 passed
+uv run pytest -q                                                        # 283 passed, 8 skipped
 
 # apps/web
-npx vitest run        # 172 passed (32 files)
-npx eslint ...         # clean (only expected next/image warnings)
+npx vitest run        # 191 passed (35 files)
+npx eslint ...         # clean (only pre-existing next/image warnings)
 npx tsc --noEmit       # clean
-npx prettier --check src   # clean
-npx next build         # clean, all social routes generated
+npx prettier --check src   # clean (after --write on 3 files)
+npx next build         # clean, /platform/ai-config route generated
 
 # Compose
-docker compose config -q                 # valid
-docker compose up -d api worker          # recreated with new env passthrough
-curl http://localhost:8000/health        # postgres/redis/rabbitmq all ok
+docker compose build api && docker compose up -d api      # picked up final backend edits
+docker compose restart web                                 # new route files needed a
+                                                             # restart -- the bind-mounted
+                                                             # dev server's file watcher
+                                                             # (Podman/virtiofs) didn't
+                                                             # pick them up live
+curl http://localhost:3000/platform/ai-config               # 200 after restart
+curl -b <session cookie> http://localhost:8000/platform/ai-config   # 200, real Krutrim config
 ```
 
 ## Test results
 
-- `apps/api`: 244 passed, 8 skipped (4 of the skips are OAuth tests needing real Redis,
-  separately verified by copying into the running `api` container).
-- `apps/worker`: 26 passed.
-- `apps/web`: 172 passed (19 new for Social), `next build` clean.
-- Live `curl` verification against Compose: login, `/auth/me` permission grants, full
-  `social/posts` CRUD, publish/schedule validation (400 with no media), unknown-media
-  404, OAuth authorize redirect shape (client_id correctly empty pending real creds).
+- `apps/api`: 283 passed, 8 skipped (up from 244 pre-slice).
+- `apps/web`: 191 passed (up from 172 pre-slice; 10 new this final push), `next build`
+  clean.
+- Live verification: `GET /platform/ai-config` via curl (throwaway platform-admin
+  account created for this session, same pattern as earlier `platform-smoketest*`
+  accounts — never touched the user's own `.env` `PLATFORM_ADMIN_*` credentials)
+  confirmed the real Krutrim config saved during `GRX-AI-005`/`006` matches the new
+  page's `PlatformAIProviderConfig` type exactly; confirmed the unauthenticated
+  `/platform/ai-config` route redirects to `/platform/login` in a live browser.
 
 ## Current state
 
-**Slice 5 (Social Publishing) is fully `DONE`** — all eleven `GRX-SOCIAL-*` tasks
-closed. Sprints/Slices 1–4 were already complete; Slice 5 is the second MVP slice built
-this phase after the unplanned Slice-4.5 multi-tenancy retrofit (`GRX-SAAS-*`). Slice 6
-(AI Assistant) remains completely unbuilt, and the platform-admin social oversight panel
-the user explicitly deferred is not started.
+**Slice 6 (AI Assistant) is fully `DONE`** — all eleven `GRX-AI-*` tasks closed. All six
+MVP slices (Foundation, Contacts, Email Campaigns, Scheduled Email, Social Publishing, AI
+Assistant) are now built, plus the unplanned Slice-4.5 multi-tenancy retrofit
+(`GRX-SAAS-*`). The platform-admin social oversight panel deferred during Slice 5 is
+still not started, and the "LLM Token Usage Metrics" charts from the user's AI-config
+mockup were explicitly flagged as needing a new backend aggregation endpoint, not built
+in this slice.
 
 ## Exact next task
 
-Whichever the user picks next: Slice 6 (AI Assistant — needs an `OQ` resolution for the
-AI provider; the user previously indicated "OpenAI (GPT)" in an earlier status-check
-round, not yet formally logged as a `DEC-GRX-*`), the platform-admin social oversight
-panel, or the pre-existing `campaign-form-page.tsx` schedule/cancel UI gap noted in
-earlier Sprint 4 handoff entries below.
+Whichever the user picks next: the deferred platform-admin social oversight panel, the
+"LLM Token Usage Metrics" aggregation endpoint + charts flagged above, or a new
+direction entirely now that the MVP's six slices are complete.
 
 ## Resume commands
 
@@ -130,19 +165,21 @@ docker compose logs api --tail 20
 
 ## Latest commit
 
-Pending — this session's final commit (GRX-SOCIAL-010/011 + closeout) has not yet been
-created as of this handoff entry being written; see `git status` for the exact diff.
+Pending — this session's final commit (Slice 6 closeout, this doc update) has not yet
+been created as of this handoff entry being written; see `git status` for the exact
+diff.
 
 ## Decisions made this session
 
-No new `DEC-GRX-*` decisions were needed — Slice 5's readiness gate (`GRX-SOCIAL-001`,
-committed earlier) already resolved every open question (`OQ-003`, `OQ-005`) up front.
-One judgment call worth recording: when typing the local smoke-test admin account's
-password into the login form was blocked by this environment's action classifier (no
-carve-out for self-created local dev accounts), the agent asked the user via
-`AskUserQuestion` rather than trying to work around it (e.g. injecting a session via
-JavaScript) — the user chose to accept `curl`-based backend verification + the passing
-frontend test/build suite in place of an interactive browser click-through.
+`DEC-GRX-026`/`DEC-GRX-027` (multi-provider adapter + two-level config strategy; SSRF-
+safe `base_url` validation) were logged during the readiness-gate task (`GRX-AI-001`),
+resolving `OQ-004`. No further architectural decisions were needed for the two closing
+tasks. One judgment call worth recording: after saving that `PUT /platform/ai-config`
+always deactivates-and-inserts a fresh row rather than patching in place, the
+platform-admin config form's API-key field was deliberately made non-optional on every
+save (except for `OLLAMA`) rather than offering a "leave blank to keep the current key"
+affordance, which would have silently blanked the stored credential on the next save —
+a UX correction made before it shipped, not a bug found after the fact.
 
 ---
 

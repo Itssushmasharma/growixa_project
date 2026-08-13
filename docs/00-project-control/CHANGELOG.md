@@ -10,6 +10,100 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
+## 2026-08-13 — GRX-AI-001–011: AI Assistant (Sprint 7 / Slice 6 complete — all six MVP slices now built)
+
+- User chose Slice 6 (AI Assistant, the last unbuilt MVP slice) next, with three explicit
+  scoping instructions: configurable multi-provider support (OpenAI, Azure OpenAI,
+  Anthropic, Ollama), a platform-admin-configured default plus a per-account
+  bring-your-own override, and code structured so a future slice can build multiple
+  agents on top of it — using LangGraph later if needed, not now.
+- Readiness gate: [DEC-GRX-026](DECISIONS.md) resolves [OQ-004](OPEN_QUESTIONS.md) (the
+  multi-provider adapter + two-level config strategy), [DEC-GRX-027](DECISIONS.md)
+  (SSRF-safe validation for any custom `base_url`, applied uniformly to platform-admin
+  and customer-supplied values, re-checked at call time to defeat DNS rebinding — covers
+  the `169.254.169.254` cloud metadata address via the link-local range).
+  `THREAT_MODEL.md` gained T52–T59. Sprint-file: `SPRINT_07_AI_ASSISTANT.md`, the
+  seventh sprint file, implementing product Slice 6.
+- New `ai_generations`/`ai_provider_connections`/`platform_ai_provider_config` schema —
+  3 tables, not the `DATA_MODEL.md` placeholder's speculative 4: prompts are code-defined
+  strings (`ai/prompts/templates.py`), not a customer-editable DB table, deliberately
+  avoiding a repeat of the `usage_records` "built Sprint 1, zero writers" mistake. New
+  `ai.manage`/`ai.view` customer RBAC (mirrors `social.manage`/`social.view`; BYO
+  connection *management* reuses the existing Super-Admin-only `integrations.manage`)
+  and `platform.ai.manage` platform RBAC (owner/admin only — this gates an encrypted
+  credential, a higher trust bar than `platform.usage.manage`).
+- Four provider adapters (`ai/providers/`), raw `httpx`, zero vendor SDKs — matching this
+  codebase's existing Postmark/Supabase/Instagram convention: `OpenAIProvider` (with an
+  optional SSRF-validated `base_url` override, added specifically to reach the user's
+  real Krutrim OpenAI-compatible endpoint), `AzureOpenAIProvider`, `AnthropicProvider`,
+  `OllamaProvider`. **Found and fixed a real bug live-testing**: a reasoning model
+  (`gpt-oss-120b`) hit `max_tokens` mid-chain-of-thought and returned `content: null`
+  with a "successful" HTTP response — all four adapters now raise `AIProviderError` on
+  empty content after success instead of silently returning nothing, and every
+  capability's token budget was raised accordingly.
+- Account BYO provider connections and platform-admin default config — same
+  deactivate-then-insert convention as `email_provider_connections`/
+  `social_connections`, SSRF-validated at save time and re-validated at call time.
+  Resolution order: the account's own active connection first, else the platform
+  default, else a clean `AINotConfiguredError` (409) — never a 500 or a silent
+  hardcoded fallback.
+- Six capability modules (`ai/capabilities/`: subject line, body copy, social caption,
+  rewrite, hashtags, posting time), each exporting one `run(input, provider, model)`
+  function with prompt-string construction kept separate from the `provider.generate()`
+  call — the concrete, working answer to "structured for future multiple agents": a
+  future LangGraph slice can wrap these as tools/nodes without a rewrite, without
+  adopting LangGraph now ([DEC-GRX-012](DECISIONS.md) still holds — MVP AI stays
+  assistive single-shot generate/rewrite/suggest, not autonomous).
+- `POST /ai/generate/{capability}` writes an `ai_generations` row
+  (`COMPLETE`/`FAILED`) every call and, on success, a `usage_records` row too —
+  **fixing a real pre-existing gap**: that table has had a reader (`platform_admin`)
+  since Sprint 1 but zero writers until this slice. `GET /ai/generations` (history,
+  filterable by capability/linked entity) gated `ai.view`.
+- Test Connection feature (`POST /ai/connections/test`, `POST /platform/ai-config/test`),
+  added mid-slice at the user's request while live-testing a real API key: builds an
+  adapter from unsaved credentials and makes one real minimal generation call,
+  persisting nothing — mirrors `GRX-EMAIL-012`'s SMTP test-connection precedent exactly.
+- Full backend test suite (283 passed, 8 skipped, up from 244): SSRF validator
+  (private/loopback/link-local/metadata-IP rejection, save-time + call-time +
+  DNS-rebinding re-check), BYO-vs-platform-default resolution precedence, cross-tenant
+  isolation extension, route-protection audit re-run clean.
+- Frontend: a reusable `AIGenerateButton` component (one component, not duplicated per
+  page) wired into `campaign-form-page.tsx` (subject, body copy) and
+  `post-form-page.tsx` (caption, hashtags) — click-to-insert only, AI output is never
+  auto-applied, matching `DEC-GRX-006`'s mandatory-human-approval rule structurally (AI
+  output can only ever land in a draft; the existing `campaigns.send`/`social.publish`
+  permissions still gate the actual send). New `/dashboard/ai` generation-history page.
+  A platform-admin AI-config page (`/platform/ai-config`, the real platform-staff route
+  group — corrected mid-session after initially mis-planning it under the unrelated
+  `(admin)` shell) follows the platform panel's already-shipped light theme rather than
+  the user's dark-themed mockup, for visual consistency, while keeping the mockup's
+  functional layout. An account-level "AI Model Provider" bring-your-own card on the
+  Integrations page mirrors the existing Instagram card pattern. 191 passed (up from
+  172), `next build` clean.
+- Settings/env docs: `.env.example`'s `ENCRYPTION_KEY` note now covers AI credentials
+  too; `LOCAL_DEVELOPMENT.md` gains an "AI Assistant setup" section — deliberately the
+  only integration in this codebase with **zero new env vars**, since the provider,
+  key, and model are all DB-configured via the admin UI at runtime, not `.env`, so a
+  platform admin can switch providers without a redeploy.
+- Live-verified end-to-end against a real Krutrim (OpenAI-compatible third-party) API
+  key the user provided directly, routed through the platform-admin default config:
+  real successful generations, real cost/token tracking, real `usage_records` writes,
+  and (deliberately fake credentials) the Test Connection routes' correct 502
+  error-surfacing without persisting anything. Anthropic was reachability/
+  error-path-verified only (no real Anthropic key available) — logged honestly per
+  [DEC-GRX-011](DECISIONS.md) rather than blanket-marked `DONE`. Did not complete an
+  interactive logged-in browser click-through of the two provider-configuration forms'
+  save/test-connection flows: the same action-classifier block on typing a password
+  into a login form encountered in Slice 5 recurred, and — separately — saving the
+  live platform config via `curl` with fabricated credentials was deliberately avoided,
+  since it would have overwritten the user's real working Krutrim default with a
+  keyless row.
+- **All six MVP slices (Foundation, Contacts, Email Campaigns, Scheduled Email, Social
+  Publishing, AI Assistant) are now built.** Remaining known gaps: the platform-admin
+  social oversight panel deferred during Slice 5, and the "LLM Token Usage Metrics"
+  charts from the user's AI-config mockup (would need a new backend aggregation
+  endpoint, not built this slice).
+
 ## 2026-08-12 — GRX-SOCIAL-001–011: Social Publishing — Instagram Business (Sprint 6 / Slice 5 complete)
 
 - User chose Slice 5 (Social Publishing) over Slice 6 (AI Assistant) as the next MVP

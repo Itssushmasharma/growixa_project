@@ -159,6 +159,48 @@ real Supabase bucket / Instagram account, since the user has not yet added
 CRUD, validation, scheduling, cancellation, RBAC gating, cross-tenant isolation — was
 live-verified via `curl` against the real running Compose stack.
 
+**Development Readiness Gate for Slice 6 (Sprint 7: AI Assistant): PASS.** See
+[DEVELOPMENT_READINESS.md](DEVELOPMENT_READINESS.md) and
+[SPRINT_07_AI_ASSISTANT.md](../14-sprints/SPRINT_07_AI_ASSISTANT.md) — the last unbuilt
+slice of the original 6-slice MVP roadmap. User's explicit scoping: multi-provider
+(OpenAI/Azure OpenAI/Anthropic/Ollama), a platform-admin-configured default plus a
+per-account bring-your-own override, and code structured for a future multi-agent slice
+without adopting LangGraph yet ([DEC-GRX-012](DECISIONS.md) still holds — MVP AI stays
+assistive single-shot). Resolved [OQ-004](OPEN_QUESTIONS.md) via
+[DEC-GRX-026](DECISIONS.md) (multi-provider adapter + two-level config) and
+[DEC-GRX-027](DECISIONS.md) (SSRF-safe `base_url` validation, applied uniformly to
+platform-admin and customer input, re-checked at call time to defeat DNS rebinding).
+**All eleven Slice 6 tasks (`GRX-AI-001`–`011`) are `DONE`**: readiness-gate docs;
+`ai_generations`/`ai_provider_connections`/`platform_ai_provider_config` schema (3
+tables, not the `DATA_MODEL.md` placeholder's speculative 4 — prompts are code-defined,
+not a customer-editable DB table) + `ai.manage`/`ai.view`/`platform.ai.manage` RBAC seed;
+four `httpx`-only provider adapters (OpenAI, Azure OpenAI, Anthropic, Ollama); account
+BYO connections + platform-admin default config, both SSRF-validated at save and call
+time; six capability modules (`ai/capabilities/`) each a `run(input, provider, model)`
+function with prompt-building kept separate from the provider call, the concrete answer
+to "structured for future multi-agent"; the generation endpoint (writing an
+`ai_generations` row plus, on success, a `usage_records` row — fixing a real
+pre-existing gap, that table had a reader since Sprint 1 but zero writers) and history
+endpoint; a Test Connection feature (mirrors `GRX-EMAIL-012`'s SMTP precedent) added
+mid-slice at the user's request while live-testing; a full backend test suite (283
+passed, up from 244 — found and fixed a real empty-content-after-success bug in all four
+provider adapters, discovered live-testing a reasoning model that exhausted its token
+budget mid-chain-of-thought); the frontend (a reusable `AIGenerateButton` wired into the
+campaign/post composers, a generation-history page, a platform-admin AI-config page, and
+an account-level BYO provider card — 191 passed, up from 172); and env/settings docs
+(this is the only integration in the codebase configured entirely via a DB-backed admin
+UI with zero new env vars, by design). Live-verified end-to-end against a real Krutrim
+(OpenAI-compatible third-party) API key the user provided directly — real successful
+generations, real cost/token tracking, real `usage_records` writes — routed through the
+platform-admin default config. Anthropic was reachability/error-path-verified only (no
+real Anthropic key available), logged honestly per [DEC-GRX-011](DECISIONS.md) rather
+than blanket-marked `DONE` on partial evidence. One narrower gap remains: no interactive
+logged-in browser click-through of the provider-configuration forms' save/test-connection
+flows (same action-classifier block on typing a login password encountered in Slice 5),
+and a deliberate choice not to call the config-save endpoints via `curl` with fabricated
+credentials against the live environment, since that would have overwritten the user's
+real working Krutrim default with a keyless row.
+
 ## Documents created so far
 
 | Document | Status |
@@ -302,13 +344,15 @@ live-verified via `curl` against the real running Compose stack.
 5. Do not resolve OQ-003/004/006/007/009/012 early — they don't block Slice 3 (explicit
    instruction; OQ-002 is the one exception, resolved because Slice 3 genuinely needed it).
 6. Do not start more than one Sprint 1 task concurrently (explicit instruction).
-7. Sprint 6 (Social Publishing, product Slice 5) is now fully `DONE`
-   (`GRX-SOCIAL-001`–`011`), built directly after the user chose it over Slice 6 (AI
-   Assistant) and explicitly scoped it to the customer-facing feature only, deferring
-   platform-admin oversight. Next up: either Slice 6 (AI Assistant, still unbuilt), the
-   platform-admin social oversight panel the user deferred, or `campaign-form-page.tsx`'s
-   still-missing schedule/cancel UI gap noted under item 1 above — whichever the user
-   picks next.
+7. Sprint 6 (Social Publishing, product Slice 5) is fully `DONE` (`GRX-SOCIAL-001`–`011`),
+   built after the user chose it over Slice 6 (AI Assistant) and explicitly scoped it to
+   the customer-facing feature only, deferring platform-admin oversight.
+8. Sprint 7 (AI Assistant, product Slice 6) is now also fully `DONE` (`GRX-AI-001`–`011`)
+   — **all six MVP slices are complete.** Next up: the platform-admin social oversight
+   panel deferred under item 7, the "LLM Token Usage Metrics" aggregation endpoint +
+   charts flagged (not built) during Slice 6's frontend work, `campaign-form-page.tsx`'s
+   still-missing schedule/cancel UI gap noted under item 1 above, or a new direction the
+   user picks now that the MVP roadmap is built out.
 
 ## Changelog
 
