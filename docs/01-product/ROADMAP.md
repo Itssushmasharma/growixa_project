@@ -64,6 +64,12 @@ billing, platform admin panel), not a feature in the Slice 1–6 sense. Full pha
 [SPRINT_05_CUSTOMER_ACCOUNT_PLATFORM.md](../14-sprints/SPRINT_05_CUSTOMER_ACCOUNT_PLATFORM.md),
 design source: [FUTURE_SCOPE_PLATFORM_ADMIN.md](FUTURE_SCOPE_PLATFORM_ADMIN.md).
 
+**Outstanding piece of this sprint's scope**: `GRX-FEAT-029` — the marketing/`app.*`/
+`platform.*` subdomain split (`DEC-GRX-031`). The app today still separates customer and
+platform-admin audiences by path (`/dashboard/*`, `/platform/*`) on one domain, not by
+subdomain. Blocked on confirming the production domain and post-login landing behavior
+(`OQ-SUB-001`/`003`) before it can move to `READY`.
+
 ## Explicitly deferred indefinitely (not on this roadmap)
 
 White-label platform, enterprise workflow builder, multi-region deployment — no trigger

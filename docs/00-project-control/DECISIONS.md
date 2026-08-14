@@ -1035,5 +1035,53 @@ Decision statuses: `PROPOSED`, `UNDER_REVIEW`, `APPROVED`, `REJECTED`, `SUPERSED
 
 ---
 
+## DEC-GRX-031: Multi-domain subdomain architecture (feature captured, not yet implemented)
+
+- Status: PARTIALLY APPROVED — architecture locked, three deployment specifics still open
+- Date: 2026-08-14
+- Context: Growixa runs today as one Next.js app on a single domain
+  (`growixa.netlify.app`), with `(dashboard)`/`(platform)` route groups separating
+  customer and platform-admin audiences by path (`/dashboard/*`, `/platform/*`), not by
+  domain. This was workable for the MVP build but doesn't match `DEC-GRX-017`'s
+  self-service SaaS positioning — a real product launch needs a clean marketing site
+  separated from the logged-in product, and clean URLs (`/campaigns`, not
+  `/dashboard/campaigns`). Captured here as a locked product/architecture decision, per
+  product-owner review of the standalone plan; implementation is separately tracked, not
+  bundled into this decision.
+- Decisions locked:
+  1. Three subdomains, one single deployment (no separate apps/servers, routing handled
+     by `middleware.ts` reading the `Host` header): `<domain>` → marketing site only
+     (public); `app.<domain>` → the entire customer product (auth pages + every
+     feature page, not just "the dashboard"); `platform.<domain>` → platform admin only.
+  2. Route group rename in code: `(dashboard)` → `(customer)`.
+  3. Clean URL paths on `app.*` — the `/dashboard` prefix is dropped (`/campaigns`, not
+     `/dashboard/campaigns`).
+  4. Both `app.*` and `platform.*` get their own home/overview page at `/` after login,
+     rather than redirecting straight into a feature page.
+- Still open (blocks implementation, not just detail-level): `OQ-SUB-001` (is the
+  production domain actually `growixa.com`, or something else — not yet confirmed by the
+  product owner), `OQ-SUB-002` (hosting platform for the domain aliases — now
+  **effectively answered** as Netlify, since `GRX-SAAS-013`/this same session confirmed
+  Hugging Face + Netlify, not Render, is the real deployed stack; the alias-configuration
+  detail in the plan still needs updating to match), `OQ-SUB-003` (does `app.<domain>/`
+  show a real overview page after login, or redirect straight to `/campaigns` — determines
+  whether a new home-overview page needs building as part of this work, or can reuse the
+  one `GRX-SAAS-013`'s dashboards work is about to build for `GRX-FEAT-023`/`028`).
+- Consequences:
+  1. `docs/02-features/FEATURE_CATALOG.md` gains `GRX-FEAT-029 — Multi-Domain Subdomain
+     Routing`, status `NOT_STARTED` — captured as a real, scoped feature, not
+     implemented by this decision.
+  2. `docs/01-product/ROADMAP.md`'s "Sprint 5 — Customer Account Platform Foundation"
+     section gains a note that this piece of Sprint 5's self-service launch scope
+     remains outstanding.
+  3. Not started: no `middleware.ts`, no route-group rename, no DNS/hosting alias
+     configuration. `OQ-SUB-001`/`002`/`003` must be resolved before any of that begins
+     (per `AGENT_EXECUTION_RULES.md`'s "no task below READY may be started").
+- Related tasks: none yet in `MASTER_TASK_TRACKER.md` — create a `GRX-SAAS-*` row once
+  `OQ-SUB-001`/`003` are answered and this becomes `READY`.
+- Supersedes: none.
+
+---
+
 *Decisions DEC-GRX-026 onward will be logged as they are made — e.g., resolutions to
 OQ-004, OQ-006 through OQ-011 in [OPEN_QUESTIONS.md](OPEN_QUESTIONS.md).*
