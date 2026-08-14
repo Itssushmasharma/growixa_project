@@ -24,6 +24,20 @@ from growixa_api.billing.services import list_plan_catalog as list_plans_service
 from growixa_api.campaigns.models import Campaign
 from growixa_api.contacts.services import ContactNotFoundError, DuplicateEmailError
 from growixa_api.db import get_session
+from growixa_api.integrations.smtp_transport import EmailSendError
+from growixa_api.notifications.schemas import (
+    PlatformEmailProviderConfigIn,
+    PlatformEmailProviderConfigOut,
+)
+from growixa_api.notifications.services import (
+    get_platform_config as get_platform_email_config,
+)
+from growixa_api.notifications.services import (
+    set_platform_config as set_platform_email_config,
+)
+from growixa_api.notifications.services import (
+    test_platform_config_connection as test_platform_email_config,
+)
 from growixa_api.platform_admin.models import SupportSession
 from growixa_api.platform_admin.schemas import (
     AccountDetailOut,
@@ -118,6 +132,7 @@ usage_router = APIRouter(prefix="/platform", tags=["platform_admin"])
 support_session_router = APIRouter(prefix="/platform", tags=["platform_admin"])
 ai_config_router = APIRouter(prefix="/platform", tags=["platform_admin"])
 billing_router = APIRouter(prefix="/platform", tags=["platform_admin"])
+email_config_router = APIRouter(prefix="/platform", tags=["platform_admin"])
 
 _require_manage = require_platform_permission("platform.accounts.manage")
 _require_usage_manage = require_platform_permission("platform.usage.manage")
@@ -125,6 +140,7 @@ _require_support_session_create = require_platform_permission("platform.support_
 _require_support_session_write = require_platform_permission("platform.support_session.write")
 _require_ai_manage = require_platform_permission("platform.ai.manage")
 _require_billing_manage = require_platform_permission("platform.billing.manage")
+_require_email_manage = require_platform_permission("platform.email.manage")
 
 
 def _to_list_item(account: Account, user_count: int) -> AccountListItemOut:
@@ -760,3 +776,38 @@ async def set_coupon_active_route(
     except CouponNotFoundError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Coupon not found") from exc
     return CouponOut.model_validate(coupon)
+
+
+@email_config_router.get("/email-config", response_model=PlatformEmailProviderConfigOut | None)
+async def get_platform_email_config_route(
+    _platform_admin_id: uuid.UUID = Depends(_require_email_manage),
+    session: AsyncSession = Depends(get_session),
+) -> PlatformEmailProviderConfigOut | None:
+    config = await get_platform_email_config(session)
+    if config is None:
+        return None
+    return PlatformEmailProviderConfigOut.model_validate(config)
+
+
+@email_config_router.put("/email-config", response_model=PlatformEmailProviderConfigOut)
+async def set_platform_email_config_route(
+    payload: PlatformEmailProviderConfigIn,
+    platform_admin_id: uuid.UUID = Depends(_require_email_manage),
+    session: AsyncSession = Depends(get_session),
+) -> PlatformEmailProviderConfigOut:
+    config = await set_platform_email_config(session, payload, platform_admin_id)
+    await session.commit()
+    return PlatformEmailProviderConfigOut.model_validate(config)
+
+
+@email_config_router.post("/email-config/test", status_code=status.HTTP_204_NO_CONTENT)
+async def test_platform_email_config_route(
+    payload: PlatformEmailProviderConfigIn,
+    _platform_admin_id: uuid.UUID = Depends(_require_email_manage),
+) -> None:
+    """Connects and authenticates with the given credentials before saving -- nothing
+    is persisted, no message is sent (same convention as /platform/ai-config/test)."""
+    try:
+        await test_platform_email_config(payload)
+    except EmailSendError as exc:
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, f"Connection test failed: {exc}") from exc

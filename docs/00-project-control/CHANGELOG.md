@@ -10,6 +10,32 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
+## 2026-08-14 — GRX-SAAS-013: Platform-admin email provider config (ad hoc, production incident response)
+
+- Driven by a live production incident: the `.env`-only `PLATFORM_SMTP_*` relay
+  (`s81.gocheapweb.com:465`) was unreachable from the deployed environment
+  (`SMTPConnectTimeoutError`), and a separate bug (`PLATFORM_SMTP_HOST` trailing
+  newline) crashed registration with an unhandled `500` instead of degrading gracefully.
+  Both root-caused via real HF Space container logs.
+- Fixed the crash: `Settings` now strips whitespace from every string env var
+  (`config.py`); `smtp_transport.py`'s except clause widened to also catch `ValueError`.
+  Fixed the ~67s registration hang: `register_route` now fires
+  `send_verification_email` via `BackgroundTasks` instead of `await`ing it inline, with
+  an explicit `SEND_TIMEOUT_SECONDS=20` on the `aiosmtplib.send()` call — registration
+  latency went from ~67s to 0.143s.
+- New `platform_email_provider_config` table (migration `a1b2c3d4e5f6`) and
+  `notifications/` module: lets a platform admin configure/rotate the platform's default
+  outbound SMTP credentials without a redeploy, resolved before falling back to the
+  legacy `.env` settings. New `platform.email.manage` platform RBAC
+  (`platform.owner`/`platform.admin`). Mirrors `platform_ai_provider_config`'s pattern;
+  reuses `email_provider_connections`' `POSTMARK`/`CUSTOM_SMTP` vocabulary and the
+  existing `integrations/smtp_transport.py` send/test functions directly — no new
+  Postmark HTTP-API adapter. New `GET/PUT /platform/email-config`,
+  `POST /platform/email-config/test` routes; new `/platform/email-config` admin UI page.
+  `THREAT_MODEL.md` gained T69–T70.
+- Deleted `render.yaml`/`docs/11-devops/RENDER_DEPLOYMENT.md` — the actual deployed
+  stack is Hugging Face (API+worker) + Netlify (web), not Render.
+
 ## 2026-08-14 — GRX-BILL-001–010, GRX-SAAS-006/012: Billing (Sprint 8 / Slice 7 complete — first monetization slice)
 
 - The first slice that moves real money. Readiness gate resolved via

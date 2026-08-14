@@ -9,6 +9,145 @@
 
 ## Task worked on
 
+`GRX-SAAS-013` — an ad hoc, production-incident-driven addition, not from any
+pre-existing sprint doc: platform-admin email provider config. Session started with the
+app going live in production for the first time (Hugging Face Space `iitdeveloper/growixa`
++ Netlify `growixa.netlify.app` — not Render, despite `render.yaml` existing; that file
+and `RENDER_DEPLOYMENT.md` were deleted this session), then moved into live debugging a
+real registration bug the user hit while testing end-to-end via the UI.
+
+## Work completed
+
+1. **Fixed a real production crash**: `PLATFORM_SMTP_HOST` carried a trailing newline
+   (likely from HF's Space secrets UI); `aiosmtplib`'s own config validation correctly
+   rejected it (`ValueError: hostname param contains prohibited newline characters`), but
+   `smtp_transport.py`'s except clause only caught `SMTPException`/`OSError`, so it
+   crashed registration with an unhandled `500`. Fixed via a `Settings`-wide
+   `field_validator("*", mode="before")` that strips whitespace from every string env var
+   (`config.py`), plus widening the except clause to also catch `ValueError`.
+2. **Fixed a real ~67s registration hang**: even after the crash fix, `register_route`
+   still `await`ed `send_verification_email` inline with no explicit `aiosmtplib.send()`
+   timeout (inheriting its 60s default). Fixed via `BackgroundTasks.add_task(...)` plus an
+   explicit `SEND_TIMEOUT_SECONDS=20` — registration latency went from ~67s to 0.143s.
+3. **Diagnosed a real, code-unfixable network issue**: `SMTPConnectTimeoutError: Timed out
+   connecting to s81.gocheapweb.com on port 465` — the platform's `.env`-configured SMTP
+   relay is genuinely unreachable from HF's network (shared-hosting relay's anti-abuse/
+   greylisting against unfamiliar cloud IPs, most likely). This motivated the actual new
+   feature below.
+4. **Built `platform_email_provider_config`** (new table, migration `a1b2c3d4e5f6`; new
+   `notifications/` module: `models`/`repositories`/`schemas`/`services`/rewritten
+   `email.py`; new `platform_admin/api.py` routes; new `/platform/email-config` admin UI
+   page) — lets a platform admin configure/rotate the platform default SMTP credentials
+   without a redeploy, resolved before falling back to the legacy `.env` settings. New
+   `platform.email.manage` RBAC (`platform.owner`/`platform.admin`). Design went through
+   three rounds of user pushback before landing: dropped a planned new Postmark
+   HTTP-API adapter entirely (Postmark is used purely as an SMTP relay, reusing
+   `integrations/smtp_transport.py` directly) and kept a separate table from
+   `email_provider_connections` only because it's technically necessary (that table's
+   `(account_id, provider) WHERE is_active` index wouldn't actually enforce
+   "one active platform config" with a nullable `account_id`, since Postgres treats
+   `NULL` as always-distinct).
+5. Docs: `RBAC.md` (`platform.email.manage` section), `DATA_MODEL.md`/
+   `DATABASE_SCHEMA.md` (`platform_email_provider_config` entity), `THREAT_MODEL.md`
+   (T69–T70), `MASTER_TASK_TRACKER.md` (`GRX-SAAS-013` row), `CHANGELOG.md`,
+   `PROJECT_STATUS.md`.
+
+## Real bugs found and fixed this session
+
+See items 1–2 above (SMTP-host-newline crash, registration-blocking hang) — both
+root-caused via real Hugging Face Space container log tracebacks the user pasted
+directly, since this session has no working HF API log-read access (`curl -H
+"Authorization: Bearer $HF_TOKEN" ".../logs/run"` returned `{"error":"Authorization
+error."}`). Also self-caught two test-authoring gotchas while writing
+`test_platform_email_config.py`/`test_notifications_email.py`: patching a module's
+*source* function (`notifications_services.test_platform_config_connection`) doesn't
+affect an already-bound direct-reference import (`platform_admin_api.
+test_platform_email_config`) — had to patch the importing module's own name instead.
+
+## Files changed
+
+- `apps/api/migrations/versions/a1b2c3d4e5f6_platform_email_provider_config.py` (new)
+- `apps/api/src/growixa_api/notifications/{models,repositories,schemas,services,email}.py`
+  (new/rewritten)
+- `apps/api/src/growixa_api/platform_admin/api.py` (extended: `email_config_router`)
+- `apps/api/src/growixa_api/app.py` (extended: router registration)
+- `apps/api/src/growixa_api/config.py` (extended: whitespace-stripping validator)
+- `apps/api/src/growixa_api/integrations/smtp_transport.py` (extended: `ValueError`
+  caught, `SEND_TIMEOUT_SECONDS`)
+- `apps/api/src/growixa_api/accounts/api.py` (extended: `BackgroundTasks`)
+- `apps/api/tests/test_notifications_email.py` (rewritten, 4 tests)
+- `apps/api/tests/test_platform_email_config.py` (new, 6 tests)
+- `apps/web/src/app/(platform)/platform/(protected)/email-config/{page,email-config-page,
+  email-config-page.module,types}.{tsx,tsx,css,ts}` (new)
+- `apps/web/src/app/(platform)/platform/(protected)/sidebar.tsx` (extended: nav entry)
+- `render.yaml`, `docs/11-devops/RENDER_DEPLOYMENT.md` (deleted)
+- `docs/00-project-control/{MASTER_TASK_TRACKER,PROJECT_STATUS,CHANGELOG,AGENT_HANDOFF}.md`,
+  `docs/08-security/{RBAC,THREAT_MODEL}.md`, `docs/05-data/{DATA_MODEL,DATABASE_SCHEMA}.md`
+
+## Commands executed
+
+```bash
+# apps/api — Compose Postgres
+env $(grep -v '^#' .env.test | xargs) uv run pytest -q
+uv run ruff check . && uv run ruff format --check . && uv run mypy src tests
+env $(grep -v '^#' .env.test | xargs) uv run alembic upgrade head
+
+# Live Compose stack — real SMTP credentials extracted via grep/cut, never printed
+curl -X GET .../platform/email-config          # -> null before config set
+curl -X PUT .../platform/email-config -d '...'  # -> 200, config saved
+curl -X POST .../platform/email-config/test     # -> 204
+curl -X POST .../auth/register -d '...'         # -> 201 in 0.143s, DB-config path used
+```
+
+## Blockers
+
+None for the codebase itself.
+
+## Known issues / evidence gaps
+
+- No live confirmation yet that this same DB-config path fixes the issue against the
+  actual production HF Space (only verified against local Compose so far) — pending
+  push + redeploy + a live re-test, same rigor as the earlier SMTP fixes this session.
+- Throwaway account `rdntechinfo+dbconfigtest@gmail.com` used for local live
+  verification; `rdntechinfo@gmail.com` was deleted from prod DB per user request earlier
+  in this session to allow a clean re-registration test via the UI.
+
+## Current state
+
+**`GRX-SAAS-013` is code-complete, tested, and documented, but not yet committed or
+pushed.** The app is live in production (HF + Netlify) with the SMTP-crash and
+registration-hang fixes already deployed from earlier in this session; the new
+DB-configurable email provider feature itself is still local-only pending user
+confirmation to push.
+
+## Exact next task
+
+Commit this work, confirm with the user before pushing to `origin/main` (auto-deploys to
+both HF and Netlify via `deploy-prod.yml`), then live-verify the new `/platform/email-
+config` endpoints against the real production HF Space.
+
+## Resume commands
+
+```bash
+cd /Users/ravi/Projects/growixa
+git status
+git log --oneline -10
+docker compose up -d
+docker compose logs api --tail 20
+```
+
+## Latest commit
+
+Pending — this session's final commit (`GRX-SAAS-013`, this doc update) has not yet been
+created as of this handoff entry being written; see `git status` for the exact diff.
+
+---
+
+**Below this point: historical handoff entries from earlier sessions, preserved for
+context. Not updated as part of this session's work.**
+
+## Task worked on
+
 `GRX-BILL-001` through `GRX-BILL-010`, plus `GRX-SAAS-006`/`012` — Sprint 8 (Billing,
 product Slice 7), the first slice that moves real money. Spanned several work sessions;
 this entry covers the whole arc through to close-out, written at the point where the

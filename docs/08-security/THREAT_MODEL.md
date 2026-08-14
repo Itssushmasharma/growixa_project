@@ -221,6 +221,13 @@ inbound webhook whose payload — if forged — could grant paid features for fr
 | T67 | Card/payment data exposure | Growixa's backend or logs ever handling raw card numbers/CVV | Not reachable by construction — Razorpay's own hosted Checkout captures card details directly; Growixa's backend only ever sees a `razorpay_payment_id`/`razorpay_subscription_id` reference and webhook events, keeping the application out of PCI-DSS SAQ D scope entirely |
 | T68 | Stuck cancellation leaving paid access active indefinitely | The daily cancellation-downgrade ticker job (`BILLING_SYSTEM_ARCHITECTURE.md §5`) fails to run or errors silently, leaving a `CANCELED` account on its paid plan's features past `current_period_end` | Not a security threat but a real revenue-leak risk; accepted for MVP with the same framing as other ticker-dependent features (`GRX-SCHED-*`) — a failed run is caught the same way as any other worker job failure (logs/monitoring), not a dedicated alert in this slice |
 
+## Ad hoc — Platform email provider config (`GRX-SAAS-013`)
+
+| # | Threat | Vector | Mitigation |
+|---|---|---|---|
+| T69 | Platform SMTP credential leakage via logs | `platform_email_provider_config.smtp_password_encrypted`, or its decrypted form, ends up in application logs or an error message surfaced to the caller | Same secret-redaction convention as every other stored credential (`DEC-GRX-009`); encrypted at rest via `auth/encryption.py` (Fernet, same key as SMTP/AI/Instagram credentials); decrypted only in-memory inside `smtp_transport.py`'s own send/test call, never logged, never included in `PlatformEmailProviderConfigOut` (the read schema omits the password/encrypted-password field entirely) |
+| T70 | Config-test endpoint used as a credential-validity oracle or SSRF-lite probe | `POST /platform/email-config/test` connects to an arbitrary attacker-supplied `smtp_host`/`smtp_port` on behalf of the server, which could be used to port-scan or probe internal hosts, or to brute-force-validate stolen SMTP credentials against a real server | Gated to `platform.email.manage` (`platform.owner`/`platform.admin` only, per `RBAC.md`), the same narrow trust tier as `platform.ai.manage` since this also gates an encrypted credential; the connection targets an SMTP port specifically (not an arbitrary HTTP fetch), and the endpoint returns only success/failure, not response content, bounding the oracle's usefulness to "does this credential work," not general internal network reconnaissance — accepted risk for MVP given the already-narrow role gate, same framing as `GRX-EMAIL-012`'s existing account-level SMTP test-connection endpoint |
+
 ## Explicitly out of scope for Slice 7
 
 Full PCI compliance program work beyond the SAQ-A-eligible "never touch card data"

@@ -259,6 +259,24 @@ credential (an AI provider API key), not just an operational view.
 |---|---|---|---|---|---|
 | `platform.ai.manage` | ✅ | ✅ | ❌ | ❌ | ❌ |
 
+## Ad hoc — Platform email provider config (`GRX-SAAS-013`)
+
+| Code | Meaning |
+|---|---|
+| `platform.email.manage` | View/edit the platform-wide email provider configuration used for system/transactional email (`platform_email_provider_config`) |
+
+Same wiring and trust shape as `platform.ai.manage` (`require_platform_permission`,
+`platform.owner`/`platform.admin` only — gates an encrypted SMTP credential). Added
+after a real production incident: the previous `.env`-only `PLATFORM_SMTP_*` config
+could only be changed by redeploying, and had no admin-facing way to switch providers
+or rotate credentials. Resolution order at send time: this DB config if an active row
+exists, else the legacy `.env` settings (so an existing deployment isn't broken), else
+skip sending (logged).
+
+| Permission | platform.owner | platform.admin | platform.support | platform.finance | platform.operations |
+|---|---|---|---|---|---|
+| `platform.email.manage` | ✅ | ✅ | ❌ | ❌ | ❌ |
+
 ## Sprint 5 Phase B — platform-level roles (separate namespace, `GRX-SAAS-002`)
 
 This is a **distinct identity class**, not an addition to the roles/permissions above.

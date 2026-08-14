@@ -768,6 +768,30 @@ Indexes: `account_id`; unique partial index
 Indexes: unique partial index `ux_platform_ai_provider_config_active` on `WHERE
 is_active`.
 
+## `platform_email_provider_config` (ad hoc, `GRX-SAAS-013`)
+
+See [DATA_MODEL.md §platform_email_provider_config](DATA_MODEL.md#platform_email_provider_config-ad-hoc-grx-saas-013).
+Mirrors `platform_ai_provider_config`'s shape; migration `a1b2c3d4e5f6`.
+
+| Column | Type | Constraints |
+|---|---|---|
+| id | uuid | PK |
+| provider | text | NOT NULL, CHECK IN ('POSTMARK','CUSTOM_SMTP') |
+| smtp_host | text | NOT NULL |
+| smtp_port | integer | NOT NULL |
+| smtp_username | text | NOT NULL |
+| smtp_password_encrypted | text | NOT NULL |
+| from_email | text | NOT NULL |
+| from_name | text | NOT NULL |
+| is_active | boolean | NOT NULL, DEFAULT true |
+| created_by_platform_admin_id | uuid | FK → platform_admins.id, NULL |
+| created_at | timestamptz | NOT NULL, DEFAULT now() |
+| updated_at | timestamptz | NOT NULL, DEFAULT now() |
+
+Indexes: unique partial index `ux_platform_email_provider_config_active` on `WHERE
+is_active`. Same migration seeds `platform.email.manage` (platform RBAC) and grants it to
+`platform.owner`/`platform.admin` (see [RBAC.md](../08-security/RBAC.md)).
+
 ## Slice 7 (Billing) tables
 
 See [DATA_MODEL.md §Slice 7 entities](DATA_MODEL.md#slice-7-entities-full-detail),

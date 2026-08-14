@@ -41,6 +41,12 @@ const NAV_ITEMS: NavItem[] = [
     requiresPermission: "platform.ai.manage",
   },
   {
+    label: "Email Provider",
+    href: "/platform/email-config",
+    icon: "✉️",
+    requiresPermission: "platform.email.manage",
+  },
+  {
     label: "Subscriptions",
     href: "/platform/subscriptions",
     icon: "💳",

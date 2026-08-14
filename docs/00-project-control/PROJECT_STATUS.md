@@ -2,7 +2,7 @@
 
 - Document ID: DOC-PROJECT-STATUS
 - Status: ACTIVE
-- Version: 1.47
+- Version: 1.48
 - Last updated: 2026-08-14
 - Owner: Coding agent (on behalf of product owner)
 - Related documents: [MASTER_TASK_TRACKER](MASTER_TASK_TRACKER.md), [WORKTREE_TRACKER](WORKTREE_TRACKER.md), [DECISIONS](DECISIONS.md), [DEVELOPMENT_READINESS](DEVELOPMENT_READINESS.md), [FEATURE_STATUS_MATRIX](FEATURE_STATUS_MATRIX.md)
@@ -396,6 +396,21 @@ slices plus the Sprint 5 multi-tenancy retrofit are now complete.**
    gap noted under item 1 above, USD payments once Razorpay grants international-payments
    approval, or a new direction the user picks now that both the MVP and billing are
    built out.
+10. **The application went live in production this session** — actual deployed stack is
+    **Hugging Face Space `iitdeveloper/growixa`** (single Docker Space running both the
+    FastAPI API and the worker consumer loop) **+ Netlify** (`growixa.netlify.app`,
+    Next.js web), not Render — `render.yaml`/`RENDER_DEPLOYMENT.md` were deleted as no
+    longer applicable. Live debugging surfaced and fixed two real production bugs (a
+    whitespace-in-env-var SMTP crash and a ~67s registration-blocking hang) and one real
+    architecture gap (the platform's default SMTP relay is unreachable from HF's network)
+    that motivated building `GRX-SAAS-013` (platform-admin email provider config, DB-
+    backed, no-redeploy-needed) — see `CHANGELOG.md`'s 2026-08-14 entry for the full
+    incident writeup. Also surfaced a real Netlify-specific gotcha worth remembering: the
+    site has its own native GitHub git integration with an environment-variable set
+    *separate from* the GitHub Actions deploy workflow's variables, which can silently
+    diverge (it did — the live site was calling Render's old URL after the workflow was
+    already pointed at HF) and requires a "Clear cache and deploy site" after changing
+    `NEXT_PUBLIC_API_URL` there, since it's a Next.js build-time value, not read live.
 
 ## Changelog
 

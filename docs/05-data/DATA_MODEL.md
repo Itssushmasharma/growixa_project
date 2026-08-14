@@ -688,6 +688,42 @@ tables, not the 4 the placeholder below originally speculated — see `DEC-GRX-0
   plus a `ux_platform_ai_provider_config_active` partial unique index on `WHERE
   is_active` (at most one active platform default at a time).
 
+### `platform_email_provider_config` (ad hoc, `GRX-SAAS-013`)
+
+- Purpose: the platform-wide default outbound-email SMTP configuration (system/
+  transactional email — e.g. registration verification links), admin-editable without a
+  redeploy. Added after a real production incident: the previous `.env`-only
+  `PLATFORM_SMTP_*` settings pointed at an SMTP relay that turned out to be unreachable
+  from the deployed environment, with no way to switch providers or rotate credentials
+  short of a redeploy.
+- Primary key: `id` (UUID)
+- Required fields: `provider` (`CHECK IN ('POSTMARK', 'CUSTOM_SMTP')` — same vocabulary
+  as `email_provider_connections`, reused deliberately, not a new type), `smtp_host`,
+  `smtp_port`, `smtp_username`, `smtp_password_encrypted` (Fernet-encrypted, same as
+  every other stored credential in this codebase), `from_email`, `from_name`, `is_active`
+  (default `true`)
+- Audit fields: `created_by_platform_admin_id` (FK → `platform_admins.id`), `created_at`,
+  `updated_at`
+- One active config at a time: `ux_platform_email_provider_config_active` partial unique
+  index on `WHERE is_active`. Reconfiguring deactivates the prior row and inserts a fresh
+  one, same convention as `platform_ai_provider_config`/`ai_provider_connections`.
+- Deliberately a separate table from `email_provider_connections`, not a nullable
+  `account_id` on it: that table's uniqueness is `(account_id, provider) WHERE
+  is_active`, and Postgres treats `NULL account_id` values as always-distinct from each
+  other, so a nullable-`account_id` reuse would not actually enforce "one active platform
+  config" the way a dedicated `WHERE is_active` index does. It also carries account-only
+  columns (`webhook_username`/`webhook_password_encrypted`, `SenderIdentity` linkage)
+  that don't apply at platform level, and its RBAC is account-scoped
+  (`integrations.manage`) rather than platform-scoped. The application code still reuses
+  everything reusable: the same `provider` vocabulary and the same
+  `integrations/smtp_transport.py` `send_email`/`test_connection` functions — no new
+  Postmark HTTP-API adapter, Postmark is used purely as an SMTP relay via its Server API
+  Token as both username and password.
+- Resolution order at send time (`notifications/email.py`): this table's active row, else
+  the legacy `.env` `PLATFORM_SMTP_*` settings, else skip sending (logged) — never a hard
+  failure, matching the "best-effort, never blocks the caller" contract
+  `send_verification_email` already had.
+
 ## Slice 7 entities (full detail)
 
 Per `DEC-GRX-029`/`DEC-GRX-030`. Module ownership follows
