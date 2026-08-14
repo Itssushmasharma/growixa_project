@@ -39,6 +39,18 @@
   color: var(--color-dark-text);
 }
 
+.chartHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.chartTotal {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-slate);
+}
+
 .gauges {
   display: flex;
   flex-direction: column;

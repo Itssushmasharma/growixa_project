@@ -76,6 +76,21 @@ export function DashboardPage() {
         <MetricCard label="Email click rate" value={formatPct(overview.email_click_rate_pct)} />
       </div>
 
+      <div className={styles.card}>
+        <div className={styles.chartHeader}>
+          <h3 className={styles.cardTitle}>Contact growth — last 6 months</h3>
+          <span className={styles.chartTotal}>
+            {overview.total_contacts.toLocaleString()} total
+          </span>
+        </div>
+        <TrendChart
+          points={overview.contact_growth_6_months.map((point) => ({
+            label: point.month.slice(5),
+            value: point.contacts,
+          }))}
+        />
+      </div>
+
       <div className={styles.twoColumn}>
         <div className={styles.card}>
           <h3 className={styles.cardTitle}>Plan &amp; quota — {overview.quota.plan_name}</h3>
@@ -103,18 +118,6 @@ export function DashboardPage() {
         </div>
 
         <div className={styles.card}>
-          <h3 className={styles.cardTitle}>Contact growth — last 6 months</h3>
-          <TrendChart
-            points={overview.contact_growth_6_months.map((point) => ({
-              label: point.month.slice(5),
-              value: point.contacts,
-            }))}
-          />
-        </div>
-      </div>
-
-      <div className={styles.twoColumn}>
-        <div className={styles.card}>
           <h3 className={styles.cardTitle}>Campaign status</h3>
           {statusTotal === 0 ? (
             <p className={styles.hint}>No campaigns yet.</p>
@@ -132,34 +135,32 @@ export function DashboardPage() {
             </ul>
           )}
         </div>
+      </div>
 
-        <div className={styles.card}>
-          <h3 className={styles.cardTitle}>Recent campaigns</h3>
-          {overview.recent_campaigns.length === 0 ? (
-            <p className={styles.hint}>
-              No campaigns yet. <Link href="/dashboard/campaigns/new">Create one →</Link>
-            </p>
-          ) : (
-            <table className={styles.table}>
-              <tbody>
-                {overview.recent_campaigns.map((campaign) => (
-                  <tr key={campaign.id}>
-                    <td>
-                      <Link href={`/dashboard/campaigns/${campaign.id}`}>{campaign.name}</Link>
-                    </td>
-                    <td className={styles.tableStatus}>{campaign.status}</td>
-                    <td className={styles.tableNumeric}>
-                      {campaign.sent_count.toLocaleString()} sent
-                    </td>
-                    <td className={styles.tableNumeric}>
-                      {formatPct(campaign.open_rate_pct)} open
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
+      <div className={styles.card}>
+        <h3 className={styles.cardTitle}>Recent campaigns</h3>
+        {overview.recent_campaigns.length === 0 ? (
+          <p className={styles.hint}>
+            No campaigns yet. <Link href="/dashboard/campaigns/new">Create one →</Link>
+          </p>
+        ) : (
+          <table className={styles.table}>
+            <tbody>
+              {overview.recent_campaigns.map((campaign) => (
+                <tr key={campaign.id}>
+                  <td>
+                    <Link href={`/dashboard/campaigns/${campaign.id}`}>{campaign.name}</Link>
+                  </td>
+                  <td className={styles.tableStatus}>{campaign.status}</td>
+                  <td className={styles.tableNumeric}>
+                    {campaign.sent_count.toLocaleString()} sent
+                  </td>
+                  <td className={styles.tableNumeric}>{formatPct(campaign.open_rate_pct)} open</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );
