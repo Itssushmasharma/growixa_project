@@ -52,6 +52,11 @@ from growixa_api.platform_auth.dependencies import RequirePlatformPermission
 # /billing/razorpay is the same shape as /webhooks/postmark: Razorpay itself is the
 # caller, authenticated via HMAC signature verification (THREAT_MODEL.md T60) rather
 # than require_permission() (GRX-BILL-003).
+# /dashboard/overview is the same shape as /auth/me and /accounts/support-session-status:
+# identity comes from get_current_account_id() via the access-token cookie, and it's an
+# account-wide rollup of things every logged-in member of the account can already see
+# individually (own campaigns, contacts, quota) -- there's no separate permission to
+# check (GRX-SAAS-013).
 PUBLIC_ROUTE_PATHS = {
     "/health",
     "/auth/login",
@@ -71,6 +76,7 @@ PUBLIC_ROUTE_PATHS = {
     "/accounts/verify-email",
     "/accounts/support-session-status",
     "/billing/razorpay",
+    "/dashboard/overview",
 }
 
 

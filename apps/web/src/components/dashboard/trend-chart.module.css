@@ -1,0 +1,30 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.svg {
+  width: 100%;
+  height: 120px;
+  display: block;
+}
+
+.area {
+  fill: rgba(20, 87, 230, 0.1);
+  stroke: none;
+}
+
+.line {
+  fill: none;
+  stroke: var(--color-primary-blue);
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
+
+.labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--color-slate-light);
+}

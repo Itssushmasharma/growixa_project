@@ -53,6 +53,21 @@ class UsageSummaryItemOut(BaseModel):
     unit: str
 
 
+class PlanDistributionItemOut(BaseModel):
+    plan_slug: str
+    plan_name: str
+    account_count: int
+
+
+class PlatformDashboardSummaryOut(BaseModel):
+    total_active_accounts: int
+    total_mrr_usd: float
+    total_mrr_inr: float
+    period_emails_used: int
+    period_ai_runs_used: int
+    plan_distribution: list[PlanDistributionItemOut]
+
+
 class CampaignOversightItemOut(BaseModel):
     id: uuid.UUID
     account_id: uuid.UUID

@@ -52,6 +52,8 @@ from growixa_api.platform_admin.schemas import (
     CreditPackCreateIn,
     CreditPackUpdateIn,
     GrantCreditsIn,
+    PlanDistributionItemOut,
+    PlatformDashboardSummaryOut,
     SecurityEventOut,
     SubscriptionPlanCreateIn,
     SubscriptionPlanUpdateIn,
@@ -92,6 +94,9 @@ from growixa_api.platform_admin.services import end_support_session as end_suppo
 from growixa_api.platform_admin.services import get_account_detail as get_account_detail_service
 from growixa_api.platform_admin.services import (
     get_account_subscription_overview as get_account_subscription_overview_service,
+)
+from growixa_api.platform_admin.services import (
+    get_platform_dashboard_summary as get_platform_dashboard_summary_service,
 )
 from growixa_api.platform_admin.services import (
     get_support_session_overview as get_support_session_overview_service,
@@ -354,6 +359,32 @@ async def list_usage_summary_route(
         )
         for account_id, account_name, operation_type, total_quantity, unit in rows
     ]
+
+
+@usage_router.get("/dashboard/summary", response_model=PlatformDashboardSummaryOut)
+async def get_platform_dashboard_summary_route(
+    _platform_admin_id: uuid.UUID = Depends(_require_usage_manage),
+    session: AsyncSession = Depends(get_session),
+) -> PlatformDashboardSummaryOut:
+    (
+        total_active_accounts,
+        mrr_usd,
+        mrr_inr,
+        emails_used,
+        ai_runs_used,
+        distribution_rows,
+    ) = await get_platform_dashboard_summary_service(session)
+    return PlatformDashboardSummaryOut(
+        total_active_accounts=total_active_accounts,
+        total_mrr_usd=mrr_usd,
+        total_mrr_inr=mrr_inr,
+        period_emails_used=emails_used,
+        period_ai_runs_used=ai_runs_used,
+        plan_distribution=[
+            PlanDistributionItemOut(plan_slug=slug, plan_name=name, account_count=count)
+            for slug, name, count in distribution_rows
+        ],
+    )
 
 
 @usage_router.get("/campaigns", response_model=list[CampaignOversightItemOut])

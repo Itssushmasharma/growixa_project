@@ -17,6 +17,12 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   {
+    label: "Overview",
+    href: "/platform",
+    icon: "📊",
+    requiresPermission: "platform.usage.manage",
+  },
+  {
     label: "Accounts",
     href: "/platform/accounts",
     icon: "🏢",
@@ -76,7 +82,12 @@ export function Sidebar({ permissions }: { permissions: string[] }) {
 
       <div className={styles.sectionLabel}>OVERSIGHT</div>
       {items.map((item) => {
-        const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+        // The root "/platform" (Overview) link would otherwise prefix-match every other
+        // page under it ("/platform/accounts" starts with "/platform/") -- only an exact
+        // match counts as active for it.
+        const isActive =
+          pathname === item.href ||
+          (item.href !== "/platform" && pathname.startsWith(`${item.href}/`));
         return (
           <Link
             key={item.href}

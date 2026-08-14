@@ -330,7 +330,7 @@ each Phase E feature's own permission code(s) will encode (e.g. a future
 | Code | Meaning |
 |---|---|
 | `platform.accounts.manage` | List every customer account, view an account's users and login/security activity, activate/suspend/close an account |
-| `platform.usage.manage` | View per-account usage summaries and cross-account campaign oversight (queued/failed); pause a suspicious campaign |
+| `platform.usage.manage` | View per-account usage summaries and cross-account campaign oversight (queued/failed); pause a suspicious campaign; view the platform-wide dashboard summary (`GET /platform/dashboard/summary`, ad hoc `GRX-SAAS-013` dashboards pass — same aggregate-oversight shape, no new permission code) |
 
 Per [DEC-GRX-020](../00-project-control/DECISIONS.md), `platform.accounts.manage` is
 granted only to `platform.owner` and `platform.admin` — matching `platform.admin`'s own

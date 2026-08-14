@@ -10,6 +10,27 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
+## 2026-08-14 — GRX-SAAS-014: Dashboards — customer + platform admin overview (ad hoc)
+
+- Driven by a product-planning review of `need_review_docs/DASHBOARDS_METRICS_AND_UI_PLAN.md`.
+  Both dashboards were previously empty: `/dashboard` showed a static "nothing here yet"
+  placeholder; `/platform` had no root page at all (login redirected straight to Accounts).
+  Scoped to the plan's own "Phase 1 (MVP)" tier — one unified overview per surface, not
+  the full 4 role-adaptive customer views, which the plan itself stages as Release 1.1.
+- New `GET /dashboard/overview` (auth-only, no new RBAC permission — same shape as
+  `GET /auth/me`): total/active contacts, campaign status breakdown, scheduled social
+  posts, account-wide email open/click rate, quota snapshot, 6-month contact-growth
+  curve, 5 most recent campaigns with sent/open-rate. New
+  `GET /platform/dashboard/summary` on the existing `platform.usage.manage` gate:
+  active-account count, MRR (USD/INR), current-period email/AI usage, dynamic per-plan
+  distribution. Direct SQL aggregation, no new pre-aggregated table or Redis cache layer
+  in this pass (accepted-risk, revisit at scale).
+- New shared frontend components (`<MetricCard/>`, `<QuotaGauge/>`, `<TrendChart/>` — a
+  native SVG chart, no new charting-library dependency) power both dashboards.
+- Self-caught: a latent sidebar active-state bug where `href="/platform"` would have
+  matched every other platform page as also "active" — fixed alongside adding the new
+  Overview nav entry.
+
 ## 2026-08-14 — Same-origin API proxy (ad hoc, production incident response)
 
 - Live production incident: login/register (and every credentialed browser request) was

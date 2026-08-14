@@ -9,6 +9,159 @@
 
 ## Task worked on
 
+Two ad hoc pieces of work, same session as `GRX-SAAS-013` below: (1) a same-origin API
+proxy fix for a production CORS bug found while live-testing after `GRX-SAAS-013`
+deployed, and (2) `GRX-SAAS-014` — a dashboards build, triggered by the user asking to
+review `need_review_docs/` (a local, gitignored folder of forward-looking product plans)
+and prioritize what to build next. Recommended dashboards first (biggest visible gap,
+cheap since ~90% data reuse, no new vendor); user confirmed and asked to start.
+
+## Work completed
+
+### 1. Same-origin API proxy (CORS fix)
+
+Live-tested login on `growixa.netlify.app` after the `GRX-SAAS-013` deploy and found it
+completely broken: the browser blocks the `POST /auth/login` request at the CORS
+preflight stage. Root-caused via direct comparison, not guesswork — the identical
+`OPTIONS` request against local Compose returns a correct
+`Access-Control-Allow-Credentials: true`; against the live HF Space it's missing
+entirely, and the response carries none of the app's own markers (`server: uvicorn`,
+`x-proxied-*`), meaning Hugging Face's own Space ingress answers the preflight itself
+before it ever reaches the container. Not fixable from `apps/api`'s `CORSMiddleware`
+config. Fixed by removing the need for cross-origin credentialed requests entirely:
+`netlify.toml` now proxies `/api/*` to the HF backend server-side, so the browser sees
+`growixa.netlify.app/api/...` as same-origin. Requires `NEXT_PUBLIC_API_URL=/api` in both
+the GitHub Actions repo variables and Netlify's dashboard — a manual step communicated to
+the user, not something this session could apply directly (no GitHub/Netlify API
+credentials in this environment). New `docs/11-devops/PRODUCTION_DEPLOYMENT.md`
+documents the real deploy topology (previously undocumented since `RENDER_DEPLOYMENT.md`
+was deleted with no replacement). Commit `1f54b51`, pushed after user confirmation.
+
+### 2. `GRX-SAAS-014` — Dashboards (customer overview + platform admin overview)
+
+Both dashboards were empty: `/dashboard` showed a static "nothing here yet" placeholder;
+`/platform` had no root page at all (login redirected straight to Accounts). Scoped to
+the `DASHBOARDS_METRICS_AND_UI_PLAN.md`'s own "Phase 1 (MVP)" tier — one unified overview
+per surface, not the plan's full 4 role-adaptive customer views (Marketing Manager/
+Content Creator/Analyst), which the plan itself stages as Release 1.1. No new
+pre-aggregated table or Redis cache layer either — direct SQL aggregation over existing
+indexed columns, an accepted-risk deferral to revisit if performance becomes a real issue
+at scale.
+
+Before writing any query, dispatched an `Explore` subagent to survey the actual current
+schema (`contacts`/`campaigns`/`email_delivery`/`social`/`ai`/`billing` models, plus the
+existing `analytics` module's own aggregation query pattern) rather than trusting the
+plan doc's assumed schema — this caught real mismatches early (no `is_subscribed`/
+`last_opened_at` on `Contact`; `AccountSubscription` has no `plan_slug` column, needs a
+join; nothing stores a rollup counter, everything is counted live via the same
+`CampaignRecipient`/`MessageDelivery`/`EmailEvent` join shape the existing campaign
+report already uses).
+
+New `GET /dashboard/overview` (new `dashboard` module) and `GET /platform/dashboard/summary`
+(added to the existing `platform_admin` `usage_router`, reusing `platform.usage.manage` —
+no new permission code needed for either route; the customer one is auth-only, same
+shape as `GET /auth/me`). New shared frontend components (`<MetricCard/>`, `<QuotaGauge/>`,
+`<TrendChart/>` — native SVG, no new charting-library dependency, since the plan's own
+`OQ-DSH-001` was never resolved). Self-caught a real latent bug while adding the new
+"Overview" sidebar nav entry: the existing `isActive` check (`pathname.startsWith(href +
+"/")`) would have made `href="/platform"` match every other platform page as also
+"active" — fixed alongside.
+
+## Real bugs found and fixed this session
+
+1. **CORS preflight**: see above — HF Space ingress intercepts `OPTIONS`, not fixable
+   from `apps/api`.
+2. **Sidebar active-state bug**: `href="/platform"`'s prefix-match would have
+   incorrectly highlighted "Overview" as active on every platform page. Caught before it
+   shipped, while adding the new nav entry (not a live-found regression).
+3. **Route-protection audit correctly caught a real gap**: `test_protected_routes_audit.py`
+   flagged the new `/dashboard/overview` route as missing from its explicit
+   allow/deny accounting — not a bug in the route itself (it's intentionally auth-only,
+   same shape as `/auth/me`), but confirmed the audit test is actually doing its job by
+   failing until the route was added to `PUBLIC_ROUTE_PATHS` with a documented reason.
+
+## Files changed
+
+- `netlify.toml` (extended: `/api/*` redirect proxy, `API_INTERNAL_URL`)
+- `.github/workflows/deploy-frontend-netlify.yml` (extended: matching `API_INTERNAL_URL`)
+- `docs/11-devops/PRODUCTION_DEPLOYMENT.md` (new)
+- `apps/api/src/growixa_api/dashboard/{__init__,schemas,repositories,services,api}.py` (new)
+- `apps/api/src/growixa_api/app.py` (extended: `dashboard_router` registration)
+- `apps/api/src/growixa_api/platform_admin/{schemas,repositories,services,api}.py` (extended: dashboard summary)
+- `apps/api/tests/{test_dashboard.py,test_platform_admin_dashboard.py}` (new, 6 tests)
+- `apps/api/tests/test_protected_routes_audit.py` (extended: new allowlist entry)
+- `apps/web/src/components/dashboard/{metric-card,quota-gauge,trend-chart}.{tsx,module.css}` (new)
+- `apps/web/src/app/(dashboard)/dashboard/{dashboard-page,types}.{tsx,ts}` + `.module.css` (new); `page.tsx` rewritten, old `page.module.css` deleted
+- `apps/web/src/app/(platform)/platform/(protected)/{overview-page,types}.{tsx,ts}` + `.module.css` + `page.tsx` (new); `sidebar.tsx` extended
+- `docs/00-project-control/{MASTER_TASK_TRACKER,PROJECT_STATUS,CHANGELOG,AGENT_HANDOFF}.md`, `docs/08-security/RBAC.md`
+
+## Commands executed
+
+```bash
+# apps/api
+env $(grep -v '^#' .env.test | xargs) uv run pytest -q       # 319 passed, 8 skipped (up from 313)
+uv run ruff check . && uv run ruff format --check . && uv run mypy src tests   # clean
+env $(grep -v '^#' .env.test | xargs) uv run alembic check    # no drift (no new tables)
+
+# apps/web
+npx eslint . && npx tsc --noEmit && npx prettier --check .    # clean (4 pre-existing warnings)
+npx vitest run          # 204 passed (unchanged)
+npx next build           # clean; /platform now a real route, /dashboard grew from static to real
+
+# Live Compose stack
+docker compose build api && docker compose up -d api
+docker compose restart web   # file-watcher pickup for new /platform/(protected)/page.tsx
+```
+
+## Blockers
+
+None for the codebase itself. The CORS fix's manual env var step (`NEXT_PUBLIC_API_URL=/api`
+in GitHub Actions variables + Netlify dashboard) is pending the user, not something this
+session can apply.
+
+## Known issues / evidence gaps
+
+- Dashboards work is committed locally as of this handoff entry but not yet pushed —
+  pending user confirmation, same pattern as every other change this session.
+- Throwaway accounts (`dash-verify-*@growixa.local`, `dash-admin-verify@growixa.local`)
+  left in the dev DB per this project's established live-verification convention.
+
+## Current state
+
+**Both pieces are code-complete, tested, and live-verified against local Compose.** The
+CORS fix (commit `1f54b51`) is pushed to `origin/main`, pending the user's manual env var
+change to actually take effect. The dashboards work is pending its own commit + push
+confirmation as of this handoff entry.
+
+## Exact next task
+
+Commit `GRX-SAAS-014`, confirm with the user before pushing (auto-deploys to both HF and
+Netlify via `deploy-prod.yml`), then remind the user the CORS fix still needs its manual
+env var step to actually take effect in production.
+
+## Resume commands
+
+```bash
+cd /Users/ravi/Projects/growixa
+git status
+git log --oneline -10
+docker compose up -d
+docker compose logs api --tail 20
+```
+
+## Latest commit
+
+Pending -- this session's dashboards commit has not yet been created as of this handoff
+entry being written; see `git status` for the exact diff. The CORS fix itself is already
+pushed as `1f54b51`.
+
+---
+
+**Below this point: historical handoff entries from earlier sessions, preserved for
+context. Not updated as part of this session's work.**
+
+## Task worked on
+
 `GRX-SAAS-013` — an ad hoc, production-incident-driven addition, not from any
 pre-existing sprint doc: platform-admin email provider config. Session started with the
 app going live in production for the first time (Hugging Face Space `iitdeveloper/growixa`

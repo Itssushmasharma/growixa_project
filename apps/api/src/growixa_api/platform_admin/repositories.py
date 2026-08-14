@@ -6,6 +6,7 @@ from sqlalchemy import Row, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from growixa_api.accounts.models import Account
+from growixa_api.billing.models import AccountSubscription, SubscriptionPlan
 from growixa_api.campaigns.models import Campaign
 from growixa_api.platform_admin.models import SupportSession
 from growixa_api.usage.models import UsageRecord
@@ -125,3 +126,56 @@ async def get_active_support_session_for_account(
         .limit(1)
     )
     return result.scalar_one_or_none()
+
+
+async def count_active_accounts(session: AsyncSession) -> int:
+    result = await session.execute(select(func.count(Account.id)).where(Account.status == "ACTIVE"))
+    return result.scalar_one()
+
+
+async def get_mrr_totals(session: AsyncSession) -> tuple[float, float]:
+    """Sums each ACTIVE subscription's plan price. NULL-priced plans (Enterprise /
+    contact-sales, DEC-GRX-030) contribute 0 -- there is no self-serve price to sum."""
+    result = await session.execute(
+        select(
+            func.coalesce(func.sum(SubscriptionPlan.price_usd), 0),
+            func.coalesce(func.sum(SubscriptionPlan.price_inr), 0),
+        )
+        .select_from(AccountSubscription)
+        .join(SubscriptionPlan, SubscriptionPlan.id == AccountSubscription.plan_id)
+        .where(AccountSubscription.status == "ACTIVE")
+    )
+    row = result.one()
+    return float(row[0]), float(row[1])
+
+
+async def get_period_usage_totals(session: AsyncSession) -> tuple[int, int]:
+    """Sums each account's current-billing-period usage counters directly -- these are
+    the same `period_email_used`/`period_ai_used` values the quota evaluator itself
+    reads (GRX-BILL-005), so this is the platform-wide total of exactly that, not a
+    calendar-month re-derivation from raw send/generation events."""
+    result = await session.execute(
+        select(
+            func.coalesce(func.sum(AccountSubscription.period_email_used), 0),
+            func.coalesce(func.sum(AccountSubscription.period_ai_used), 0),
+        )
+    )
+    row = result.one()
+    return int(row[0]), int(row[1])
+
+
+async def get_plan_distribution(session: AsyncSession) -> Sequence[Row[tuple[str, str, int]]]:
+    """One row per plan with an active subscriber -- not hardcoded to the original four
+    tiers, since GRX-SAAS-006 lets a platform admin create genuinely new plans."""
+    result = await session.execute(
+        select(
+            SubscriptionPlan.slug,
+            SubscriptionPlan.name,
+            func.count(AccountSubscription.id),
+        )
+        .join(AccountSubscription, AccountSubscription.plan_id == SubscriptionPlan.id)
+        .where(AccountSubscription.status == "ACTIVE")
+        .group_by(SubscriptionPlan.slug, SubscriptionPlan.name)
+        .order_by(SubscriptionPlan.slug)
+    )
+    return result.all()

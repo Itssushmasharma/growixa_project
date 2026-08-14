@@ -53,10 +53,14 @@ from growixa_api.contacts.services import list_contacts_with_fields as list_cont
 from growixa_api.contacts.services import update_contact as update_contact_service
 from growixa_api.platform_admin.models import SupportSession
 from growixa_api.platform_admin.repositories import (
+    count_active_accounts,
     count_users_by_account,
     create_support_session,
     get_account_by_id,
     get_campaign_by_id,
+    get_mrr_totals,
+    get_period_usage_totals,
+    get_plan_distribution,
     get_support_session_by_id,
     list_accounts,
     list_campaigns_by_status,
@@ -238,6 +242,16 @@ async def list_usage_summary_rows(
     session: AsyncSession,
 ) -> Sequence[Row[tuple[uuid.UUID, str, str, float, str]]]:
     return await list_usage_summary(session)
+
+
+async def get_platform_dashboard_summary(
+    session: AsyncSession,
+) -> tuple[int, float, float, int, int, Sequence[Row[tuple[str, str, int]]]]:
+    total_active_accounts = await count_active_accounts(session)
+    mrr_usd, mrr_inr = await get_mrr_totals(session)
+    emails_used, ai_runs_used = await get_period_usage_totals(session)
+    distribution_rows = await get_plan_distribution(session)
+    return total_active_accounts, mrr_usd, mrr_inr, emails_used, ai_runs_used, distribution_rows
 
 
 async def list_campaigns_for_oversight(

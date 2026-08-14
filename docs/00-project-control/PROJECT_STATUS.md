@@ -2,7 +2,7 @@
 
 - Document ID: DOC-PROJECT-STATUS
 - Status: ACTIVE
-- Version: 1.48
+- Version: 1.49
 - Last updated: 2026-08-14
 - Owner: Coding agent (on behalf of product owner)
 - Related documents: [MASTER_TASK_TRACKER](MASTER_TASK_TRACKER.md), [WORKTREE_TRACKER](WORKTREE_TRACKER.md), [DECISIONS](DECISIONS.md), [DEVELOPMENT_READINESS](DEVELOPMENT_READINESS.md), [FEATURE_STATUS_MATRIX](FEATURE_STATUS_MATRIX.md)
@@ -411,6 +411,25 @@ slices plus the Sprint 5 multi-tenancy retrofit are now complete.**
     diverge (it did — the live site was calling Render's old URL after the workflow was
     already pointed at HF) and requires a "Clear cache and deploy site" after changing
     `NEXT_PUBLIC_API_URL` there, since it's a Next.js build-time value, not read live.
+11. **Same-origin API proxy fix**: separately from the incidents in item 10, browser
+    login/register was found to be completely blocked by CORS — Hugging Face's own Space
+    ingress answers the browser's preflight `OPTIONS` request itself, before it reaches
+    the container, without `Access-Control-Allow-Credentials`. Not fixable from
+    `apps/api`'s own `CORSMiddleware` config (confirmed via direct comparison against
+    local Compose, where the identical request is correct). Fixed by proxying `/api/*`
+    through Netlify's own edge (`netlify.toml`), removing the need for cross-origin
+    credentialed requests entirely. Requires a manual env var change
+    (`NEXT_PUBLIC_API_URL=/api` in both the GitHub Actions repo variables and Netlify's
+    dashboard) the coding agent can't apply directly — pending user action as of this
+    update. New `docs/11-devops/PRODUCTION_DEPLOYMENT.md` documents the real deploy
+    topology, previously undocumented.
+12. **`GRX-SAAS-014` (Dashboards)**: both `/dashboard` and `/platform` were empty
+    placeholders (the latter had no root page at all). Built a Phase-1-scoped overview
+    for each — real KPIs/quota gauges/contact-growth chart/recent campaigns on the
+    customer side, active-accounts/MRR/plan-distribution on the platform side — see
+    `CHANGELOG.md`'s 2026-08-14 entry. The plan's full 4 role-adaptive customer views
+    (Marketing Manager/Content Creator/Analyst) remain unbuilt, staged as Release 1.1 by
+    the plan itself.
 
 ## Changelog
 
