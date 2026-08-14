@@ -21,7 +21,13 @@ def _extract_or_raise(response: httpx.Response) -> dict[str, Any]:
             f"Non-JSON response from OpenAI (HTTP {response.status_code})"
         ) from exc
     if response.is_error:
-        message = data.get("error", {}).get("message", data)
+        err = data.get("error") if isinstance(data, dict) else str(data)
+        if isinstance(err, dict):
+            message = err.get("message", str(data))
+        elif isinstance(err, str):
+            message = err
+        else:
+            message = str(data)
         raise AIProviderError(f"OpenAI returned HTTP {response.status_code}: {message}")
     return data
 
