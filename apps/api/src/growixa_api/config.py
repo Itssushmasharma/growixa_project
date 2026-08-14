@@ -1,6 +1,8 @@
 import os
 from functools import lru_cache
+from typing import Any
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # When running pytest, ENVIRONMENT is set to "test" via .env.test so
@@ -10,6 +12,20 @@ _env_file = ".env.test" if os.getenv("ENVIRONMENT") == "test" else ".env"
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=_env_file, extra="ignore")
+
+    # Several hosting platforms' secrets UIs (confirmed on Hugging Face Space
+    # variables/secrets) silently append a trailing newline to a pasted value --
+    # db.py's _normalize_database_url already had to work around this for
+    # DATABASE_URL specifically; this strips every string setting the same way at
+    # parse time so the bug can't resurface field by field. A real production
+    # incident: PLATFORM_SMTP_HOST had a trailing "\n", which aiosmtplib correctly
+    # rejects ("hostname param contains prohibited newline characters") -- but that
+    # ValueError wasn't caught by smtp_transport.py's own error handling, so it
+    # crashed registration with a 500 instead of just skipping the email.
+    @field_validator("*", mode="before")
+    @classmethod
+    def _strip_whitespace(cls, value: Any) -> Any:
+        return value.strip() if isinstance(value, str) else value
 
     environment: str = "local"
     log_level: str = "info"

@@ -56,10 +56,15 @@ async def send_email(
             password=smtp_password,
             **_tls_kwargs(smtp_port),
         )
-    except (aiosmtplib.SMTPException, OSError) as exc:
+    except (aiosmtplib.SMTPException, OSError, ValueError) as exc:
         # OSError also catches ssl.SSLError (e.g. an expired/invalid server certificate
         # surfaces as ssl.SSLCertVerificationError, not an SMTPException) plus raw
         # connection failures (DNS, refused, reset) that aiosmtplib doesn't wrap itself.
+        # ValueError catches aiosmtplib's own pre-flight config validation (e.g. a
+        # hostname/port that fails its sanity checks) -- a real production incident hit
+        # this exact path (a newline-contaminated SMTP host env var) and crashed
+        # registration with an unhandled 500 instead of just skipping the email, which
+        # defeats the whole point of every caller treating this as best-effort.
         raise EmailSendError(str(exc)) from exc
 
 
