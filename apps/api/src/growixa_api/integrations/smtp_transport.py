@@ -8,6 +8,13 @@ import aiosmtplib
 # aiosmtplib's 60s default.
 TEST_CONNECTION_TIMEOUT_SECONDS = 10
 
+# aiosmtplib's own default (60s) is too long even for a background send -- a slow/
+# greylisting SMTP relay (confirmed live: some shared-hosting relays throttle
+# first-contact connections from cloud IP ranges) would otherwise tie up a request
+# worker for a full minute. 20s is generous for a legitimate connection while still
+# failing well before a caller's own request timeout.
+SEND_TIMEOUT_SECONDS = 20
+
 
 class EmailSendError(Exception):
     """Wraps any SMTP-transport failure (connection, TLS, auth, rejected recipient) behind
@@ -54,6 +61,7 @@ async def send_email(
             port=smtp_port,
             username=smtp_username,
             password=smtp_password,
+            timeout=SEND_TIMEOUT_SECONDS,
             **_tls_kwargs(smtp_port),
         )
     except (aiosmtplib.SMTPException, OSError, ValueError) as exc:

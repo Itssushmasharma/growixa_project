@@ -1,6 +1,6 @@
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -30,6 +30,7 @@ router = APIRouter(prefix="/accounts", tags=["accounts"])
 async def register_route(
     payload: RegisterIn,
     request: Request,
+    background_tasks: BackgroundTasks,
     session: AsyncSession = Depends(get_session),
     redis_client: Redis = Depends(get_redis),
 ) -> RegisterOut:
@@ -55,8 +56,16 @@ async def register_route(
             status.HTTP_409_CONFLICT, "A user with this email already exists"
         ) from exc
 
-    await send_verification_email(
-        to_email=result.user.email, full_name=result.user.full_name, raw_token=raw_token
+    # Fire-and-forget: this runs after the response is sent, so a slow/unreachable SMTP
+    # relay (real production incident -- some shared-hosting relays take 10s+ to accept
+    # a connection from an unfamiliar cloud IP) never holds the client's registration
+    # request open. send_verification_email is already its own best-effort try/except
+    # (a send failure is only logged, never raised) -- see notifications/email.py.
+    background_tasks.add_task(
+        send_verification_email,
+        to_email=result.user.email,
+        full_name=result.user.full_name,
+        raw_token=raw_token,
     )
 
     token = raw_token if get_settings().environment in ("local", "test") else None
