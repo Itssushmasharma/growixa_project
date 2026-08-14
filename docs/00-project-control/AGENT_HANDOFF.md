@@ -151,9 +151,10 @@ docker compose logs api --tail 20
 
 ## Latest commit
 
-Pending -- this session's dashboards commit has not yet been created as of this handoff
-entry being written; see `git status` for the exact diff. The CORS fix itself is already
-pushed as `1f54b51`.
+`79c8825` — `feat(dashboards): real customer + platform admin overview pages
+(GRX-SAAS-014)`. Preceded by `299093e` (docs-only: subdomain routing captured as
+`GRX-FEAT-029`). Neither pushed yet as of this handoff entry; pending user confirmation.
+The CORS fix itself is already pushed as `1f54b51`.
 
 ---
 
