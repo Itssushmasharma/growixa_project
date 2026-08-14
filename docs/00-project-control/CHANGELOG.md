@@ -10,6 +10,31 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
+## 2026-08-14 — Same-origin API proxy (ad hoc, production incident response)
+
+- Live production incident: login/register (and every credentialed browser request) was
+  completely broken. Root-caused via a live browser session — the actual `POST
+  /auth/login` was blocked at the CORS preflight stage with `Access-Control-Allow-
+  Credentials` missing from the `OPTIONS` response. Confirmed via direct comparison this
+  was not an `apps/api` bug: the identical request against local Compose returns the
+  correct header; against the live Hugging Face Space, the `OPTIONS` response is missing
+  the app's own response markers entirely (`server: uvicorn`, `x-proxied-*`), meaning
+  HF's own Space ingress answers the preflight itself before it reaches the container —
+  not something fixable from `apps/api`'s `CORSMiddleware` config.
+- Fixed by removing the need for cross-origin credentialed requests at all: `netlify.toml`
+  now proxies `/api/*` to the HF backend server-side (`[[redirects]]`, status 200), so the
+  browser sees `growixa.netlify.app/api/...` as same-origin — no CORS, no preflight.
+  `NEXT_PUBLIC_API_URL` must be `/api` for this to be used; `API_INTERNAL_URL` (new) keeps
+  server-side/SSR calls going directly to the backend, same shape as `compose.yaml`'s
+  existing `API_INTERNAL_URL` for local Compose. `.github/workflows/
+  deploy-frontend-netlify.yml` updated to match. New
+  `docs/11-devops/PRODUCTION_DEPLOYMENT.md` documents the real deploy topology (this was
+  previously undocumented — `RENDER_DEPLOYMENT.md` was deleted with no replacement).
+- Requires two manual env var updates the coding agent can't make directly (no GitHub/
+  Netlify API credentials in this environment): `NEXT_PUBLIC_API_URL=/api` in both the
+  GitHub repo's Actions Variables and Netlify's dashboard env vars, then a
+  "Clear cache and deploy site" (it's a Next.js build-time value).
+
 ## 2026-08-14 — GRX-SAAS-013: Platform-admin email provider config (ad hoc, production incident response)
 
 - Driven by a live production incident: the `.env`-only `PLATFORM_SMTP_*` relay

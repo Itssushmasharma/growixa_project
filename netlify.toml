@@ -7,6 +7,20 @@
   NODE_VERSION = "22"
   NPM_FLAGS = "--include=dev"
   NPM_CONFIG_PRODUCTION = "false"
+  # Server-side (SSR/Server Component) calls go straight to the backend — no browser,
+  # no CORS concern, same shape as compose.yaml's API_INTERNAL_URL for the web<->api
+  # containers. Not sensitive (same public URL NEXT_PUBLIC_API_URL used to hold).
+  API_INTERNAL_URL = "https://iitdeveloper-growixa.hf.space"
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
+
+# Proxies browser calls to the backend through Netlify's own edge so they're same-origin
+# (growixa.netlify.app calling growixa.netlify.app/api/...), avoiding the CORS preflight
+# entirely instead of depending on it. NEXT_PUBLIC_API_URL must be set to "/api" for this
+# to be used (see docs/11-devops/PRODUCTION_DEPLOYMENT.md).
+[[redirects]]
+  from = "/api/*"
+  to = "https://iitdeveloper-growixa.hf.space/:splat"
+  status = 200
+  force = true
