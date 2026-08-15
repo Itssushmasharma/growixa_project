@@ -25,6 +25,7 @@ import os
 import sys
 import uuid
 from datetime import UTC, datetime, timedelta
+from typing import TypedDict
 
 from sqlalchemy import delete as sa_delete
 from sqlalchemy import select
@@ -71,91 +72,286 @@ from growixa_api.usage import models as usage_models  # noqa: F401
 from growixa_api.users import models as users_models  # noqa: F401
 from growixa_api.users.models import User
 
+
+class ContactData(TypedDict):
+    email: str
+    first_name: str
+    last_name: str
+    status: str
+    tags: list[str]
+
+
+class ListData(TypedDict):
+    name: str
+    tag: str
+
+
+class TemplateData(TypedDict):
+    name: str
+    subject: str
+    body_html: str
+
+
+class SocialPostData(TypedDict):
+    caption: str
+    status: str
+    days_offset: int
+
+
+class CampaignData(TypedDict):
+    name: str
+    subject: str
+    body_html: str
+    status: str
+    days_offset: int | None
+
+
 # ---------------------------------------------------------------------------
 # Demo data definitions
 # ---------------------------------------------------------------------------
 
-CONTACTS = [
-    {"email": "alex.morgan@techcorp.io", "first_name": "Alex", "last_name": "Morgan", "status": "ACTIVE", "tags": ["VIP", "Enterprise"]},
-    {"email": "sarah.chen@innovate.co", "first_name": "Sarah", "last_name": "Chen", "status": "ACTIVE", "tags": ["Lead", "SaaS"]},
-    {"email": "james.rodriguez@startup.io", "first_name": "James", "last_name": "Rodriguez", "status": "ACTIVE", "tags": ["Lead"]},
-    {"email": "priya.patel@globalcorp.com", "first_name": "Priya", "last_name": "Patel", "status": "ACTIVE", "tags": ["Enterprise", "VIP"]},
-    {"email": "liam.johnson@agency.co", "first_name": "Liam", "last_name": "Johnson", "status": "ACTIVE", "tags": []},
-    {"email": "nina.kowalski@design.io", "first_name": "Nina", "last_name": "Kowalski", "status": "ACTIVE", "tags": ["Creative"]},
-    {"email": "omar.hassan@fintech.com", "first_name": "Omar", "last_name": "Hassan", "status": "ACTIVE", "tags": ["Enterprise"]},
-    {"email": "emily.wang@retail.shop", "first_name": "Emily", "last_name": "Wang", "status": "ACTIVE", "tags": ["SaaS"]},
-    {"email": "marcus.lee@ventures.vc", "first_name": "Marcus", "last_name": "Lee", "status": "ACTIVE", "tags": ["VIP", "Lead"]},
-    {"email": "sofia.garcia@media.net", "first_name": "Sofia", "last_name": "Garcia", "status": "ACTIVE", "tags": ["Creative"]},
-    {"email": "henry.wilson@logistics.io", "first_name": "Henry", "last_name": "Wilson", "status": "ACTIVE", "tags": []},
-    {"email": "anna.brown@healthtech.co", "first_name": "Anna", "last_name": "Brown", "status": "ACTIVE", "tags": ["Lead"]},
-    {"email": "dev.null@bounced.example", "first_name": "Dev", "last_name": "Null", "status": "ARCHIVED", "tags": []},
-    {"email": "test.user@legacy.org", "first_name": "Test", "last_name": "User", "status": "ARCHIVED", "tags": []},
-    {"email": "carlos.ruiz@ecommerce.io", "first_name": "Carlos", "last_name": "Ruiz", "status": "ACTIVE", "tags": ["SaaS", "Enterprise"]},
-    {"email": "mei.zhang@marketplace.co", "first_name": "Mei", "last_name": "Zhang", "status": "ACTIVE", "tags": ["Lead"]},
-    {"email": "david.kim@cloudops.dev", "first_name": "David", "last_name": "Kim", "status": "ACTIVE", "tags": ["VIP"]},
-    {"email": "ines.dupont@fashion.fr", "first_name": "Ines", "last_name": "Dupont", "status": "ACTIVE", "tags": ["Creative"]},
-    {"email": "tom.nguyen@gaming.gg", "first_name": "Tom", "last_name": "Nguyen", "status": "ACTIVE", "tags": []},
-    {"email": "rebecca.scott@nonprofit.org", "first_name": "Rebecca", "last_name": "Scott", "status": "ACTIVE", "tags": ["Lead"]},
+CONTACTS: list[ContactData] = [
+    {
+        "email": "alex.morgan@techcorp.io",
+        "first_name": "Alex",
+        "last_name": "Morgan",
+        "status": "ACTIVE",
+        "tags": ["VIP", "Enterprise"],
+    },
+    {
+        "email": "sarah.chen@innovate.co",
+        "first_name": "Sarah",
+        "last_name": "Chen",
+        "status": "ACTIVE",
+        "tags": ["Lead", "SaaS"],
+    },
+    {
+        "email": "james.rodriguez@startup.io",
+        "first_name": "James",
+        "last_name": "Rodriguez",
+        "status": "ACTIVE",
+        "tags": ["Lead"],
+    },
+    {
+        "email": "priya.patel@globalcorp.com",
+        "first_name": "Priya",
+        "last_name": "Patel",
+        "status": "ACTIVE",
+        "tags": ["Enterprise", "VIP"],
+    },
+    {
+        "email": "liam.johnson@agency.co",
+        "first_name": "Liam",
+        "last_name": "Johnson",
+        "status": "ACTIVE",
+        "tags": [],
+    },
+    {
+        "email": "nina.kowalski@design.io",
+        "first_name": "Nina",
+        "last_name": "Kowalski",
+        "status": "ACTIVE",
+        "tags": ["Creative"],
+    },
+    {
+        "email": "omar.hassan@fintech.com",
+        "first_name": "Omar",
+        "last_name": "Hassan",
+        "status": "ACTIVE",
+        "tags": ["Enterprise"],
+    },
+    {
+        "email": "emily.wang@retail.shop",
+        "first_name": "Emily",
+        "last_name": "Wang",
+        "status": "ACTIVE",
+        "tags": ["SaaS"],
+    },
+    {
+        "email": "marcus.lee@ventures.vc",
+        "first_name": "Marcus",
+        "last_name": "Lee",
+        "status": "ACTIVE",
+        "tags": ["VIP", "Lead"],
+    },
+    {
+        "email": "sofia.garcia@media.net",
+        "first_name": "Sofia",
+        "last_name": "Garcia",
+        "status": "ACTIVE",
+        "tags": ["Creative"],
+    },
+    {
+        "email": "henry.wilson@logistics.io",
+        "first_name": "Henry",
+        "last_name": "Wilson",
+        "status": "ACTIVE",
+        "tags": [],
+    },
+    {
+        "email": "anna.brown@healthtech.co",
+        "first_name": "Anna",
+        "last_name": "Brown",
+        "status": "ACTIVE",
+        "tags": ["Lead"],
+    },
+    {
+        "email": "dev.null@bounced.example",
+        "first_name": "Dev",
+        "last_name": "Null",
+        "status": "ARCHIVED",
+        "tags": [],
+    },
+    {
+        "email": "test.user@legacy.org",
+        "first_name": "Test",
+        "last_name": "User",
+        "status": "ARCHIVED",
+        "tags": [],
+    },
+    {
+        "email": "carlos.ruiz@ecommerce.io",
+        "first_name": "Carlos",
+        "last_name": "Ruiz",
+        "status": "ACTIVE",
+        "tags": ["SaaS", "Enterprise"],
+    },
+    {
+        "email": "mei.zhang@marketplace.co",
+        "first_name": "Mei",
+        "last_name": "Zhang",
+        "status": "ACTIVE",
+        "tags": ["Lead"],
+    },
+    {
+        "email": "david.kim@cloudops.dev",
+        "first_name": "David",
+        "last_name": "Kim",
+        "status": "ACTIVE",
+        "tags": ["VIP"],
+    },
+    {
+        "email": "ines.dupont@fashion.fr",
+        "first_name": "Ines",
+        "last_name": "Dupont",
+        "status": "ACTIVE",
+        "tags": ["Creative"],
+    },
+    {
+        "email": "tom.nguyen@gaming.gg",
+        "first_name": "Tom",
+        "last_name": "Nguyen",
+        "status": "ACTIVE",
+        "tags": [],
+    },
+    {
+        "email": "rebecca.scott@nonprofit.org",
+        "first_name": "Rebecca",
+        "last_name": "Scott",
+        "status": "ACTIVE",
+        "tags": ["Lead"],
+    },
 ]
 
-LISTS = [
+LISTS: list[ListData] = [
     {"name": "VIP Customers", "tag": "VIP"},
     {"name": "Enterprise Accounts", "tag": "Enterprise"},
     {"name": "New Leads", "tag": "Lead"},
 ]
 
-TEMPLATES_DATA = [
+TEMPLATES_DATA: list[TemplateData] = [
     {
         "name": "Welcome — Onboarding Series",
         "subject": "Welcome to Growixa — Let's get started",
-        "body_html": "<html><body style='font-family:Inter,sans-serif;color:#0b1b33;max-width:600px;margin:0 auto;padding:32px 24px'><h1>Welcome to Growixa!</h1><p>Hi {{first_name}}, we're thrilled to have you on board.</p><a href='https://app.growixa.io/dashboard'>Get started</a></body></html>",
+        "body_html": (
+            "<html><body style='font-family:Inter,sans-serif;color:#0b1b33;"
+            "max-width:600px;margin:0 auto;padding:32px 24px'>"
+            "<h1>Welcome to Growixa!</h1>"
+            "<p>Hi {{first_name}}, we're thrilled to have you on board.</p>"
+            "<a href='https://app.growixa.io/dashboard'>Get started</a>"
+            "</body></html>"
+        ),
     },
     {
         "name": "Monthly Product Update — Newsletter",
         "subject": "What's new in Growixa — Monthly Update",
-        "body_html": "<html><body style='font-family:Inter,sans-serif;color:#0b1b33;max-width:600px;margin:0 auto;padding:32px 24px'><h1>What's new this month</h1><p>Hi {{first_name}}, here's a round-up of the latest features.</p></body></html>",
+        "body_html": (
+            "<html><body style='font-family:Inter,sans-serif;color:#0b1b33;"
+            "max-width:600px;margin:0 auto;padding:32px 24px'>"
+            "<h1>What's new this month</h1>"
+            "<p>Hi {{first_name}}, here's a round-up of the latest features.</p>"
+            "</body></html>"
+        ),
     },
     {
         "name": "Re-Engagement — Win Back",
         "subject": "We miss you, {{first_name}} — Here's what you've missed",
-        "body_html": "<html><body style='font-family:Inter,sans-serif;color:#0b1b33;max-width:600px;margin:0 auto;padding:32px 24px'><h1>It's been a while, {{first_name}}</h1><p>We noticed you haven't logged in recently.</p></body></html>",
+        "body_html": (
+            "<html><body style='font-family:Inter,sans-serif;color:#0b1b33;"
+            "max-width:600px;margin:0 auto;padding:32px 24px'>"
+            "<h1>It's been a while, {{first_name}}</h1>"
+            "<p>We noticed you haven't logged in recently.</p>"
+            "</body></html>"
+        ),
     },
     {
         "name": "Webinar Invitation — Event Announcement",
         "subject": "You're invited: {{event_name}} — Reserve your spot",
-        "body_html": "<html><body style='font-family:Inter,sans-serif;color:#0b1b33;max-width:600px;margin:0 auto;padding:32px 24px'><h1>You're invited!</h1><p>Join us for an exclusive live session, {{first_name}}.</p></body></html>",
+        "body_html": (
+            "<html><body style='font-family:Inter,sans-serif;color:#0b1b33;"
+            "max-width:600px;margin:0 auto;padding:32px 24px'>"
+            "<h1>You're invited!</h1>"
+            "<p>Join us for an exclusive live session, {{first_name}}.</p>"
+            "</body></html>"
+        ),
     },
 ]
 
-SOCIAL_POSTS_DATA = [
+SOCIAL_POSTS_DATA: list[SocialPostData] = [
     {
-        "caption": "🚀 Big news! We've just launched our redesigned AI Marketing Copilot — generate email subject lines, social captions, and ad copy in seconds. #EmailMarketing #AI #SaaS",
+        "caption": (
+            "Big news! We've just launched our redesigned AI Marketing Copilot — "
+            "generate email subject lines, social captions, and ad copy in seconds. "
+            "#EmailMarketing #AI #SaaS"
+        ),
         "status": "PUBLISHED",
         "days_offset": -5,
     },
     {
-        "caption": "📊 Did you know? Personalized email campaigns get 6x higher open rates than generic blasts. With Growixa's segmentation engine, you can deliver the right message every time. #EmailMarketing",
+        "caption": (
+            "Did you know? Personalized email campaigns get 6x higher open rates than "
+            "generic blasts. Deliver the right message every time with Growixa. #EmailMarketing"
+        ),
         "status": "PUBLISHED",
         "days_offset": -2,
     },
     {
-        "caption": "✨ Just shipped: Social Content Calendar redesign! View all your scheduled and published posts in a beautiful timeline. Head to Social Calendar to check it out. #ProductUpdate",
+        "caption": (
+            "Just shipped: Social Content Calendar redesign! View all your scheduled and "
+            "published posts in a beautiful timeline. Head to Social Calendar now. #ProductUpdate"
+        ),
         "status": "SCHEDULED",
         "days_offset": 2,
     },
     {
-        "caption": "🎙️ Live webinar alert! Join us next week for Email Marketing in 2026: What Actually Works. Free seats are limited — link in bio! #Webinar #MarketingTips",
+        "caption": (
+            "Live webinar alert! Join us next week for Email Marketing in 2026: What "
+            "Actually Works. Free seats are limited — link in bio! #Webinar #MarketingTips"
+        ),
         "status": "SCHEDULED",
         "days_offset": 5,
     },
     {
-        "caption": "💡 Pro tip: Use A/B subject line testing to improve open rates by 20-30%. Our campaign editor lets you test two variants automatically. Give it a try! #EmailTips #Growth",
+        "caption": (
+            "Pro tip: Use A/B subject line testing to improve open rates by 20-30%. "
+            "Our campaign editor lets you test two variants automatically. #EmailTips #Growth"
+        ),
         "status": "DRAFT",
         "days_offset": 0,
     },
 ]
 
-CAMPAIGNS_DATA = [
+CAMPAIGNS_DATA: list[CampaignData] = [
     {
         "name": "Welcome Series — New Subscribers",
         "subject": "Welcome to Growixa — Let's get started",
@@ -221,25 +417,39 @@ async def main() -> int:
         # In force mode, wipe dependent resources in full reverse topological order
         if force:
             print("[seed] SEED_FORCE=1: clearing existing demo data for clean re-seed...")
-            await session.execute(sa_delete(SocialPostMedia).where(SocialPostMedia.account_id == account_id))
-            await session.execute(sa_delete(SocialPostVersion).where(SocialPostVersion.account_id == account_id))
+            await session.execute(
+                sa_delete(SocialPostMedia).where(SocialPostMedia.account_id == account_id)
+            )
+            await session.execute(
+                sa_delete(SocialPostVersion).where(SocialPostVersion.account_id == account_id)
+            )
             await session.execute(sa_delete(SocialPost).where(SocialPost.account_id == account_id))
-            await session.execute(sa_delete(CampaignRecipient).where(CampaignRecipient.account_id == account_id))
-            await session.execute(sa_delete(CampaignVersion).where(CampaignVersion.account_id == account_id))
+            await session.execute(
+                sa_delete(CampaignRecipient).where(CampaignRecipient.account_id == account_id)
+            )
+            await session.execute(
+                sa_delete(CampaignVersion).where(CampaignVersion.account_id == account_id)
+            )
             await session.execute(sa_delete(Campaign).where(Campaign.account_id == account_id))
-            await session.execute(sa_delete(EmailTemplateVersion).where(EmailTemplateVersion.account_id == account_id))
-            await session.execute(sa_delete(EmailTemplate).where(EmailTemplate.account_id == account_id))
-            await session.execute(sa_delete(ContactListMember).where(ContactListMember.account_id == account_id))
-            await session.execute(sa_delete(ContactList).where(ContactList.account_id == account_id))
+            await session.execute(
+                sa_delete(EmailTemplateVersion).where(EmailTemplateVersion.account_id == account_id)
+            )
+            await session.execute(
+                sa_delete(EmailTemplate).where(EmailTemplate.account_id == account_id)
+            )
+            await session.execute(
+                sa_delete(ContactListMember).where(ContactListMember.account_id == account_id)
+            )
+            await session.execute(
+                sa_delete(ContactList).where(ContactList.account_id == account_id)
+            )
             await session.execute(sa_delete(ContactTag).where(ContactTag.account_id == account_id))
             await session.execute(sa_delete(Contact).where(Contact.account_id == account_id))
             await session.flush()
 
         # 2. Contacts + Tags
         existing_contact = (
-            await session.execute(
-                select(Contact).where(Contact.account_id == account_id).limit(1)
-            )
+            await session.execute(select(Contact).where(Contact.account_id == account_id).limit(1))
         ).scalar_one_or_none()
 
         contact_id_map: dict[str, uuid.UUID] = {}
@@ -247,12 +457,12 @@ async def main() -> int:
         if existing_contact and not force:
             print("[seed] Contacts: already seeded — skipping.")
             rows = (
-                await session.execute(
-                    select(Contact).where(Contact.account_id == account_id)
-                )
-            ).scalars().all()
+                (await session.execute(select(Contact).where(Contact.account_id == account_id)))
+                .scalars()
+                .all()
+            )
             for ct in rows:
-                contact_id_map[ct.email] = ct.id
+                contact_id_map[str(ct.email)] = ct.id
         else:
             for c in CONTACTS:
                 contact = Contact(
@@ -324,13 +534,13 @@ async def main() -> int:
                     await session.flush()
                     for c_data in CONTACTS:
                         if list_def["tag"] in c_data["tags"]:
-                            cid = contact_id_map.get(c_data["email"])
-                            if cid:
+                            target_cid = contact_id_map.get(c_data["email"])
+                            if target_cid:
                                 session.add(
                                     ContactListMember(
                                         account_id=account_id,
                                         list_id=cl.id,
-                                        contact_id=cid,
+                                        contact_id=target_cid,
                                     )
                                 )
                 await session.flush()
@@ -369,9 +579,7 @@ async def main() -> int:
         # 5. Integrations & Sender Identity
         sender = (
             await session.execute(
-                select(SenderIdentity)
-                .where(SenderIdentity.account_id == account_id)
-                .limit(1)
+                select(SenderIdentity).where(SenderIdentity.account_id == account_id).limit(1)
             )
         ).scalar_one_or_none()
 
@@ -399,7 +607,7 @@ async def main() -> int:
             )
             session.add(sender)
             await session.flush()
-            print("[seed] Integrations: created default verified sender identity (notifications@growixa.local)")
+            print("[seed] Integrations: created default verified sender identity")
 
         # 6. Campaigns
         existing_campaign = (
@@ -412,20 +620,21 @@ async def main() -> int:
             print("[seed] Campaigns: already seeded — skipping.")
         else:
             now = datetime.now(UTC)
-            for c in CAMPAIGNS_DATA:
+            for camp in CAMPAIGNS_DATA:
+                days = camp["days_offset"]
                 scheduled_at = (
-                    now + timedelta(days=c["days_offset"])
-                    if c["days_offset"] is not None and c["status"] == "SCHEDULED"
+                    now + timedelta(days=days)
+                    if days is not None and c["status"] == "SCHEDULED"
                     else None
                 )
                 campaign = Campaign(
                     account_id=account_id,
                     sender_identity_id=sender.id,
-                    name=c["name"],
-                    subject=c["subject"],
-                    body_html=c["body_html"],
+                    name=camp["name"],
+                    subject=camp["subject"],
+                    body_html=camp["body_html"],
                     body_text="Welcome to Growixa.",
-                    status=c["status"],
+                    status=camp["status"],
                     recipient_type="ALL_CONTACTS",
                     scheduled_at=scheduled_at,
                     created_by_user_id=user.id,
@@ -437,9 +646,7 @@ async def main() -> int:
         # 7. Social Connection & Posts
         connection = (
             await session.execute(
-                select(SocialConnection)
-                .where(SocialConnection.account_id == account_id)
-                .limit(1)
+                select(SocialConnection).where(SocialConnection.account_id == account_id).limit(1)
             )
         ).scalar_one_or_none()
 
@@ -469,12 +676,13 @@ async def main() -> int:
             now = datetime.now(UTC)
             for p in SOCIAL_POSTS_DATA:
                 target_status = p["status"]
+                offset_days = p["days_offset"]
                 scheduled_at = None
                 published_at = None
-                if target_status == "SCHEDULED" and p["days_offset"]:
-                    scheduled_at = now + timedelta(days=p["days_offset"])
-                if target_status == "PUBLISHED" and p["days_offset"]:
-                    published_at = now + timedelta(days=p["days_offset"])
+                if target_status == "SCHEDULED" and offset_days:
+                    scheduled_at = now + timedelta(days=offset_days)
+                if target_status == "PUBLISHED" and offset_days:
+                    published_at = now + timedelta(days=offset_days)
 
                 post = SocialPost(
                     account_id=account_id,
