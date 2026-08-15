@@ -7,12 +7,7 @@ export interface MeResponse {
 }
 
 export type AICapability =
-  | "SUBJECT_LINE"
-  | "BODY_COPY"
-  | "SOCIAL_CAPTION"
-  | "REWRITE"
-  | "HASHTAGS"
-  | "POSTING_TIME";
+  "SUBJECT_LINE" | "BODY_COPY" | "SOCIAL_CAPTION" | "REWRITE" | "HASHTAGS" | "POSTING_TIME";
 
 export type StudioChannel = "Email" | "Social Post" | "SMS" | "Ad Copy" | "Blog";
 
@@ -85,4 +80,3 @@ export interface SubscriptionUsageInfo {
   max_monthly_ai_runs: number;
   plan_name: string;
 }
-

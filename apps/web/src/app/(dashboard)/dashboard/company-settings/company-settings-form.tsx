@@ -2,6 +2,7 @@
 
 import { type FormEvent, useEffect, useState } from "react";
 
+import { PageHeader } from "@/components/page-header/page-header";
 import { useToast } from "@/components/toast/toast-context";
 import { apiFetch } from "@/lib/api-client";
 
@@ -161,6 +162,13 @@ export function CompanySettingsForm() {
 
   return (
     <div className={styles.page}>
+      {/* Page Header */}
+      <PageHeader
+        icon="⚙️"
+        title="Company & Brand Settings"
+        description="Manage your organization profile, legal disclosures, and AI brand voice guidelines."
+      />
+
       {/* AI Readiness Banner */}
       <div className={styles.readinessCard}>
         <div className={styles.readinessContent}>

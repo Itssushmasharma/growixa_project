@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
+import { PageHeader } from "@/components/page-header/page-header";
+import { StatCard } from "@/components/stat-card/stat-card";
 import { useToast } from "@/components/toast/toast-context";
 import { ApiError, apiFetch } from "@/lib/api-client";
 
@@ -137,10 +139,21 @@ export function SocialPage() {
       .sort((a, b) => b.updated_at.localeCompare(a.updated_at));
   }, [posts, activeTab]);
 
+  const totalPosts = posts.length;
+  const publishedPosts = posts.filter((p) => p.status === "PUBLISHED").length;
+  const scheduledPosts = posts.filter(
+    (p) => p.status === "SCHEDULED" || p.status === "DISPATCHING" || p.status === "PUBLISHING",
+  ).length;
+  const draftPosts = posts.filter((p) => p.status === "DRAFT").length;
+
   if (loading) {
     return (
       <div className={styles.page}>
-        <div className={styles.card}>Loading…</div>
+        <div
+          style={{ background: "#fff", padding: "40px", borderRadius: "18px", textAlign: "center" }}
+        >
+          Loading social posts…
+        </div>
       </div>
     );
   }
@@ -148,7 +161,11 @@ export function SocialPage() {
   if (loadError) {
     return (
       <div className={styles.page}>
-        <div className={styles.card}>{loadError}</div>
+        <div
+          style={{ background: "#fff", padding: "40px", borderRadius: "18px", textAlign: "center" }}
+        >
+          {loadError}
+        </div>
       </div>
     );
   }
@@ -156,17 +173,47 @@ export function SocialPage() {
   if (!canView) {
     return (
       <div className={styles.page}>
-        <div className={styles.card}>You don&apos;t have access to social posts.</div>
+        <div
+          style={{ background: "#fff", padding: "40px", borderRadius: "18px", textAlign: "center" }}
+        >
+          You don&apos;t have access to social posts.
+        </div>
       </div>
     );
   }
 
-  const cancellableStatuses: SocialPostStatus[] = ["DRAFT", "SCHEDULED"];
-
   return (
     <div className={styles.page}>
-      <div className={styles.topRow}>
-        <div className={styles.tabs} role="tablist" aria-label="Filter posts by status">
+      {/* Page Header */}
+      <PageHeader
+        icon="📱"
+        title="Social Media"
+        description="Create, schedule, and publish posts across your connected social platforms."
+        actions={
+          <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+            <Link href="/dashboard/social/calendar" className={styles.secondaryButton}>
+              Calendar
+            </Link>
+            {canManage && (
+              <Link href="/dashboard/social/new" className={styles.primaryButton}>
+                + New post
+              </Link>
+            )}
+          </div>
+        }
+      />
+
+      {/* KPI Stats Deck (Real Derived Counts) */}
+      <section className={styles.statsDeck} aria-label="Social Posts Overview KPIs">
+        <StatCard label="Total Posts" value={totalPosts} subtext="All platforms" />
+        <StatCard label="Published" value={publishedPosts} subtext="Delivered live" />
+        <StatCard label="Scheduled" value={scheduledPosts} subtext="Upcoming queue" />
+        <StatCard label="Drafts" value={draftPosts} subtext="In creation" />
+      </section>
+
+      {/* Toolbar: Category Tabs */}
+      <div className={styles.toolbarRow}>
+        <div className={styles.tabsGroup} role="tablist">
           {FILTER_TABS.map((tab) => (
             <button
               key={tab.value}
@@ -176,75 +223,77 @@ export function SocialPage() {
               className={activeTab === tab.value ? styles.tabActive : styles.tab}
               onClick={() => setActiveTab(tab.value)}
             >
-              {tab.label}
-              {tab.value !== "ALL" && tabCounts[tab.value] > 0 && (
-                <span className={styles.tabCount}>{tabCounts[tab.value]}</span>
-              )}
+              <span>{tab.label}</span>
+              <span className={styles.tabCount}>{tabCounts[tab.value]}</span>
             </button>
           ))}
         </div>
-        <div className={styles.topActions}>
-          <Link href="/dashboard/social/calendar" className={styles.secondaryLink}>
-            Calendar
-          </Link>
-          {canManage && (
-            <Link href="/dashboard/social/new" className={styles.actionButton}>
-              + New post
+      </div>
+
+      {/* Empty State */}
+      {visiblePosts.length === 0 && (
+        <div className={styles.emptyState}>
+          <div style={{ fontSize: "36px", marginBottom: "8px" }}>📱</div>
+          <h3 className={styles.emptyStateTitle}>No social posts yet.</h3>
+          <p className={styles.emptyStateHint}>
+            {activeTab === "ALL"
+              ? "You haven't created any social posts yet."
+              : `No social posts in "${STATUS_LABEL[activeTab as SocialPostStatus]}" state.`}
+          </p>
+          {canManage && activeTab === "ALL" && (
+            <Link href="/dashboard/social/new" className={styles.primaryButton}>
+              + Create your first post
             </Link>
           )}
         </div>
-      </div>
-
-      {posts.length === 0 && (
-        <div className={styles.emptyState}>
-          <p className={styles.hint}>No social posts yet.</p>
-        </div>
-      )}
-      {posts.length > 0 && visiblePosts.length === 0 && (
-        <div className={styles.emptyState}>
-          <p className={styles.hint}>No posts match this filter.</p>
-        </div>
       )}
 
-      <div className={styles.grid}>
-        {visiblePosts.map((post) => (
-          <Link href={`/dashboard/social/${post.id}`} className={styles.postCard} key={post.id}>
-            {post.media[0] && (
-              <img
-                src={post.media[0].public_url}
-                alt=""
-                className={styles.thumbnail}
-                loading="lazy"
-              />
-            )}
-            <span className={`${styles.statusBadge} ${styles[STATUS_CLASS[post.status]]}`}>
-              {STATUS_LABEL[post.status]}
-            </span>
-            <div className={styles.postCaption}>{post.caption || "(no caption)"}</div>
-            {post.status === "SCHEDULED" && post.scheduled_at && (
-              <div className={styles.scheduledAtLabel}>
-                Scheduled for {formatScheduledAt(post.scheduled_at)}
-              </div>
-            )}
-            <div className={styles.cardFooter}>
-              <span className={styles.hint}>{formatScheduledAt(post.updated_at)}</span>
-              <div className={styles.cardActions}>
-                {canManage && cancellableStatuses.includes(post.status) && (
-                  <button
-                    type="button"
-                    className={styles.cancelButton}
-                    disabled={cancellingId === post.id}
-                    onClick={(e) => handleCancel(post, e)}
-                    aria-label="Cancel post"
-                  >
-                    {cancellingId === post.id ? "Cancelling…" : "Cancel"}
-                  </button>
-                )}
-              </div>
-            </div>
-          </Link>
-        ))}
-      </div>
+      {/* Grid of Post Cards */}
+      {visiblePosts.length > 0 && (
+        <div className={styles.grid}>
+          {visiblePosts.map((post) => {
+            const statusClass = styles[STATUS_CLASS[post.status]] ?? "";
+            const canCancel = canManage && (post.status === "DRAFT" || post.status === "SCHEDULED");
+
+            return (
+              <Link key={post.id} href={`/dashboard/social/${post.id}`} className={styles.postCard}>
+                <div className={styles.postCardHeader}>
+                  <span className={styles.providerBadge}>📸 Instagram</span>
+                  <span className={`${styles.statusBadge} ${statusClass}`}>
+                    ● {STATUS_LABEL[post.status]}
+                  </span>
+                </div>
+
+                <p className={styles.postCaption}>{post.caption}</p>
+
+                <div className={styles.postFooter}>
+                  <span>
+                    {post.status === "SCHEDULED" && post.scheduled_at ? (
+                      <span className={styles.scheduledAtLabel}>
+                        Scheduled: {formatScheduledAt(post.scheduled_at)}
+                      </span>
+                    ) : (
+                      `Updated: ${new Date(post.updated_at).toLocaleDateString()}`
+                    )}
+                  </span>
+
+                  {canCancel && (
+                    <button
+                      type="button"
+                      className={styles.cancelButton}
+                      aria-label="Cancel post"
+                      disabled={cancellingId === post.id}
+                      onClick={(e) => handleCancel(post, e)}
+                    >
+                      {cancellingId === post.id ? "Cancelling…" : "Cancel post"}
+                    </button>
+                  )}
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

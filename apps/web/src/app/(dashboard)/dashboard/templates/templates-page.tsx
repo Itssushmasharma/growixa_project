@@ -279,6 +279,12 @@ export function TemplatesPage() {
     return sorted;
   }, [templates, search, sortBy, categoryFilter]);
 
+  const updatedThisMonthCount = useMemo(() => {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - 30);
+    return templates.filter((t) => new Date(t.updated_at) >= cutoff).length;
+  }, [templates]);
+
   const latestUpdatedDate = useMemo(() => {
     if (templates.length === 0) return "N/A";
     const sorted = [...templates].sort((a, b) => b.updated_at.localeCompare(a.updated_at));
@@ -313,28 +319,36 @@ export function TemplatesPage() {
     <div className={styles.page}>
       {/* Standardized Page Header */}
       <PageHeader
-        icon="📄"
+        icon="📋"
         title="Email Templates"
-        description="Design, customize, and manage reusable layouts and message blueprints."
+        description="Browse, customize, and manage reusable responsive email templates."
         actions={
           canManage ? (
             <Link href="/dashboard/templates/new" className={styles.actionButton}>
               + New template
             </Link>
-          ) : null
+          ) : undefined
         }
       />
 
       {/* Metric Summary Cards (Strictly Derived Data) */}
-      <section className={styles.statsDeck} aria-label="Template Summary KPIs">
-        <StatCard label="Total Templates" value={templates.length} subtext="In your gallery" />
+      <section className={styles.statsDeck} aria-label="Template Library Overview KPIs">
+        <StatCard label="Total Templates" value={templates.length} subtext="Account library" />
         <StatCard
           label="Starter Presets"
           value={TEMPLATE_PRESETS.length}
-          subtext="Ready to customize"
+          subtext="Built-in starter layouts"
         />
-        <StatCard label="Custom Built" value={templates.length} subtext="Saved layouts" />
-        <StatCard label="Recently Updated" value={latestUpdatedDate} subtext="Latest revision" />
+        <StatCard
+          label="Updated (30d)"
+          value={updatedThisMonthCount}
+          subtext="Updated in last 30 days"
+        />
+        <StatCard
+          label="Recently Updated"
+          value={latestUpdatedDate}
+          subtext="Last modified template"
+        />
       </section>
 
       {/* Main Templates Workspace */}

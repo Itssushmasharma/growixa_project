@@ -370,7 +370,9 @@
   line-height: 1.5;
   font-family: inherit;
   resize: vertical;
-  transition: border-color 0.15s, background-color 0.15s;
+  transition:
+    border-color 0.15s,
+    background-color 0.15s;
 }
 
 .promptTextarea:focus {
@@ -1012,5 +1014,3 @@
 .editBrandLink:hover {
   background: #e2e8f0;
 }
-
-
