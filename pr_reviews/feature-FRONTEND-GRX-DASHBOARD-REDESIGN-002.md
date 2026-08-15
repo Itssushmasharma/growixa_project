@@ -135,7 +135,65 @@ THREAT_MODEL.md have no additional applicable control here.
 
 ---
 
+## 5b. Re-Review (Reviewer, after `e0d0e7f` / `338f347`)
+
+- **Reviewer**: Claude Code (different tool than developer — Google Antigravity)
+- **Verdict**: **APPROVED**
+- **Reviewed Code Commit**: `338f347` (branch HEAD at re-review; `e0d0e7f` is the code,
+  `338f347` adds only the fix notes above)
+
+All three findings verified against the actual diff, not against the claims above.
+
+1. **Finding 1 (BLOCKER) — genuinely fixed.** Grepping the two pages and `stat-card.tsx`
+   for `trend=`, `27.4`, `6.7`, `Revenue`, `1,24,500` and `* 0.15` returns **nothing** —
+   the values are deleted, not hidden behind a flag. Campaigns now shows four counts all
+   derived from the real list (`campaigns.length`, and `.filter()` on `SENT` /
+   `SCHEDULED` / `DRAFT`). Contacts keeps five, with `newThisMonth` now a real
+   `created_at` year+month match rather than `total * 0.15`. I checked the field is
+   actually populated end to end — `created_at` is required (not optional) on both
+   `ContactOut` in `contacts/schemas.py` and the frontend `Contact` type, so the guard
+   `if (!c.created_at) return false` cannot silently zero the card. Subtexts were
+   rewritten to honest ones ("All time", "Joined this calendar month") instead of the
+   blanket "vs last month". `<StatCard />` retains its optional `trend`/`trendDirection`
+   props for when a real source exists — correct call, since no caller now passes them.
+
+2. **Finding 2 (MEDIUM) — genuinely fixed, and the assertions came back *stronger* than
+   the originals.** `stat-card.test.tsx` adds 3 real behavioral tests (label/value/subtext,
+   up-trend, down-trend). The weakened assertions were not merely reverted: the old
+   `getAllByText("Active")).toHaveLength(2)` is replaced by `within(aliceBlock)` /
+   `within(bobBlock)` assertions that check the status *of a specific contact*, and the
+   loosened Archived count is replaced by `getByRole("button", { name: "Unarchive" })`.
+   Both now fail if a row is mis-rendered, which the pre-review versions would not have.
+
+3. **Finding 3 (MEDIUM/CI) — fixed as scoped, with one correction to the claim above.**
+   §Developer Fixes says "`npx prettier --check` clean". That is **not** accurate
+   repo-wide: `npm run format:check` still fails on 7 files. It *is* accurate for this
+   branch's own files — `stat-card.tsx`, `campaigns-page.tsx` and `contacts-page.test.tsx`
+   have all dropped off the failure list, which is exactly what finding 3 asked for. The
+   remaining 7 are the `GRX-AI-STUDIO-001` inheritance, explicitly excluded from this
+   branch's scope. Recorded here so the stronger claim isn't passed through unchallenged.
+
+Independently re-run at `338f347` (not taken from the claims): `npm test` → **41 files,
+222/222 passed** (matches exactly); `npm run typecheck` → 0 errors; `npm run lint` → 0
+errors, 4 pre-existing `no-img-element` warnings; `npm run format:check` → 7 failures, all
+inherited, none from this branch.
+
+**Merge-order note:** approving this branch does not by itself make CI green. `ci.yml:156`
+runs `format:check` repo-wide, so the 7 inherited failures will still fail the frontend job
+until `feature/FRONTEND/GRX-LINT-FORMAT-CLEANUP` merges. Land that first, or expect a red
+run that is not this branch's fault.
+
+No regressions found outside the claimed fix scope; permission gating re-checked and still
+correct. No new issues introduced.
+
+---
+
 ## 6. Product Owner Sign-off
 
-- **Status**: **Required** — UI/UX and customer-facing. Finding 1 confirmed and resolved by dropping fake revenue and fake trends, retaining clean genuine metrics.
+- **Status**: **Required** — UI/UX and customer-facing. Independent review is `APPROVED`
+  as of `338f347`, but per AGENT_EXECUTION_RULES.md §Human approval that is necessary and
+  not sufficient: merge still needs the product owner's explicit sign-off on the real
+  screens. Finding 1 was resolved by dropping the fabricated revenue card and all invented
+  trends and keeping only genuinely derived metrics — worth a look at the live pages to
+  confirm the thinner KPI decks still read well.
 
