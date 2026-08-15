@@ -1,11 +1,18 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { ToastProvider } from "@/components/toast/toast-context";
 import { apiFetch } from "@/lib/api-client";
 
 import { HistoryPage } from "./history-page";
 import type { AIGeneration, MeResponse } from "./types";
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({
+    push: vi.fn(),
+  }),
+}));
 
 vi.mock("@/lib/api-client", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/api-client")>();
@@ -35,6 +42,7 @@ const SUBJECT_LINE_GENERATION: AIGeneration = {
   linked_entity_type: null,
   linked_entity_id: null,
   created_at: "2026-08-13T00:00:00Z",
+  approval_status: "PENDING_APPROVAL",
 };
 
 const FAILED_HASHTAGS_GENERATION: AIGeneration = {
@@ -51,67 +59,91 @@ const FAILED_HASHTAGS_GENERATION: AIGeneration = {
   linked_entity_type: null,
   linked_entity_id: null,
   created_at: "2026-08-13T01:00:00Z",
+  approval_status: "PENDING_APPROVAL",
 };
 
 function mockLoad(permissions: string[], generations: AIGeneration[]) {
   mockedApiFetch.mockImplementation((path: string) => {
     if (path === "/auth/me") return Promise.resolve(meWithPermissions(permissions));
     if (path === "/ai/generations") return Promise.resolve(generations);
+    if (path === "/billing/subscription")
+      return Promise.resolve({
+        period_ai_used: 12,
+        plan: { max_monthly_ai_runs: 500, name: "Growth" },
+      });
     throw new Error(`unexpected path: ${path}`);
   });
+}
+
+function renderHistoryPage() {
+  return render(
+    <ToastProvider>
+      <HistoryPage />
+    </ToastProvider>,
+  );
 }
 
 beforeEach(() => {
   mockedApiFetch.mockReset();
 });
 
-describe("HistoryPage", () => {
+describe("HistoryPage (AI Studio)", () => {
   it("shows an access-denied message for a user without ai.view", async () => {
     mockLoad([], []);
 
-    render(<HistoryPage />);
+    renderHistoryPage();
 
     expect(
-      await screen.findByText("You don't have access to AI generation history."),
+      await screen.findByText("You don't have access to the AI Studio."),
     ).toBeInTheDocument();
   });
 
-  it("shows an empty state when there are no generations", async () => {
-    mockLoad(["ai.view"], []);
+  it("shows ready state when there are no past generations", async () => {
+    mockLoad(["ai.view", "ai.manage"], []);
 
-    render(<HistoryPage />);
+    renderHistoryPage();
 
-    expect(
-      await screen.findByText(
-        'No AI generations yet — use "Generate with AI" in a campaign or social post to get started.',
-      ),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("Ready to create with AI")).toBeInTheDocument();
+    expect(screen.getByText("Generate content")).toBeInTheDocument();
   });
 
-  it("lists a completed generation with its output text", async () => {
-    mockLoad(["ai.view"], [SUBJECT_LINE_GENERATION]);
+  it("lists a completed generation with its output text and approval button", async () => {
+    mockLoad(["ai.view", "ai.manage"], [SUBJECT_LINE_GENERATION]);
 
-    render(<HistoryPage />);
+    renderHistoryPage();
 
     expect(await screen.findByText("20% Off Running Shoes!")).toBeInTheDocument();
-    expect(screen.getByText("Complete")).toBeInTheDocument();
-    expect(screen.getByText("Subject line")).toBeInTheDocument();
+    expect(screen.getByText("● Pending approval")).toBeInTheDocument();
+    expect(screen.getAllByText("Email subject").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByRole("button", { name: "✓ Approve & use" })).toBeInTheDocument();
+  });
+
+  it("approves a generation upon clicking Approve & use", async () => {
+    const user = userEvent.setup();
+    mockLoad(["ai.view", "ai.manage"], [SUBJECT_LINE_GENERATION]);
+
+    renderHistoryPage();
+    const approveBtn = await screen.findByRole("button", { name: "✓ Approve & use" });
+
+    await user.click(approveBtn);
+
+    expect(screen.getAllByText("✓ Approved").length).toBeGreaterThanOrEqual(1);
   });
 
   it("lists a failed generation with its error message", async () => {
-    mockLoad(["ai.view"], [FAILED_HASHTAGS_GENERATION]);
+    mockLoad(["ai.view", "ai.manage"], [FAILED_HASHTAGS_GENERATION]);
 
-    render(<HistoryPage />);
+    renderHistoryPage();
 
     expect(await screen.findByText("Error: Provider returned HTTP 401")).toBeInTheDocument();
-    expect(screen.getByText("Failed")).toBeInTheDocument();
+    expect(screen.getByText("✕ Failed")).toBeInTheDocument();
   });
 
   it("filters by capability tab", async () => {
     const user = userEvent.setup();
-    mockLoad(["ai.view"], [SUBJECT_LINE_GENERATION, FAILED_HASHTAGS_GENERATION]);
+    mockLoad(["ai.view", "ai.manage"], [SUBJECT_LINE_GENERATION, FAILED_HASHTAGS_GENERATION]);
 
-    render(<HistoryPage />);
+    renderHistoryPage();
     await screen.findByText("20% Off Running Shoes!");
     expect(screen.getByText("Error: Provider returned HTTP 401")).toBeInTheDocument();
 
@@ -120,4 +152,50 @@ describe("HistoryPage", () => {
     expect(screen.queryByText("20% Off Running Shoes!")).not.toBeInTheDocument();
     expect(screen.getByText("Error: Provider returned HTTP 401")).toBeInTheDocument();
   });
+
+  it("generates variations when prompt is submitted", async () => {
+    let callCount = 0;
+    const user = userEvent.setup();
+    mockedApiFetch.mockImplementation((path: string, options?: RequestInit) => {
+      if (path === "/auth/me") return Promise.resolve(meWithPermissions(["ai.view", "ai.manage"]));
+      if (path === "/ai/generations") return Promise.resolve([]);
+      if (path === "/billing/subscription")
+        return Promise.resolve({
+          period_ai_used: 5,
+          plan: { max_monthly_ai_runs: 500, name: "Growth" },
+        });
+      if (path.startsWith("/ai/generate/") && options?.method === "POST") {
+        callCount++;
+        return Promise.resolve({
+          id: `new-gen-${callCount}`,
+          capability: "SUBJECT_LINE",
+          output: { text: "Exclusive Early Access — 30% Off" },
+          provider: "OPENAI",
+          model: "gpt-4o",
+          prompt_tokens: 50,
+          completion_tokens: 15,
+          estimated_cost_usd: 0.0005,
+          status: "COMPLETE",
+          error_message: null,
+          created_at: new Date().toISOString(),
+        });
+      }
+      throw new Error(`unexpected path: ${path}`);
+    });
+
+    renderHistoryPage();
+    await screen.findByText("Ready to create with AI");
+
+    const promptInput = screen.getByLabelText("Prompt");
+    await user.type(promptInput, "Flash sale summer shoes");
+
+    const generateBtn = screen.getByRole("button", { name: /Generate 5 variations/i });
+    await user.click(generateBtn);
+
+    await waitFor(() => {
+      expect(screen.getAllByText("Exclusive Early Access — 30% Off").length).toBeGreaterThan(0);
+    });
+  });
 });
+
+
