@@ -8,7 +8,7 @@ This document maintains a real-time record of all parallel Git worktrees, active
 
 | Worktree Path | Branch Name | Feature / Task | Preview URL | Status | Created |
 |---|---|---|---|---|---|
-| `.worktrees/grx-ai-studio-redesign` | `feature/FRONTEND/GRX-AI-STUDIO-001` | Global Header + AI Marketing Copilot redesign (`/dashboard/ai`) | `http://localhost:3001` | Informal review done, one fix commit landed (`00a1ed4`), not yet merged | 2026-08-15 |
+| *(No active worktrees running)* | — | — | — | — | — |
 
 ---
 
@@ -16,6 +16,7 @@ This document maintains a real-time record of all parallel Git worktrees, active
 
 | Worktree Directory | Branch | Feature Delivered | Merged Commit | Merged Date |
 |---|---|---|---|---|
+| `.worktrees/grx-ai-studio-redesign` | `feature/FRONTEND/GRX-AI-STUDIO-001` | Global Header + AI Marketing Copilot redesign (`/dashboard/ai`) — first task run through the independent-review workflow end to end (developer: Antigravity, reviewer: Claude Code, human sign-off confirmed) | `2b6888f` | 2026-08-15 |
 | `.worktrees/grx-settings-team-redesign` | `feature/FRONTEND/GRX-SETTINGS-TEAM-REDESIGN` | Card-Based Redesign for Company Settings, Team & Roles, and Integrations Pages | `dfd1cc1` | 2026-08-07 |
 | `.worktrees/grx-templates-page-redesign` | `feature/FRONTEND/GRX-TEMPLATES-PAGE-REDESIGN` | Email Templates Page Redesign (Hero Showcase Spotlight, Visual Card Grid, Metric Summary Cards, Category Pills, View Switcher & Live Preview Drawer) | `954eab2` | 2026-08-07 |
 | `.worktrees/grx-cicd-deployment` | `feature/BACKEND/GRX-CICD-DEPLOYMENT` | Deployment CI/CD Workflows (Hugging Face Spaces API+Worker, Netlify Web Frontend, Release Orchestration) | `f146b98` | 2026-08-07 |
