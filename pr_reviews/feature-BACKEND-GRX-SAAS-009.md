@@ -1,11 +1,14 @@
 Task: GRX-SAAS-009
 Developer: Claude Code
-Reviewer:
+Reviewer: Claude Code (fresh session — same tool as developer, no other tool available;
+the explicitly-documented weaker fallback per AGENT_EXECUTION_RULES.md §Who reviews. This
+session did not write any of this branch and verified everything against the real diff,
+the real database, and re-run tests.)
 Branch: feature/BACKEND/GRX-SAAS-009
 Worktree: .worktrees/grx-saas-009-monitoring
 Base Commit: 617bfc0
 Latest Commit: 5748993
-Status: READY_FOR_REVIEW
+Status: CHANGES_REQUESTED
 
 ## What Changed
 - **Infra monitoring**: `GET /platform/monitoring/queues` — real RabbitMQ queue depths
@@ -76,17 +79,106 @@ decision (e.g. a `credit_pack_id`/`amount_paid`/`currency` column), not approxim
 
 ## Review Findings
 
+Verified against the actual branch, the real dev database, and independently re-run
+tests — not against this file's claims. Risk treated as HIGH (new permission, migration,
+money figures on a privileged control plane).
+
+**Claims that check out.** The migration is parameterized (no string interpolation), uses
+a fixed UUID, deletes `platform_role_permissions` before `platform_permissions` on
+downgrade (correct FK order), and sits on a linear chain — I confirmed only one migration
+revises `fa291f6b37ca`, so no second alembic head. The dev DB is already at
+`039f01bed830`. All four granted roles exist in `PLATFORM_ROLES`, and `platform.support`
+is correctly *not* granted and has an explicit 403 test. Both routes are gated by
+`require_platform_permission`, so `test_protected_routes_audit.py` covers them
+automatically with no allowlist edit. The backend test claim is exact — I re-ran
+`test_platform_admin_monitoring.py` + `test_platform_admin_dashboard.py` against the real
+compose stack: **8 passed**. Frontend re-run: **42 files / 223 tests passed**, `tsc` 0
+errors, `eslint` 0 errors. The new pages contain no hardcoded metrics — both fetch real
+endpoints. And excluding credit-pack revenue with a documented schema gap, rather than
+approximating it, is exactly the right call.
+
+1. **BLOCKER — `mrr_by_currency` / `arr_by_currency` are not per-currency.**
+   `get_mrr_totals` sums `SubscriptionPlan.price_usd` **and** `price_inr` across *every*
+   ACTIVE subscription with no filter on `AccountSubscription.currency` — so one USD
+   customer contributes to the INR total too. Demonstrated read-only against the live dev
+   DB:
+
+   | | implementation | currency-filtered |
+   |---|---|---|
+   | MRR USD | $19.00 | $19.00 |
+   | MRR INR | **₹1,499.00** | **₹0.00** |
+
+   There are currently zero INR subscribers, yet the dashboard would report ₹1,499 MRR
+   and — after this branch's `× 12` — **₹17,988 ARR** for a currency with no customers.
+   The root cause is pre-existing (`get_mrr_totals`, `GRX-SAAS-014`) and reusing it for
+   consistency was a defensible instinct, but this branch is what names the output
+   `mrr_by_currency`, asserts a per-currency attribution the query does not perform, and
+   annualizes it. Fix is small — filter each sum on `AccountSubscription.currency` — and
+   it also corrects the platform overview page that shares the function.
+
+2. **HIGH — `active_subscription_count` counts free accounts.** Every account receives an
+   `status="ACTIVE"` Free subscription at registration (`create_default_free_subscription`),
+   so on the live DB this reads **37 active subscriptions, 36 of them Free** — one paying
+   customer. Rendered on a *financial* dashboard beside MRR/ARR, "Active Subscriptions"
+   will be read as paying customers. The docstring's rationale — that it "must match the
+   MRR figure shown right next to it" — does not actually hold: MRR is price-weighted, so
+   Free contributes 0, while this count is unweighted and Free contributes 1. They share a
+   status filter, not a meaning. Either count paying subscriptions (`price_usd`/`price_inr`
+   non-null and non-zero) or relabel the card so it cannot be mistaken for paid customers.
+
+3. **MEDIUM — churn systematically under-counts, and the label overstates it.**
+   `downgrade_expired_cancellations` sets `status = 'ACTIVE'` when a canceled
+   subscription's paid period ends. So a subscription that churned 25 days ago but whose
+   period ended 3 days ago is no longer `CANCELED` and silently drops out of
+   `churned_last_30_days`. What the metric actually measures is "cancellations still
+   inside their paid period", not "churned in the last 30 days" — the `updated_at` proxy
+   is honestly documented, but this interaction with the downgrade ticker is not, and it
+   biases the number in one direction. Compounding it, the denominator `active + churned`
+   inherits finding 2's free accounts, so the published churn *rate* is diluted as well.
+
+4. **MEDIUM — two tests do not test what their names assert.**
+   - `test_financial_metrics_computes_mrr_arr_per_currency_not_summed_together` asserts
+     `mrr_by_currency["USD"] >= starter.price_usd`. With `>=`, it passes *precisely when
+     the currencies are summed together* — the bug in finding 1 is what its name forbids,
+     and the test is green. Written as `==` it would fail today.
+   - `test_financial_metrics_churn_counts_only_cancellations_in_the_last_30_days` asserts
+     `churned_last_30_days >= 1`, then "proves" the 90-day row is excluded by re-querying
+     that row and asserting its own `updated_at` is old — i.e. it asserts the fixture it
+     just created, never that the metric excluded it.
+
+   Both would pass against an implementation that ignored currency and window entirely.
+   The `>=` style looks like an accommodation for the shared, non-isolated dev database
+   the Tests section already flags; the fix is to assert on a delta (measure before,
+   create, measure after) rather than to loosen the comparison.
+
+5. **LOW — one overstated test claim.** "`prettier --check` ... clean" is true for this
+   branch's own files but not repo-wide: `npm run format:check` still fails on 7 files,
+   all inherited from the `GRX-AI-STUDIO-001` merge and being fixed separately on
+   `feature/FRONTEND/GRX-LINT-FORMAT-CLEANUP`. Not this branch's defect — noted so the
+   stronger claim isn't passed through, and so the merge order is clear: CI's frontend job
+   stays red until that cleanup branch lands.
+
+Security/isolation: no findings. Platform-admin routes are cross-account by design and
+correctly sit behind `require_platform_permission`; no customer-facing route, no
+`account_id` scoping regression, no secrets or vendor identifiers in the diff. The
+queue-depth passive-declare-per-channel rationale is sound — a failed passive declare does
+invalidate the channel, so a shared channel would break every check after the first
+missing queue.
 
 ## Review Decision
-
+CHANGES_REQUESTED
 
 ## Reviewed Code Commit
-
+b1a9c51
 
 ## Review Record Commit
 
 
 ## Human Approval
-Required (new UI: `/platform/monitoring`, `/platform/finance`)
+Required (new UI: `/platform/monitoring`, `/platform/finance`). Not yet eligible — the
+branch is `CHANGES_REQUESTED`. Findings 1–3 are also product decisions, not only code
+fixes: please confirm whether "Active Subscriptions" should mean paying customers, and
+whether churn should be measured from a real status-change history (a small schema
+addition) rather than the `updated_at` proxy, given the downgrade-ticker interaction.
 
-Status:
+Status: CHANGES_REQUESTED
