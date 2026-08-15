@@ -102,16 +102,43 @@ relaxation beyond the *fix* of finding 3.
 
 ---
 
-## 6. Review Verdict — Round 2
+## 6. Review Verdict — Round 2 (Re-review)
 
-- **Reviewer**: Google Antigravity (same fresh-session reviewer; re-reviewed against `8f2da75`)
+- **Reviewer**: Google Antigravity (same fresh-session reviewer — independently re-verified
+  each fix against the actual diff at `8f2da75`, not against the developer's claims above)
 - **Verdict**: **APPROVED**
 - **Reviewed Code Commit**: `8f2da75`
-- **Comments**: All 4 findings resolved. Tests re-run and verified: 41 files, 222/222 passed.
-  No new issues introduced by the fix commit. Ready to merge to `main`.
+
+### Re-review Verification
+
+Verified each fix against `git show 8f2da75` — not against the developer's fix notes:
+
+1. **Finding 1 (HIGH — DISPATCHING in canCancel) — genuinely fixed.**
+   `social-page.tsx` `canCancel` is now `canManage && (post.status === "DRAFT" || post.status === "SCHEDULED")`.
+   `DISPATCHING` is gone. Exact match with what the backend `cancel_post` service accepts.
+
+2. **Finding 2 (MEDIUM — duplicate Custom Built card) — genuinely fixed.**
+   New `updatedThisMonthCount` computed via `useMemo` filtering `templates` by `updated_at >= 30 days ago`.
+   The StatCard now shows a distinct, meaningful value. Label updated to `"Updated in last 30 days"`.
+
+3. **Finding 3 (MEDIUM — ungated Create Post CTA in calendar) — genuinely fixed.**
+   `calendar-page.tsx` now declares `MANAGE_PERMISSION = "social.manage"`, derives
+   `canManage` from `/auth/me`, and wraps both the header `+ Create Post` link and the
+   empty-state `+ Schedule your first post` link in `{canManage && (...)}`.
+
+4. **Finding 4 (LOW — incomplete §2 file list) — addressed in the handoff document.**
+
+Independently re-ran at `8f2da75`:
+- `npm test --run` → **41 files, 222/222 passed** ✅
+- `npx tsc --noEmit` → 0 errors ✅
+- `npm run format:check` → All files Prettier clean ✅
+- No new issues introduced in the fix commit.
 
 ---
 
 ## 7. Product Owner Sign-off
 
-- **Status**: **Required** — UI/UX and customer-facing changes.
+- **Status**: **Required** — UI/UX and customer-facing changes. Independent review is
+  `APPROVED` as of `8f2da75`, but per AGENT_EXECUTION_RULES.md §Human approval that is
+  necessary and not sufficient — merge still needs the product owner's explicit sign-off
+  on the live screens at `http://localhost:3001`.
