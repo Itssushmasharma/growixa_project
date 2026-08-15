@@ -17,7 +17,17 @@ const MANAGE_PERMISSION = "campaigns.manage";
 
 type SortOption = "updated" | "name";
 type ViewMode = "grid" | "list";
-type CategoryFilter = "All" | "Marketing" | "Onboarding" | "Announcement" | "Newsletter";
+type CategoryFilter =
+  "All" | "Marketing" | "Onboarding" | "Announcement" | "Newsletter" | "Transactional";
+
+const CATEGORIES: CategoryFilter[] = [
+  "All",
+  "Marketing",
+  "Onboarding",
+  "Announcement",
+  "Newsletter",
+  "Transactional",
+];
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, {
@@ -164,6 +174,54 @@ export function TemplatesPage() {
     }
   }
 
+  const categoryCounts = useMemo(() => {
+    const counts: Record<CategoryFilter, number> = {
+      All: templates.length,
+      Marketing: 0,
+      Onboarding: 0,
+      Announcement: 0,
+      Newsletter: 0,
+      Transactional: 0,
+    };
+
+    for (const t of templates) {
+      const nameLower = t.name.toLowerCase();
+      if (
+        nameLower.includes("marketing") ||
+        nameLower.includes("promo") ||
+        nameLower.includes("sale")
+      ) {
+        counts.Marketing += 1;
+      }
+      if (nameLower.includes("onboarding") || nameLower.includes("welcome")) {
+        counts.Onboarding += 1;
+      }
+      if (
+        nameLower.includes("announcement") ||
+        nameLower.includes("update") ||
+        nameLower.includes("launch")
+      ) {
+        counts.Announcement += 1;
+      }
+      if (
+        nameLower.includes("newsletter") ||
+        nameLower.includes("digest") ||
+        nameLower.includes("roundup")
+      ) {
+        counts.Newsletter += 1;
+      }
+      if (
+        nameLower.includes("transactional") ||
+        nameLower.includes("receipt") ||
+        nameLower.includes("alert")
+      ) {
+        counts.Transactional += 1;
+      }
+    }
+
+    return counts;
+  }, [templates]);
+
   const visibleTemplates = useMemo(() => {
     const query = search.trim().toLowerCase();
     let filtered = query
@@ -177,8 +235,38 @@ export function TemplatesPage() {
     if (categoryFilter !== "All") {
       filtered = filtered.filter((t) => {
         const nameLower = t.name.toLowerCase();
-        const categoryLower = categoryFilter.toLowerCase();
-        return nameLower.includes(categoryLower);
+        if (categoryFilter === "Marketing") {
+          return (
+            nameLower.includes("marketing") ||
+            nameLower.includes("promo") ||
+            nameLower.includes("sale")
+          );
+        }
+        if (categoryFilter === "Onboarding") {
+          return nameLower.includes("onboarding") || nameLower.includes("welcome");
+        }
+        if (categoryFilter === "Announcement") {
+          return (
+            nameLower.includes("announcement") ||
+            nameLower.includes("update") ||
+            nameLower.includes("launch")
+          );
+        }
+        if (categoryFilter === "Newsletter") {
+          return (
+            nameLower.includes("newsletter") ||
+            nameLower.includes("digest") ||
+            nameLower.includes("roundup")
+          );
+        }
+        if (categoryFilter === "Transactional") {
+          return (
+            nameLower.includes("transactional") ||
+            nameLower.includes("receipt") ||
+            nameLower.includes("alert")
+          );
+        }
+        return true;
       });
     }
 
@@ -191,22 +279,22 @@ export function TemplatesPage() {
     return sorted;
   }, [templates, search, sortBy, categoryFilter]);
 
-  const latestUpdatedDate = useMemo(() => {
-    if (templates.length === 0) return "N/A";
-    const sorted = [...templates].sort((a, b) => b.updated_at.localeCompare(a.updated_at));
-    return sorted[0] ? formatDate(sorted[0].updated_at) : "N/A";
-  }, [templates]);
-
   const updatedThisMonthCount = useMemo(() => {
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - 30);
     return templates.filter((t) => new Date(t.updated_at) >= cutoff).length;
   }, [templates]);
 
+  const latestUpdatedDate = useMemo(() => {
+    if (templates.length === 0) return "N/A";
+    const sorted = [...templates].sort((a, b) => b.updated_at.localeCompare(a.updated_at));
+    return sorted[0] ? formatDate(sorted[0].updated_at) : "N/A";
+  }, [templates]);
+
   if (loading) {
     return (
       <div className={styles.page}>
-        <div className={styles.card}>Loading…</div>
+        <div className={styles.loadingCard}>Loading email templates…</div>
       </div>
     );
   }
@@ -214,7 +302,7 @@ export function TemplatesPage() {
   if (loadError) {
     return (
       <div className={styles.page}>
-        <div className={styles.card}>{loadError}</div>
+        <div className={styles.errorCard}>{loadError}</div>
       </div>
     );
   }
@@ -222,14 +310,14 @@ export function TemplatesPage() {
   if (!canView) {
     return (
       <div className={styles.page}>
-        <div className={styles.card}>You don&apos;t have access to email templates.</div>
+        <div className={styles.errorCard}>You don&apos;t have access to email templates.</div>
       </div>
     );
   }
 
   return (
     <div className={styles.page}>
-      {/* Page Header */}
+      {/* Standardized Page Header */}
       <PageHeader
         icon="📋"
         title="Email Templates"
@@ -243,8 +331,8 @@ export function TemplatesPage() {
         }
       />
 
-      {/* Metric Summary Cards */}
-      <section className={styles.metricsGrid} aria-label="Template Library Overview KPIs">
+      {/* Metric Summary Cards (Strictly Derived Data) */}
+      <section className={styles.statsDeck} aria-label="Template Library Overview KPIs">
         <StatCard label="Total Templates" value={templates.length} subtext="Account library" />
         <StatCard
           label="Starter Presets"
@@ -252,7 +340,7 @@ export function TemplatesPage() {
           subtext="Built-in starter layouts"
         />
         <StatCard
-          label="Custom Built"
+          label="Updated (30d)"
           value={updatedThisMonthCount}
           subtext="Updated in last 30 days"
         />
@@ -265,10 +353,13 @@ export function TemplatesPage() {
 
       {/* Main Templates Workspace */}
       <div className={styles.card}>
-        {/* Toolbar & View Switcher */}
-        {templates.length > 0 && (
-          <div className={styles.toolbar}>
-            <div className={styles.toolbarLeft}>
+        {/* Toolbar & Filter Pills */}
+        <div className={styles.toolbar}>
+          <div className={styles.toolbarLeft}>
+            <div className={styles.searchWrapper}>
+              <span className={styles.searchIcon} aria-hidden="true">
+                🔍
+              </span>
               <input
                 type="search"
                 className={styles.searchInput}
@@ -277,62 +368,86 @@ export function TemplatesPage() {
                 onChange={(event) => setSearch(event.target.value)}
                 aria-label="Search templates"
               />
-              <select
-                className={styles.sortSelect}
-                value={sortBy}
-                onChange={(event) => setSortBy(event.target.value as SortOption)}
-                aria-label="Sort templates"
-              >
-                <option value="updated">Sort by: Last updated</option>
-                <option value="name">Sort by: Name</option>
-              </select>
-
-              <div className={styles.categoryPills}>
-                {(["All", "Marketing", "Onboarding", "Announcement", "Newsletter"] as const).map(
-                  (cat) => (
-                    <button
-                      key={cat}
-                      type="button"
-                      className={`${styles.categoryPill} ${
-                        categoryFilter === cat ? styles.categoryPillActive : ""
-                      }`}
-                      onClick={() => setCategoryFilter(cat)}
-                    >
-                      {cat}
-                    </button>
-                  ),
-                )}
-              </div>
             </div>
 
-            <div className={styles.viewModeToggle}>
-              <button
-                type="button"
-                className={`${styles.viewModeBtn} ${
-                  viewMode === "grid" ? styles.viewModeBtnActive : ""
-                }`}
-                onClick={() => setViewMode("grid")}
-                aria-label="Grid View"
-              >
-                🎴 Grid
-              </button>
-              <button
-                type="button"
-                className={`${styles.viewModeBtn} ${
-                  viewMode === "list" ? styles.viewModeBtnActive : ""
-                }`}
-                onClick={() => setViewMode("list")}
-                aria-label="List View"
-              >
-                📋 List
-              </button>
+            <select
+              className={styles.sortSelect}
+              value={sortBy}
+              onChange={(event) => setSortBy(event.target.value as SortOption)}
+              aria-label="Sort templates"
+            >
+              <option value="updated">Sort by: Last updated</option>
+              <option value="name">Sort by: Name</option>
+            </select>
+
+            <div className={styles.categoryPills} role="tablist" aria-label="Template categories">
+              {CATEGORIES.map((cat) => (
+                <button
+                  key={cat}
+                  type="button"
+                  role="tab"
+                  aria-selected={categoryFilter === cat}
+                  className={`${styles.categoryPill} ${
+                    categoryFilter === cat ? styles.categoryPillActive : ""
+                  }`}
+                  onClick={() => setCategoryFilter(cat)}
+                >
+                  <span>{cat}</span>
+                  {categoryCounts[cat] > 0 && (
+                    <span className={styles.categoryBadge}>{categoryCounts[cat]}</span>
+                  )}
+                </button>
+              ))}
             </div>
+          </div>
+
+          <div className={styles.viewModeToggle} role="group" aria-label="View Mode">
+            <button
+              type="button"
+              className={`${styles.viewModeBtn} ${
+                viewMode === "grid" ? styles.viewModeBtnActive : ""
+              }`}
+              onClick={() => setViewMode("grid")}
+              aria-label="Grid View"
+              aria-pressed={viewMode === "grid"}
+            >
+              🎴 Grid
+            </button>
+            <button
+              type="button"
+              className={`${styles.viewModeBtn} ${
+                viewMode === "list" ? styles.viewModeBtnActive : ""
+              }`}
+              onClick={() => setViewMode("list")}
+              aria-label="List View"
+              aria-pressed={viewMode === "list"}
+            >
+              📋 List
+            </button>
+          </div>
+        </div>
+
+        {templates.length === 0 && (
+          <div className={styles.emptyState}>
+            <p className={styles.emptyStateTitle}>No email templates yet.</p>
+            <p className={styles.emptyStateSubtitle}>
+              Get started by creating a new custom email template or selecting from ready presets.
+            </p>
+            {canManage && (
+              <Link href="/dashboard/templates/new" className={styles.actionButton}>
+                + Create First Template
+              </Link>
+            )}
           </div>
         )}
 
-        {templates.length === 0 && <p className={styles.hint}>No email templates yet.</p>}
         {templates.length > 0 && visibleTemplates.length === 0 && (
-          <p className={styles.hint}>No templates match &quot;{search}&quot;.</p>
+          <div className={styles.emptyState}>
+            <p className={styles.emptyStateTitle}>No templates match &quot;{search}&quot;.</p>
+            <p className={styles.emptyStateSubtitle}>
+              Try refining your search terms or clearing the filter.
+            </p>
+          </div>
         )}
 
         {/* Visual Card Grid View */}
