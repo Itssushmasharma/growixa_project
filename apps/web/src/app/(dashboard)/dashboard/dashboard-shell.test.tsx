@@ -14,7 +14,7 @@ vi.mock("@/lib/api-client", () => ({
     Promise.resolve({
       period_ai_used: 2,
       plan: { name: "Free", max_monthly_ai_runs: 10 },
-    })
+    }),
   ),
 }));
 
@@ -122,13 +122,9 @@ describe("DashboardShell", () => {
 
   it("renders the global search input, AI credits meter, and user company profile", async () => {
     render(
-      <DashboardShell
-        permissions={[]}
-        fullName="Ravi Sharma"
-        companyName="TechCorp Global"
-      >
+      <DashboardShell permissions={[]} fullName="Ravi Sharma" companyName="TechCorp Global">
         <p>Dashboard</p>
-      </DashboardShell>
+      </DashboardShell>,
     );
 
     expect(screen.getByPlaceholderText(/Search dashboard\.\.\. \(⌘K\)/i)).toBeInTheDocument();
@@ -140,4 +136,3 @@ describe("DashboardShell", () => {
     });
   });
 });
-

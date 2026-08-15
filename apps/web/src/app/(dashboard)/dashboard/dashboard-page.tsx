@@ -3,9 +3,10 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-import { MetricCard } from "@/components/dashboard/metric-card";
 import { QuotaGauge } from "@/components/dashboard/quota-gauge";
 import { TrendChart } from "@/components/dashboard/trend-chart";
+import { PageHeader } from "@/components/page-header/page-header";
+import { StatCard } from "@/components/stat-card/stat-card";
 import { ApiError, apiFetch } from "@/lib/api-client";
 
 import styles from "./dashboard-page.module.css";
@@ -68,13 +69,51 @@ export function DashboardPage() {
 
   return (
     <div className={styles.page}>
-      <div className={styles.metricsGrid}>
-        <MetricCard label="Total contacts" value={overview.total_contacts.toLocaleString()} />
-        <MetricCard label="Active campaigns" value={overview.active_campaigns} />
-        <MetricCard label="Scheduled posts" value={overview.scheduled_social_posts} />
-        <MetricCard label="Email open rate" value={formatPct(overview.email_open_rate_pct)} />
-        <MetricCard label="Email click rate" value={formatPct(overview.email_click_rate_pct)} />
-      </div>
+      {/* Page Header */}
+      <PageHeader
+        icon="📊"
+        title="Dashboard Overview"
+        description="Welcome back! Track your multi-channel marketing performance and audience growth."
+        actions={
+          <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+            <Link href="/dashboard/ai" className={styles.actionButtonSecondary}>
+              ⚡ AI Copilot
+            </Link>
+            <Link href="/dashboard/campaigns/new" className={styles.actionButton}>
+              + Create Campaign
+            </Link>
+          </div>
+        }
+      />
+
+      {/* KPI Stats Grid (Real Overview Data) */}
+      <section className={styles.metricsGrid} aria-label="Overview KPI metrics">
+        <StatCard
+          label="Total Contacts"
+          value={overview.total_contacts.toLocaleString()}
+          subtext="Audience"
+        />
+        <StatCard
+          label="Active Campaigns"
+          value={overview.active_campaigns}
+          subtext="Live & scheduled"
+        />
+        <StatCard
+          label="Scheduled Posts"
+          value={overview.scheduled_social_posts}
+          subtext="Social queue"
+        />
+        <StatCard
+          label="Email Open Rate"
+          value={formatPct(overview.email_open_rate_pct)}
+          subtext="Delivered campaigns"
+        />
+        <StatCard
+          label="Email Click Rate"
+          value={formatPct(overview.email_click_rate_pct)}
+          subtext="Delivered campaigns"
+        />
+      </section>
 
       <div className={styles.card}>
         <div className={styles.chartHeader}>
