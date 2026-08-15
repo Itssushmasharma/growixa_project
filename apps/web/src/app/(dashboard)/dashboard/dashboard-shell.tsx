@@ -46,11 +46,8 @@ export function DashboardShell({
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [usage, setUsage] = useState<{ used: number; max: number; planName: string }>({
-    used: 0,
-    max: 10,
-    planName: "Free",
-  });
+  const [usage, setUsage] = useState<{ used: number; max: number; planName: string } | null>(null);
+  const [usageLoading, setUsageLoading] = useState(true);
 
   const pathname = usePathname();
   const router = useRouter();
@@ -62,11 +59,12 @@ export function DashboardShell({
     }
   }, [pathname]);
 
-  // Load live subscription / usage data
+  // Load live subscription / usage data once on mount
   useEffect(() => {
+    let isMounted = true;
     apiFetch<SubscriptionSummary>("/billing/subscription")
       .then((data) => {
-        if (data?.plan) {
+        if (isMounted && data?.plan) {
           setUsage({
             used: data.period_ai_used ?? 0,
             max: data.plan.max_monthly_ai_runs ?? 10,
@@ -75,9 +73,16 @@ export function DashboardShell({
         }
       })
       .catch(() => {
-        // Fallback gracefully
+        // Leave usage as null if unavailable
+      })
+      .finally(() => {
+        if (isMounted) setUsageLoading(false);
       });
-  }, [pathname]);
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Keyboard shortcut listener (⌘K / Ctrl+K)
   useEffect(() => {
@@ -105,11 +110,14 @@ export function DashboardShell({
     : "U";
 
   const isPaidPlan =
-    usage.planName.toLowerCase().includes("growth") ||
-    usage.planName.toLowerCase().includes("pro") ||
-    usage.planName.toLowerCase().includes("enterprise");
+    usage &&
+    (usage.planName.toLowerCase().includes("growth") ||
+      usage.planName.toLowerCase().includes("pro") ||
+      usage.planName.toLowerCase().includes("enterprise"));
 
-  const usagePercent = Math.min(100, Math.round((usage.used / Math.max(1, usage.max)) * 100));
+  const usagePercent = usage
+    ? Math.min(100, Math.round((usage.used / Math.max(1, usage.max)) * 100))
+    : 0;
 
   const filteredJumpRoutes = QUICK_JUMP_ROUTES.filter((r) =>
     r.label.toLowerCase().includes(searchQuery.toLowerCase())
@@ -181,28 +189,32 @@ export function DashboardShell({
 
           {/* Right: AI Credits + Upgrade/Manage + Notifications + User Profile */}
           <div className={topbarStyles.rightArea}>
-            {/* AI Credits Meter */}
-            <Link href="/dashboard/billing" className={topbarStyles.creditsPill} title="AI Credits Usage">
-              <span className={topbarStyles.creditsLabel}>
-                <span>⚡</span> AI Credits
-              </span>
-              <span className={topbarStyles.creditsCount}>
-                {usage.used} / {usage.max}
-              </span>
-              <div className={topbarStyles.creditsTrack}>
-                <div className={topbarStyles.creditsFill} style={{ width: `${usagePercent}%` }} />
-              </div>
-            </Link>
+            {/* AI Credits Meter (Rendered when usage is resolved) */}
+            {!usageLoading && usage && (
+              <Link href="/dashboard/billing" className={topbarStyles.creditsPill} title="AI Credits Usage">
+                <span className={topbarStyles.creditsLabel}>
+                  <span>⚡</span> AI Credits
+                </span>
+                <span className={topbarStyles.creditsCount}>
+                  {usage.used} / {usage.max}
+                </span>
+                <div className={topbarStyles.creditsTrack}>
+                  <div className={topbarStyles.creditsFill} style={{ width: `${usagePercent}%` }} />
+                </div>
+              </Link>
+            )}
 
             {/* Subscription Action Button */}
-            {isPaidPlan ? (
-              <Link href="/dashboard/billing" className={topbarStyles.managePlanBtn}>
-                Manage Plan
-              </Link>
-            ) : (
-              <Link href="/dashboard/billing" className={topbarStyles.upgradeBtn}>
-                Upgrade
-              </Link>
+            {!usageLoading && (
+              isPaidPlan ? (
+                <Link href="/dashboard/billing" className={topbarStyles.managePlanBtn}>
+                  Manage Plan
+                </Link>
+              ) : (
+                <Link href="/dashboard/billing" className={topbarStyles.upgradeBtn}>
+                  Upgrade
+                </Link>
+              )
             )}
 
             {/* Notifications Bell */}
@@ -221,7 +233,7 @@ export function DashboardShell({
               <div className={topbarStyles.userAvatar}>{initials}</div>
               <div className={topbarStyles.userInfo}>
                 <span className={topbarStyles.userName}>{fullName}</span>
-                <span className={topbarStyles.userOrg}>{companyName || "Growixa"}</span>
+                <span className={topbarStyles.userOrg}>{companyName || "Personal Workspace"}</span>
               </div>
               <LogoutButton />
             </div>

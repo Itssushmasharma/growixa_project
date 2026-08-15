@@ -14,11 +14,9 @@ import type {
   AIGeneration,
   CampaignSummary,
   MeResponse,
-  QualityMetrics,
   SegmentSummary,
   StudioChannel,
   SuggestedPrompt,
-  SubscriptionUsageInfo,
 } from "./types";
 
 const VIEW_PERMISSION = "ai.view";
@@ -108,17 +106,6 @@ const EXAMPLE_CHIPS = [
   "VIP customer thank you",
 ];
 
-function calculateMetrics(text: string, index: number): QualityMetrics {
-  const brandScores = [94, 91, 89, 93, 90, 95];
-  const score = brandScores[index % brandScores.length] || 92;
-  return {
-    brand_match_percent: score,
-    readability: score > 90 ? "Excellent" : "Good",
-    spam_risk: "Low",
-    is_best_match: index === 0,
-  };
-}
-
 export function HistoryPage() {
   const router = useRouter();
   const { showToast } = useToast();
@@ -150,8 +137,8 @@ export function HistoryPage() {
 
   // Studio Creation Controls
   const [selectedChannel, setSelectedChannel] = useState<StudioChannel>("Email");
-  const [selectedCampaign, setSelectedCampaign] = useState("Summer Sale 2025");
-  const [selectedAudience, setSelectedAudience] = useState("Inactive Customers");
+  const [selectedCampaignId, setSelectedCampaignId] = useState<string>("c-1");
+  const [selectedAudienceId, setSelectedAudienceId] = useState<string>("s-1");
   const [promptText, setPromptText] = useState("");
   const [selectedTone, setSelectedTone] = useState("Friendly");
   const [selectedLength, setSelectedLength] = useState("Short & Punchy");
@@ -167,13 +154,6 @@ export function HistoryPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [timeFilter, setTimeFilter] = useState("All Time");
 
-  // Usage Info
-  const [usage, setUsage] = useState<SubscriptionUsageInfo>({
-    period_ai_used: 245,
-    max_monthly_ai_runs: 500,
-    plan_name: "Growth",
-  });
-
   useEffect(() => {
     async function load() {
       try {
@@ -187,10 +167,9 @@ export function HistoryPage() {
         if (hasView) {
           try {
             const list = await apiFetch<AIGeneration[]>("/ai/generations");
-            const enriched = list.map((item, idx) => ({
+            const enriched = list.map((item) => ({
               ...item,
               approval_status: item.approval_status || "PENDING_APPROVAL",
-              metrics: item.metrics || calculateMetrics(item.output?.text || "", idx),
             }));
             setGenerations(enriched);
           } catch {
@@ -202,7 +181,7 @@ export function HistoryPage() {
             const campList = await apiFetch<CampaignSummary[]>("/campaigns");
             if (campList && campList.length > 0) {
               setCampaigns(campList);
-              setSelectedCampaign(campList[0]?.name || "General");
+              setSelectedCampaignId(campList[0]?.id || "");
             }
           } catch {
             // Fallback to default campaigns list
@@ -213,28 +192,11 @@ export function HistoryPage() {
             const segList = await apiFetch<SegmentSummary[]>("/contacts/segments");
             if (segList && segList.length > 0) {
               setSegments(segList);
-              setSelectedAudience(segList[0]?.name || "All Contacts");
+              setSelectedAudienceId(segList[0]?.id || "");
             }
           } catch {
             // Fallback to default segments list
           }
-        }
-
-        // Fetch subscription quota info
-        try {
-          const sub = await apiFetch<{
-            period_ai_used: number;
-            plan: { max_monthly_ai_runs: number; name: string };
-          }>("/billing/subscription");
-          if (sub?.plan) {
-            setUsage({
-              period_ai_used: sub.period_ai_used,
-              max_monthly_ai_runs: sub.plan.max_monthly_ai_runs,
-              plan_name: sub.plan.name,
-            });
-          }
-        } catch {
-          // Fallback gracefully
         }
       } catch {
         setLoadError("Could not load AI Assistant workspace.");
@@ -246,6 +208,9 @@ export function HistoryPage() {
     void load();
   }, []);
 
+  const activeCampaign = campaigns.find((c) => c.id === selectedCampaignId);
+  const activeSegment = segments.find((s) => s.id === selectedAudienceId);
+
   // Handle Generating Variations
   async function handleGenerate() {
     if (!promptText.trim()) return;
@@ -254,15 +219,29 @@ export function HistoryPage() {
     const activeConfig = CHANNELS.find((c) => c.value === selectedChannel) || CHANNELS[0]!;
     const capability = activeConfig.capability;
 
-    const enrichedBrief = `${promptText.trim()} (Channel: ${selectedChannel}, Campaign: ${selectedCampaign}, Audience: ${selectedAudience}, Tone: ${selectedTone}, Length: ${selectedLength})`;
+    const campaignLabel = activeCampaign ? activeCampaign.name : "General";
+    const audienceLabel = activeSegment ? activeSegment.name : "All Contacts";
+
+    const enrichedBrief = `${promptText.trim()} (Channel: ${selectedChannel}, Campaign: ${campaignLabel}, Audience: ${audienceLabel}, Tone: ${selectedTone}, Length: ${selectedLength})`;
+
+    const payload: {
+      brief: string;
+      linked_entity_type?: string;
+      linked_entity_id?: string;
+    } = {
+      brief: enrichedBrief,
+    };
+
+    if (selectedCampaignId && selectedCampaignId !== "general") {
+      payload.linked_entity_type = "campaign";
+      payload.linked_entity_id = selectedCampaignId;
+    }
 
     const countToGenerate = Math.max(1, variationsCount);
     const requests = Array.from({ length: countToGenerate }).map(() =>
       apiFetch<AIGeneration>(`/ai/generate/${capability}`, {
         method: "POST",
-        body: JSON.stringify({
-          brief: enrichedBrief,
-        }),
+        body: JSON.stringify(payload),
       })
     );
 
@@ -270,17 +249,16 @@ export function HistoryPage() {
       const results = await Promise.allSettled(requests);
       const newItems: AIGeneration[] = [];
 
-      results.forEach((res, idx) => {
+      results.forEach((res) => {
         if (res.status === "fulfilled" && res.value) {
           newItems.push({
             ...res.value,
             channel: selectedChannel,
             approval_status: "PENDING_APPROVAL",
-            metrics: calculateMetrics(res.value.output?.text || "", idx),
             input_context: {
               brief: promptText,
-              campaign: selectedCampaign,
-              audience: selectedAudience,
+              campaign: campaignLabel,
+              audience: audienceLabel,
             },
           });
         }
@@ -288,10 +266,6 @@ export function HistoryPage() {
 
       if (newItems.length > 0) {
         setGenerations((prev) => [...newItems, ...prev]);
-        setUsage((prev) => ({
-          ...prev,
-          period_ai_used: prev.period_ai_used + newItems.length,
-        }));
         showToast("success", `Generated ${newItems.length} variation(s) for ${selectedChannel}!`);
       } else {
         const firstError = results.find((r) => r.status === "rejected") as
@@ -309,8 +283,10 @@ export function HistoryPage() {
   // Handle Suggestion Click
   function handleSelectSuggestion(sug: SuggestedPrompt) {
     setSelectedChannel(sug.channel);
-    if (sug.campaign) setSelectedCampaign(sug.campaign);
-    if (sug.audience) setSelectedAudience(sug.audience);
+    const matchedCamp = campaigns.find((c) => c.name === sug.campaign);
+    if (matchedCamp) setSelectedCampaignId(matchedCamp.id);
+    const matchedSeg = segments.find((s) => s.name === sug.audience);
+    if (matchedSeg) setSelectedAudienceId(matchedSeg.id);
     setPromptText(sug.prompt);
     setSelectedTone(sug.tone);
     setSelectedLength(sug.length);
@@ -414,7 +390,7 @@ export function HistoryPage() {
       />
 
       {/* =========================================================================
-          2. Two-Column Main Studio Layout
+          Two-Column Main Studio Layout
           ========================================================================= */}
       <div className={styles.studioLayout}>
         {/* =========================================================================
@@ -467,15 +443,15 @@ export function HistoryPage() {
                 <select
                   id="ai-context-campaign"
                   className={styles.selectInput}
-                  value={selectedCampaign}
-                  onChange={(e) => setSelectedCampaign(e.target.value)}
+                  value={selectedCampaignId}
+                  onChange={(e) => setSelectedCampaignId(e.target.value)}
                 >
                   {campaigns.map((c) => (
-                    <option key={c.id} value={c.name}>
+                    <option key={c.id} value={c.id}>
                       {c.name}
                     </option>
                   ))}
-                  <option value="General">General / Ad-hoc</option>
+                  <option value="general">General / Ad-hoc</option>
                 </select>
               </div>
 
@@ -486,15 +462,15 @@ export function HistoryPage() {
                 <select
                   id="ai-context-audience"
                   className={styles.selectInput}
-                  value={selectedAudience}
-                  onChange={(e) => setSelectedAudience(e.target.value)}
+                  value={selectedAudienceId}
+                  onChange={(e) => setSelectedAudienceId(e.target.value)}
                 >
                   {segments.map((s) => (
-                    <option key={s.id} value={s.name}>
+                    <option key={s.id} value={s.id}>
                       {s.name}
                     </option>
                   ))}
-                  <option value="All Contacts">All Contacts</option>
+                  <option value="all">All Contacts</option>
                 </select>
               </div>
             </div>
@@ -526,7 +502,13 @@ export function HistoryPage() {
                   key={chip}
                   type="button"
                   className={styles.chipBtn}
-                  onClick={() => setPromptText(`Write a high-impact ${chip.toLowerCase()} for ${selectedCampaign}`)}
+                  onClick={() =>
+                    setPromptText(
+                      `Write a high-impact ${chip.toLowerCase()} for ${
+                        activeCampaign ? activeCampaign.name : "our campaign"
+                      }`
+                    )
+                  }
                 >
                   {chip}
                 </button>
@@ -709,10 +691,10 @@ export function HistoryPage() {
             {generations.length === 0 && (
               <div style={{ background: "#fff", padding: "48px 24px", borderRadius: "18px", textAlign: "center" }}>
                 <div style={{ fontSize: "32px", marginBottom: "8px" }}>✨</div>
-                <h4 style={{ margin: 0, fontSize: "16px", fontWeight: 800, color: "#0b1b33" }}>
+                <h4 style={{ margin: 0, fontSize: "16px", fontWeight: 800, color: "var(--color-dark-text, #0b1b33)" }}>
                   Ready to create with AI
                 </h4>
-                <p style={{ margin: "6px 0 0", fontSize: "13px", color: "#64748b" }}>
+                <p style={{ margin: "6px 0 0", fontSize: "13px", color: "var(--color-slate, #64748b)" }}>
                   Select a suggestion above or enter a prompt on the left to generate content in seconds.
                 </p>
               </div>
@@ -728,12 +710,12 @@ export function HistoryPage() {
                     </div>
                     <div>
                       <h4 className={styles.groupTitle}>
-                        {selectedCampaign ? `${selectedChannel} copy for ${selectedCampaign}` : "AI Generated Content"}
+                        {activeCampaign ? `${selectedChannel} copy for ${activeCampaign.name}` : "AI Generated Content"}
                       </h4>
                       <div style={{ display: "flex", gap: "10px", marginTop: "2px" }}>
                         <span className={styles.groupMetaTag}>@{selectedChannel}</span>
-                        <span className={styles.groupMetaTag}>🏷️ {selectedCampaign}</span>
-                        <span className={styles.groupMetaTag}>👥 {selectedAudience}</span>
+                        <span className={styles.groupMetaTag}>🏷️ {activeCampaign ? activeCampaign.name : "General"}</span>
+                        <span className={styles.groupMetaTag}>👥 {activeSegment ? activeSegment.name : "All Contacts"}</span>
                       </div>
                     </div>
                   </div>
@@ -743,7 +725,6 @@ export function HistoryPage() {
                 {/* Side-by-Side Variations Grid */}
                 <div className={styles.variationsGrid}>
                   {visibleGenerations.slice(0, 3).map((item, idx) => {
-                    const metrics = item.metrics || calculateMetrics(item.output?.text || "", idx);
                     const outputText = item.output?.text || "";
 
                     return (
@@ -751,37 +732,18 @@ export function HistoryPage() {
                         <div>
                           <div className={styles.variationCardHeader}>
                             <span className={styles.varNumberLabel}>Variation {idx + 1}</span>
-                            {metrics.is_best_match && (
-                              <span className={styles.bestMatchPill}>Best Match</span>
-                            )}
                           </div>
                           <h5 className={styles.variationHeadline}>
                             {outputText.split("\n")[0] || `Variation ${idx + 1}`}
                           </h5>
                           <p className={styles.variationBody}>
-                            {outputText.length > 200 ? `${outputText.substring(0, 200)}…` : outputText}
+                            {outputText.length > 220 ? `${outputText.substring(0, 220)}…` : outputText}
                           </p>
                         </div>
 
                         <div>
-                          {/* Scores Row */}
-                          <div className={styles.scoresRow}>
-                            <div className={styles.scoreItem}>
-                              <span>Brand Match</span>
-                              <span className={styles.scoreGreen}>● {metrics.brand_match_percent}%</span>
-                            </div>
-                            <div className={styles.scoreItem}>
-                              <span>Readability</span>
-                              <span style={{ fontWeight: 700, color: "#0b1b33" }}>{metrics.readability}</span>
-                            </div>
-                            <div className={styles.scoreItem}>
-                              <span>Spam Risk</span>
-                              <span className={styles.scoreGreen}>● {metrics.spam_risk}</span>
-                            </div>
-                          </div>
-
                           {/* Action Toolbar */}
-                          <div className={styles.cardActionsRow} style={{ marginTop: "10px" }}>
+                          <div className={styles.cardActionsRow} style={{ marginTop: "12px" }}>
                             <button
                               type="button"
                               className={styles.useBtn}

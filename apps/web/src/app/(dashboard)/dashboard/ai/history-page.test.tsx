@@ -147,17 +147,14 @@ describe("HistoryPage (Growixa AI Marketing Copilot)", () => {
     expect(screen.queryByText("Active Brand Voice")).not.toBeInTheDocument();
   });
 
-  it("renders generated variation comparison cards with quality scores and actions", async () => {
+  it("renders generated variation comparison cards with content and workflow actions", async () => {
     const user = userEvent.setup();
     mockLoad(["ai.view", "ai.manage"], [SAMPLE_GENERATION]);
 
     renderHistoryPage();
 
     expect(await screen.findByText("Variation 1")).toBeInTheDocument();
-    expect(screen.getByText("Best Match")).toBeInTheDocument();
-    expect(screen.getByText("● 94%")).toBeInTheDocument();
-    expect(screen.getByText("Excellent")).toBeInTheDocument();
-    expect(screen.getByText("● Low")).toBeInTheDocument();
+    expect(screen.getAllByText(/We miss you! Here's 20% off/i).length).toBeGreaterThanOrEqual(1);
 
     // Test Use button
     const useBtn = screen.getByRole("button", { name: "✓ Use" });
@@ -173,7 +170,7 @@ describe("HistoryPage (Growixa AI Marketing Copilot)", () => {
     const user = userEvent.setup();
     mockLoad(["ai.view", "ai.manage"], []);
 
-    mockedApiFetch.mockImplementation((path: string, _init?: RequestInit) => {
+    mockedApiFetch.mockImplementation((path: string) => {
       if (path === "/auth/me") return Promise.resolve(meWithPermissions(["ai.view", "ai.manage"]));
       if (path === "/ai/generations") return Promise.resolve([]);
       if (path === "/campaigns") return Promise.resolve([]);
