@@ -9,6 +9,15 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
 }));
 
+vi.mock("@/lib/api-client", () => ({
+  apiFetch: vi.fn(() =>
+    Promise.resolve({
+      period_ai_used: 2,
+      plan: { name: "Free", max_monthly_ai_runs: 10 },
+    })
+  ),
+}));
+
 afterEach(() => {
   vi.restoreAllMocks();
 });
@@ -110,4 +119,25 @@ describe("DashboardShell", () => {
     expect(audienceHeader).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByRole("link", { name: "Contacts" })).toBeInTheDocument();
   });
+
+  it("renders the global search input, AI credits meter, and user company profile", async () => {
+    render(
+      <DashboardShell
+        permissions={[]}
+        fullName="Ravi Sharma"
+        companyName="TechCorp Global"
+      >
+        <p>Dashboard</p>
+      </DashboardShell>
+    );
+
+    expect(screen.getByPlaceholderText(/Search dashboard\.\.\. \(⌘K\)/i)).toBeInTheDocument();
+    expect(screen.getByText("Ravi Sharma")).toBeInTheDocument();
+    expect(screen.getByText("TechCorp Global")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText("AI Credits")).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: /Upgrade/i })).toBeInTheDocument();
+    });
+  });
 });
+
