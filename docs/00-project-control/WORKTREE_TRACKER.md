@@ -16,6 +16,7 @@ This document maintains a real-time record of all parallel Git worktrees, active
 
 | Worktree Directory | Branch | Feature Delivered | Merged Commit | Merged Date |
 |---|---|---|---|---|
+| `.worktrees/grx-marketing-redesign` | `feature/FRONTEND/GRX-MARKETING-REDESIGN` | Marketing pricing section redesign & credit pack catalog matching DEC-GRX-030 | `01962ad` | 2026-08-16 |
 | `.worktrees/grx-templates-gallery` | `feature/FRONTEND/GRX-TEMPLATES-GALLERY` | Email Templates gallery visual redesign & interactive live HTML preview modal | `35bda06` | 2026-08-16 |
 | `.worktrees/grx-dev-seed` | `feature/BACKEND/GRX-DEV-SEED-001` | Safe and idempotent dev demo-data seed CLI (`python -m growixa_api.cli.seed_demo_data`) + integration tests | `f1b7744` | 2026-08-15 |
 | `.worktrees/grx-dashboard-suite` | `feature/FRONTEND/GRX-DASHBOARD-SUITE-003` | Dashboard Suite redesign — PageHeader + StatCard across Dashboard, Social, Calendar, Templates, Company Settings | `335b0ae` | 2026-08-15 |
