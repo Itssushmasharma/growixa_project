@@ -10,6 +10,35 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
+## 2026-08-15 — GRX-SAAS-016: Email Validation — free tier (ad hoc)
+
+- Picked up from a `need_review_docs/EMAIL_VALIDATION_FEATURE_PLAN.md` review. The plan's
+  default recommendation was a paid third-party provider (Clearout.io/ZeroBounce); asked
+  the user whether one was actually needed given the app already has an outbound SMTP
+  relay — explained why that relay can't double as an SMTP-probing verification tool
+  (probing arbitrary third-party mail servers needs raw port-25 connections, which most
+  cloud hosts block/rate-limit, and real mail providers throttle probing IPs fast). User
+  chose the free, no-provider build.
+- New `email_validation` module: syntax check, MX/A record lookup (RFC 5321 implicit-MX
+  fallback), a curated disposable-domain list, and a role-account (info@, admin@, ...)
+  list. `POST /email-validation/check` (single) and `POST /email-validation/bulk-csv`
+  (CSV upload, up to 2,000 rows, returns the same CSV with a `validation_status` column
+  added), both gated by the existing `contacts.view` — no new RBAC code, no DB table, no
+  credit metering. The bulk route is rate-limited (IP-keyed) since it can trigger many
+  DNS lookups per call.
+- New `/dashboard/contacts/verify-email` page: a tabbed Single Email / Bulk Upload tool
+  with real drag-and-drop CSV upload and an honest "what we check" / "what we don't
+  check" panel — built entirely from Growixa's own existing design tokens, not a new
+  theme (the initial pass used a plainer layout; redesigned after review with the
+  explicit instruction to borrow only the layout idea from a competitor reference, never
+  its color scheme).
+- Self-caught: `example.com` (RFC 2606's reserved documentation domain) had been added to
+  the disposable-domain list as a placeholder, colliding with the same domain used as the
+  neutral test fixture — removed before it could misclassify a real domain.
+- Also fixed a small pre-existing bug found in passing: `--color-purple`, referenced by
+  the Suppression page's "Complained" metric since `GRX-SAAS-015`, was never actually
+  defined in `globals.css` — now defined.
+
 ## 2026-08-15 — GRX-SAAS-015: Suppression-list fixes — bug fix, one-click unsubscribe, domain blocking, CSV import/export (ad hoc)
 
 - User-directed after live-checking the Suppression page. Three things fixed/added:

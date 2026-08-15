@@ -43,7 +43,7 @@ Additional permission codes are added per module as later slices are built (e.g.
 | Code | Meaning |
 |---|---|
 | `contacts.manage` | Create/edit/archive contacts; manage tags, lists, segments, custom fields; run CSV imports; record consent; suppress addresses |
-| `contacts.view` | Read-only access to contacts, tags, lists, and segments |
+| `contacts.view` | Read-only access to contacts, tags, lists, and segments. Also covers `POST /email-validation/check` and `POST /email-validation/bulk-csv` (`GRX-SAAS-016`) — a read-only hygiene check, no contact data is mutated |
 
 Kept to the same edit/view granularity as `company.settings.*` in Sprint 1, rather than
 splitting into many fine-grained codes (e.g. a separate `contacts.import`) not called for

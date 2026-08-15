@@ -9,6 +9,151 @@
 
 ## Task worked on
 
+`GRX-SAAS-016` — ad hoc, picked up from a `need_review_docs/EMAIL_VALIDATION_FEATURE_PLAN.md`
+review after `GRX-SAAS-015` closed. The plan's own recommendation was a paid third-party
+provider (Clearout.io/ZeroBounce). Before building anything, asked the user directly
+whether a provider was actually needed given the app already has outbound SMTP — this
+surfaced a real architectural distinction worth recording: the account's SMTP relay
+(Postmark/Custom SMTP) is built for *sending through* a relay, not for *probing* an
+arbitrary third-party mail server's mailbox existence, which needs raw port-25
+connections most cloud hosts (including this project's own Hugging Face Space) block or
+heavily rate-limit, and which real mail providers throttle/flag as abuse within a
+handful of requests. User chose the free, no-provider, in-house build: syntax, MX/A
+record, a disposable-domain list, and role-account detection only.
+
+## Work completed
+
+New `email_validation` module (`apps/api/src/growixa_api/email_validation/`):
+`checks.py` (pure logic — regex syntax check; `domain_has_mail_exchanger()` async DNS
+lookup via `dnspython`, MX first then falling back to A/AAAA per RFC 5321's implicit-MX
+rule; a curated ~80-domain disposable-provider list; a role-account local-part list),
+`services.py` (`validate_email()`/`validate_emails()` — the batch variant shares one
+MX-lookup cache across the whole call, since real contact lists cluster heavily on a few
+domains, capped at 20 concurrent DNS lookups), `api.py` (`POST /email-validation/check`
+single-check, `POST /email-validation/bulk-csv` — CSV in, same CSV with a
+`validation_status`/`validation_reasons` column added out, capped at 2,000 rows, IP-keyed
+rate-limited since it can trigger many DNS lookups per call). Both routes reuse the
+existing `contacts.view` — no new RBAC code, and deliberately no DB table/migration at
+all: this is a fully stateless utility, not the plan's paid-tier design (no credits,
+no history persistence).
+
+New `/dashboard/contacts/verify-email` frontend page — see the design-iteration note
+below for how its shape changed mid-build.
+
+## Real bugs found and fixed this session
+
+1. **`example.com` in the disposable-domain list**: added as a "neutral placeholder"
+   while writing `checks.py`, not realizing it's RFC 2606's reserved documentation
+   domain — collided with the same domain used as the neutral "normal domain" fixture in
+   my own tests (`admin@example.com` came back `DISPOSABLE` instead of `ROLE`). Caught
+   immediately by the first test run, removed before it could ever misclassify a real
+   domain used constantly in examples/docs.
+2. **Pre-existing bug found in passing, not introduced this session**: `--color-purple`
+   has been referenced by the Suppression page's "Complained" metric since `GRX-SAAS-015`
+   but was never actually defined in `globals.css` — it silently fell back to the
+   browser's default text color instead of rendering purple. Found while auditing which
+   CSS variables actually exist before choosing colors for this feature's own status
+   badges. Fixed by defining it (also used for this feature's "Disposable" status color).
+
+## Design iteration — frontend redesign mid-build
+
+The first frontend pass was a plain two-card layout (single-check card, bulk-upload
+card) and was fully backend-tested, `next build`-clean, and live-verified against
+Compose before the user weighed in. The user then asked to make it "more impactful and
+modern," sharing screenshots of Snov.io's Verifier page (a drag-and-drop dropzone, a
+tabbed Single/Bulk switcher, a benefits checklist) as a layout reference. Two follow-up
+messages ("no" / "change theme") were ambiguous enough to warrant clarifying rather than
+guessing — asked directly whether the request was to adopt Snov's purple/violet color
+scheme or to keep Growixa's own brand colors and only borrow the *layout* idea; the user
+confirmed the latter ("theme will be ours" / "not change that theme i just layout").
+Rebuilt the page with a tabbed Single Email/Bulk Upload switcher, a real (not just
+cosmetic) drag-and-drop zone with actual `onDrop`/`onDragOver` handling sharing the same
+upload function as the click-to-browse path, and a "What we check"/"Doesn't check" side
+panel — entirely from Growixa's own existing `shared.module.css` classes and CSS
+variables, no new theme adopted.
+
+## Files changed
+
+- `apps/api/pyproject.toml` (extended: `dnspython>=2.6`)
+- `apps/api/src/growixa_api/email_validation/{__init__,checks,schemas,services,api}.py` (new)
+- `apps/api/src/growixa_api/app.py` (extended: router registration)
+- `apps/api/tests/test_email_validation.py` (new, 27 tests)
+- `apps/web/src/app/(dashboard)/dashboard/contacts/verify-email/{page,verify-email-page,verify-email-page.module,verify-email-page.test}.{tsx,tsx,css,tsx}` (new)
+- `apps/web/src/app/(dashboard)/dashboard/contacts/types.ts` (extended: `EmailValidationResult`/`EmailValidationSummary`)
+- `apps/web/src/app/(dashboard)/dashboard/{sidebar,page-title}.tsx` (extended: nav entry + page title)
+- `apps/web/src/app/globals.css` (bugfix: `--color-purple` defined)
+- `docs/08-security/{RBAC,THREAT_MODEL}.md` (extended: `contacts.view` description, new ad hoc section T74–T76)
+- `docs/00-project-control/{MASTER_TASK_TRACKER,PROJECT_STATUS,CHANGELOG,AGENT_HANDOFF}.md`
+
+## Commands executed
+
+```bash
+# apps/api
+env $(grep -v '^#' .env.test | xargs) uv run pytest -q        # 353 passed, 8 skipped (up from 326)
+uv run ruff check . && uv run ruff format --check . && uv run mypy src tests   # clean
+env $(grep -v '^#' .env.test | xargs) uv run alembic check     # no drift (no new tables)
+
+# apps/web
+npx eslint . && npx tsc --noEmit && npx prettier --check .    # clean (4 pre-existing warnings)
+npx vitest run            # 209 passed (up from 206)
+npx next build              # clean; /dashboard/contacts/verify-email compiled
+
+# Live Compose stack
+docker compose build api web && docker compose up -d api web
+docker compose restart web    # picked up the redesign
+```
+
+## Blockers
+
+None.
+
+## Known issues / evidence gaps
+
+- The bulk-CSV upload's actual OS file-picker dialog (triggered by "Choose file") can't
+  be driven by this session's remote browser automation — verified instead via a passing
+  `curl` call against the real bulk endpoint (correct per-row status columns and summary
+  header) plus a frontend unit test exercising the same `submitBulkFile` function both
+  the click-to-browse and drag-and-drop code paths call.
+- Static disposable-domain list (~80 entries) is not a live-maintained feed — documented
+  as a known limitation on the page itself and in `THREAT_MODEL.md` T75, not silently
+  claimed as complete coverage.
+
+## Current state
+
+**`GRX-SAAS-016` is code-complete, tested, and live-verified against local Compose**
+(backend via `curl` with real DNS: Valid/Disposable/Role/Invalid all correctly
+classified; bulk CSV returns the right columns + summary header; frontend via a real
+browser session: the redesigned hero/tabs/side-panel render correctly, a real dead-domain
+check shows the correct colored result row, the Bulk Upload tab's dropzone renders with
+the correct copy). Not yet committed as of this handoff entry being written.
+
+## Exact next task
+
+Commit `GRX-SAAS-016`, confirm with the user before pushing to `origin/main`
+(auto-deploys to both the Hugging Face Space and Netlify via `deploy-prod.yml`).
+
+## Resume commands
+
+```bash
+cd /Users/ravi/Projects/growixa
+git status
+git log --oneline -10
+docker compose up -d
+docker compose logs api --tail 20
+```
+
+## Latest commit
+
+Pending — this session's commit(s) have not yet been created as of this handoff entry
+being written; see `git status` for the exact diff.
+
+---
+
+**Below this point: historical handoff entries from earlier sessions, preserved for
+context. Not updated as part of this session's work.**
+
+## Task worked on
+
 `GRX-SAAS-015` — ad hoc, user-directed after live-checking the `/dashboard/contacts/
 suppression` page: "why not wokeing" led to clarifying it was actually a login issue
 first (resolved as a false alarm — a synthetic test login, not a real bug), then the user

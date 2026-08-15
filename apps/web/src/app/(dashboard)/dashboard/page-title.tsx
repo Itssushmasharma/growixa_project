@@ -11,6 +11,7 @@ const PAGE_TITLES: Record<string, string> = {
   "/dashboard/contacts/segments": "Segments",
   "/dashboard/contacts/imports": "Imports",
   "/dashboard/contacts/suppression": "Suppression",
+  "/dashboard/contacts/verify-email": "Verify Emails",
   "/dashboard/company-settings": "Company Settings",
   "/dashboard/team": "Team",
   "/dashboard/billing": "Billing",

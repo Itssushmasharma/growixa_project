@@ -2,7 +2,7 @@
 
 - Document ID: DOC-PROJECT-STATUS
 - Status: ACTIVE
-- Version: 1.50
+- Version: 1.51
 - Last updated: 2026-08-15
 - Owner: Coding agent (on behalf of product owner)
 - Related documents: [MASTER_TASK_TRACKER](MASTER_TASK_TRACKER.md), [WORKTREE_TRACKER](WORKTREE_TRACKER.md), [DECISIONS](DECISIONS.md), [DEVELOPMENT_READINESS](DEVELOPMENT_READINESS.md), [FEATURE_STATUS_MATRIX](FEATURE_STATUS_MATRIX.md)
@@ -440,6 +440,18 @@ slices plus the Sprint 5 multi-tenancy retrofit are now complete.**
     on `suppression_entries`), and CSV bulk import/export of the suppression list — see
     `CHANGELOG.md`'s 2026-08-15 entry. No new RBAC permission codes; all new routes reuse
     the existing `contacts.manage`/`contacts.view`.
+14. **`GRX-SAAS-016` (Email Validation, free tier)**: picked up from `need_review_docs/
+    EMAIL_VALIDATION_FEATURE_PLAN.md`. The plan's default was a paid provider
+    (Clearout.io); asked the user whether one was actually needed given the app already
+    has outbound SMTP, explained why that relay can't double as a mailbox-probing tool,
+    and the user chose the free build instead — syntax, MX/A record, disposable-domain
+    list, and role-account detection only, no SMTP mailbox probe or catch-all scoring (both
+    genuinely require infrastructure a paid provider invests in). New `/dashboard/contacts/
+    verify-email` page with single-check and bulk-CSV tools, no new DB table, no credit
+    metering, no new RBAC code (reuses `contacts.view`) — see `CHANGELOG.md`'s 2026-08-15
+    entry. Frontend was redesigned mid-build after the user shared a competitor's Verifier
+    page as a layout reference, with an explicit instruction to keep Growixa's own color
+    theme and only borrow the layout idea.
 
 ## Changelog
 

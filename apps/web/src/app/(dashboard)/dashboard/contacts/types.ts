@@ -88,6 +88,22 @@ export interface SuppressionImportResult {
   total_rows: number;
 }
 
+export type EmailValidationStatus = "VALID" | "INVALID" | "DISPOSABLE" | "ROLE";
+
+export interface EmailValidationResult {
+  email: string;
+  status: EmailValidationStatus;
+  reasons: string[];
+}
+
+export interface EmailValidationSummary {
+  total: number;
+  valid: number;
+  invalid: number;
+  disposable: number;
+  role: number;
+}
+
 export interface Contact {
   id: string;
   email: string;

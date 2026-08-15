@@ -59,6 +59,12 @@ const NAV_SECTIONS: NavSection[] = [
         icon: "🚫",
         requiresPermission: "contacts.view",
       },
+      {
+        label: "Verify Emails",
+        href: "/dashboard/contacts/verify-email",
+        icon: "✅",
+        requiresPermission: "contacts.view",
+      },
     ],
   },
   {
