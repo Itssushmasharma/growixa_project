@@ -1,11 +1,11 @@
 Task: GRX-AI-STUDIO-001
 Developer: Google Antigravity
-Reviewer: Claude Code / Independent Reviewer
+Reviewer: Claude Code (different tool than developer — Antigravity)
 Branch: feature/FRONTEND/GRX-AI-STUDIO-001
 Worktree: .worktrees/grx-ai-studio-redesign
 Base Commit: d7472e5
 Latest Commit: 00a1ed4
-Status: READY_FOR_REVIEW
+Status: APPROVED — pending human sign-off (UI/UX)
 
 ## What Changed
 - **Unified Global Header (`DashboardShell`):** Built persistent topbar across all `/dashboard/*` pages with sidebar toggle, global search/command jump (`⌘K`), live subscription-aware AI credits gauge, subscription-aware `[Upgrade]` / `[Manage Plan]` button, notifications bell with badge (`3`), and dynamic authenticated user avatar & company profile chip.
@@ -39,21 +39,56 @@ Transform `/dashboard/ai` from a basic generator into an intelligent AI Marketin
 - Merge dry-run: `git merge-tree $(git merge-base origin/main HEAD) origin/main HEAD` verified with 0 merge conflicts.
 
 ## Known Issues / Evidence Gaps
-None. All PR review findings (blockers and performance optimizations) have been resolved and verified with tests.
+One correction to the developer's "None" claim: the original review's Low-severity
+hardcoded-color finding is only partially addressed (2 of many hex-literal instances in
+`history-page.tsx` swapped to `var(--color-*, #hex)` fallbacks; `topbar.module.css` and
+the rest of `history-page.module.css` still have hardcoded hex). Non-blocking — it was
+scored Low/non-blocking in the original review and stays that way; noted here so it isn't
+silently claimed as fully resolved. No other known issues.
 
 ## Review Findings
-*(To be recorded by the independent reviewer)*
+Independently verified against the actual diff (`git show 00a1ed4`), not just the
+claims in this file:
+
+1. **Fabricated quality scores (was BLOCKER) — genuinely fixed.** `calculateMetrics()`
+   and the entire scores-row UI (Brand Match %, Readability, Spam Risk, Best Match pill)
+   are deleted, not hidden. Test file updated accordingly.
+2. **Redundant `/billing/subscription` fetching (was HIGH) — genuinely fixed.**
+   `DashboardShell`'s effect is now `[]`-scoped (was `[pathname]`) with an `isMounted`
+   cleanup guard; the duplicate fetch in `history-page.tsx` is removed entirely.
+   `DashboardShell` is now the sole source of usage data.
+3. **Fake-looking fallback usage data (was MEDIUM) — genuinely fixed.** `usage` state is
+   `null`-initialized with a separate `usageLoading` flag; the credits meter and
+   Upgrade/Manage button now render conditionally instead of showing a hardcoded `0/10`.
+4. **Campaign context via free text only (was MEDIUM) — genuinely fixed.** Real
+   `selectedCampaignId`/`selectedAudienceId` state now backs the dropdowns; the generate
+   payload conditionally sends `linked_entity_type: "campaign"` and the real
+   `linked_entity_id` when a real campaign is selected, matching the backend's actual
+   `GenerateContentIn` schema fields.
+5. **Unused-variable warnings (was LOW) — fixed.** `usage`/`_init` cleanup confirmed in
+   the diff; `npm run lint` independently re-run: 0 errors (4 pre-existing warnings in
+   unrelated social-module files, not from this branch).
+6. **Hardcoded hex colors (was LOW) — partially addressed**, see Known Issues above.
+   Not a blocker.
+
+Independently re-ran (not trusted from the handoff): `npm test` → 38/38 files, 208/208
+tests passed. `npx tsc --noEmit` → 0 errors. `npm run lint` → 0 errors. `git merge-tree`
+dry run against `origin/main` → 0 real conflict markers. All claims in this file's
+"Tests" section confirmed accurate.
+
+No regressions found outside the claimed fix scope. No new issues introduced.
 
 ## Review Decision
-*(To be recorded by the independent reviewer: APPROVED / CHANGES_REQUESTED)*
+APPROVED
 
 ## Reviewed Code Commit
 00a1ed4
 
 ## Review Record Commit
-
+(this commit)
 
 ## Human Approval
-Required (UI/UX & Customer-facing feature)
+Required (UI/UX & customer-facing feature) — independent review does not substitute for
+this; merge still needs the product owner's explicit sign-off on the live preview.
 
-Status: PENDING_HUMAN_REVIEW
+Status: APPROVED — pending human sign-off (UI/UX)
