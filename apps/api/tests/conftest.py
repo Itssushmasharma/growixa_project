@@ -10,11 +10,13 @@ import uuid
 from collections.abc import AsyncGenerator, Awaitable, Callable
 
 import pytest
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from growixa_api.accounts.models import Account
 from growixa_api.auth.security import hash_password
+from growixa_api.billing.models import AccountSubscription, SubscriptionPlan
+from growixa_api.billing.repositories import create_default_free_subscription
 from growixa_api.db import async_session_factory
 from growixa_api.platform_auth.models import PlatformAdmin
 from growixa_api.roles.models import Role
@@ -23,6 +25,27 @@ from growixa_api.users.models import User, UserRole
 # Known plaintext for any user_factory-created user whose password wasn't overridden —
 # tests that need to log in as that user (GRX-AUTH-002) use this constant directly.
 DEFAULT_TEST_PASSWORD = "Test-Password-123!"
+
+
+async def grant_unlimited_plan(account_id: uuid.UUID) -> None:
+    """account_factory/user_factory bootstrap every account onto the real Free plan
+    (GRX-BILL-005), whose max_user_seats/max_contacts/max_social_accounts caps are real
+    and enforced. Tests that intentionally need more than one seat/contact/connection on
+    a single account (invitation-accept flows, cross-tenant isolation fixtures) call this
+    to move that account onto Enterprise (NULL = unlimited on every quota column) rather
+    than tripping a cap the test isn't about."""
+    async with async_session_factory() as session:
+        enterprise_plan_id = (
+            await session.execute(
+                select(SubscriptionPlan.id).where(SubscriptionPlan.slug == "enterprise")
+            )
+        ).scalar_one()
+        await session.execute(
+            update(AccountSubscription)
+            .where(AccountSubscription.account_id == account_id)
+            .values(plan_id=enterprise_plan_id)
+        )
+        await session.commit()
 
 
 async def _create_user(
@@ -62,6 +85,10 @@ async def account_factory() -> AsyncGenerator[Callable[..., Awaitable[uuid.UUID]
             account = Account(name=name)
             session.add(account)
             await session.flush()
+            # Every real account has exactly one account_subscriptions row, never zero
+            # (BILLING_SYSTEM_ARCHITECTURE.md §3.4) -- match that invariant here too, or
+            # any GRX-BILL-005 quota/plan-limit check on a test account raises.
+            await create_default_free_subscription(session, account.id)
             await session.commit()
             created_ids.append(account.id)
             return account.id
@@ -108,6 +135,8 @@ async def user_factory() -> AsyncGenerator[Callable[..., Awaitable[uuid.UUID]], 
                 account = Account(name=f"Test Account for {full_name}")
                 session.add(account)
                 await session.flush()
+                # See account_factory above -- same invariant, same reason.
+                await create_default_free_subscription(session, account.id)
                 resolved_account_id = account.id
                 auto_created_account_ids.append(account.id)
 

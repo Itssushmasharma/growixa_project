@@ -75,10 +75,36 @@ export interface ConsentRecord {
 
 export interface SuppressionEntry {
   id: string;
-  email: string;
+  email: string | null;
+  domain: string | null;
   reason: "UNSUBSCRIBED" | "BOUNCED" | "COMPLAINED" | "MANUAL";
   contact_id: string | null;
   suppressed_at: string;
+}
+
+export interface SuppressionImportResult {
+  created: number;
+  skipped: number;
+  total_rows: number;
+}
+
+export type EmailValidationStatus = "VALID" | "INVALID" | "DISPOSABLE" | "ROLE" | "RISKY";
+
+export type EmailValidationLevel = "BASIC" | "REALTIME";
+
+export interface EmailValidationResult {
+  email: string;
+  status: EmailValidationStatus;
+  reasons: string[];
+  verification_level: EmailValidationLevel;
+}
+
+export interface EmailValidationSummary {
+  total: number;
+  valid: number;
+  invalid: number;
+  disposable: number;
+  role: number;
 }
 
 export interface Contact {

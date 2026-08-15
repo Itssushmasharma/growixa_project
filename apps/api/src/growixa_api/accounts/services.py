@@ -10,6 +10,7 @@ from growixa_api.accounts.repositories import (
 from growixa_api.audit.services import record_event
 from growixa_api.auth.security import hash_password
 from growixa_api.auth.tokens import generate_token, hash_token
+from growixa_api.billing.repositories import create_default_free_subscription
 from growixa_api.config import get_settings
 from growixa_api.roles.repositories import get_role_by_name
 from growixa_api.users.models import User, UserRole
@@ -69,6 +70,13 @@ async def register(
     )
     session.add(UserRole(account_id=account.id, user_id=user.id, role_id=role.id))
     await session.flush()
+
+    # Every account gets a real Free-tier AccountSubscription synchronously, regardless
+    # of plan_slug -- that field stays a registration-time intent signal only (shown on
+    # the accounts list, used to prompt an upgrade CTA later); actual entitlement never
+    # changes until a real Razorpay checkout completes (GRX-BILL-004) or a platform
+    # admin overrides it (GRX-SAAS-006). See BILLING_SYSTEM_ARCHITECTURE.md §3.4.
+    await create_default_free_subscription(session, account.id)
 
     raw_token = generate_token()
     expires_at = datetime.now(UTC) + timedelta(hours=get_settings().email_verification_ttl_hours)

@@ -24,6 +24,8 @@ dependencies = [
     # Instagram Graph API OAuth exchange + Supabase Storage REST calls (Slice 5,
     # GRX-SOCIAL-003/005) — was dev-only (test client), now needed at runtime too.
     "httpx>=0.27",
+    # MX/A record lookups for email_validation's free hygiene checks (GRX-SAAS-016).
+    "dnspython>=2.6",
 ]
 
 [project.optional-dependencies]

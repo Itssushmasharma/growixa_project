@@ -1035,5 +1035,152 @@ Decision statuses: `PROPOSED`, `UNDER_REVIEW`, `APPROVED`, `REJECTED`, `SUPERSED
 
 ---
 
-*Decisions DEC-GRX-026 onward will be logged as they are made — e.g., resolutions to
+## DEC-GRX-031: Multi-domain subdomain architecture (feature captured, not yet implemented)
+
+- Status: PARTIALLY APPROVED — architecture locked, three deployment specifics still open
+- Date: 2026-08-14
+- Context: Growixa runs today as one Next.js app on a single domain
+  (`growixa.netlify.app`), with `(dashboard)`/`(platform)` route groups separating
+  customer and platform-admin audiences by path (`/dashboard/*`, `/platform/*`), not by
+  domain. This was workable for the MVP build but doesn't match `DEC-GRX-017`'s
+  self-service SaaS positioning — a real product launch needs a clean marketing site
+  separated from the logged-in product, and clean URLs (`/campaigns`, not
+  `/dashboard/campaigns`). Captured here as a locked product/architecture decision, per
+  product-owner review of the standalone plan; implementation is separately tracked, not
+  bundled into this decision.
+- Decisions locked:
+  1. Three subdomains, one single deployment (no separate apps/servers, routing handled
+     by `middleware.ts` reading the `Host` header): `<domain>` → marketing site only
+     (public); `app.<domain>` → the entire customer product (auth pages + every
+     feature page, not just "the dashboard"); `platform.<domain>` → platform admin only.
+  2. Route group rename in code: `(dashboard)` → `(customer)`.
+  3. Clean URL paths on `app.*` — the `/dashboard` prefix is dropped (`/campaigns`, not
+     `/dashboard/campaigns`).
+  4. Both `app.*` and `platform.*` get their own home/overview page at `/` after login,
+     rather than redirecting straight into a feature page.
+- Still open (blocks implementation, not just detail-level): `OQ-SUB-001` (is the
+  production domain actually `growixa.com`, or something else — not yet confirmed by the
+  product owner), `OQ-SUB-002` (hosting platform for the domain aliases — now
+  **effectively answered** as Netlify, since `GRX-SAAS-013`/this same session confirmed
+  Hugging Face + Netlify, not Render, is the real deployed stack; the alias-configuration
+  detail in the plan still needs updating to match), `OQ-SUB-003` (does `app.<domain>/`
+  show a real overview page after login, or redirect straight to `/campaigns` — determines
+  whether a new home-overview page needs building as part of this work, or can reuse the
+  one `GRX-SAAS-013`'s dashboards work is about to build for `GRX-FEAT-023`/`028`).
+- Consequences:
+  1. `docs/02-features/FEATURE_CATALOG.md` gains `GRX-FEAT-029 — Multi-Domain Subdomain
+     Routing`, status `NOT_STARTED` — captured as a real, scoped feature, not
+     implemented by this decision.
+  2. `docs/01-product/ROADMAP.md`'s "Sprint 5 — Customer Account Platform Foundation"
+     section gains a note that this piece of Sprint 5's self-service launch scope
+     remains outstanding.
+  3. Not started: no `middleware.ts`, no route-group rename, no DNS/hosting alias
+     configuration. `OQ-SUB-001`/`002`/`003` must be resolved before any of that begins
+     (per `AGENT_EXECUTION_RULES.md`'s "no task below READY may be started").
+- Related tasks: none yet in `MASTER_TASK_TRACKER.md` — create a `GRX-SAAS-*` row once
+  `OQ-SUB-001`/`003` are answered and this becomes `READY`.
+- Supersedes: none.
+
+## DEC-GRX-032: Lightweight multi-agent independent-review workflow (Phase 1)
+
+- Status: APPROVED
+- Date: 2026-08-15
+- Context: Growixa is developed in parallel by multiple coding agents/tools (Claude
+  Code, OpenAI Codex, Antigravity, GitHub Copilot, more later), coordinated by the
+  product owner, who
+  also personally reviews and merges every branch today (per `WORKTREE_TRACKER.md`'s
+  existing merge protocol). A live example this session (`feature/FRONTEND/GRX-AI-STUDIO-001`)
+  showed real value in independent review — a same-session review caught a genuinely
+  fabricated AI quality-score feature before merge. The product owner asked whether the
+  full team-scale review-workflow design (a `pr_reviews/pending/in_review/
+  changes_requested/approved/archived` state machine with atomic reviewer-claiming and
+  stale-approval detection) was needed now. Evaluated against actual repo state: only
+  one worktree is active at a time in practice, and every handoff is already
+  human-mediated — the collision problem the full state machine defends against does not
+  yet exist. Decision: adopt a lightweight Phase 1 now, defer the full state machine
+  until concurrency actually requires it.
+- Decisions locked:
+  1. One handoff file per branch at `pr_reviews/<branch-name-with-slashes-as-dashes>.md`
+     (no `pending/`/`in_review/`/etc. subfolders yet). Template, review process, and
+     merge rules are in [AGENT_EXECUTION_RULES.md §Independent
+     review](../12-development/AGENT_EXECUTION_RULES.md#independent-review-mandatory-before-merge).
+  2. No agent may merge or approve its own work; independent review from a different
+     agent/tool is required where practical before every merge.
+  3. `Reviewed Code Commit` (the SHA whose code was actually reviewed, distinct from
+     `Review Record Commit` — the later commit that records the verdict itself, since
+     writing `APPROVED` into the handoff file necessarily happens after the code it
+     describes) must have no changes outside `pr_reviews/**` between it and the branch's
+     current HEAD before merge — any later source/test/config/migration/docs/dependency
+     change, including a substantive conflict-resolution, invalidates the approval and
+     forces re-review. (Corrected post-rollout: a naive `Reviewed Commit == HEAD` check
+     is self-contradicting, since recording the review verdict is itself a commit that
+     advances HEAD past the code it reviewed — it could never pass.)
+  4. Independent-agent `APPROVED` is required for every merge. Product-owner approval is
+     additionally required, recorded in the same file, for UI/UX, customer-facing, or
+     high-risk (auth/RBAC/billing/migrations) changes; optional for backend-only/internal
+     changes.
+  5. Existing conventions are reused, not replaced: branch naming
+     (`feature/BACKEND|FRONTEND/<TASK-ID>`), commit/co-author format,
+     `DEFINITION_OF_DONE.md`, `RBAC.md`, `THREAT_MODEL.md` as the review bar.
+     `MASTER_TASK_TRACKER.md`'s status enum is **unchanged** — `IN_REVIEW` covers the
+     whole review/fix/re-review cycle; `READY_FOR_REVIEW`/`CHANGES_REQUESTED`/`APPROVED`
+     are review states scoped to the per-branch `pr_reviews/` file only, never new task
+     statuses.
+  6. Reviewer preference: a different agent/tool is preferred; a fresh same-tool session
+     with no memory of the developer's work is an explicitly documented fallback when no
+     other tool is available (recorded in the handoff file's `Reviewer` field).
+  7. Explicit upgrade triggers to the full folder-state system are documented in
+     `AGENT_EXECUTION_RULES.md` rather than adopting it preemptively (e.g. 3–5+ worktrees
+     regularly active at once, agents self-assigning tasks, multiple simultaneous
+     reviewers, branches no longer trackable from memory).
+  8. Root `AGENTS.md` (not `.agents/AGENTS.md`) is the single canonical, tool-neutral
+     governance file. This corrects the original rollout of this decision, which placed
+     the file at `.agents/AGENTS.md` — verified afterward, by direct research into each
+     tool's actual auto-discovery behavior, to be a location that Codex, Antigravity, and
+     GitHub Copilot do not automatically read (they walk for a file literally named
+     `AGENTS.md` at the repo root, not nested inside a differently-named subfolder).
+     Every tool-specific file is a thin adapter pointing at root `AGENTS.md` — none
+     duplicates the shared rules:
+     - **Claude Code** — root `CLAUDE.md` containing an `@AGENTS.md` import (Claude Code's
+       native import syntax; auto-loaded every session).
+     - **OpenAI Codex CLI** — reads root `AGENTS.md` directly; no adapter file needed.
+     - **Google Antigravity** — reads root `AGENTS.md` directly, plus a thin workspace
+       rule at `.agents/rules/growixa-governance.md` (Antigravity's current default
+       workspace-rules path) pointing back at root `AGENTS.md` and
+       `AGENT_EXECUTION_RULES.md`.
+     - **GitHub Copilot coding agent** — reads root `AGENTS.md` directly (Copilot added
+       native `AGENTS.md` support in 2025), plus a thin `.github/copilot-instructions.md`
+       explaining the one real structural difference: Copilot's coding agent runs in a
+       GitHub-hosted cloud sandbox on a real branch/PR, not this repo's local
+       `.worktrees/` model — while still following the same DoD, review-handoff,
+       independent-review, `Reviewed Code Commit`/no-changes-outside-`pr_reviews/**`,
+       no-self-approve, and no-self-merge rules as every other agent.
+  9. `.agents/AGENTS.md` is deleted, not kept as a legacy pointer — verified first that
+     nothing programmatically depends on it (`.agents/hooks.json` and
+     `.agents/scripts/*.sh` reference only their own script paths;
+     `stop_guard.sh`'s "AGENTS.md rule #3" text is a human-readable reminder string, not
+     a file-path dependency). `.agents/hooks.json` and `.agents/scripts/` are otherwise
+     unchanged.
+- Consequences:
+  1. `pr_reviews/` created (flat, no subfolders) with a short `README.md`.
+  2. `AGENT_EXECUTION_RULES.md` gains an "Independent review" section (template, process,
+     human-approval rule, upgrade triggers).
+  3. Root `AGENTS.md` created as the canonical file (migrated from `.agents/AGENTS.md`,
+     which is deleted); root `CLAUDE.md`, `.agents/rules/growixa-governance.md`, and
+     `.github/copilot-instructions.md` created as thin per-tool adapters.
+  4. `WORKTREE_TRACKER.md`'s merge protocol now requires an `APPROVED` handoff file (with
+     no changes outside `pr_reviews/**` since `Reviewed Code Commit`) in addition to the
+     existing user-confirms-`localhost:3001` step for UI/UX work.
+  5. The in-flight `feature/FRONTEND/GRX-AI-STUDIO-001` branch is **not** retroactively
+     forced into this system — it already went through an informal review/fix cycle this
+     session and finishes under that process. The new process applies to tasks started
+     after this decision.
+- Related tasks: none yet — applies process-wide, not to a single `MASTER_TASK_TRACKER.md`
+  row.
+- Supersedes: none (extends `WORKTREE_TRACKER.md`'s existing merge protocol, doesn't
+  replace it).
+
+---
+
+*Decisions DEC-GRX-033 onward will be logged as they are made — e.g., resolutions to
 OQ-004, OQ-006 through OQ-011 in [OPEN_QUESTIONS.md](OPEN_QUESTIONS.md).*

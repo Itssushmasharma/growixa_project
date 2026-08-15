@@ -10,7 +10,11 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   return (
     <ClientAuthGuard
       renderShell={(user, inner) => (
-        <DashboardShell permissions={user.permissions} fullName={user.full_name}>
+        <DashboardShell
+          permissions={user.permissions}
+          fullName={user.full_name}
+          companyName={(user as { company_name?: string }).company_name}
+        >
           {inner}
         </DashboardShell>
       )}

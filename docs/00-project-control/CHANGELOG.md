@@ -10,6 +10,243 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
+## 2026-08-15 — GRX-SAAS-017: Email Validation — multi-vendor real-time provider config, paid plans (ad hoc)
+
+- Direct follow-up to `GRX-SAAS-016` in the same session: after seeing a garbled fake
+  address pass the free checks as "Valid," the user asked whether Growixa could
+  self-host real mailbox verification instead of paying a provider. A live test
+  confirmed outbound port 25 works from the dev environment, but an actual `RCPT TO`
+  probe attempt was blocked by this session's own safety classifier as reconnaissance
+  against a real third party's mail infrastructure — reinforcing the recommendation to
+  use a real vendor rather than self-host. The user then asked for a **platform-admin
+  configurable, multi-vendor** architecture (not hardcoded to Clearout), gated to
+  **paid-plan accounts only**, plus a per-check **opt-out checkbox** so a paid account
+  isn't forced to spend a credit on every check.
+- New `platform_email_validation_provider_config` table (mirrors
+  `platform_ai_provider_config`/`platform_email_provider_config`'s "one active row"
+  pattern), a `ClearoutProvider` adapter (raw httpx, no vendor SDK), and
+  `providers/factory.py`'s resolution rule: a real-time adapter is only returned when
+  the account's plan isn't `free` AND the platform has an active vendor configured —
+  otherwise every account gets `GRX-SAAS-016`'s free check, never an error.
+- New `GET /email-validation/availability` and a `use_realtime` flag on
+  `POST /email-validation/check`; new platform-admin page at
+  `/platform/email-validation-config`; the customer verify-email page shows a
+  `Real-time`/`Basic check` badge on every result and gracefully falls back to `BASIC`
+  if the vendor call itself fails, with a visible reason.
+- The user then configured a real Clearout.io API key live, closing the evidence gap:
+  the exact garbled address that started this now correctly comes back `INVALID` with a
+  real "Mailbox not found" reason. This surfaced two real bugs only a live call could
+  catch — Clearout's `sub_status` is an object, not a string (was rendering as a raw
+  Python dict repr in the UI), and the reason text was leaking the vendor's name
+  ("Clearout: ...") to the end customer — both fixed. A separate code-review catch moved
+  a shared fallback-reason dictionary out of the Clearout-specific adapter file into
+  `providers/base.py`, since it describes this module's own status vocabulary, not
+  anything Clearout-specific, and every future vendor adapter needs the same wording.
+- No real credit-ledger deduction wired up yet (deliberately deferred, separate scope
+  from this pass) — the checkbox is currently informational only.
+
+## 2026-08-15 — GRX-SAAS-016: Email Validation — free tier (ad hoc)
+
+- Picked up from a `need_review_docs/EMAIL_VALIDATION_FEATURE_PLAN.md` review. The plan's
+  default recommendation was a paid third-party provider (Clearout.io/ZeroBounce); asked
+  the user whether one was actually needed given the app already has an outbound SMTP
+  relay — explained why that relay can't double as an SMTP-probing verification tool
+  (probing arbitrary third-party mail servers needs raw port-25 connections, which most
+  cloud hosts block/rate-limit, and real mail providers throttle probing IPs fast). User
+  chose the free, no-provider build.
+- New `email_validation` module: syntax check, MX/A record lookup (RFC 5321 implicit-MX
+  fallback), a curated disposable-domain list, and a role-account (info@, admin@, ...)
+  list. `POST /email-validation/check` (single) and `POST /email-validation/bulk-csv`
+  (CSV upload, up to 2,000 rows, returns the same CSV with a `validation_status` column
+  added), both gated by the existing `contacts.view` — no new RBAC code, no DB table, no
+  credit metering. The bulk route is rate-limited (IP-keyed) since it can trigger many
+  DNS lookups per call.
+- New `/dashboard/contacts/verify-email` page: a tabbed Single Email / Bulk Upload tool
+  with real drag-and-drop CSV upload and an honest "what we check" / "what we don't
+  check" panel — built entirely from Growixa's own existing design tokens, not a new
+  theme (the initial pass used a plainer layout; redesigned after review with the
+  explicit instruction to borrow only the layout idea from a competitor reference, never
+  its color scheme).
+- Self-caught: `example.com` (RFC 2606's reserved documentation domain) had been added to
+  the disposable-domain list as a placeholder, colliding with the same domain used as the
+  neutral test fixture — removed before it could misclassify a real domain.
+- Also fixed a small pre-existing bug found in passing: `--color-purple`, referenced by
+  the Suppression page's "Complained" metric since `GRX-SAAS-015`, was never actually
+  defined in `globals.css` — now defined.
+
+## 2026-08-15 — GRX-SAAS-015: Suppression-list fixes — bug fix, one-click unsubscribe, domain blocking, CSV import/export (ad hoc)
+
+- User-directed after live-checking the Suppression page. Three things fixed/added:
+- **Bug fix**: the "Remove" button on `/dashboard/contacts/suppression` called
+  `DELETE /contacts/suppression/{id}` — a route that never existed on the backend, so the
+  button silently did nothing. Added the route plus `remove_suppression` service/repository
+  layer.
+- **RFC 8058 one-click unsubscribe**: outbound campaign emails now carry a
+  `List-Unsubscribe`/`List-Unsubscribe-Post: List-Unsubscribe=One-Click` header, so
+  Gmail/Yahoo show their native inbox-level "Unsubscribe" affordance. Required adding a
+  new `POST /unsubscribe/{campaign_recipient_id}` alongside the existing `GET` — mail
+  clients require the target URL to accept POST for one-click unsubscribe to work.
+- **Domain-level suppression + CSV import/export**: `suppression_entries` extended with a
+  nullable `domain` column and an XOR CHECK constraint (`email` XOR `domain`, never both) —
+  a customer can now block every address at a domain in one action
+  (`POST /contacts/suppression/domains`), and bulk import/export the whole suppression list
+  as CSV (`POST /contacts/suppression/import`, `GET /contacts/suppression/export`). A
+  partial unique index on `(account_id, domain) WHERE domain IS NOT NULL` enforces one
+  active block per domain per account. All new routes reuse the existing
+  `contacts.manage`/`contacts.view` permissions — no new RBAC code.
+- 7 new backend tests, 2 new worker tests, 2 new frontend tests. Live-verified end-to-end
+  against the real running Compose stack via both `curl` and a real browser session.
+  See `MASTER_TASK_TRACKER.md`'s `GRX-SAAS-015` row for the full evidence writeup.
+
+## 2026-08-14 — GRX-SAAS-014: Dashboards — customer + platform admin overview (ad hoc)
+
+- Driven by a product-planning review of `need_review_docs/DASHBOARDS_METRICS_AND_UI_PLAN.md`.
+  Both dashboards were previously empty: `/dashboard` showed a static "nothing here yet"
+  placeholder; `/platform` had no root page at all (login redirected straight to Accounts).
+  Scoped to the plan's own "Phase 1 (MVP)" tier — one unified overview per surface, not
+  the full 4 role-adaptive customer views, which the plan itself stages as Release 1.1.
+- New `GET /dashboard/overview` (auth-only, no new RBAC permission — same shape as
+  `GET /auth/me`): total/active contacts, campaign status breakdown, scheduled social
+  posts, account-wide email open/click rate, quota snapshot, 6-month contact-growth
+  curve, 5 most recent campaigns with sent/open-rate. New
+  `GET /platform/dashboard/summary` on the existing `platform.usage.manage` gate:
+  active-account count, MRR (USD/INR), current-period email/AI usage, dynamic per-plan
+  distribution. Direct SQL aggregation, no new pre-aggregated table or Redis cache layer
+  in this pass (accepted-risk, revisit at scale).
+- New shared frontend components (`<MetricCard/>`, `<QuotaGauge/>`, `<TrendChart/>` — a
+  native SVG chart, no new charting-library dependency) power both dashboards.
+- Self-caught: a latent sidebar active-state bug where `href="/platform"` would have
+  matched every other platform page as also "active" — fixed alongside adding the new
+  Overview nav entry.
+
+## 2026-08-14 — Same-origin API proxy (ad hoc, production incident response)
+
+- Live production incident: login/register (and every credentialed browser request) was
+  completely broken. Root-caused via a live browser session — the actual `POST
+  /auth/login` was blocked at the CORS preflight stage with `Access-Control-Allow-
+  Credentials` missing from the `OPTIONS` response. Confirmed via direct comparison this
+  was not an `apps/api` bug: the identical request against local Compose returns the
+  correct header; against the live Hugging Face Space, the `OPTIONS` response is missing
+  the app's own response markers entirely (`server: uvicorn`, `x-proxied-*`), meaning
+  HF's own Space ingress answers the preflight itself before it reaches the container —
+  not something fixable from `apps/api`'s `CORSMiddleware` config.
+- Fixed by removing the need for cross-origin credentialed requests at all: `netlify.toml`
+  now proxies `/api/*` to the HF backend server-side (`[[redirects]]`, status 200), so the
+  browser sees `growixa.netlify.app/api/...` as same-origin — no CORS, no preflight.
+  `NEXT_PUBLIC_API_URL` must be `/api` for this to be used; `API_INTERNAL_URL` (new) keeps
+  server-side/SSR calls going directly to the backend, same shape as `compose.yaml`'s
+  existing `API_INTERNAL_URL` for local Compose. `.github/workflows/
+  deploy-frontend-netlify.yml` updated to match. New
+  `docs/11-devops/PRODUCTION_DEPLOYMENT.md` documents the real deploy topology (this was
+  previously undocumented — `RENDER_DEPLOYMENT.md` was deleted with no replacement).
+- Requires two manual env var updates the coding agent can't make directly (no GitHub/
+  Netlify API credentials in this environment): `NEXT_PUBLIC_API_URL=/api` in both the
+  GitHub repo's Actions Variables and Netlify's dashboard env vars, then a
+  "Clear cache and deploy site" (it's a Next.js build-time value).
+
+## 2026-08-14 — GRX-SAAS-013: Platform-admin email provider config (ad hoc, production incident response)
+
+- Driven by a live production incident: the `.env`-only `PLATFORM_SMTP_*` relay
+  (`s81.gocheapweb.com:465`) was unreachable from the deployed environment
+  (`SMTPConnectTimeoutError`), and a separate bug (`PLATFORM_SMTP_HOST` trailing
+  newline) crashed registration with an unhandled `500` instead of degrading gracefully.
+  Both root-caused via real HF Space container logs.
+- Fixed the crash: `Settings` now strips whitespace from every string env var
+  (`config.py`); `smtp_transport.py`'s except clause widened to also catch `ValueError`.
+  Fixed the ~67s registration hang: `register_route` now fires
+  `send_verification_email` via `BackgroundTasks` instead of `await`ing it inline, with
+  an explicit `SEND_TIMEOUT_SECONDS=20` on the `aiosmtplib.send()` call — registration
+  latency went from ~67s to 0.143s.
+- New `platform_email_provider_config` table (migration `a1b2c3d4e5f6`) and
+  `notifications/` module: lets a platform admin configure/rotate the platform's default
+  outbound SMTP credentials without a redeploy, resolved before falling back to the
+  legacy `.env` settings. New `platform.email.manage` platform RBAC
+  (`platform.owner`/`platform.admin`). Mirrors `platform_ai_provider_config`'s pattern;
+  reuses `email_provider_connections`' `POSTMARK`/`CUSTOM_SMTP` vocabulary and the
+  existing `integrations/smtp_transport.py` send/test functions directly — no new
+  Postmark HTTP-API adapter. New `GET/PUT /platform/email-config`,
+  `POST /platform/email-config/test` routes; new `/platform/email-config` admin UI page.
+  `THREAT_MODEL.md` gained T69–T70.
+- Deleted `render.yaml`/`docs/11-devops/RENDER_DEPLOYMENT.md` — the actual deployed
+  stack is Hugging Face (API+worker) + Netlify (web), not Render.
+
+## 2026-08-14 — GRX-BILL-001–010, GRX-SAAS-006/012: Billing (Sprint 8 / Slice 7 complete — first monetization slice)
+
+- The first slice that moves real money. Readiness gate resolved via
+  [DEC-GRX-029](DECISIONS.md) (Razorpay, not Stripe, dual-currency USD/INR) and
+  [DEC-GRX-030](DECISIONS.md) (Subscriptions API as the billing primitive — Razorpay
+  owns the recurring charge, Growixa reacts to webhooks; non-expiring top-up credits,
+  no per-batch FIFO; percentage/fixed-amount/free-credit-grant coupon types).
+  `THREAT_MODEL.md` gained T60–T68. Sprint-file: `SPRINT_08_BILLING.md`.
+- New `subscription_plans`/`account_subscriptions`/`account_credit_balances`/
+  `account_credit_purchases`/`coupon_codes`/`coupon_redemptions` schema — every account
+  gets a `Free`-tier `account_subscriptions` row automatically at registration, never
+  zero. New `billing.manage`/`billing.view` customer RBAC and `platform.billing.manage`
+  platform RBAC (`platform.owner`/`platform.finance` only).
+- A signature-verified, idempotent Razorpay webhook receiver (`POST /billing/razorpay`,
+  same "verify before touching any table" shape as the Postmark webhook) handling
+  `subscription.activated`/`charged`/`halted`/`cancelled` and `payment.captured`;
+  idempotency for top-up credits enforced at the DB level (`account_credit_purchases.
+  razorpay_payment_id` unique constraint, not application locking).
+- Real Razorpay Checkout for subscribe/upgrade (Subscriptions API) and one-time top-up
+  purchases (Orders API) — `POST /billing/subscribe`/`/billing/topup`.
+- An atomic quota evaluator (`check_and_consume_quota`, `SELECT ... FOR UPDATE`-locked)
+  for the two period-resetting metered dimensions (email sends, AI runs): checks the
+  plan's monthly allowance first, falls back to the non-expiring credit balance for any
+  overage, then blocks with `402`. An account's own bring-your-own AI key is never
+  metered — only platform-provided generations are (`ai/services.py`'s `source ==
+  "PLATFORM_DEFAULT"` check).
+- An in-process cancellation-downgrade ticker (`GRX-BILL-006`, runs inside the `api`
+  service's FastAPI lifespan, same pattern as the campaigns/social schedulers —
+  confirmed by reading `campaigns/scheduler.py` directly, correcting the architecture
+  doc's draft claim that it ran worker-side) that downgrades a `CANCELED` subscription
+  to Free once its `current_period_end` passes.
+- A platform-admin override panel (`GRX-SAAS-006`): manual plan assignment including
+  Enterprise activation, free credit grants, billing-status override, and a genuine
+  create-not-just-edit plan/credit-pack catalog UI — all bypass Razorpay entirely,
+  gated `platform.billing.manage`. Widened `subscription_plans.slug`'s CHECK from a
+  fixed 4-value whitelist to a plain format check so a real new tier can be created
+  (self-serve checkout eligibility for a new tier is a deliberate, documented separate
+  follow-up, not wired automatically).
+- A coupon/discount engine (`GRX-SAAS-012`): percentage and fixed-amount coupons apply
+  to top-up purchases only — verified against Razorpay's own Checkout.js docs that
+  Subscription checkout has no discount parameter, correcting the architecture doc's
+  original draft claim — while free-credit-grant coupons redeem directly via `POST
+  /billing/redeem-coupon`, never touching Razorpay. Platform-admin CRUD at
+  `/platform/coupons` (create/toggle/redemption-analytics); customer redemption fields
+  on `/dashboard/billing`. Coupon-touching routes are rate-limited by source IP
+  (`THREAT_MODEL.md` T65), closing a gap where the threat model had already documented
+  this mitigation before it was actually built.
+- The customer billing page (`/dashboard/billing`, `GRX-BILL-007`): current plan card,
+  live quota usage bars, credit balances + coupon redemption, plan comparison grid with
+  real Razorpay Checkout.js, top-up purchase grid, currency toggle.
+- A dedicated `test_billing_{webhook,quota,coupons}.py` suite (`GRX-BILL-008`, 23 new
+  tests) plus a `test_cross_tenant_isolation.py` extension — **found and fixed a real
+  bug while writing the plan-eligibility test**: `_validate_coupon_for_redemption`'s
+  `applicable_plan_slugs` check was dead code, since both call sites unconditionally
+  passed `plan_slug=None`; fixed by resolving the account's real current plan before
+  validating. The route-protection-audit criterion needed no new test — the existing
+  generic `test_protected_routes_audit.py` already covers every new route automatically.
+- Settings/env docs (`GRX-BILL-009`) — **found and fixed a second real gap**:
+  `RAZORPAY_KEY_ID`/`_SECRET`/`_WEBHOOK_SECRET` had never been added to
+  `.env.example` despite existing since `GRX-BILL-002`/`003`, and
+  `BILLING_DOWNGRADE_POLL_INTERVAL_SECONDS` had a real default in `config.py` but was
+  never wired into `compose.yaml`'s passthrough, so setting it in `.env` silently did
+  nothing. New "Billing (Razorpay) setup" section in `LOCAL_DEVELOPMENT.md`.
+- Full verification (`GRX-BILL-010`): `ruff`/`mypy`/`alembic check` clean on `apps/api`
+  (306 passed, 8 skipped, up from 283 baseline, zero regressions);
+  `eslint`/`tsc`/`prettier`/`vitest`/`next build` clean on `apps/web` (204 passed).
+  Live-verified end-to-end against real Razorpay Test Mode throughout this whole slice:
+  real `Plan`/`Subscription`/`Order` objects via genuine API calls, a real Checkout.js
+  modal in a browser showing the correct (and correctly coupon-discounted) amount, real
+  coupon creation/redemption via both `curl` and the live UI. USD stays blocked pending
+  Razorpay's own account-level international-payments approval — an external, non-code
+  blocker already documented in `BILLING_SYSTEM_ARCHITECTURE.md §8`, not a bug.
+- **All seven MVP-scope product slices plus the Sprint 5 multi-tenancy retrofit are now
+  complete.**
+- Commits: `2b005ff`, `09fdcb7`, `cf978c1`, `16407a5`, `1400b4f`, `e44e7c4`, `befeef5`,
+  `b34657c`, `2378e70`, and this session's `GRX-BILL-008`/`009`/`010` closeout.
+
 ## 2026-08-13 — GRX-AI-001–011: AI Assistant (Sprint 7 / Slice 6 complete — all six MVP slices now built)
 
 - User chose Slice 6 (AI Assistant, the last unbuilt MVP slice) next, with three explicit

@@ -59,6 +59,12 @@ const NAV_SECTIONS: NavSection[] = [
         icon: "🚫",
         requiresPermission: "contacts.view",
       },
+      {
+        label: "Verify Emails",
+        href: "/dashboard/contacts/verify-email",
+        icon: "✅",
+        requiresPermission: "contacts.view",
+      },
     ],
   },
   {
@@ -95,6 +101,12 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       { label: "Company", href: "/dashboard/company-settings", icon: "🏢" },
       { label: "Team", href: "/dashboard/team", icon: "👥", requiresPermission: "users.manage" },
+      {
+        label: "Billing",
+        href: "/dashboard/billing",
+        icon: "💳",
+        requiresPermission: "billing.view",
+      },
       {
         label: "Audit Log",
         href: "/dashboard/audit",

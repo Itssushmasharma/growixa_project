@@ -7,10 +7,12 @@ from growixa_api.audit.services import record_event
 from growixa_api.auth.security import hash_password
 from growixa_api.auth.services import revoke_all_active_sessions
 from growixa_api.auth.tokens import generate_token, hash_token
+from growixa_api.billing.services import check_plan_limit
 from growixa_api.config import get_settings
 from growixa_api.roles.repositories import get_role_by_name
 from growixa_api.users.models import User, UserInvitation, UserRole
 from growixa_api.users.repositories import (
+    count_active_users,
     create_invitation,
     create_user,
     get_invitation_by_token_hash,
@@ -97,6 +99,15 @@ async def accept_invitation(
 
     if await get_user_by_email(session, invitation.email) is not None:
         raise EmailAlreadyRegisteredError
+
+    current_count = await count_active_users(session, invitation.account_id)
+    await check_plan_limit(
+        session,
+        account_id=invitation.account_id,
+        limit_attr="max_user_seats",
+        current_count=current_count,
+        resource="user_seats",
+    )
 
     user = await create_user(
         session,

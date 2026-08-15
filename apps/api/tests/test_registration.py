@@ -137,7 +137,7 @@ async def test_duplicate_email_registration_is_rejected(_registered: dict[str, s
                 "full_name": "Someone Else",
                 "email": _registered["email"],
                 "password": "Different-Password-1!",
-                "plan_slug": "growth",
+                "plan_slug": "starter",
             },
         )
 

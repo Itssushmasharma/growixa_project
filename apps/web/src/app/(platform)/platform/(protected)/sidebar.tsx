@@ -17,6 +17,12 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   {
+    label: "Overview",
+    href: "/platform",
+    icon: "📊",
+    requiresPermission: "platform.usage.manage",
+  },
+  {
     label: "Accounts",
     href: "/platform/accounts",
     icon: "🏢",
@@ -40,6 +46,30 @@ const NAV_ITEMS: NavItem[] = [
     icon: "⚙️",
     requiresPermission: "platform.ai.manage",
   },
+  {
+    label: "Email Provider",
+    href: "/platform/email-config",
+    icon: "✉️",
+    requiresPermission: "platform.email.manage",
+  },
+  {
+    label: "Email Validation",
+    href: "/platform/email-validation-config",
+    icon: "✅",
+    requiresPermission: "platform.validation.manage",
+  },
+  {
+    label: "Subscriptions",
+    href: "/platform/subscriptions",
+    icon: "💳",
+    requiresPermission: "platform.billing.manage",
+  },
+  {
+    label: "Coupons",
+    href: "/platform/coupons",
+    icon: "🏷️",
+    requiresPermission: "platform.billing.manage",
+  },
 ];
 
 export function Sidebar({ permissions }: { permissions: string[] }) {
@@ -58,7 +88,12 @@ export function Sidebar({ permissions }: { permissions: string[] }) {
 
       <div className={styles.sectionLabel}>OVERSIGHT</div>
       {items.map((item) => {
-        const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+        // The root "/platform" (Overview) link would otherwise prefix-match every other
+        // page under it ("/platform/accounts" starts with "/platform/") -- only an exact
+        // match counts as active for it.
+        const isActive =
+          pathname === item.href ||
+          (item.href !== "/platform" && pathname.startsWith(`${item.href}/`));
         return (
           <Link
             key={item.href}

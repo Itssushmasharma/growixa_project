@@ -18,19 +18,20 @@ class Account(Base):
     __table_args__ = (
         CheckConstraint("status IN ('ACTIVE', 'SUSPENDED', 'CLOSED')", name="ck_accounts_status"),
         CheckConstraint(
-            "selected_plan_slug IN ('starter', 'growth')", name="ck_accounts_selected_plan_slug"
+            "selected_plan_slug IN ('free', 'starter', 'pro')",
+            name="ck_accounts_selected_plan_slug",
         ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name: Mapped[str] = mapped_column(Text, nullable=False)
     status: Mapped[str] = mapped_column(Text, nullable=False, server_default="ACTIVE")
-    # Nullable until Phase D (GRX-SAAS-004) creates the subscriptions/plans model —
-    # column exists now to match DATABASE_SCHEMA.md's eventual shape, per this codebase's
-    # established convention (e.g. refresh_tokens.replaced_by_token_id in GRX-AUTH-002).
-    plan_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     # GRX-SAAS-003 Phase C: the self-service plan picked at registration -- recorded
-    # only, no FK (no plans table yet). See DEC-GRX-019.
+    # only, no FK, purely a UX/marketing intent signal (see DEC-GRX-019). Real
+    # entitlement lives in billing.models.AccountSubscription (GRX-BILL-002), created
+    # unconditionally on the `free` plan regardless of what's recorded here -- an
+    # account only actually changes plan via a real Razorpay checkout or a platform
+    # admin override, never by what it selected at signup.
     selected_plan_slug: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False

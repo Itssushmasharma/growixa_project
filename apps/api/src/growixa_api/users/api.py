@@ -3,6 +3,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from growixa_api.billing.services import PlanLimitExceededError
 from growixa_api.db import get_session
 from growixa_api.permissions.dependencies import get_current_account_id, require_permission
 from growixa_api.users.models import User
@@ -91,6 +92,15 @@ async def accept_invitation_route(
     except EmailAlreadyRegisteredError as exc:
         raise HTTPException(
             status.HTTP_409_CONFLICT, "A user with this email already exists"
+        ) from exc
+    except PlanLimitExceededError as exc:
+        raise HTTPException(
+            status.HTTP_402_PAYMENT_REQUIRED,
+            {
+                "error": "QUOTA_EXCEEDED",
+                "message": "This account has reached its plan's user seat limit.",
+                "upgrade_url": "/dashboard/billing",
+            },
         ) from exc
 
     return AcceptInvitationOut.model_validate(user)

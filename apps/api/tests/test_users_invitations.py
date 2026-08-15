@@ -17,6 +17,7 @@ from growixa_api.audit.models import AuditLog
 from growixa_api.config import get_settings
 from growixa_api.db import async_session_factory
 from growixa_api.users.models import User, UserInvitation, UserRole
+from tests.conftest import grant_unlimited_plan
 
 
 def _access_token_cookie(user_id: uuid.UUID) -> dict[str, str]:
@@ -50,6 +51,11 @@ async def test_admin_can_invite_and_invitee_can_accept(
     user_factory: Callable[..., Awaitable[uuid.UUID]],
 ) -> None:
     admin_id = await user_factory(full_name="Inviting Admin", role_name="Admin")
+    async with async_session_factory() as session:
+        admin_account_id = (
+            await session.execute(select(User.account_id).where(User.id == admin_id))
+        ).scalar_one()
+    await grant_unlimited_plan(admin_account_id)
     invitee_email = f"{uuid.uuid4()}@example.com"
 
     transport = ASGITransport(app=create_app())
@@ -175,6 +181,11 @@ async def test_accepting_an_already_accepted_invitation_is_rejected(
     user_factory: Callable[..., Awaitable[uuid.UUID]],
 ) -> None:
     admin_id = await user_factory(full_name="Inviting Admin", role_name="Admin")
+    async with async_session_factory() as session:
+        admin_account_id = (
+            await session.execute(select(User.account_id).where(User.id == admin_id))
+        ).scalar_one()
+    await grant_unlimited_plan(admin_account_id)
     invitee_email = f"{uuid.uuid4()}@example.com"
 
     transport = ASGITransport(app=create_app())

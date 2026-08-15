@@ -1,0 +1,76 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.metricsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 14px;
+}
+
+.card {
+  background: #fff;
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
+  padding: 20px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.cardTitle {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--color-dark-text);
+}
+
+.hint {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--color-slate);
+}
+
+.planList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.planRow {
+  display: grid;
+  grid-template-columns: 120px 1fr 50px;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+}
+
+.planName {
+  font-weight: 700;
+  color: var(--color-dark-text);
+}
+
+.planBarTrack {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(15, 42, 86, 0.08);
+  overflow: hidden;
+}
+
+.planBarFill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--gradient-primary);
+}
+
+.planCount {
+  text-align: right;
+  font-weight: 700;
+  color: var(--color-dark-text);
+  font-variant-numeric: tabular-nums;
+}

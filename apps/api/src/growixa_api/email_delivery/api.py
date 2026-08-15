@@ -106,3 +106,19 @@ async def unsubscribe_route(
         content="<html><body><p>You have been unsubscribed.</p></body></html>",
         media_type="text/html",
     )
+
+
+@public_router.post("/unsubscribe/{campaign_recipient_id}", status_code=status.HTTP_200_OK)
+async def one_click_unsubscribe_route(
+    campaign_recipient_id: uuid.UUID,
+    session: AsyncSession = Depends(get_session),
+) -> Response:
+    """RFC 8058 one-click unsubscribe -- the same public/unauthenticated shape as the GET
+    route above, but the mail client itself (not the recipient's browser) issues this POST
+    directly, in response to the campaign send's `List-Unsubscribe-Post` header. No HTML
+    body: per RFC 8058, the response is consumed by the mail client, never rendered."""
+    try:
+        await record_unsubscribe(session, campaign_recipient_id)
+    except CampaignRecipientNotFoundError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Unsubscribe link not found") from exc
+    return Response(status_code=status.HTTP_200_OK)

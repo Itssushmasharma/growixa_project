@@ -234,14 +234,26 @@
   `consent_records`'s append-only history, because its only job is a fast lookup before
   any future send (Slice 3+).
 - Primary key: `id` (UUID)
-- Required fields: `email` (citext, **unique** — one active suppression per address),
-  `reason` (`UNSUBSCRIBED` | `BOUNCED` | `COMPLAINED` | `MANUAL`), `suppressed_at`
-  (default `now()`)
-- Optional fields: `contact_id` (nullable FK → `contacts.id` — an address can be
-  suppressed even with no matching contact record, e.g. a hard bounce), `suppressed_by_user_id`
-  (nullable FK → `users.id`)
+- Row shape (`GRX-SAAS-015`, ad hoc): each row is *either* an exact-email entry (`email`
+  set, `domain` NULL) *or* a whole-domain block (`domain` set, `email` NULL, e.g. suppress
+  every `*@competitor.com` address) — never both, enforced by
+  `ck_suppression_entries_email_xor_domain`. Domain rows are always `reason='MANUAL'`;
+  there's no such thing as an automatic whole-domain unsubscribe/bounce/complaint event.
+- Required fields: `reason` (`UNSUBSCRIBED` | `BOUNCED` | `COMPLAINED` | `MANUAL`),
+  `suppressed_at` (default `now()`)
+- Optional fields (exactly one of the two set per row, per the XOR constraint above):
+  `email` (citext), `domain` (text). Also: `contact_id` (nullable FK → `contacts.id` — an
+  address can be suppressed even with no matching contact record, e.g. a hard bounce; always
+  NULL on domain rows), `suppressed_by_user_id` (nullable FK → `users.id`)
 - Re-suppressing an already-suppressed email updates `reason`/`suppressed_at` in place
-  (upsert on the unique `email` index), it does not create a second row.
+  (upsert on the unique `(account_id, email)` index), it does not create a second row.
+  Re-blocking an already-blocked domain returns the existing row unchanged (idempotent,
+  enforced by the partial unique index on `(account_id, domain) WHERE domain IS NOT NULL`
+  — a plain `(account_id, domain)` unique constraint wouldn't work here since Postgres
+  treats every NULL `domain` value as mutually distinct).
+- A campaign send checks both: the exact recipient email against the unique index, and the
+  recipient's `@`-suffix domain against the domain rows — a domain block has no exact-email
+  row to match, so it's checked as a second, separate query.
 
 ## Slice 3 entities (full detail)
 
@@ -688,11 +700,199 @@ tables, not the 4 the placeholder below originally speculated — see `DEC-GRX-0
   plus a `ux_platform_ai_provider_config_active` partial unique index on `WHERE
   is_active` (at most one active platform default at a time).
 
+### `platform_email_provider_config` (ad hoc, `GRX-SAAS-013`)
+
+- Purpose: the platform-wide default outbound-email SMTP configuration (system/
+  transactional email — e.g. registration verification links), admin-editable without a
+  redeploy. Added after a real production incident: the previous `.env`-only
+  `PLATFORM_SMTP_*` settings pointed at an SMTP relay that turned out to be unreachable
+  from the deployed environment, with no way to switch providers or rotate credentials
+  short of a redeploy.
+- Primary key: `id` (UUID)
+- Required fields: `provider` (`CHECK IN ('POSTMARK', 'CUSTOM_SMTP')` — same vocabulary
+  as `email_provider_connections`, reused deliberately, not a new type), `smtp_host`,
+  `smtp_port`, `smtp_username`, `smtp_password_encrypted` (Fernet-encrypted, same as
+  every other stored credential in this codebase), `from_email`, `from_name`, `is_active`
+  (default `true`)
+- Audit fields: `created_by_platform_admin_id` (FK → `platform_admins.id`), `created_at`,
+  `updated_at`
+- One active config at a time: `ux_platform_email_provider_config_active` partial unique
+  index on `WHERE is_active`. Reconfiguring deactivates the prior row and inserts a fresh
+  one, same convention as `platform_ai_provider_config`/`ai_provider_connections`.
+- Deliberately a separate table from `email_provider_connections`, not a nullable
+  `account_id` on it: that table's uniqueness is `(account_id, provider) WHERE
+  is_active`, and Postgres treats `NULL account_id` values as always-distinct from each
+  other, so a nullable-`account_id` reuse would not actually enforce "one active platform
+  config" the way a dedicated `WHERE is_active` index does. It also carries account-only
+  columns (`webhook_username`/`webhook_password_encrypted`, `SenderIdentity` linkage)
+  that don't apply at platform level, and its RBAC is account-scoped
+  (`integrations.manage`) rather than platform-scoped. The application code still reuses
+  everything reusable: the same `provider` vocabulary and the same
+  `integrations/smtp_transport.py` `send_email`/`test_connection` functions — no new
+  Postmark HTTP-API adapter, Postmark is used purely as an SMTP relay via its Server API
+  Token as both username and password.
+- Resolution order at send time (`notifications/email.py`): this table's active row, else
+  the legacy `.env` `PLATFORM_SMTP_*` settings, else skip sending (logged) — never a hard
+  failure, matching the "best-effort, never blocks the caller" contract
+  `send_verification_email` already had.
+
+### `platform_email_validation_provider_config` (ad hoc, `GRX-SAAS-017`)
+
+- Purpose: the platform-wide real-time, vendor-backed mailbox-verification provider
+  (Clearout.io today) used only for paid-plan accounts' `POST /email-validation/check`
+  calls (`GRX-SAAS-016`'s free syntax/MX/disposable/role check stays available to every
+  account regardless of this table's state). Follows the same "picked one Growixa asked
+  for after weighing self-hosted-SMTP-probing risk against a paid vendor" reasoning
+  captured in `MASTER_TASK_TRACKER.md`'s `GRX-SAAS-016`/`017` rows.
+- Primary key: `id` (UUID)
+- Required fields: `provider` (`CHECK IN ('CLEAROUT')` — widen when a second vendor's
+  adapter actually ships, not before), `api_key_encrypted` (Fernet-encrypted, NOT
+  NULL — unlike `platform_ai_provider_config`'s nullable key, every currently-supported
+  vendor requires one), `is_active` (default `true`)
+- Audit fields: `created_by_platform_admin_id` (FK → `platform_admins.id`), `created_at`,
+  `updated_at`
+- One active vendor at a time: `ux_platform_email_validation_provider_config_active`
+  partial unique index on `WHERE is_active`, same deactivate-then-insert convention as
+  every other platform provider config table.
+- Deliberately platform-level only — no per-account bring-your-own table (unlike AI's
+  `ai_provider_connections`): Growixa buys verification credits wholesale from the
+  configured vendor and meters access by the account's own plan tier, not a
+  customer-supplied key.
+- Resolution (`email_validation/providers/factory.py`): a real-time adapter is returned
+  only when BOTH the calling account's current plan slug isn't `free`
+  (`billing.get_account_subscription_with_plan`) AND this table has an active row —
+  otherwise `None`, and the caller falls back to the free basic check. If the vendor call
+  itself fails at request time (bad key, network error, vendor outage),
+  `services.validate_email` also falls back to the basic check rather than erroring —
+  the response's `verification_level` field (`BASIC`/`REALTIME`) always says which one
+  actually ran.
+
+## Slice 7 entities (full detail)
+
+Per `DEC-GRX-029`/`DEC-GRX-030`. Module ownership follows
+[MODULE_BOUNDARIES.md](../04-architecture/MODULE_BOUNDARIES.md): `billing`. Full
+narrative design (billing flow, atomic quota evaluator, webhook event mapping,
+platform-admin overrides, coupon engine, AI-credit-metering/BYO-bypass interaction) is
+in [BILLING_SYSTEM_ARCHITECTURE.md](../04-architecture/BILLING_SYSTEM_ARCHITECTURE.md)
+— this section is the entity summary; see `DATABASE_SCHEMA.md §Slice 7` for full
+column-level detail.
+
+### `subscription_plans`
+
+- Purpose: the platform-wide plan catalog — one row per tier (`free`/`starter`/`pro`/
+  `enterprise` are the four seeded rows; a platform admin can create genuinely new
+  tiers beyond these four via `POST /platform/subscription-plans`, `GRX-SAAS-006`),
+  create/editable by a platform admin (`platform.billing.manage`) without a redeploy,
+  same "DB-backed admin-editable setting" pattern `platform_ai_provider_config`
+  established in Slice 6.
+- Primary key: `id` (UUID)
+- Required fields: `slug` (unique; CHECK is a plain format check —
+  `slug ~ '^[a-z0-9_-]+$'` — not a fixed whitelist, since `GRX-SAAS-006`'s migration
+  `e3e939e991f4` widened it specifically to allow new tiers; immutable once created,
+  since it's referenced by string literal elsewhere, e.g. the Free-plan bootstrap
+  lookup), `name`
+- Optional fields: `price_usd`/`price_inr` (nullable — `NULL` for Enterprise's
+  contact-sales tier, no fixed self-serve price), `max_contacts`/`max_monthly_emails`/
+  `max_monthly_ai_runs`/`max_social_accounts`/`max_user_seats` (nullable — `NULL` =
+  unlimited), `allow_byo_ai_key`/`allow_byo_smtp`/`audit_export_enabled`/
+  `audit_api_enabled` (booleans), `razorpay_plan_id_usd`/`razorpay_plan_id_inr`
+  (nullable — the Razorpay Plan object to attach a new subscription to; `NULL` for
+  Free/Enterprise, neither of which self-serve-checkouts through Razorpay)
+
+### `account_subscriptions`
+
+- Purpose: one row per account (created automatically at registration, `GRX-BILL-003`),
+  tracking the active plan, billing status, currency, and a running counter for the
+  current period's metered usage (email sends, AI runs) — the counter the atomic quota
+  evaluator reads and locks (`with_for_update`) on every metered call.
+- Primary key: `id` (UUID)
+- Required fields: `account_id` (FK → `accounts.id` CASCADE, **unique** — exactly one
+  row per account, never zero, never more than one), `plan_id` (FK →
+  `subscription_plans.id`), `status` (`CHECK IN ('PENDING', 'ACTIVE', 'PAST_DUE',
+  'CANCELED', 'HALTED')`), `currency` (`CHECK IN ('USD', 'INR')`),
+  `current_period_start`/`current_period_end`, `period_email_used`/`period_ai_used`
+  (default `0`, reset to `0` on each `subscription.charged` webhook)
+- Optional fields: `razorpay_customer_id`/`razorpay_subscription_id` (nullable — `NULL`
+  for accounts on an admin-assigned plan with no real Razorpay object, e.g. most
+  Enterprise accounts), `set_by_platform_admin_id` (FK → `platform_admins.id`,
+  nullable — set when the current plan came from an admin override, not a real
+  checkout)
+- `PENDING` (`GRX-BILL-004`): set the instant `POST /billing/subscribe` creates the
+  Razorpay Subscription and stores its id, before the customer completes Razorpay's
+  Checkout widget — required because the webhook handler looks up this row by
+  `razorpay_subscription_id`, which must already be populated when
+  `subscription.activated`/`charged` arrives. `plan_id`/`currency` point at the
+  *target* plan while `PENDING`, but nothing is granted; the quota evaluator
+  (`GRX-BILL-005`) must only honor `ACTIVE`/`PAST_DUE`.
+
+### `credit_packs`
+
+- Purpose: the platform-wide top-up catalog — one row per purchasable credit pack
+  (e.g. "250 AI Runs"), editable by a platform admin (`platform.billing.manage`)
+  without a redeploy, the same admin-editable-table shape as `subscription_plans`
+  above (a priced catalog, not developer-authored text — corrected during
+  `GRX-BILL-004` from an earlier code-defined-dict draft).
+- Primary key: `id` (UUID)
+- Required fields: `slug` (unique), `name`, `credit_type` (`CHECK IN ('AI_RUNS',
+  'EMAIL_SENDS', 'CONTACT_SLOTS', 'SOCIAL_POSTS')`), `credits` (int), `is_active`
+  (default `true`)
+- Optional fields: `price_usd`/`price_inr` (nullable — `NULL` for a currency not yet
+  priced; today every seeded pack has `price_usd = NULL` since international payments
+  aren't yet approved on the Razorpay account, `BILLING_SYSTEM_ARCHITECTURE.md §8`)
+- Read by `billing/repositories.py`'s `get_credit_pack_by_slug` (filtered to
+  `is_active`) at checkout time (`POST /billing/topup`); no FK relationship to any
+  other billing table — a purchase against it is only ever recorded in
+  `account_credit_purchases`/`account_credit_balances` via the `payment.captured`
+  webhook, keyed by the pack's `credit_type`/`credits`, not by a foreign key.
+
+### `account_credit_balances`
+
+- Purpose: the number the quota evaluator actually reads once the monthly plan
+  allowance is exhausted — one running, non-expiring balance per account per credit
+  type (`DEC-GRX-030`: credits never expire, no per-purchase-batch FIFO).
+- Primary key: `id` (UUID)
+- Required fields: `account_id` (FK → `accounts.id` CASCADE), `credit_type` (`CHECK IN
+  ('AI_RUNS', 'EMAIL_SENDS', 'CONTACT_SLOTS', 'SOCIAL_POSTS')`), `remaining_credits`
+  (default `0`)
+- Constraint: unique on `(account_id, credit_type)` — the atomic
+  `UPDATE ... WHERE remaining_credits >= :needed` this table exists for depends on
+  there being exactly one row per account per credit type.
+
+### `account_credit_purchases`
+
+- Purpose: receipt/audit history of individual top-up purchases and admin-granted
+  credits. **Never read by the quota evaluator** — purely a record; `remaining_credits`
+  above is the only value that gates anything.
+- Primary key: `id` (UUID)
+- Required fields: `account_id` (FK → `accounts.id` CASCADE), `credit_type`,
+  `credits_added`, `purchased_at`
+- Optional fields: `razorpay_payment_id` (nullable, **unique** when set — the
+  idempotency guard against webhook replay, `THREAT_MODEL.md` T61; `NULL` for an
+  admin-granted credit rather than a real purchase), `granted_by_platform_admin_id`
+  (FK → `platform_admins.id`, nullable — set when `razorpay_payment_id` is `NULL`)
+
+### `coupon_codes` / `coupon_redemptions`
+
+- Purpose: platform-admin-managed discount/free-credit codes, redeemable once per
+  account.
+- `coupon_codes`: `id` (UUID PK), `code` (unique text, e.g. `WELCOME20`),
+  `discount_type` (`CHECK IN ('PERCENTAGE', 'FIXED_AMOUNT', 'CREDIT_GRANT')`),
+  `discount_value` (numeric — meaning depends on `discount_type`), `credit_type`
+  (nullable, only set when `discount_type = 'CREDIT_GRANT'`), `applicable_plan_slugs`
+  (JSONB array, nullable — `NULL` = all plans), `max_redemptions` (nullable —
+  `NULL` = unlimited), `redemption_count` (default `0`), `expires_at` (nullable),
+  `is_active` (default `true`), `created_by_platform_admin_id` (FK →
+  `platform_admins.id`)
+- `coupon_redemptions`: `id` (UUID PK), `coupon_code_id` (FK → `coupon_codes.id`),
+  `account_id` (FK → `accounts.id`), `redeemed_at`. Unique on
+  `(coupon_code_id, account_id)` — the one-redemption-per-account enforcement
+  (`THREAT_MODEL.md` T65).
+
 ## Full MVP entity landscape (target slice)
 
-Entities beyond Slice 5/6 are named here for continuity with `docs/02-features/` and
+Entities beyond Slice 5/6/7 are named here for continuity with `docs/02-features/` and
 future `docs/06-api/` work, but are **not** designed in field-level detail until the slice
-that needs them. Slice 3/5/6's own entities moved to full detail above; `campaign_schedules`
+that needs them. Slice 3/5/6/7's own entities moved to full detail above; `campaign_schedules`
 stays here since it's Slice 4:
 
 | Entity group | Target slice | Notes |
@@ -700,7 +900,6 @@ stays here since it's Slice 4:
 | `campaign_schedules` | Slice 4 | Scheduled Email — future send-time, cancellation, scheduling-specific retry |
 | `notifications` | Slice 1 stub, still no real writer after Slice 3 | Notification center |
 | `webhook_endpoints`, `webhook_events`, `webhook_deliveries` | Deferred indefinitely — see Slice 3's "explicitly deferred" note | Only revisit with a second email/social provider |
-| `feature_entitlements` | Alongside `usage_records`, expanded when a real limit needs enforcing | |
 | `analytics_events` | Deferred — see Slice 3's "explicitly deferred" note | Read-side aggregation, computed from existing tables for now |
 | `system_settings` | Sprint 1 (minimal), expanded over time | |
 | `automation_workflows`, `workflow_versions`, `workflow_nodes`, `workflow_edges`, `workflow_executions`, `workflow_step_executions` | Out of MVP ([OQ-012](../00-project-control/OPEN_QUESTIONS.md)) | Not scheduled |

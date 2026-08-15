@@ -327,13 +327,25 @@ insert-only, same pattern as `audit_logs`.
 | Column | Type | Constraints |
 |---|---|---|
 | id | uuid | PK |
-| email | citext | UNIQUE, NOT NULL |
+| account_id | uuid | FK → accounts.id ON DELETE CASCADE, NOT NULL |
+| email | citext | NULL |
+| domain | text | NULL |
 | reason | text | NOT NULL, CHECK IN ('UNSUBSCRIBED','BOUNCED','COMPLAINED','MANUAL') |
 | contact_id | uuid | FK → contacts.id, NULL |
 | suppressed_at | timestamptz | NOT NULL, DEFAULT now() |
 | suppressed_by_user_id | uuid | FK → users.id, NULL |
 
-Indexes: unique index on `email` (upsert target — re-suppressing updates the existing row).
+Constraints: `ck_suppression_entries_email_xor_domain` — `(email IS NOT NULL AND domain IS
+NULL) OR (email IS NULL AND domain IS NOT NULL)` (`GRX-SAAS-015`, ad hoc) — each row is
+either an exact-email suppression or a whole-domain block, never both. Domain rows are
+always `reason='MANUAL'`.
+
+Indexes: unique index on `(account_id, email)` (upsert target — re-suppressing an email
+updates the existing row in place). Partial unique index
+`ux_suppression_entries_account_id_domain` on `(account_id, domain) WHERE domain IS NOT
+NULL` — enforces "at most one active block per domain per account"; a plain
+`(account_id, domain)` unique constraint doesn't work here since Postgres treats every NULL
+`domain` as mutually distinct, so it would allow unlimited duplicate domain-less rows.
 
 ## Slice 3 (Email Marketing) tables
 
@@ -570,9 +582,13 @@ and [DECISIONS.md §DEC-GRX-019](../00-project-control/DECISIONS.md).
 | id | uuid | PK |
 | name | text | NOT NULL |
 | status | text | NOT NULL, CHECK IN ('ACTIVE','SUSPENDED','CLOSED'), DEFAULT 'ACTIVE' |
-| plan_id | uuid | NULL, no FK yet (reserved for Phase D) |
-| selected_plan_slug | text | NULL, CHECK IN ('starter', 'growth') |
+| selected_plan_slug | text | NULL, CHECK IN ('free', 'starter', 'pro') — registration-time intent signal only, not real entitlement (see `account_subscriptions` below) |
 | created_at | timestamptz | NOT NULL, DEFAULT now() |
+
+The speculative `plan_id` column reserved for Phase D (added in `3186b6c66a6d`, never used) is
+**dropped** by `GRX-BILL-002`'s migration — real entitlement lives in
+`account_subscriptions.plan_id` below instead, which needs `status`/`currency`/period
+counters/Razorpay IDs that don't belong on the core `accounts` identity table.
 
 ## `account_verification_tokens`
 
@@ -764,6 +780,205 @@ Indexes: `account_id`; unique partial index
 Indexes: unique partial index `ux_platform_ai_provider_config_active` on `WHERE
 is_active`.
 
+## `platform_email_provider_config` (ad hoc, `GRX-SAAS-013`)
+
+See [DATA_MODEL.md §platform_email_provider_config](DATA_MODEL.md#platform_email_provider_config-ad-hoc-grx-saas-013).
+Mirrors `platform_ai_provider_config`'s shape; migration `a1b2c3d4e5f6`.
+
+| Column | Type | Constraints |
+|---|---|---|
+| id | uuid | PK |
+| provider | text | NOT NULL, CHECK IN ('POSTMARK','CUSTOM_SMTP') |
+| smtp_host | text | NOT NULL |
+| smtp_port | integer | NOT NULL |
+| smtp_username | text | NOT NULL |
+| smtp_password_encrypted | text | NOT NULL |
+| from_email | text | NOT NULL |
+| from_name | text | NOT NULL |
+| is_active | boolean | NOT NULL, DEFAULT true |
+| created_by_platform_admin_id | uuid | FK → platform_admins.id, NULL |
+| created_at | timestamptz | NOT NULL, DEFAULT now() |
+| updated_at | timestamptz | NOT NULL, DEFAULT now() |
+
+Indexes: unique partial index `ux_platform_email_provider_config_active` on `WHERE
+is_active`. Same migration seeds `platform.email.manage` (platform RBAC) and grants it to
+`platform.owner`/`platform.admin` (see [RBAC.md](../08-security/RBAC.md)).
+
+## `platform_email_validation_provider_config` (ad hoc, `GRX-SAAS-017`)
+
+Mirrors `platform_ai_provider_config`'s shape; migration `fa291f6b37ca`. Platform-level
+only — no per-account bring-your-own table, unlike AI's `ai_provider_connections`.
+
+| Column | Type | Constraints |
+|---|---|---|
+| id | uuid | PK |
+| provider | text | NOT NULL, CHECK IN ('CLEAROUT') |
+| api_key_encrypted | text | NOT NULL |
+| is_active | boolean | NOT NULL, DEFAULT true |
+| created_by_platform_admin_id | uuid | FK → platform_admins.id, NULL |
+| created_at | timestamptz | NOT NULL, DEFAULT now() |
+| updated_at | timestamptz | NOT NULL, DEFAULT now() |
+
+Indexes: unique partial index `ux_platform_email_validation_provider_config_active` on
+`WHERE is_active`. Same migration seeds `platform.validation.manage` (platform RBAC) and
+grants it to `platform.owner`/`platform.admin` (see [RBAC.md](../08-security/RBAC.md)).
+Resolved by `email_validation/providers/factory.py` alongside the calling account's
+current plan (`billing.get_account_subscription_with_plan`) — a real-time vendor is only
+returned when both an active row exists here AND the account's plan slug isn't `free`.
+
+## Slice 7 (Billing) tables
+
+See [DATA_MODEL.md §Slice 7 entities](DATA_MODEL.md#slice-7-entities-full-detail),
+[BILLING_SYSTEM_ARCHITECTURE.md](../04-architecture/BILLING_SYSTEM_ARCHITECTURE.md), and
+[DECISIONS.md §DEC-GRX-029/030](../00-project-control/DECISIONS.md).
+
+## `subscription_plans`
+
+| Column | Type | Constraints |
+|---|---|---|
+| id | uuid | PK |
+| slug | text | NOT NULL, UNIQUE, CHECK `slug ~ '^[a-z0-9_-]+$'` |
+| name | text | NOT NULL |
+| price_usd | numeric(10,2) | NULL |
+| price_inr | numeric(10,2) | NULL |
+| max_contacts | integer | NULL |
+| max_monthly_emails | integer | NULL |
+| max_monthly_ai_runs | integer | NULL |
+| max_social_accounts | integer | NULL |
+| max_user_seats | integer | NULL |
+| allow_byo_ai_key | boolean | NOT NULL, DEFAULT false |
+| allow_byo_smtp | boolean | NOT NULL, DEFAULT false |
+| audit_export_enabled | boolean | NOT NULL, DEFAULT false |
+| audit_api_enabled | boolean | NOT NULL, DEFAULT false |
+| razorpay_plan_id_usd | text | NULL |
+| razorpay_plan_id_inr | text | NULL |
+| created_at | timestamptz | NOT NULL, DEFAULT now() |
+| updated_at | timestamptz | NOT NULL, DEFAULT now() |
+
+Migration `e3e939e991f4` (`GRX-SAAS-006`) widened `slug`'s CHECK from a fixed 4-value
+whitelist (`IN ('free','starter','pro','enterprise')`) to this plain format check — a
+platform admin can genuinely create new tiers via `POST /platform/subscription-plans`
+now, not just edit the four seeded ones.
+
+Same migration seeds `billing.manage`/`billing.view` (customer RBAC) and
+`platform.billing.manage` (platform RBAC) permission codes, their role grants, and the
+four `subscription_plans` rows (`free`/`starter`/`pro`/`enterprise` — see
+`BILLING_SYSTEM_ARCHITECTURE.md §2` for the working-draft quota/price values).
+
+## `credit_packs`
+
+| Column | Type | Constraints |
+|---|---|---|
+| id | uuid | PK |
+| slug | text | NOT NULL, UNIQUE |
+| name | text | NOT NULL |
+| credit_type | text | NOT NULL, CHECK IN ('AI_RUNS','EMAIL_SENDS','CONTACT_SLOTS','SOCIAL_POSTS') |
+| credits | integer | NOT NULL |
+| price_usd | numeric(10,2) | NULL |
+| price_inr | numeric(10,2) | NULL |
+| is_active | boolean | NOT NULL, DEFAULT true |
+| created_at | timestamptz | NOT NULL, DEFAULT now() |
+| updated_at | timestamptz | NOT NULL, DEFAULT now() |
+
+Migration `b6eed962fd56` (`GRX-BILL-004`) seeds five draft packs, all with
+`price_usd = NULL` — international payments aren't yet approved on the Razorpay
+account (`BILLING_SYSTEM_ARCHITECTURE.md §8`). Read by `get_credit_pack_by_slug`
+(filtered to `is_active`) at `POST /billing/topup` checkout time; no FK from any other
+billing table.
+
+## `account_subscriptions`
+
+| Column | Type | Constraints |
+|---|---|---|
+| id | uuid | PK |
+| account_id | uuid | FK → accounts.id ON DELETE CASCADE, NOT NULL, UNIQUE |
+| plan_id | uuid | FK → subscription_plans.id, NOT NULL |
+| status | text | NOT NULL, CHECK IN ('PENDING','ACTIVE','PAST_DUE','CANCELED','HALTED') |
+| currency | text | NOT NULL, CHECK IN ('USD','INR') |
+| current_period_start | timestamptz | NOT NULL |
+| current_period_end | timestamptz | NOT NULL |
+| period_email_used | integer | NOT NULL, DEFAULT 0 |
+| period_ai_used | integer | NOT NULL, DEFAULT 0 |
+| razorpay_customer_id | text | NULL |
+| razorpay_subscription_id | text | NULL |
+| set_by_platform_admin_id | uuid | FK → platform_admins.id, NULL |
+| created_at | timestamptz | NOT NULL, DEFAULT now() |
+| updated_at | timestamptz | NOT NULL, DEFAULT now() |
+
+Indexes: unique on `account_id` (exactly one row per account — created automatically at
+registration, `GRX-BILL-003`, never left absent per
+`BILLING_SYSTEM_ARCHITECTURE.md §3.4`). Every metered request takes
+`SELECT ... FOR UPDATE` on this row before reading/writing `period_email_used`/
+`period_ai_used`.
+
+Migration `60f7c30ff18a` (`GRX-BILL-004`) added `PENDING` to the `status` CHECK — set
+the instant `POST /billing/subscribe` creates the Razorpay Subscription and stores its
+id, before the customer completes Razorpay's Checkout widget (the webhook handler looks
+up this row by `razorpay_subscription_id`, which must already be populated when
+`subscription.activated`/`charged` arrives). `plan_id`/`currency` point at the *target*
+plan while `PENDING`; nothing is granted until a webhook moves status to `ACTIVE`. The
+quota evaluator (`GRX-BILL-005`) must only honor `ACTIVE`/`PAST_DUE`.
+
+## `account_credit_balances`
+
+| Column | Type | Constraints |
+|---|---|---|
+| id | uuid | PK |
+| account_id | uuid | FK → accounts.id ON DELETE CASCADE, NOT NULL |
+| credit_type | text | NOT NULL, CHECK IN ('AI_RUNS','EMAIL_SENDS','CONTACT_SLOTS','SOCIAL_POSTS') |
+| remaining_credits | integer | NOT NULL, DEFAULT 0 |
+| updated_at | timestamptz | NOT NULL, DEFAULT now() |
+
+Indexes: unique on `(account_id, credit_type)` — the atomic
+`UPDATE ... WHERE remaining_credits >= :needed` the quota evaluator runs depends on this
+constraint. Credits never expire (`DEC-GRX-030`); no expiry column by design.
+
+## `account_credit_purchases`
+
+| Column | Type | Constraints |
+|---|---|---|
+| id | uuid | PK |
+| account_id | uuid | FK → accounts.id ON DELETE CASCADE, NOT NULL |
+| credit_type | text | NOT NULL |
+| credits_added | integer | NOT NULL |
+| purchased_at | timestamptz | NOT NULL, DEFAULT now() |
+| razorpay_payment_id | text | NULL, UNIQUE (when set) |
+| granted_by_platform_admin_id | uuid | FK → platform_admins.id, NULL |
+
+Indexes: `account_id`; unique on `razorpay_payment_id` where not null — the webhook-
+replay idempotency guard (`THREAT_MODEL.md` T61). Receipt/audit table only; never read
+by the quota evaluator.
+
+## `coupon_codes`
+
+| Column | Type | Constraints |
+|---|---|---|
+| id | uuid | PK |
+| code | text | NOT NULL, UNIQUE |
+| discount_type | text | NOT NULL, CHECK IN ('PERCENTAGE','FIXED_AMOUNT','CREDIT_GRANT') |
+| discount_value | numeric(10,2) | NOT NULL |
+| credit_type | text | NULL |
+| applicable_plan_slugs | jsonb | NULL |
+| max_redemptions | integer | NULL |
+| redemption_count | integer | NOT NULL, DEFAULT 0 |
+| expires_at | timestamptz | NULL |
+| is_active | boolean | NOT NULL, DEFAULT true |
+| created_by_platform_admin_id | uuid | FK → platform_admins.id, NOT NULL |
+| created_at | timestamptz | NOT NULL, DEFAULT now() |
+| updated_at | timestamptz | NOT NULL, DEFAULT now() |
+
+## `coupon_redemptions`
+
+| Column | Type | Constraints |
+|---|---|---|
+| id | uuid | PK |
+| coupon_code_id | uuid | FK → coupon_codes.id ON DELETE CASCADE, NOT NULL |
+| account_id | uuid | FK → accounts.id ON DELETE CASCADE, NOT NULL |
+| redeemed_at | timestamptz | NOT NULL, DEFAULT now() |
+
+Indexes: unique on `(coupon_code_id, account_id)` — one redemption per account per
+code (`THREAT_MODEL.md` T65).
+
 ## Extensions required
 
 - `pgcrypto` or equivalent for `gen_random_uuid()`.
@@ -830,3 +1045,26 @@ seed migration adding `ai.manage` / `ai.view` and their role grants, and
 `GRX-SAAS-001`'s `accounts` table and Phase B's `platform_admins` table both existing.
 See [DATA_MODEL.md §Slice 6 entities](DATA_MODEL.md#slice-6-entities-full-detail) and
 [DECISIONS.md §DEC-GRX-026/027/028](../00-project-control/DECISIONS.md).
+
+Slice 7: same migration also drops `accounts.plan_id` (the unused Phase-D placeholder
+from `3186b6c66a6d`) and widens `accounts.selected_plan_slug`'s CHECK from
+`('starter', 'growth')` to `('free', 'starter', 'pro')` to match the real plan catalog
+— then creates `subscription_plans` (+ seed migration adding `billing.manage` /
+`billing.view` and their role grants, `platform.billing.manage` granted to
+`platform.owner`/`platform.finance`, and the four `free`/`starter`/`pro`/`enterprise`
+plan rows) → `account_subscriptions` → `account_credit_balances` →
+`account_credit_purchases` → `coupon_codes` → `coupon_redemptions`. Depends on
+`GRX-SAAS-001`'s `accounts` table and Phase B's `platform_admins` table both existing.
+The same migration backfills a `Free`-tier `account_subscriptions` row for every
+pre-existing account (new accounts get one automatically at registration going
+forward, `BILLING_SYSTEM_ARCHITECTURE.md §3.4`).
+
+`GRX-BILL-004` adds two more migrations on top: `60f7c30ff18a` widens
+`account_subscriptions.status`'s CHECK to add `PENDING`; `b6eed962fd56` creates
+`credit_packs` (+ seeds five draft packs). `GRX-SAAS-006` adds one more:
+`e3e939e991f4` widens `subscription_plans.slug`'s CHECK from a fixed 4-value whitelist
+to a plain format check. All three depend only on the Slice 7 migration above.
+
+See
+[DATA_MODEL.md §Slice 7 entities](DATA_MODEL.md#slice-7-entities-full-detail) and
+[DECISIONS.md §DEC-GRX-029/030](../00-project-control/DECISIONS.md).

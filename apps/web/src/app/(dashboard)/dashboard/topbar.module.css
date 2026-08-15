@@ -2,15 +2,22 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 20px 32px;
-  background: #fff;
-  box-shadow: var(--card-shadow);
+  gap: 16px;
+  padding: 14px 28px;
+  background: #ffffff;
+  border-bottom: 1px solid #eef2f6;
+  box-shadow: 0 2px 12px rgba(15, 42, 86, 0.03);
+  position: sticky;
+  top: 0;
+  z-index: 30;
 }
 
-.titleArea {
+.leftArea {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 14px;
+  flex: 1;
+  max-width: 480px;
 }
 
 .menuButton {
@@ -20,47 +27,332 @@
   width: 36px;
   height: 36px;
   border-radius: 10px;
-  border: 1px solid rgba(15, 42, 86, 0.12);
-  background: #fff;
-  color: var(--color-dark-text);
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  color: var(--color-dark-text, #0b1b33);
   cursor: pointer;
   flex-shrink: 0;
+  transition: all 0.15s;
 }
 
 .menuButton:hover {
-  background: #f4f6fb;
+  background: #f8fafc;
+  border-color: #cbd5e1;
 }
 
-.title {
-  margin: 0;
-  font-size: 22px;
-  font-weight: 800;
-}
-
-.userArea {
+/* Global Search Command Bar */
+.searchWrapper {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 16px;
+  width: 100%;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 12px;
+  font-size: 13px;
+  color: #94a3b8;
+  pointer-events: none;
+}
+
+.searchInput {
+  width: 100%;
+  padding: 8px 38px 8px 34px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  color: var(--color-dark-text, #0b1b33);
+  font-size: 13px;
+  outline: none;
+  transition: all 0.15s;
+}
+
+.searchInput:focus {
+  background: #ffffff;
+  border-color: var(--color-primary-blue, #1457e6);
+  box-shadow: 0 0 0 3px rgba(20, 87, 230, 0.1);
+}
+
+.searchInput::placeholder {
+  color: #94a3b8;
+}
+
+.kbdShortcut {
+  position: absolute;
+  right: 10px;
+  padding: 2px 6px;
+  font-size: 10.5px;
+  font-family: inherit;
+  font-weight: 700;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  color: #64748b;
+  pointer-events: none;
+}
+
+/* Right Navigation & Utility Controls */
+.rightArea {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+/* AI Credits Progress Gauge */
+.creditsPill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  padding: 5px 12px;
+  text-decoration: none;
+  transition: all 0.15s;
+}
+
+.creditsPill:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+.creditsLabel {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #1457e6;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.creditsCount {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--color-dark-text, #0b1b33);
+}
+
+.creditsTrack {
+  width: 44px;
+  height: 4px;
+  background: #e2e8f0;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.creditsFill {
+  height: 100%;
+  background: linear-gradient(90deg, #1457e6, #12b8b0);
+  border-radius: 999px;
+}
+
+/* Subscription Action Button */
+.upgradeBtn,
+.managePlanBtn {
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.15s;
+}
+
+.upgradeBtn {
+  background: linear-gradient(135deg, #1457e6 0%, #6366f1 100%);
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(20, 87, 230, 0.25);
+}
+
+.upgradeBtn:hover {
+  opacity: 0.95;
+  transform: translateY(-1px);
+}
+
+.managePlanBtn {
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  color: #334155;
+}
+
+.managePlanBtn:hover {
+  background: #e2e8f0;
+  color: #0b1b33;
+}
+
+/* Notifications Button */
+.notificationButton {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.notificationButton:hover {
+  background: #f8fafc;
+  color: #0b1b33;
+}
+
+.notificationBadge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  background: #ef4444;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 700;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* User Profile Chip */
+.userProfileChip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  padding: 3px 8px 3px 5px;
+  border-radius: 999px;
+}
+
+.userAvatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #1457e6, #12b8b0);
+  color: #ffffff;
+  font-size: 11.5px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.userInfo {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
 }
 
 .userName {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--color-slate);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-dark-text, #0b1b33);
 }
 
+.userOrg {
+  font-size: 10.5px;
+  color: var(--color-slate, #64748b);
+}
+
+/* Logout Button */
 .logoutButton {
-  padding: 8px 16px;
-  border-radius: var(--pill-radius);
-  border: 1px solid rgba(15, 42, 86, 0.12);
-  background: #fff;
-  color: var(--color-dark-text);
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  color: var(--color-dark-text, #0b1b33);
   font-weight: 600;
-  font-size: 13px;
+  font-size: 11px;
   cursor: pointer;
+  transition: all 0.12s;
+}
+
+.logoutButton:hover {
+  background: #f1f5f9;
+  color: #dc2626;
+  border-color: #fecaca;
 }
 
 .logoutButton:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+/* Quick Jump Dropdown Menu */
+.quickJumpMenu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 10px 28px rgba(15, 42, 86, 0.12);
+  padding: 6px;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.quickJumpItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #334155;
+  text-decoration: none;
+  transition: all 0.12s;
+}
+
+.quickJumpItem:hover {
+  background: #f1f5f9;
+  color: #1457e6;
+}
+
+/* =========================================================================
+   Responsive Breakdown
+   ========================================================================= */
+
+@media (max-width: 1024px) {
+  .leftArea {
+    max-width: 320px;
+  }
+
+  .userOrg {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .topbar {
+    padding: 12px 16px;
+  }
+
+  .searchWrapper {
+    display: none;
+  }
+
+  .creditsPill {
+    display: none;
+  }
+
+  .upgradeBtn,
+  .managePlanBtn {
+    display: none;
+  }
+
+  .userInfo {
+    display: none;
+  }
 }

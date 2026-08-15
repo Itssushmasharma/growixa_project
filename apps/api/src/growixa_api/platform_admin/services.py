@@ -9,6 +9,39 @@ from growixa_api.accounts.models import Account
 from growixa_api.audit.models import AuditLog
 from growixa_api.audit.services import list_events, record_event
 from growixa_api.auth.services import revoke_all_active_sessions
+from growixa_api.billing.models import (
+    AccountCreditBalance,
+    AccountSubscription,
+    CouponCode,
+    CreditPack,
+)
+from growixa_api.billing.models import SubscriptionPlan as SubscriptionPlanModel
+from growixa_api.billing.services import (
+    CouponCodeAlreadyExistsError,
+    CreditPackSlugAlreadyExistsError,
+    PlanSlugAlreadyExistsError,
+    get_billing_overview,
+)
+from growixa_api.billing.services import (
+    CouponMissingCreditTypeError as BillingCouponMissingCreditTypeError,
+)
+from growixa_api.billing.services import CouponNotFoundError as BillingCouponNotFoundError
+from growixa_api.billing.services import CreditPackNotFoundError as BillingCreditPackNotFoundError
+from growixa_api.billing.services import NoOverrideFieldsProvidedError as BillingNoFieldsError
+from growixa_api.billing.services import PlanNotFoundError as BillingPlanNotFoundError
+from growixa_api.billing.services import (
+    admin_create_coupon as billing_create_coupon,
+)
+from growixa_api.billing.services import admin_create_credit_pack as billing_create_credit_pack
+from growixa_api.billing.services import admin_create_plan as billing_create_plan
+from growixa_api.billing.services import admin_grant_credits as billing_grant_credits
+from growixa_api.billing.services import (
+    admin_override_subscription as billing_override_subscription,
+)
+from growixa_api.billing.services import admin_set_coupon_active as billing_set_coupon_active
+from growixa_api.billing.services import admin_update_credit_pack as billing_update_credit_pack
+from growixa_api.billing.services import admin_update_plan as billing_update_plan
+from growixa_api.billing.services import list_coupon_catalog as billing_list_coupon_catalog
 from growixa_api.campaigns.models import Campaign
 from growixa_api.campaigns.services import CampaignNotCancellableError, cancel_campaign
 from growixa_api.campaigns.services import CampaignNotFoundError as CampaignRowNotFoundError
@@ -20,10 +53,14 @@ from growixa_api.contacts.services import list_contacts_with_fields as list_cont
 from growixa_api.contacts.services import update_contact as update_contact_service
 from growixa_api.platform_admin.models import SupportSession
 from growixa_api.platform_admin.repositories import (
+    count_active_accounts,
     count_users_by_account,
     create_support_session,
     get_account_by_id,
     get_campaign_by_id,
+    get_mrr_totals,
+    get_period_usage_totals,
+    get_plan_distribution,
     get_support_session_by_id,
     list_accounts,
     list_campaigns_by_status,
@@ -107,6 +144,39 @@ class SupportSessionWriteGateError(Exception):
     independent checks, either one alone blocks it)."""
 
 
+class SubscriptionOverrideMissingFieldsError(Exception):
+    """Neither plan_slug nor status was provided to the subscription-override route
+    (GRX-SAAS-006) -- there's nothing to change."""
+
+
+class SubscriptionPlanNotFoundError(Exception):
+    """The target plan id/slug doesn't match any existing plan."""
+
+
+class SubscriptionPlanSlugConflictError(Exception):
+    """A plan with this slug already exists."""
+
+
+class CreditPackNotFoundError(Exception):
+    """The target credit pack id doesn't match any existing pack."""
+
+
+class CreditPackSlugConflictError(Exception):
+    """A credit pack with this slug already exists."""
+
+
+class CouponCodeConflictError(Exception):
+    """A coupon with this code already exists."""
+
+
+class CouponNotFoundError(Exception):
+    """The target coupon id doesn't match any existing coupon."""
+
+
+class CouponMissingCreditTypeError(Exception):
+    """A CREDIT_GRANT coupon was created without credit_type set."""
+
+
 async def list_accounts_with_user_counts(session: AsyncSession) -> list[tuple[Account, int]]:
     accounts = await list_accounts(session)
     counts = await count_users_by_account(session)
@@ -172,6 +242,16 @@ async def list_usage_summary_rows(
     session: AsyncSession,
 ) -> Sequence[Row[tuple[uuid.UUID, str, str, float, str]]]:
     return await list_usage_summary(session)
+
+
+async def get_platform_dashboard_summary(
+    session: AsyncSession,
+) -> tuple[int, float, float, int, int, Sequence[Row[tuple[str, str, int]]]]:
+    total_active_accounts = await count_active_accounts(session)
+    mrr_usd, mrr_inr = await get_mrr_totals(session)
+    emails_used, ai_runs_used = await get_period_usage_totals(session)
+    distribution_rows = await get_plan_distribution(session)
+    return total_active_accounts, mrr_usd, mrr_inr, emails_used, ai_runs_used, distribution_rows
 
 
 async def list_campaigns_for_oversight(
@@ -369,3 +449,252 @@ async def update_contact_via_support_session(
         custom_fields=None,
         audit_metadata=metadata,
     )
+
+
+# --- Billing (GRX-SAAS-006, BILLING_SYSTEM_ARCHITECTURE.md §6) ---
+#
+# Every write below delegates the actual table mutation to billing/services.py's own
+# admin_* functions (MODULE_BOUNDARIES.md: platform_admin calls the owning module's
+# services, never writes its tables directly) and adds one audit-log entry in the same
+# transaction, mirroring update_account_status/pause_campaign above exactly.
+
+
+async def get_account_subscription_overview(
+    session: AsyncSession, *, account_id: uuid.UUID
+) -> tuple[AccountSubscription, SubscriptionPlanModel, Sequence[AccountCreditBalance]]:
+    account = await get_account_by_id(session, account_id)
+    if account is None:
+        raise AccountNotFoundError
+    return await get_billing_overview(session, account_id)
+
+
+async def override_account_subscription(
+    session: AsyncSession,
+    *,
+    account_id: uuid.UUID,
+    platform_admin_id: uuid.UUID,
+    plan_slug: str | None,
+    status: str | None,
+) -> tuple[AccountSubscription, SubscriptionPlanModel]:
+    account = await get_account_by_id(session, account_id)
+    if account is None:
+        raise AccountNotFoundError
+
+    try:
+        subscription, plan = await billing_override_subscription(
+            session,
+            account_id=account_id,
+            plan_slug=plan_slug,
+            status=status,
+            platform_admin_id=platform_admin_id,
+        )
+    except BillingNoFieldsError as exc:
+        raise SubscriptionOverrideMissingFieldsError from exc
+    except BillingPlanNotFoundError as exc:
+        raise SubscriptionPlanNotFoundError(str(exc)) from exc
+
+    metadata = await _admin_metadata(session, platform_admin_id)
+    metadata.update({"plan_slug": plan_slug, "status": status})
+    await record_event(
+        session,
+        account_id=account_id,
+        actor_user_id=None,
+        action="account.subscription_overridden",
+        entity_type="account_subscription",
+        entity_id=subscription.id,
+        metadata=metadata,
+    )
+    await session.commit()
+    return subscription, plan
+
+
+async def grant_account_credits(
+    session: AsyncSession,
+    *,
+    account_id: uuid.UUID,
+    platform_admin_id: uuid.UUID,
+    credit_type: str,
+    credits: int,
+) -> AccountCreditBalance:
+    account = await get_account_by_id(session, account_id)
+    if account is None:
+        raise AccountNotFoundError
+
+    balance = await billing_grant_credits(
+        session,
+        account_id=account_id,
+        credit_type=credit_type,
+        credits=credits,
+        platform_admin_id=platform_admin_id,
+    )
+
+    metadata = await _admin_metadata(session, platform_admin_id)
+    metadata.update({"credit_type": credit_type, "credits": credits})
+    await record_event(
+        session,
+        account_id=account_id,
+        actor_user_id=None,
+        action="account.credits_granted",
+        entity_type="account_credit_balance",
+        entity_id=account_id,
+        metadata=metadata,
+    )
+    await session.commit()
+    return balance
+
+
+async def create_subscription_plan(
+    session: AsyncSession, *, platform_admin_id: uuid.UUID, fields: dict[str, object]
+) -> SubscriptionPlanModel:
+    try:
+        plan = await billing_create_plan(session, fields=fields)
+    except PlanSlugAlreadyExistsError as exc:
+        raise SubscriptionPlanSlugConflictError(str(exc)) from exc
+
+    metadata = await _admin_metadata(session, platform_admin_id)
+    metadata["slug"] = fields["slug"]
+    await record_event(
+        session,
+        account_id=None,
+        actor_user_id=None,
+        action="subscription_plan.created",
+        entity_type="subscription_plan",
+        entity_id=plan.id,
+        metadata=metadata,
+    )
+    await session.commit()
+    return plan
+
+
+async def update_subscription_plan(
+    session: AsyncSession,
+    *,
+    plan_id: uuid.UUID,
+    platform_admin_id: uuid.UUID,
+    fields: dict[str, object],
+) -> SubscriptionPlanModel:
+    try:
+        plan = await billing_update_plan(session, plan_id=plan_id, fields=fields)
+    except BillingPlanNotFoundError as exc:
+        raise SubscriptionPlanNotFoundError(str(exc)) from exc
+
+    metadata = await _admin_metadata(session, platform_admin_id)
+    metadata["fields"] = fields
+    await record_event(
+        session,
+        account_id=None,
+        actor_user_id=None,
+        action="subscription_plan.updated",
+        entity_type="subscription_plan",
+        entity_id=plan.id,
+        metadata=metadata,
+    )
+    await session.commit()
+    return plan
+
+
+async def create_credit_pack_catalog_entry(
+    session: AsyncSession, *, platform_admin_id: uuid.UUID, fields: dict[str, object]
+) -> CreditPack:
+    try:
+        pack = await billing_create_credit_pack(session, fields=fields)
+    except CreditPackSlugAlreadyExistsError as exc:
+        raise CreditPackSlugConflictError(str(exc)) from exc
+
+    metadata = await _admin_metadata(session, platform_admin_id)
+    metadata["slug"] = fields["slug"]
+    await record_event(
+        session,
+        account_id=None,
+        actor_user_id=None,
+        action="credit_pack.created",
+        entity_type="credit_pack",
+        entity_id=pack.id,
+        metadata=metadata,
+    )
+    await session.commit()
+    return pack
+
+
+async def update_credit_pack_catalog_entry(
+    session: AsyncSession,
+    *,
+    pack_id: uuid.UUID,
+    platform_admin_id: uuid.UUID,
+    fields: dict[str, object],
+) -> CreditPack:
+    try:
+        pack = await billing_update_credit_pack(session, pack_id=pack_id, fields=fields)
+    except BillingCreditPackNotFoundError as exc:
+        raise CreditPackNotFoundError(str(exc)) from exc
+
+    metadata = await _admin_metadata(session, platform_admin_id)
+    metadata["fields"] = fields
+    await record_event(
+        session,
+        account_id=None,
+        actor_user_id=None,
+        action="credit_pack.updated",
+        entity_type="credit_pack",
+        entity_id=pack.id,
+        metadata=metadata,
+    )
+    await session.commit()
+    return pack
+
+
+# --- Coupons (GRX-SAAS-012, BILLING_SYSTEM_ARCHITECTURE.md §7.2) ---
+
+
+async def list_coupons_for_admin(session: AsyncSession) -> Sequence[CouponCode]:
+    return await billing_list_coupon_catalog(session)
+
+
+async def create_coupon(
+    session: AsyncSession, *, platform_admin_id: uuid.UUID, fields: dict[str, object]
+) -> CouponCode:
+    try:
+        coupon = await billing_create_coupon(
+            session, created_by_platform_admin_id=platform_admin_id, fields=fields
+        )
+    except CouponCodeAlreadyExistsError as exc:
+        raise CouponCodeConflictError(str(exc)) from exc
+    except BillingCouponMissingCreditTypeError as exc:
+        raise CouponMissingCreditTypeError from exc
+
+    metadata = await _admin_metadata(session, platform_admin_id)
+    metadata["code"] = fields["code"]
+    await record_event(
+        session,
+        account_id=None,
+        actor_user_id=None,
+        action="coupon.created",
+        entity_type="coupon_code",
+        entity_id=coupon.id,
+        metadata=metadata,
+    )
+    await session.commit()
+    return coupon
+
+
+async def set_coupon_active(
+    session: AsyncSession, *, coupon_id: uuid.UUID, platform_admin_id: uuid.UUID, is_active: bool
+) -> CouponCode:
+    try:
+        coupon = await billing_set_coupon_active(session, coupon_id=coupon_id, is_active=is_active)
+    except BillingCouponNotFoundError as exc:
+        raise CouponNotFoundError(str(exc)) from exc
+
+    metadata = await _admin_metadata(session, platform_admin_id)
+    metadata["is_active"] = is_active
+    await record_event(
+        session,
+        account_id=None,
+        actor_user_id=None,
+        action="coupon.updated",
+        entity_type="coupon_code",
+        entity_id=coupon.id,
+        metadata=metadata,
+    )
+    await session.commit()
+    return coupon

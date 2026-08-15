@@ -1,6 +1,8 @@
 import os
 from functools import lru_cache
+from typing import Any
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # When running pytest, ENVIRONMENT is set to "test" via .env.test so
@@ -10,6 +12,20 @@ _env_file = ".env.test" if os.getenv("ENVIRONMENT") == "test" else ".env"
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=_env_file, extra="ignore")
+
+    # Several hosting platforms' secrets UIs (confirmed on Hugging Face Space
+    # variables/secrets) silently append a trailing newline to a pasted value --
+    # db.py's _normalize_database_url already had to work around this for
+    # DATABASE_URL specifically; this strips every string setting the same way at
+    # parse time so the bug can't resurface field by field. A real production
+    # incident: PLATFORM_SMTP_HOST had a trailing "\n", which aiosmtplib correctly
+    # rejects ("hostname param contains prohibited newline characters") -- but that
+    # ValueError wasn't caught by smtp_transport.py's own error handling, so it
+    # crashed registration with a 500 instead of just skipping the email.
+    @field_validator("*", mode="before")
+    @classmethod
+    def _strip_whitespace(cls, value: Any) -> Any:
+        return value.strip() if isinstance(value, str) else value
 
     environment: str = "local"
     log_level: str = "info"
@@ -109,6 +125,29 @@ class Settings(BaseSettings):
     # same default and rationale as scheduler_poll_interval_seconds, its campaigns
     # equivalent, running as a second independent ticker.
     social_scheduler_poll_interval_seconds: float = 5.0
+
+    # Slice 7 (Billing, DEC-GRX-029): Razorpay Test/Live Mode API credentials. Empty
+    # defaults mean "not configured yet" -- the plan-sync CLI and, later, the webhook
+    # receiver and checkout routes fail cleanly (not with a confusing auth error) until
+    # real Test Mode credentials are set. Never used directly by
+    # billing/providers/razorpay_provider.py's callers -- always passed through
+    # RazorpayProvider(key_id=..., key_secret=...), matching the AI providers'
+    # constructor-injection convention rather than a global client singleton.
+    razorpay_key_id: str = ""
+    razorpay_key_secret: str = ""
+    # Set once the webhook is registered in the Razorpay dashboard (GRX-BILL-003) --
+    # verifies POST /billing/razorpay's payload actually came from Razorpay
+    # (THREAT_MODEL.md T60), distinct from key_id/key_secret which authenticate
+    # outbound API calls, not inbound webhook deliveries.
+    razorpay_webhook_secret: str = ""
+
+    # GRX-BILL-006: how often the cancellation-downgrade ticker polls for CANCELED
+    # subscriptions past their current_period_end. Unlike scheduler_poll_interval_seconds
+    # (campaigns/social posts, where a few seconds of lateness is user-visible), a
+    # downgrade only ever needs to land sometime within the day its period actually
+    # ends -- an hourly poll is more than precise enough and avoids an otherwise-always-
+    # empty query running every 5s forever.
+    billing_downgrade_poll_interval_seconds: float = 3600.0
 
 
 @lru_cache

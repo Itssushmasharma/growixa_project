@@ -21,7 +21,13 @@ def _extract_or_raise(response: httpx.Response) -> dict[str, Any]:
             f"Non-JSON response from OpenAI (HTTP {response.status_code})"
         ) from exc
     if response.is_error:
-        message = data.get("error", {}).get("message", data)
+        err = data.get("error") if isinstance(data, dict) else str(data)
+        if isinstance(err, dict):
+            message = err.get("message", str(data))
+        elif isinstance(err, str):
+            message = err
+        else:
+            message = str(data)
         raise AIProviderError(f"OpenAI returned HTTP {response.status_code}: {message}")
     return data
 
@@ -63,13 +69,9 @@ class OpenAIProvider:
 
         data = _extract_or_raise(response)
         choice = data["choices"][0]
-        text = choice["message"]["content"]
+        msg = choice.get("message", {})
+        text = msg.get("content") or msg.get("reasoning_content") or msg.get("reasoning")
         if not text:
-            # Some OpenAI-compatible reasoning models (e.g. gpt-oss) emit a separate
-            # `reasoning` field before `content` and can hit max_tokens mid-thought,
-            # leaving `content` null with finish_reason="length" — a real failure, not
-            # an empty-but-successful response. Surface it as an error rather than
-            # silently returning blank text.
             finish_reason = choice.get("finish_reason")
             raise AIProviderError(
                 f"OpenAI-compatible provider returned no content (finish_reason="

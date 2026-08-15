@@ -44,9 +44,16 @@ their target release, per [DEC-GRX-001](../00-project-control/DECISIONS.md).
 | GRX-FEAT-026 | Integrations (management) | 1 | `INTEGRATIONS.md` | NOT_STARTED |
 | GRX-FEAT-027 | Audit Logs | 1 | `AUDIT_LOGS.md` | NOT_STARTED |
 | GRX-FEAT-028 | Admin Portal | 1 | `ADMIN_PORTAL.md` | NOT_STARTED |
+| GRX-FEAT-029 | Multi-Domain Subdomain Routing | 5 (retrofit) | `SUBDOMAIN_ROUTING.md` | NOT_STARTED |
 
 `AUTOMATION_WORKFLOWS.md` is intentionally not listed for MVP — general workflow automation
 beyond scheduled campaigns/posts is not in MVP scope.
+
+`GRX-FEAT-029` (`DEC-GRX-031`) is outstanding scope from Sprint 5's self-service launch
+work, not a Slice 1–6 feature — the app currently runs on one domain with path-based
+route groups (`/dashboard/*`, `/platform/*`) instead of the marketing/`app.*`/`platform.*`
+subdomain split `DEC-GRX-017` calls for. Blocked on `OQ-SUB-001`/`003` (production domain,
+post-login landing behavior) per `AGENT_EXECUTION_RULES.md` — not `READY` yet.
 
 ## Deferred features (SEO / AEO / GEO / website intelligence track)
 

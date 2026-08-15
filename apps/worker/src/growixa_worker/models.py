@@ -13,6 +13,12 @@ it: read-only on `Contact`/`ConsentRecord`/`SuppressionEntry` (so recipient reso
 the suppression/consent check can be account-scoped), and written on every table
 send_campaign inserts into, including `usage_records` (`campaigns` excepted -- read-only
 here).
+
+`SubscriptionPlan`/`AccountSubscription` (read + `period_email_used` write) and
+`AccountCreditBalance` (write, via raw SQL in `billing_quota.py`, not the ORM) were added
+for GRX-BILL-005's email-send quota check -- the worker locks and consumes the same
+`account_subscriptions` row growixa_api's own atomic quota evaluator does, since the
+worker is the one place that actually knows an email was sent.
 """
 
 import uuid
@@ -132,7 +138,8 @@ class SuppressionEntry(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
     account_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
-    email: Mapped[str] = mapped_column(CITEXT, nullable=False)
+    email: Mapped[str | None] = mapped_column(CITEXT, nullable=True)
+    domain: Mapped[str | None] = mapped_column(Text, nullable=True)
     reason: Mapped[str] = mapped_column(Text, nullable=False)
 
 
@@ -298,6 +305,32 @@ class UsageRecord(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+
+
+class SubscriptionPlan(Base):
+    """Hand-kept-in-sync subset of growixa_api.billing.models.SubscriptionPlan -- only
+    the one column send_campaign's quota check needs."""
+
+    __tablename__ = "subscription_plans"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    slug: Mapped[str] = mapped_column(Text, nullable=False)
+    max_monthly_emails: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+
+class AccountSubscription(Base):
+    """Hand-kept-in-sync subset of growixa_api.billing.models.AccountSubscription --
+    only the columns send_campaign's quota check reads/locks/writes."""
+
+    __tablename__ = "account_subscriptions"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    account_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    plan_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("subscription_plans.id"), nullable=False
+    )
+    status: Mapped[str] = mapped_column(Text, nullable=False)
+    period_email_used: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
 
 
 class SocialConnection(Base):

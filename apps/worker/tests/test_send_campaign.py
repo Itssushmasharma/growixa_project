@@ -12,7 +12,7 @@ from datetime import UTC, datetime
 
 import pytest
 from cryptography.fernet import Fernet
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from growixa_worker import send_campaign as send_campaign_module
@@ -20,6 +20,7 @@ from growixa_worker.config import get_settings
 from growixa_worker.db import get_session_factory
 from growixa_worker.email_sender import EmailSendError
 from growixa_worker.models import (
+    AccountSubscription,
     Campaign,
     CampaignRecipient,
     CampaignVersion,
@@ -128,6 +129,15 @@ async def _cleanup(session: AsyncSession) -> None:
     await session.execute(delete(SenderIdentity))
     await session.execute(delete(EmailProviderConnection))
     await session.execute(delete(UsageRecord))
+    # The seed account's account_subscriptions row is shared across every test run
+    # (GRX-BILL-002's backfill, not something this suite creates/deletes itself) --
+    # reset its GRX-BILL-005 email counter so repeated runs don't accumulate real
+    # quota usage against it and eventually start failing sends non-deterministically.
+    await session.execute(
+        update(AccountSubscription)
+        .where(AccountSubscription.account_id == _ACCOUNT_ID)
+        .values(period_email_used=0)
+    )
     await session.commit()
 
 
@@ -447,5 +457,90 @@ async def test_send_embeds_per_recipient_unsubscribe_link(
         expected_url = f"{get_settings().api_public_url}/unsubscribe/{recipient.id}"
         assert expected_url in str(sent[0]["body_html"])
         assert expected_url in str(sent[0]["body_text"])
+    finally:
+        await _cleanup(session)
+
+
+@pytest.mark.integration
+async def test_send_includes_list_unsubscribe_headers(
+    session: AsyncSession, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """RFC 8058 one-click unsubscribe (GRX-SAAS-013 ad hoc pass) -- Gmail/Yahoo's 2024+
+    bulk-sender requirements, on top of the visible footer link tested above."""
+    sent: list[dict[str, object]] = []
+
+    async def _fake_send_email(**kwargs: object) -> None:
+        sent.append(kwargs)
+
+    monkeypatch.setattr(send_campaign_module, "send_email", _fake_send_email)
+
+    try:
+        sender_identity_id = await _create_sender_identity(session)
+        await _create_contact(session, "solo@example.com")
+        campaign_id = await _create_campaign(
+            session, sender_identity_id, recipient_type="ALL_CONTACTS"
+        )
+
+        await handle_send_campaign(session, {"campaign_id": campaign_id})
+
+        assert len(sent) == 1
+        recipients_result = await session.execute(
+            select(CampaignRecipient).where(CampaignRecipient.campaign_id == campaign_id)
+        )
+        recipient = recipients_result.scalar_one()
+
+        expected_url = f"{get_settings().api_public_url}/unsubscribe/{recipient.id}"
+        headers = sent[0]["extra_headers"]
+        assert isinstance(headers, dict)
+        assert headers["List-Unsubscribe"] == f"<{expected_url}>"
+        assert headers["List-Unsubscribe-Post"] == "List-Unsubscribe=One-Click"
+    finally:
+        await _cleanup(session)
+
+
+@pytest.mark.integration
+async def test_domain_suppressed_contacts_are_excluded(
+    session: AsyncSession, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    sent_to: list[str] = []
+
+    async def _fake_send_email(**kwargs: object) -> None:
+        sent_to.append(str(kwargs["to_email"]))
+
+    monkeypatch.setattr(send_campaign_module, "send_email", _fake_send_email)
+
+    try:
+        sender_identity_id = await _create_sender_identity(session)
+        await _create_contact(session, "eligible@example.com")
+        await _create_contact(session, "blocked@suppressed-domain.com")
+
+        session.add(
+            SuppressionEntry(
+                id=uuid.uuid4(),
+                account_id=_ACCOUNT_ID,
+                domain="suppressed-domain.com",
+                reason="MANUAL",
+            )
+        )
+        await session.commit()
+
+        campaign_id = await _create_campaign(
+            session, sender_identity_id, recipient_type="ALL_CONTACTS"
+        )
+
+        await handle_send_campaign(session, {"campaign_id": campaign_id})
+
+        assert sent_to == ["eligible@example.com"]
+
+        recipients_result = await session.execute(
+            select(CampaignRecipient)
+            .where(CampaignRecipient.campaign_id == campaign_id)
+            .order_by(CampaignRecipient.email)
+        )
+        by_email = {r.email: r.status for r in recipients_result.scalars().all()}
+        assert by_email == {
+            "blocked@suppressed-domain.com": "SUPPRESSED",
+            "eligible@example.com": "SENT",
+        }
     finally:
         await _cleanup(session)

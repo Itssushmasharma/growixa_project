@@ -7,6 +7,7 @@ import { useToast } from "@/components/toast/toast-context";
 import { ApiError, apiFetch } from "@/lib/api-client";
 
 import styles from "./account-detail-page.module.css";
+import { BillingPanel } from "./billing-panel";
 import { SupportSessionPanel } from "./support-session-panel";
 import type { AccountDetail, AccountStatus } from "../types";
 
@@ -144,6 +145,8 @@ export function AccountDetailPage({ accountId }: { accountId: string }) {
           </div>
         ))}
       </div>
+
+      <BillingPanel accountId={accountId} />
 
       <SupportSessionPanel accountId={accountId} />
     </>

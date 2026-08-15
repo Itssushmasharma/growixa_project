@@ -14,18 +14,30 @@ from growixa_api.ai.api import router as ai_router
 from growixa_api.analytics.api import router as analytics_router
 from growixa_api.audit.api import router as audit_router
 from growixa_api.auth.api import router as auth_router
+from growixa_api.billing.api import public_router as billing_public_router
+from growixa_api.billing.api import router as billing_router
+from growixa_api.billing.scheduler import run_downgrade_loop as run_billing_downgrade_loop
 from growixa_api.brand.api import router as brand_router
 from growixa_api.campaigns.api import router as campaigns_router
 from growixa_api.campaigns.scheduler import run_scheduler_loop
 from growixa_api.company.api import router as company_router
 from growixa_api.config import get_settings
 from growixa_api.contacts.api import router as contacts_router
+from growixa_api.dashboard.api import router as dashboard_router
 from growixa_api.email_delivery.api import public_router as email_delivery_public_router
 from growixa_api.email_delivery.api import router as email_delivery_router
+from growixa_api.email_validation.api import router as email_validation_router
 from growixa_api.health import router as health_router
 from growixa_api.integrations.api import router as integrations_router
 from growixa_api.jobs.api import router as jobs_router
 from growixa_api.platform_admin.api import ai_config_router as platform_admin_ai_config_router
+from growixa_api.platform_admin.api import billing_router as platform_admin_billing_router
+from growixa_api.platform_admin.api import (
+    email_config_router as platform_admin_email_config_router,
+)
+from growixa_api.platform_admin.api import (
+    email_validation_config_router as platform_admin_email_validation_config_router,
+)
 from growixa_api.platform_admin.api import router as platform_admin_router
 from growixa_api.platform_admin.api import (
     support_session_router as platform_admin_support_session_router,
@@ -49,15 +61,21 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     social_task = asyncio.create_task(
         run_social_scheduler_loop(get_settings().social_scheduler_poll_interval_seconds)
     )
+    billing_downgrade_task = asyncio.create_task(
+        run_billing_downgrade_loop(get_settings().billing_downgrade_poll_interval_seconds)
+    )
     try:
         yield
     finally:
         task.cancel()
         social_task.cancel()
+        billing_downgrade_task.cancel()
         with contextlib.suppress(asyncio.CancelledError):
             await task
         with contextlib.suppress(asyncio.CancelledError):
             await social_task
+        with contextlib.suppress(asyncio.CancelledError):
+            await billing_downgrade_task
 
 
 def create_app() -> FastAPI:
@@ -87,6 +105,9 @@ def create_app() -> FastAPI:
     app.include_router(platform_admin_usage_router)
     app.include_router(platform_admin_support_session_router)
     app.include_router(platform_admin_ai_config_router)
+    app.include_router(platform_admin_billing_router)
+    app.include_router(platform_admin_email_config_router)
+    app.include_router(platform_admin_email_validation_config_router)
     app.include_router(accounts_router)
     app.include_router(company_router)
     app.include_router(brand_router)
@@ -94,6 +115,8 @@ def create_app() -> FastAPI:
     app.include_router(roles_router)
     app.include_router(jobs_router)
     app.include_router(contacts_router)
+    app.include_router(email_validation_router)
+    app.include_router(dashboard_router)
     app.include_router(audit_router)
     app.include_router(integrations_router)
     app.include_router(social_oauth_router)
@@ -104,4 +127,6 @@ def create_app() -> FastAPI:
     app.include_router(email_delivery_public_router)
     app.include_router(analytics_router)
     app.include_router(ai_router)
+    app.include_router(billing_router)
+    app.include_router(billing_public_router)
     return app

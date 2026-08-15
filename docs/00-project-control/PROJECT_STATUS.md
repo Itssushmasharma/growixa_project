@@ -2,8 +2,8 @@
 
 - Document ID: DOC-PROJECT-STATUS
 - Status: ACTIVE
-- Version: 1.46
-- Last updated: 2026-08-06
+- Version: 1.52
+- Last updated: 2026-08-15
 - Owner: Coding agent (on behalf of product owner)
 - Related documents: [MASTER_TASK_TRACKER](MASTER_TASK_TRACKER.md), [WORKTREE_TRACKER](WORKTREE_TRACKER.md), [DECISIONS](DECISIONS.md), [DEVELOPMENT_READINESS](DEVELOPMENT_READINESS.md), [FEATURE_STATUS_MATRIX](FEATURE_STATUS_MATRIX.md)
 
@@ -201,6 +201,45 @@ and a deliberate choice not to call the config-save endpoints via `curl` with fa
 credentials against the live environment, since that would have overwritten the user's
 real working Krutrim default with a keyless row.
 
+**Development Readiness Gate for Slice 7 (Sprint 8: Billing): PASS.** See
+[DEVELOPMENT_READINESS.md](DEVELOPMENT_READINESS.md) and
+[SPRINT_08_BILLING.md](../14-sprints/SPRINT_08_BILLING.md) — the first slice that moves
+real money. Resolved via [DEC-GRX-029](DECISIONS.md) (Razorpay, not Stripe, dual-currency)
+and [DEC-GRX-030](DECISIONS.md) (Subscriptions API as the billing primitive, non-expiring
+top-up credits, no per-batch FIFO). **All ten `GRX-BILL-*` tasks plus the three umbrella/
+platform-admin/coupon rows (`GRX-SAAS-004`/`006`/`012`) are `DONE`**: readiness-gate docs;
+`subscription_plans`/`account_subscriptions`/`account_credit_balances`/
+`account_credit_purchases`/`coupon_codes`/`coupon_redemptions` schema (every account gets
+a `Free`-tier subscription row automatically at registration) + `billing.manage`/
+`billing.view`/`platform.billing.manage` RBAC seed; a signature-verified, idempotent
+Razorpay webhook receiver (`POST /billing/razorpay`); real Razorpay Checkout for
+subscribe/upgrade and one-time top-up Orders; an atomic (`SELECT ... FOR UPDATE`-locked)
+quota evaluator for the two period-resetting metered dimensions (email sends, AI runs)
+that falls back to non-expiring credit balances before blocking with `402` — and never
+meters an account's own bring-your-own AI key; an in-process cancellation-downgrade
+ticker (same pattern as the campaigns/social schedulers, confirmed live via code reading
+to correct the architecture doc's draft claim that it ran worker-side); a platform-admin
+override panel (manual plan assignment incl. Enterprise activation, credit grants, status
+override, plan/credit-pack catalog CRUD) that bypasses Razorpay entirely; a coupon/
+discount engine (percentage/fixed-amount coupons scoped to top-ups only — verified
+against Razorpay's own docs that Checkout.js has no subscription-discount parameter —
+plus free-credit-grant coupons redeemed directly); the customer billing page (plan/usage/
+credits, upgrade, top-up, coupon redemption); a dedicated `test_billing_*.py` suite (23
+tests: webhook signature/replay, quota race-condition, BYO-vs-platform metering split,
+coupon validation) that found and fixed a real bug — coupon `applicable_plan_slugs`
+eligibility was silently dead code, never actually enforced by either call site; and
+env/settings docs (found and fixed a second real gap — `RAZORPAY_*` env vars were never
+in `.env.example` at all, and `BILLING_DOWNGRADE_POLL_INTERVAL_SECONDS` was never wired
+into `compose.yaml`'s passthrough despite having a real default in `config.py`).
+Live-verified end-to-end against real Razorpay Test Mode throughout: real `Plan`/
+`Subscription`/`Order` objects created via genuine API calls, a real Checkout.js modal
+opened in a browser with the correct (and correctly coupon-discounted) amount, real
+coupon redemption via both `curl` and the live UI with the credit balance visibly
+updating. USD payments remain blocked pending Razorpay's own account-level international-
+payments approval (an external, non-code blocker, not a bug) — INR-only for now, exactly
+as `BILLING_SYSTEM_ARCHITECTURE.md §8` already documented. **All seven MVP-scope product
+slices plus the Sprint 5 multi-tenancy retrofit are now complete.**
+
 ## Documents created so far
 
 | Document | Status |
@@ -348,11 +387,83 @@ real working Krutrim default with a keyless row.
    built after the user chose it over Slice 6 (AI Assistant) and explicitly scoped it to
    the customer-facing feature only, deferring platform-admin oversight.
 8. Sprint 7 (AI Assistant, product Slice 6) is now also fully `DONE` (`GRX-AI-001`–`011`)
-   — **all six MVP slices are complete.** Next up: the platform-admin social oversight
-   panel deferred under item 7, the "LLM Token Usage Metrics" aggregation endpoint +
-   charts flagged (not built) during Slice 6's frontend work, `campaign-form-page.tsx`'s
-   still-missing schedule/cancel UI gap noted under item 1 above, or a new direction the
-   user picks now that the MVP roadmap is built out.
+   — all six MVP slices were complete as of that session.
+9. Sprint 8 (Billing, product Slice 7) is now fully `DONE` (`GRX-BILL-001`–`010`, plus
+   `GRX-SAAS-006`/`012`) — **the MVP roadmap plus the first monetization slice are both
+   complete.** Next up: the platform-admin social oversight panel deferred under item 7,
+   the "LLM Token Usage Metrics" aggregation endpoint + charts flagged (not built) during
+   Slice 6's frontend work, `campaign-form-page.tsx`'s still-missing schedule/cancel UI
+   gap noted under item 1 above, USD payments once Razorpay grants international-payments
+   approval, or a new direction the user picks now that both the MVP and billing are
+   built out.
+10. **The application went live in production this session** — actual deployed stack is
+    **Hugging Face Space `iitdeveloper/growixa`** (single Docker Space running both the
+    FastAPI API and the worker consumer loop) **+ Netlify** (`growixa.netlify.app`,
+    Next.js web), not Render — `render.yaml`/`RENDER_DEPLOYMENT.md` were deleted as no
+    longer applicable. Live debugging surfaced and fixed two real production bugs (a
+    whitespace-in-env-var SMTP crash and a ~67s registration-blocking hang) and one real
+    architecture gap (the platform's default SMTP relay is unreachable from HF's network)
+    that motivated building `GRX-SAAS-013` (platform-admin email provider config, DB-
+    backed, no-redeploy-needed) — see `CHANGELOG.md`'s 2026-08-14 entry for the full
+    incident writeup. Also surfaced a real Netlify-specific gotcha worth remembering: the
+    site has its own native GitHub git integration with an environment-variable set
+    *separate from* the GitHub Actions deploy workflow's variables, which can silently
+    diverge (it did — the live site was calling Render's old URL after the workflow was
+    already pointed at HF) and requires a "Clear cache and deploy site" after changing
+    `NEXT_PUBLIC_API_URL` there, since it's a Next.js build-time value, not read live.
+11. **Same-origin API proxy fix**: separately from the incidents in item 10, browser
+    login/register was found to be completely blocked by CORS — Hugging Face's own Space
+    ingress answers the browser's preflight `OPTIONS` request itself, before it reaches
+    the container, without `Access-Control-Allow-Credentials`. Not fixable from
+    `apps/api`'s own `CORSMiddleware` config (confirmed via direct comparison against
+    local Compose, where the identical request is correct). Fixed by proxying `/api/*`
+    through Netlify's own edge (`netlify.toml`), removing the need for cross-origin
+    credentialed requests entirely. Requires a manual env var change
+    (`NEXT_PUBLIC_API_URL=/api` in both the GitHub Actions repo variables and Netlify's
+    dashboard) the coding agent can't apply directly — pending user action as of this
+    update. New `docs/11-devops/PRODUCTION_DEPLOYMENT.md` documents the real deploy
+    topology, previously undocumented.
+12. **`GRX-SAAS-014` (Dashboards)**: both `/dashboard` and `/platform` were empty
+    placeholders (the latter had no root page at all). Built a Phase-1-scoped overview
+    for each — real KPIs/quota gauges/contact-growth chart/recent campaigns on the
+    customer side, active-accounts/MRR/plan-distribution on the platform side — see
+    `CHANGELOG.md`'s 2026-08-14 entry. The plan's full 4 role-adaptive customer views
+    (Marketing Manager/Content Creator/Analyst) remain unbuilt, staged as Release 1.1 by
+    the plan itself.
+13. **`GRX-SAAS-015` (Suppression-list fixes)**: user-directed after live-checking the
+    Suppression page found the "Remove" button silently did nothing — it called a
+    `DELETE /contacts/suppression/{id}` route that never existed on the backend, a real
+    previously-shipped bug, now fixed. Also added RFC 8058 one-click unsubscribe (a
+    `List-Unsubscribe` header plus a new POST-capable unsubscribe endpoint, so Gmail/Yahoo
+    show their native inbox-level "Unsubscribe" button), whole-domain suppression
+    (`*@competitor.com`-style blocks via a nullable `domain` column + XOR CHECK constraint
+    on `suppression_entries`), and CSV bulk import/export of the suppression list — see
+    `CHANGELOG.md`'s 2026-08-15 entry. No new RBAC permission codes; all new routes reuse
+    the existing `contacts.manage`/`contacts.view`.
+14. **`GRX-SAAS-016` (Email Validation, free tier)**: picked up from `need_review_docs/
+    EMAIL_VALIDATION_FEATURE_PLAN.md`. The plan's default was a paid provider
+    (Clearout.io); asked the user whether one was actually needed given the app already
+    has outbound SMTP, explained why that relay can't double as a mailbox-probing tool,
+    and the user chose the free build instead — syntax, MX/A record, disposable-domain
+    list, and role-account detection only, no SMTP mailbox probe or catch-all scoring (both
+    genuinely require infrastructure a paid provider invests in). New `/dashboard/contacts/
+    verify-email` page with single-check and bulk-CSV tools, no new DB table, no credit
+    metering, no new RBAC code (reuses `contacts.view`) — see `CHANGELOG.md`'s 2026-08-15
+    entry. Frontend was redesigned mid-build after the user shared a competitor's Verifier
+    page as a layout reference, with an explicit instruction to keep Growixa's own color
+    theme and only borrow the layout idea.
+15. **`GRX-SAAS-017` (Email Validation, multi-vendor real-time provider config)**: direct
+    same-session follow-up to `GRX-SAAS-016`. New `platform_email_validation_provider_config`
+    table + admin page, mirroring the AI/email provider config pattern, gated to paid-plan
+    accounts only with a per-check opt-out checkbox; Free-tier accounts are never affected.
+    Self-hosting real mailbox probing was ruled out live (a real `RCPT TO` test attempt
+    tripped this session's own safety classifier as reconnaissance). The user then
+    configured a real Clearout.io key, which surfaced and fixed two real bugs (an
+    object-shaped `sub_status` rendering as a raw Python dict repr; the vendor's name
+    leaking into customer-facing text) plus a code-organization fix (a shared
+    fallback-reason dictionary moved out of the vendor-specific adapter file into
+    `providers/base.py`) — see `CHANGELOG.md`'s 2026-08-15 entry. Real credit-ledger
+    deduction is deliberately not wired up yet; the checkbox is informational only for now.
 
 ## Changelog
 

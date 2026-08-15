@@ -35,27 +35,27 @@ rewrite.
 | Module | Owns | Depends on | Must not depend on |
 |---|---|---|---|
 | `auth` | Credentials, sessions, tokens, password/invitation reset flows | `users` (for identity lookup) | `contacts`, `campaigns`, or any business-data module |
-| `users` | Internal user records, invitations | `auth` (for account state), `roles` | Business-data modules |
+| `users` | Internal user records, invitations | `auth` (for account state), `roles`, `billing` (plan seat-count cap, `GRX-BILL-005`) | Business-data modules |
 | `roles` | Role definitions | — | Business-data modules |
 | `permissions` | Permission definitions, role→permission mapping | `roles` | Business-data modules |
 | `company` | Single company profile record | — | Contact/campaign modules |
 | `brand` | Brand voice, brand assets, legal footer | `company` | Contact/campaign modules |
-| `contacts` | Contact records, custom fields | `tags`, `segments` (read) | `email_delivery`, `social` (contacts must not know how they're contacted) |
+| `contacts` | Contact records, custom fields | `tags`, `segments` (read), `billing` (plan contact-count cap, `GRX-BILL-005`) | `email_delivery`, `social` (contacts must not know how they're contacted) |
 | `imports` | CSV import jobs, import rows, validation results | `contacts` | — |
 | `tags` | Tag definitions and assignments | `contacts` | — |
 | `segments` | Segment definitions and evaluated membership | `contacts`, `tags` | `email_delivery`, `social` |
 | `templates` | Email template definitions and versions | `brand` | `campaigns` (templates are used by, not aware of, campaigns) |
 | `campaigns` | Campaign drafts, versions, schedules, recipients | `templates`, `segments`, `contacts` (read) | `social` |
 | `email_delivery` | Delivery attempts, provider events, bounce/complaint state | `campaigns`, `contacts` (suppression check) | `social`, `ai` |
-| `social` | Social account connections (OAuth), posts, media, single-image publishing (Instagram Business, Slice 5) | `auth` (encryption of OAuth tokens), `files` (storage adapter) | `email_delivery` |
+| `social` | Social account connections (OAuth), posts, media, single-image publishing (Instagram Business, Slice 5) | `auth` (encryption of OAuth tokens), `files` (storage adapter), `billing` (plan social-account-count cap, `GRX-BILL-005`) | `email_delivery` |
 | `content_calendar` | Scheduled-content view across email/social — not built in Slice 5; the calendar shipped there is a `social`-owned endpoint (`GET /social/posts/calendar`), not a cross-module view. Revisit if a real unified email+social calendar becomes a need. | `campaigns`, `social` (read) | — |
-| `ai` | Provider connections (platform default + per-account BYO), generations, usage/cost tracking | `brand` (voice), `usage`, `auth` (encryption of provider API keys, Slice 6) | Must never call `email_delivery`/`social` to send/publish directly — see GRX-AI-002 |
+| `ai` | Provider connections (platform default + per-account BYO), generations, usage/cost tracking | `brand` (voice), `usage`, `auth` (encryption of provider API keys, Slice 6), `billing` (AI-run quota check, platform-provided generations only — `GRX-BILL-005`) | Must never call `email_delivery`/`social` to send/publish directly — see GRX-AI-002 |
 | `automation` | Out of MVP scope — not implemented in Sprint 1–6 | — | — |
 | `analytics` | Read-side aggregation/reporting over campaigns, posts, AI usage | All modules (read-only, via repositories or events) | Must not own writes to other modules' data |
 | `notifications` | In-app/notification records | Any module (as event consumer) | — |
 | `integrations` | Provider connection/credential management, adapter registry | `auth` (encryption), `usage` | — |
 | `usage` | Usage/entitlement ledger | — | Nothing — this is a foundational, dependency-free module so every other module can call it |
-| `billing` | Out of MVP scope — not implemented (see [DEC-GRX-013](../00-project-control/DECISIONS.md)) | — | — |
+| `billing` | Subscription plans, account subscriptions, credit balances/purchases, coupons, the atomic quota evaluator, Razorpay webhook receiver (Slice 7 — no longer deferred, [DEC-GRX-017](../00-project-control/DECISIONS.md) superseded [DEC-GRX-013](../00-project-control/DECISIONS.md)'s indefinite deferral) | — (foundational, like `usage`) | Nothing — every metered module (`campaigns`, `ai`, `social`, `contacts`, `users`) calls **into** `billing`'s quota-check function before a metered action, never the reverse; `billing` never imports business-data modules to avoid a dependency cycle |
 | `audit` | Immutable audit event log | — | Nothing — same rationale as `usage` |
 | `admin` | Cross-module admin views (users, roles, company, integrations, usage, audit) | Reads from other modules | Must not contain business logic that belongs in another module |
 | `platform_admin` | IITDEVELOPER-staff views across all customer accounts (account management, usage/campaign oversight, audited support sessions) | Reads from other modules, scoped by `account_id`; a support session's writes call the owning module's own `services/` (e.g. `contacts.services`) rather than writing that module's tables directly | `platform_auth` is the only auth boundary it uses — never `auth`/`permissions` (see [DEC-GRX-018](../00-project-control/DECISIONS.md)); must not contain business logic that belongs in another module |

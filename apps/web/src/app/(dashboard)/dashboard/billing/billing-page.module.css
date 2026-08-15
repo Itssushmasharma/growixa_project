@@ -1,0 +1,280 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.card {
+  background: #fff;
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
+  padding: 24px;
+}
+
+.currencyToggle {
+  display: flex;
+  gap: 4px;
+  align-self: flex-start;
+}
+
+.currencyPill,
+.currencyPillActive {
+  padding: 7px 14px;
+  border: none;
+  border-radius: var(--pill-radius);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  background: #fff;
+  color: var(--color-slate);
+  box-shadow: var(--card-shadow);
+}
+
+.currencyPillActive {
+  background: var(--gradient-primary);
+  color: #fff;
+}
+
+.currentPlanHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.heading {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--color-dark-text);
+}
+
+.hint {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--color-slate-light);
+}
+
+.statusActive,
+.statusPending,
+.statusAtRisk {
+  align-self: flex-start;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.statusActive {
+  background: rgba(34, 197, 94, 0.12);
+  color: #15803d;
+}
+
+.statusPending {
+  background: rgba(217, 158, 30, 0.12);
+  color: #a16207;
+}
+
+.statusAtRisk {
+  background: rgba(239, 68, 68, 0.12);
+  color: #dc2626;
+}
+
+.usageSection {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 20px;
+}
+
+.usageRow {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.usageLabelRow {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12.5px;
+}
+
+.usageLabel {
+  color: var(--color-dark-text);
+  font-weight: 600;
+}
+
+.usageValue {
+  color: var(--color-slate-light);
+}
+
+.usageBar {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(15, 42, 86, 0.08);
+  overflow: hidden;
+}
+
+.usageBarFill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--gradient-primary);
+}
+
+.usageBarFillFull {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--color-error);
+}
+
+.creditsSection {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(15, 42, 86, 0.08);
+}
+
+.subheading {
+  margin: 0 0 12px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-dark-text);
+}
+
+.creditsList {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 10px;
+}
+
+.creditRow {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 14px;
+  border-radius: var(--pill-radius);
+  background: rgba(15, 42, 86, 0.04);
+  font-size: 12px;
+  color: var(--color-slate);
+}
+
+.creditValue {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-dark-text);
+}
+
+.sectionHeading {
+  margin: 0 0 12px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-dark-text);
+}
+
+.plansGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 14px;
+}
+
+.planCard {
+  background: #fff;
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.planCardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.planName {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-dark-text);
+}
+
+.currentBadge {
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(20, 87, 230, 0.1);
+  color: var(--color-primary-blue);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.planPrice {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--color-dark-text);
+}
+
+.planFeatures {
+  margin: 0;
+  padding: 0 0 0 18px;
+  font-size: 12.5px;
+  color: var(--color-slate);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.actionButton {
+  margin-top: auto;
+  padding: 9px 16px;
+  border: none;
+  border-radius: var(--pill-radius);
+  background: var(--gradient-primary);
+  color: #fff;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.actionButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.secondaryButton {
+  margin-top: auto;
+  padding: 9px 16px;
+  border-radius: var(--pill-radius);
+  border: 1px solid rgba(15, 42, 86, 0.14);
+  background: #fff;
+  color: var(--color-dark-text);
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.secondaryButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.couponRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.couponInput {
+  padding: 9px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(15, 42, 86, 0.14);
+  font-size: 13.5px;
+  font-family: inherit;
+  color: var(--color-dark-text);
+  background: #fff;
+  min-width: 180px;
+  text-transform: uppercase;
+}

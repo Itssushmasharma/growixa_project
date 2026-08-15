@@ -43,7 +43,7 @@ Additional permission codes are added per module as later slices are built (e.g.
 | Code | Meaning |
 |---|---|
 | `contacts.manage` | Create/edit/archive contacts; manage tags, lists, segments, custom fields; run CSV imports; record consent; suppress addresses |
-| `contacts.view` | Read-only access to contacts, tags, lists, and segments |
+| `contacts.view` | Read-only access to contacts, tags, lists, and segments. Also covers `POST /email-validation/check` and `POST /email-validation/bulk-csv` (`GRX-SAAS-016`) — a read-only hygiene check, no contact data is mutated |
 
 Kept to the same edit/view granularity as `company.settings.*` in Sprint 1, rather than
 splitting into many fine-grained codes (e.g. a separate `contacts.import`) not called for
@@ -199,6 +199,51 @@ gets `ai.manage` (including Content Creator, honoring its "AI generation" scope
 explicitly), and everyone except Viewer gets `ai.view`. Unlike `social.publish`/
 `campaigns.send`, there is no restricted third tier here — see the rationale above.
 
+## Slice 7 (Billing) permission codes
+
+| Code | Meaning |
+|---|---|
+| `billing.manage` | Subscribe/change the account's plan, buy top-up credit packs, redeem a coupon code — any action that actually charges (or credits) the account via Razorpay |
+| `billing.view` | View the account's current plan, usage/quota bars, and billing history |
+
+`billing.manage` is Super-Admin-only, kept to the same trust tier as
+`integrations.manage` (`DEC-GRX-030`) rather than `company.settings.edit`'s
+Admin-inclusive grant — unlike editing a company profile, this code authorizes a real
+charge against the account's payment method, the same class of action as connecting a
+third-party credential. `billing.view` is granted broadly, matching
+`company.settings.view`'s all-roles precedent — knowing how much of the plan's quota
+is left (emails, AI runs, contacts) is routine operational information every role
+benefits from, not administrative-only data.
+
+## Slice 7 (Billing) role → permission matrix
+
+| Permission | Super Admin | Admin | Marketing Manager | Content Creator | Analyst | Viewer |
+|---|---|---|---|---|---|---|
+| `billing.manage` | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `billing.view` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+
+## Slice 7 (Billing) platform permission codes (`GRX-SAAS-004`/`006`/`012`)
+
+| Code | Meaning |
+|---|---|
+| `platform.billing.manage` | View/change any account's plan, subscription status, and credit balance without a payment; edit plan-wide quotas/prices; create/manage coupon codes |
+
+This is the `platform.billing.manage` code `platform.finance`'s Sprint 5 Phase B role
+description already named in advance ("Subscription/billing visibility and changes").
+Granted to `platform.owner`/`platform.finance` only — deliberately **not**
+`platform.admin`, unlike `platform.accounts.manage`/`platform.ai.manage` — billing is
+`platform.finance`'s stated domain specifically, and `platform.admin`'s own scope is
+explicitly "no billing" per its role description. Coupon management reuses this same
+code rather than a separate `platform.coupons.manage` — it's the same class of action
+(a financial lever affecting subscription price/credits), not a conceptually distinct
+capability.
+
+## Slice 7 (Billing) platform role → permission matrix
+
+| Permission | platform.owner | platform.admin | platform.support | platform.finance | platform.operations |
+|---|---|---|---|---|---|
+| `platform.billing.manage` | ✅ | ❌ | ❌ | ✅ | ❌ |
+
 ## Sprint 7 — Platform AI config (`GRX-AI-005`)
 
 | Code | Meaning |
@@ -213,6 +258,43 @@ credential (an AI provider API key), not just an operational view.
 | Permission | platform.owner | platform.admin | platform.support | platform.finance | platform.operations |
 |---|---|---|---|---|---|
 | `platform.ai.manage` | ✅ | ✅ | ❌ | ❌ | ❌ |
+
+## Ad hoc — Platform email provider config (`GRX-SAAS-013`)
+
+| Code | Meaning |
+|---|---|
+| `platform.email.manage` | View/edit the platform-wide email provider configuration used for system/transactional email (`platform_email_provider_config`) |
+
+Same wiring and trust shape as `platform.ai.manage` (`require_platform_permission`,
+`platform.owner`/`platform.admin` only — gates an encrypted SMTP credential). Added
+after a real production incident: the previous `.env`-only `PLATFORM_SMTP_*` config
+could only be changed by redeploying, and had no admin-facing way to switch providers
+or rotate credentials. Resolution order at send time: this DB config if an active row
+exists, else the legacy `.env` settings (so an existing deployment isn't broken), else
+skip sending (logged).
+
+| Permission | platform.owner | platform.admin | platform.support | platform.finance | platform.operations |
+|---|---|---|---|---|---|
+| `platform.email.manage` | ✅ | ✅ | ❌ | ❌ | ❌ |
+
+## Ad hoc — Platform email-validation vendor config (`GRX-SAAS-017`)
+
+| Code | Meaning |
+|---|---|
+| `platform.validation.manage` | View/edit the platform-wide real-time email-validation vendor configuration (`platform_email_validation_provider_config`) — Clearout.io today, more vendors can be added the same way later |
+
+Same wiring and trust shape as `platform.ai.manage`/`platform.email.manage`
+(`require_platform_permission`, `platform.owner`/`platform.admin` only — gates an
+encrypted vendor API key). Unlike those two, this config is not a fallback for a
+`.env`-only setting — there was never a `.env`-based email-validation vendor, this is the
+first configuration surface for it. Gates a strictly optional capability: with no active
+row, every account (free or paid) gets the free syntax/MX/disposable/role check
+(`GRX-SAAS-016`) — nothing breaks, a paid-plan account just doesn't get the real-time
+upgrade until a vendor is configured.
+
+| Permission | platform.owner | platform.admin | platform.support | platform.finance | platform.operations |
+|---|---|---|---|---|---|
+| `platform.validation.manage` | ✅ | ✅ | ❌ | ❌ | ❌ |
 
 ## Sprint 5 Phase B — platform-level roles (separate namespace, `GRX-SAAS-002`)
 
@@ -267,7 +349,7 @@ each Phase E feature's own permission code(s) will encode (e.g. a future
 | Code | Meaning |
 |---|---|
 | `platform.accounts.manage` | List every customer account, view an account's users and login/security activity, activate/suspend/close an account |
-| `platform.usage.manage` | View per-account usage summaries and cross-account campaign oversight (queued/failed); pause a suspicious campaign |
+| `platform.usage.manage` | View per-account usage summaries and cross-account campaign oversight (queued/failed); pause a suspicious campaign; view the platform-wide dashboard summary (`GET /platform/dashboard/summary`, ad hoc `GRX-SAAS-013` dashboards pass — same aggregate-oversight shape, no new permission code) |
 
 Per [DEC-GRX-020](../00-project-control/DECISIONS.md), `platform.accounts.manage` is
 granted only to `platform.owner` and `platform.admin` — matching `platform.admin`'s own

@@ -12,14 +12,17 @@ from growixa_api.accounts import models as accounts_models  # noqa: F401
 from growixa_api.ai import models as ai_models  # noqa: F401
 from growixa_api.audit import models as audit_models  # noqa: F401
 from growixa_api.auth import models as auth_models  # noqa: F401
+from growixa_api.billing import models as billing_models  # noqa: F401
 from growixa_api.brand import models as brand_models  # noqa: F401
 from growixa_api.campaigns import models as campaigns_models  # noqa: F401
 from growixa_api.company import models as company_models  # noqa: F401
 from growixa_api.config import get_settings
 from growixa_api.contacts import models as contacts_models  # noqa: F401
-from growixa_api.db import Base
+from growixa_api.db import Base, _normalize_database_url
 from growixa_api.email_delivery import models as email_delivery_models  # noqa: F401
+from growixa_api.email_validation import models as email_validation_models  # noqa: F401
 from growixa_api.integrations import models as integrations_models  # noqa: F401
+from growixa_api.notifications import models as notifications_models  # noqa: F401
 from growixa_api.permissions import models as permissions_models  # noqa: F401
 from growixa_api.platform_admin import models as platform_admin_models  # noqa: F401
 from growixa_api.platform_auth import models as platform_auth_models  # noqa: F401
@@ -38,7 +41,7 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-config.set_main_option("sqlalchemy.url", get_settings().database_url)
+config.set_main_option("sqlalchemy.url", _normalize_database_url(get_settings().database_url))
 
 target_metadata = Base.metadata
 
@@ -89,6 +92,10 @@ async def run_async_migrations() -> None:
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
+        connect_args={
+            "statement_cache_size": 0,
+            "prepared_statement_cache_size": 0,
+        },
     )
 
     async with connectable.connect() as connection:

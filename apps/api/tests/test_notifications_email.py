@@ -1,15 +1,23 @@
 """Unit tests for the platform-level transactional verification email (registration
-follow-up). Mocks growixa_api.integrations.smtp_transport.send_email -- these tests
-verify the no-op-when-unconfigured guard and the argument-building, not real SMTP
-delivery (already covered by smtp_transport's own tests/live "test connection" use)."""
+follow-up). Integration-tier: send_verification_email opens its own DB session
+internally (it runs as a FastAPI BackgroundTask, with no request session to reuse) to
+check for an active platform_email_provider_config row before falling back to the
+legacy .env-only PLATFORM_SMTP_* settings -- real Postgres is needed to exercise that
+resolution order, even though no real SMTP send happens here (mocked at the
+smtp_transport boundary, same convention as every other external-provider test in this
+suite)."""
 
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from sqlalchemy import delete
 
+from growixa_api.auth.encryption import encrypt_secret
 from growixa_api.config import Settings
+from growixa_api.db import async_session_factory
 from growixa_api.integrations.smtp_transport import EmailSendError
 from growixa_api.notifications.email import send_verification_email
+from growixa_api.notifications.models import PlatformEmailProviderConfig
 
 
 def _settings(**overrides: object) -> Settings:
@@ -23,13 +31,14 @@ def _settings(**overrides: object) -> Settings:
 
 
 @pytest.mark.asyncio
-async def test_noops_when_smtp_host_not_configured() -> None:
+@pytest.mark.integration
+async def test_noops_when_neither_db_config_nor_env_smtp_host_is_configured() -> None:
     with (
         patch(
             "growixa_api.notifications.email.get_settings",
             return_value=_settings(platform_smtp_host=""),
         ),
-        patch("growixa_api.notifications.email.send_email", new=AsyncMock()) as mock_send,
+        patch("growixa_api.notifications.email.smtp_send_email", new=AsyncMock()) as mock_send,
     ):
         await send_verification_email(
             to_email="new@example.com", full_name="New User", raw_token="raw-token"
@@ -39,7 +48,10 @@ async def test_noops_when_smtp_host_not_configured() -> None:
 
 
 @pytest.mark.asyncio
-async def test_sends_with_verification_link_when_configured() -> None:
+@pytest.mark.integration
+async def test_sends_via_env_smtp_fallback_when_no_db_config_exists() -> None:
+    """No platform_email_provider_config row exists (clean DB state) -- falls back to
+    the legacy .env-only PLATFORM_SMTP_* settings."""
     settings = _settings(
         platform_smtp_host="smtp.example.com",
         platform_smtp_port=587,
@@ -51,7 +63,7 @@ async def test_sends_with_verification_link_when_configured() -> None:
     )
     with (
         patch("growixa_api.notifications.email.get_settings", return_value=settings),
-        patch("growixa_api.notifications.email.send_email", new=AsyncMock()) as mock_send,
+        patch("growixa_api.notifications.email.smtp_send_email", new=AsyncMock()) as mock_send,
     ):
         await send_verification_email(
             to_email="new@example.com", full_name="New User", raw_token="raw-token"
@@ -66,12 +78,58 @@ async def test_sends_with_verification_link_when_configured() -> None:
 
 
 @pytest.mark.asyncio
+@pytest.mark.integration
+async def test_db_config_takes_priority_over_env_smtp_fallback() -> None:
+    """An active platform_email_provider_config row is used instead of the legacy
+    .env-only settings, even when both are present -- the DB config is meant to
+    supersede it once a platform admin has configured one."""
+    settings = _settings(
+        platform_smtp_host="env-fallback.example.com",
+        frontend_base_url="https://growixa.netlify.app",
+    )
+    async with async_session_factory() as session:
+        session.add(
+            PlatformEmailProviderConfig(
+                provider="POSTMARK",
+                smtp_host="smtp.postmarkapp.com",
+                smtp_port=587,
+                smtp_username="server-token",
+                smtp_password_encrypted=encrypt_secret("server-token"),
+                from_email="noreply@growixa.local",
+                from_name="Growixa",
+            )
+        )
+        await session.commit()
+
+    try:
+        with (
+            patch("growixa_api.notifications.email.get_settings", return_value=settings),
+            patch(
+                "growixa_api.notifications.services.smtp_send_email", new=AsyncMock()
+            ) as mock_send,
+        ):
+            await send_verification_email(
+                to_email="new@example.com", full_name="New User", raw_token="raw-token"
+            )
+
+        mock_send.assert_awaited_once()
+        kwargs = mock_send.call_args.kwargs
+        assert kwargs["smtp_host"] == "smtp.postmarkapp.com"
+        assert kwargs["smtp_password"] == "server-token"
+    finally:
+        async with async_session_factory() as session:
+            await session.execute(delete(PlatformEmailProviderConfig))
+            await session.commit()
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
 async def test_send_failure_does_not_raise() -> None:
     settings = _settings(platform_smtp_host="smtp.example.com")
     with (
         patch("growixa_api.notifications.email.get_settings", return_value=settings),
         patch(
-            "growixa_api.notifications.email.send_email",
+            "growixa_api.notifications.email.smtp_send_email",
             new=AsyncMock(side_effect=EmailSendError("connection refused")),
         ),
     ):

@@ -71,7 +71,12 @@ def _patch_provider(monkeypatch: pytest.MonkeyPatch, provider: _FakeProvider) ->
     async def _fake_get_effective_ai_provider(
         session: object, account_id: uuid.UUID
     ) -> ResolvedAIProvider:
-        return ResolvedAIProvider(provider=provider, provider_name="OPENAI", model="gpt-4o-mini")
+        return ResolvedAIProvider(
+            provider=provider,
+            provider_name="OPENAI",
+            model="gpt-4o-mini",
+            source="PLATFORM_DEFAULT",
+        )
 
     monkeypatch.setattr(ai_services, "get_effective_ai_provider", _fake_get_effective_ai_provider)
 

@@ -16,6 +16,7 @@ This document maintains a real-time record of all parallel Git worktrees, active
 
 | Worktree Directory | Branch | Feature Delivered | Merged Commit | Merged Date |
 |---|---|---|---|---|
+| `.worktrees/grx-ai-studio-redesign` | `feature/FRONTEND/GRX-AI-STUDIO-001` | Global Header + AI Marketing Copilot redesign (`/dashboard/ai`) — first task run through the independent-review workflow end to end (developer: Antigravity, reviewer: Claude Code, human sign-off confirmed) | `2b6888f` | 2026-08-15 |
 | `.worktrees/grx-settings-team-redesign` | `feature/FRONTEND/GRX-SETTINGS-TEAM-REDESIGN` | Card-Based Redesign for Company Settings, Team & Roles, and Integrations Pages | `dfd1cc1` | 2026-08-07 |
 | `.worktrees/grx-templates-page-redesign` | `feature/FRONTEND/GRX-TEMPLATES-PAGE-REDESIGN` | Email Templates Page Redesign (Hero Showcase Spotlight, Visual Card Grid, Metric Summary Cards, Category Pills, View Switcher & Live Preview Drawer) | `954eab2` | 2026-08-07 |
 | `.worktrees/grx-cicd-deployment` | `feature/BACKEND/GRX-CICD-DEPLOYMENT` | Deployment CI/CD Workflows (Hugging Face Spaces API+Worker, Netlify Web Frontend, Release Orchestration) | `f146b98` | 2026-08-07 |
@@ -33,4 +34,11 @@ This document maintains a real-time record of all parallel Git worktrees, active
 1. **Isolation**: Every parallel feature must be built inside `.worktrees/<feature-name>` on a branch named `feature/FRONTEND/...` or `feature/BACKEND/...`.
 2. **Preview Server**: Frontend features run a secondary preview dev server on **`http://localhost:3001`**.
 3. **Commit Attribution**: Every commit includes `Co-Authored-By: Ravi Kant Yadav <ravikantyadav1918@gmail.com>`.
-4. **Merge Protocol**: Once user reviews `http://localhost:3001` and confirms *"Looks good"*, merge to `main`, run build/tests, and remove the worktree.
+4. **Merge Protocol**: A `pr_reviews/<branch>.md` handoff file must exist with
+   `Review Decision: APPROVED` from a different agent/tool, and nothing outside
+   `pr_reviews/**` may have changed between `Reviewed Code Commit` and the branch's
+   current HEAD (see [AGENT_EXECUTION_RULES.md §Independent
+   review](../12-development/AGENT_EXECUTION_RULES.md#independent-review-mandatory-before-merge)).
+   For UI/UX or customer-facing work, the user must also review `http://localhost:3001`
+   and confirm *"Looks good"*. Once both are satisfied, merge to `main`, run build/tests,
+   and remove the worktree.

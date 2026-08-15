@@ -18,7 +18,14 @@ jobs:
     env:
       NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
       NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+      # Must be "/api" — the browser calls this same-origin, proxied to the real backend
+      # by netlify.toml's [[redirects]] rule, to avoid the HF Space ingress not answering
+      # CORS preflights with Access-Control-Allow-Credentials (see CHANGELOG.md 2026-08-14).
       NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL }}
+      # Server-side (SSR) calls go straight to the backend, no browser/CORS involved —
+      # same value as netlify.toml's [build.environment] for the native git-integration
+      # deploy path; kept here too so both deploy paths agree (not sensitive, a public URL).
+      API_INTERNAL_URL: "https://iitdeveloper-growixa.hf.space"
       NEXT_TELEMETRY_DISABLED: "1"
     steps:
       - uses: actions/checkout@v4

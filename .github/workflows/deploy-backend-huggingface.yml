@@ -18,7 +18,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     env:
-      HF_SPACE_ID: ${{ vars.HF_SPACE_ID || secrets.HF_SPACE_ID || 'iitdeveloper/growixa-backend' }}
+      HF_SPACE_ID: ${{ vars.HF_SPACE_ID || secrets.HF_SPACE_ID || 'iitdeveloper/growixa' }}
       HF_TOKEN: ${{ secrets.HF_TOKEN }}
     steps:
       - uses: actions/checkout@v4
@@ -35,9 +35,9 @@ jobs:
       - name: Build Space bundle
         run: |
           rm -rf /tmp/growixa-hf-space
-          mkdir -p /tmp/growixa-hf-space
-          cp -R apps/api /tmp/growixa-hf-space/apps/api
-          cp -R apps/worker /tmp/growixa-hf-space/apps/worker
+          mkdir -p /tmp/growixa-hf-space/apps
+          cp -R apps/api /tmp/growixa-hf-space/apps/
+          cp -R apps/worker /tmp/growixa-hf-space/apps/
           cp Dockerfile.space /tmp/growixa-hf-space/Dockerfile
           cp start.sh /tmp/growixa-hf-space/start.sh
           chmod +x /tmp/growixa-hf-space/start.sh

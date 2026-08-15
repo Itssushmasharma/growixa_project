@@ -54,6 +54,17 @@ async def get_contact_by_id(
     return result.scalar_one_or_none()
 
 
+async def count_active_contacts(session: AsyncSession, account_id: uuid.UUID) -> int:
+    """Feeds the plan's `max_contacts` cap check (`GRX-BILL-005`) -- archived contacts
+    don't count against it, only live ones."""
+    result = await session.execute(
+        select(func.count())
+        .select_from(Contact)
+        .where(Contact.account_id == account_id, Contact.status == "ACTIVE")
+    )
+    return result.scalar_one()
+
+
 async def list_contacts(session: AsyncSession, account_id: uuid.UUID) -> Sequence[Contact]:
     result = await session.execute(
         select(Contact).where(Contact.account_id == account_id).order_by(Contact.created_at.desc())
@@ -603,3 +614,48 @@ async def create_suppression_entry(
     session.add(entry)
     await session.flush()
     return entry
+
+
+async def get_suppression_by_domain(
+    session: AsyncSession, account_id: uuid.UUID, domain: str
+) -> SuppressionEntry | None:
+    result = await session.execute(
+        select(SuppressionEntry).where(
+            SuppressionEntry.account_id == account_id, SuppressionEntry.domain == domain
+        )
+    )
+    return result.scalar_one_or_none()
+
+
+async def create_domain_suppression_entry(
+    session: AsyncSession,
+    *,
+    account_id: uuid.UUID,
+    domain: str,
+    suppressed_by_user_id: uuid.UUID | None,
+) -> SuppressionEntry:
+    entry = SuppressionEntry(
+        account_id=account_id,
+        domain=domain,
+        reason="MANUAL",
+        suppressed_by_user_id=suppressed_by_user_id,
+    )
+    session.add(entry)
+    await session.flush()
+    return entry
+
+
+async def get_suppression_entry_by_id(
+    session: AsyncSession, account_id: uuid.UUID, entry_id: uuid.UUID
+) -> SuppressionEntry | None:
+    result = await session.execute(
+        select(SuppressionEntry).where(
+            SuppressionEntry.account_id == account_id, SuppressionEntry.id == entry_id
+        )
+    )
+    return result.scalar_one_or_none()
+
+
+async def delete_suppression_entry(session: AsyncSession, entry: SuppressionEntry) -> None:
+    await session.delete(entry)
+    await session.flush()
