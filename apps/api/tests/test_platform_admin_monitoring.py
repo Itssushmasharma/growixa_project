@@ -94,15 +94,26 @@ async def test_financial_metrics_computes_mrr_arr_per_currency_not_summed_togeth
         starter = await get_plan_by_slug(session, "starter")
         pro = await get_plan_by_slug(session, "pro")
         assert starter is not None and pro is not None
+
+        metrics_before = await get_financial_metrics(session)
+
         await _set_subscription(session, account_id=usd_account, plan=starter, currency="USD")
         await _set_subscription(session, account_id=inr_account, plan=pro, currency="INR")
 
         metrics = await get_financial_metrics(session)
 
-    assert metrics.mrr_by_currency["USD"] >= float(starter.price_usd)
-    assert metrics.mrr_by_currency["INR"] >= float(pro.price_inr)
+    assert metrics.mrr_by_currency["USD"] - metrics_before.mrr_by_currency["USD"] == pytest.approx(
+        float(starter.price_usd)
+    )
+    assert metrics.mrr_by_currency["INR"] - metrics_before.mrr_by_currency["INR"] == pytest.approx(
+        float(pro.price_inr)
+    )
     assert metrics.arr_by_currency["USD"] == pytest.approx(metrics.mrr_by_currency["USD"] * 12)
     assert metrics.arr_by_currency["INR"] == pytest.approx(metrics.mrr_by_currency["INR"] * 12)
+    diff = (
+        metrics.active_paying_subscription_count - metrics_before.active_paying_subscription_count
+    )
+    assert diff == 2
 
 
 @pytest.mark.asyncio
@@ -116,6 +127,9 @@ async def test_financial_metrics_churn_counts_only_cancellations_in_the_last_30_
     async with async_session_factory() as session:
         starter = await get_plan_by_slug(session, "starter")
         assert starter is not None
+
+        metrics_before = await get_financial_metrics(session)
+
         await _set_subscription(
             session,
             account_id=recent_churn_account,
@@ -135,14 +149,7 @@ async def test_financial_metrics_churn_counts_only_cancellations_in_the_last_30_
 
         metrics = await get_financial_metrics(session)
 
-    assert metrics.churned_last_30_days >= 1
-    # The 90-day-old cancellation must not be counted in the 30-day churn window.
-    async with async_session_factory() as session:
-        result = await session.execute(
-            select(AccountSubscription).where(AccountSubscription.account_id == old_churn_account)
-        )
-        old_row = result.scalar_one()
-        assert old_row.updated_at < datetime.now(UTC) - timedelta(days=30)
+    assert metrics.churned_last_30_days - metrics_before.churned_last_30_days == 1
 
 
 @pytest.mark.asyncio
@@ -162,6 +169,7 @@ async def test_monitoring_routes_require_platform_monitoring_manage(
     assert financials_response.status_code == 200
     body = financials_response.json()
     assert "mrr_by_currency" in body
+    assert "active_paying_subscription_count" in body
     assert "churn_rate_percent" in body
 
     assert queues_response.status_code == 200

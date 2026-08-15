@@ -254,6 +254,6 @@ class QueueDepthsOut(BaseModel):
 class FinancialMetricsOut(BaseModel):
     mrr_by_currency: dict[str, float]
     arr_by_currency: dict[str, float]
-    active_subscription_count: int
+    active_paying_subscription_count: int
     churned_last_30_days: int
     churn_rate_percent: float

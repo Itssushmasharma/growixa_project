@@ -25,7 +25,7 @@ describe("FinancePage", () => {
     const data: FinancialMetrics = {
       mrr_by_currency: { USD: 190, INR: 3999 },
       arr_by_currency: { USD: 2280, INR: 47988 },
-      active_subscription_count: 12,
+      active_paying_subscription_count: 12,
       churned_last_30_days: 2,
       churn_rate_percent: 14.29,
     };

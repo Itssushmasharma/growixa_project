@@ -52,8 +52,9 @@ export function FinancePage() {
         <MetricCard label="ARR (USD)" value={formatMoney(metrics.arr_by_currency.USD ?? 0, "$")} />
         <MetricCard label="ARR (INR)" value={formatMoney(metrics.arr_by_currency.INR ?? 0, "₹")} />
         <MetricCard
-          label="Active subscriptions"
-          value={metrics.active_subscription_count.toLocaleString()}
+          label="Active paying subscriptions"
+          value={metrics.active_paying_subscription_count.toLocaleString()}
+          hint="Excludes Free-tier accounts"
         />
         <MetricCard
           label="Churn (30d)"

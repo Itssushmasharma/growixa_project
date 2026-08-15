@@ -55,7 +55,7 @@ from growixa_api.contacts.services import update_contact as update_contact_servi
 from growixa_api.platform_admin.models import SupportSession
 from growixa_api.platform_admin.repositories import (
     count_active_accounts,
-    count_active_subscriptions,
+    count_active_paying_subscriptions,
     count_subscriptions_canceled_since,
     count_users_by_account,
     create_support_session,
@@ -261,7 +261,7 @@ async def get_platform_dashboard_summary(
 class FinancialMetrics:
     mrr_by_currency: dict[str, float]
     arr_by_currency: dict[str, float]
-    active_subscription_count: int
+    active_paying_subscription_count: int
     churned_last_30_days: int
     churn_rate_percent: float
 
@@ -276,8 +276,18 @@ async def get_financial_metrics(session: AsyncSession) -> FinancialMetrics:
     definition already shown on the platform overview page (`get_platform_dashboard_
     summary`). Deliberately not a second, differently-scoped MRR calculation: two
     different "MRR" numbers on two different admin pages would undermine trust in
-    both. ARR = MRR x 12; this project bills monthly only (no annual plans exist), so
-    ARR is a straightforward annualization, not a separately-billed figure.
+    both. `get_mrr_totals` itself was corrected during GRX-SAAS-009 review to
+    actually filter by `AccountSubscription.currency` -- it previously summed both
+    `price_usd` and `price_inr` for every ACTIVE row regardless of billing currency,
+    which this function's ARR annualization would otherwise have amplified. ARR =
+    MRR x 12; this project bills monthly only (no annual plans exist), so ARR is a
+    straightforward annualization, not a separately-billed figure.
+
+    `active_paying_subscription_count` deliberately excludes Free-tier subscriptions
+    (`count_active_paying_subscriptions`, filtered to a nonzero plan price in the
+    subscription's own currency) -- every account gets an ACTIVE Free subscription at
+    registration, so an unfiltered ACTIVE count would be dominated by non-paying
+    accounts and misread as paying customers on a financial dashboard.
 
     Top-up/credit-pack revenue is deliberately NOT included here: `account_credit_
     purchases` records `credits_added` but not the amount paid or currency, and there
@@ -287,28 +297,38 @@ async def get_financial_metrics(session: AsyncSession) -> FinancialMetrics:
     (e.g. a `credit_pack_id`/`amount_paid`/`currency` column on the purchase row)
     rather than an approximation here.
 
-    Churn: there is no dedicated subscription-status-change history table, so this
-    uses `updated_at` on a `CANCELED` row as a proxy for "when it churned" --
-    `churned_last_30_days` = count of subscriptions that became `CANCELED` in the
-    trailing 30 days. `churn_rate_percent` = churned / (currently ACTIVE + churned),
-    i.e. churned as a fraction of the accounts that were billable at the start of the
-    window (approximated as today's active count plus the ones that just left it) --
-    a standard, simple churn-rate definition, not a precise cohort analysis.
+    Churn (known, documented limitation -- flagged for a product decision, not
+    silently worked around): there is no dedicated subscription-status-change history
+    table, so this uses `updated_at` on a `CANCELED` row as a proxy for "when it
+    churned". `churned_last_30_days` = count of subscriptions that are *currently*
+    `CANCELED` with `updated_at` in the trailing 30 days. This systematically
+    UNDER-counts real churn: `billing/scheduler.py`'s `downgrade_expired_cancellations`
+    flips a `CANCELED` row back to `status='ACTIVE'` (on the Free plan) once its paid
+    period ends, resetting `updated_at` in the process -- so a customer who canceled
+    25 days ago but whose paid period already ended 3 days ago no longer appears
+    `CANCELED` at all and silently drops out of this count. What this metric actually
+    measures is "cancellations still inside their original paid period", not "true
+    churn in the last 30 days". `churn_rate_percent` = churned / (currently paying +
+    churned) -- also affected by the same under-count, and now correctly uses the
+    paying-only base (see `active_paying_subscription_count` above) rather than a
+    Free-inflated one. Fixing the underlying under-count requires either a dedicated
+    status-history table or a `canceled_at`/`churned_at` column that survives the
+    downgrade ticker -- a schema decision, not made here.
     """
     mrr_usd, mrr_inr = await get_mrr_totals(session)
     mrr = {"USD": mrr_usd, "INR": mrr_inr}
     arr = {currency: value * 12 for currency, value in mrr.items()}
 
-    active_count = await count_active_subscriptions(session)
+    active_paying_count = await count_active_paying_subscriptions(session)
     since = datetime.now(UTC) - timedelta(days=CHURN_WINDOW_DAYS)
     churned = await count_subscriptions_canceled_since(session, since=since)
-    base = active_count + churned
+    base = active_paying_count + churned
     churn_rate = (churned / base * 100) if base > 0 else 0.0
 
     return FinancialMetrics(
         mrr_by_currency=mrr,
         arr_by_currency=arr,
-        active_subscription_count=active_count,
+        active_paying_subscription_count=active_paying_count,
         churned_last_30_days=churned,
         churn_rate_percent=round(churn_rate, 2),
     )

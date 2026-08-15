@@ -923,7 +923,7 @@ async def get_financial_metrics_route(
     return FinancialMetricsOut(
         mrr_by_currency=metrics.mrr_by_currency,
         arr_by_currency=metrics.arr_by_currency,
-        active_subscription_count=metrics.active_subscription_count,
+        active_paying_subscription_count=metrics.active_paying_subscription_count,
         churned_last_30_days=metrics.churned_last_30_days,
         churn_rate_percent=metrics.churn_rate_percent,
     )
