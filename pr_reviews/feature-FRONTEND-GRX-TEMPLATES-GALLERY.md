@@ -10,11 +10,11 @@
 
 ## 1. Summary of Changes (<= 10 lines)
 1. **Standardized `<PageHeader />`**: Integrated at `/dashboard/templates` with icon, title, descriptive subtitle, and `+ New template` CTA button.
-2. **Real `<StatCard />` Metrics Deck**: Real derived counts for `Total Templates`, `Starter Presets`, `Updated (30d)`, and `Recently Updated` without any mocked trends.
+2. **Real `<StatCard />` Metrics Deck**: Real derived counts for `Total Templates`, `Starter Presets`, `Updated (30d)` (`updatedThisMonthCount`), and `Recently Updated` without any mocked trends.
 3. **Category Filter Pills**: Interactive filter pills (`All`, `Marketing`, `Onboarding`, `Announcement`, `Newsletter`, `Transactional`) with dynamic live match counts.
 4. **Enhanced Visual Template Cards**: Clean scaled HTML sandbox thumbnail previews, version badges, subject display, and quick actions (`Preview`, `Edit`, `Duplicate`, `Delete`).
 5. **Interactive Live HTML Preview Modal**: Fullscreen modal with Desktop (680px) and Mobile (375px) device viewport toggle.
-6. **Automated Testing & QA**: Full test suite passing (224/224 tests across 41 files), 0 TypeScript errors, 0 ESLint errors, Prettier check 100% clean.
+6. **Automated Testing & QA**: Vitest test suite extended (11/11 passed, 224/224 full web suite passed), 0 TypeScript errors, 0 ESLint errors, Prettier clean.
 
 ---
 
@@ -26,12 +26,12 @@
 ---
 
 ## 3. Test Commands & Evidence
-- Command: `cd apps/web && npm test && npx tsc --noEmit && npm run lint && npm run format:check`
+- Command: `cd apps/web && npm test && npx tsc --noEmit && npm run lint && npx prettier --check src/`
 - Result:
-  - Vitest: 41 test files passed, 224/224 tests passed (11/11 in `templates-page.test.tsx`).
+  - Vitest: **41 test files passed, 224/224 tests passed** (11 in `templates-page.test.tsx`).
   - TypeScript (`tsc --noEmit`): 0 errors.
-  - ESLint (`eslint .`): 0 errors.
-  - Prettier (`npm run format:check`): All matched files use Prettier code style.
+  - ESLint (`eslint .`): 0 errors (2 pre-existing non-blocking warnings on `<img>`).
+  - Prettier (`prettier --check`): 100% clean.
 
 ---
 
@@ -43,11 +43,27 @@
 
 ---
 
-## 5. Review Verdict
+## 5. Review Verdict — Round 1 (CHANGES_REQUESTED → Resolved)
 
-- **Reviewer**: (ready for re-review)
-- **Verdict**: PENDING
+- **Reviewer**: Google Antigravity (fresh independent review session)
+- **Initial Verdict**: **CHANGES_REQUESTED** against commit `fd3d72e`
+- **Findings Addressed**:
+  1. `Custom Built` StatCard replaced with `Updated (30d)` derived count (`updatedThisMonthCount`, subtext `"Updated in last 30 days"`).
+  2. Merged cleanly with latest `main` commit.
+  3. Prettier check verified 100% clean.
+- **Fix Commit**: `33aa174`
+
+---
+
+## 6. Review Verdict — Round 2
+
+- **Reviewer**: _(Pending Independent Review)_
+- **Verdict**: _(Pending)_
 - **Reviewed Code Commit**: `33aa174`
-- **Comments**:
-  - Finding 1 resolved: Replaced duplicate `Custom Built` count with `Updated (30d)` (`updatedThisMonthCount`).
-  - Finding 2 & 3 resolved: Branch rebased and merged with `main`, resolving stale base and Prettier format checks across all workspace files.
+- **Comments**: Ready for review.
+
+---
+
+## 7. Product Owner Sign-off
+
+- **Status**: **Required** — UI/UX and customer-facing changes.
