@@ -9,13 +9,7 @@ export interface PageHeaderProps {
   actions?: ReactNode;
 }
 
-export function PageHeader({
-  title,
-  description,
-  icon,
-  badge,
-  actions,
-}: PageHeaderProps) {
+export function PageHeader({ title, description, icon, badge, actions }: PageHeaderProps) {
   return (
     <div className={styles.pageHeader}>
       <div className={styles.titleArea}>

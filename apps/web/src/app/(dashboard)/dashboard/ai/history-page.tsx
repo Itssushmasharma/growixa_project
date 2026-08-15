@@ -22,13 +22,14 @@ import type {
 const VIEW_PERMISSION = "ai.view";
 const MANAGE_PERMISSION = "ai.manage";
 
-const CHANNELS: { value: StudioChannel; label: string; icon: string; capability: AICapability }[] = [
-  { value: "Email", label: "Email", icon: "✉️", capability: "BODY_COPY" },
-  { value: "Social Post", label: "Social Post", icon: "📱", capability: "SOCIAL_CAPTION" },
-  { value: "SMS", label: "SMS", icon: "💬", capability: "BODY_COPY" },
-  { value: "Ad Copy", label: "Ad Copy", icon: "📢", capability: "SUBJECT_LINE" },
-  { value: "Blog", label: "Blog", icon: "📝", capability: "BODY_COPY" },
-];
+const CHANNELS: { value: StudioChannel; label: string; icon: string; capability: AICapability }[] =
+  [
+    { value: "Email", label: "Email", icon: "✉️", capability: "BODY_COPY" },
+    { value: "Social Post", label: "Social Post", icon: "📱", capability: "SOCIAL_CAPTION" },
+    { value: "SMS", label: "SMS", icon: "💬", capability: "BODY_COPY" },
+    { value: "Ad Copy", label: "Ad Copy", icon: "📢", capability: "SUBJECT_LINE" },
+    { value: "Blog", label: "Blog", icon: "📝", capability: "BODY_COPY" },
+  ];
 
 const TONE_OPTIONS = [
   { value: "Friendly", label: "Friendly 😊" },
@@ -54,7 +55,8 @@ const DEFAULT_SUGGESTIONS: SuggestedPrompt[] = [
     tagColor: "purple",
     campaign: "Summer Sale 2025",
     audience: "Inactive Customers",
-    prompt: "Write a high-converting re-engagement email with a 20% discount offer to win back inactive leads.",
+    prompt:
+      "Write a high-converting re-engagement email with a 20% discount offer to win back inactive leads.",
     tone: "Friendly",
     length: "Short & Punchy",
   },
@@ -67,7 +69,8 @@ const DEFAULT_SUGGESTIONS: SuggestedPrompt[] = [
     tagColor: "blue",
     campaign: "Summer Sale 2025",
     audience: "All Contacts",
-    prompt: "Announce our Summer Sale with high-engagement founder storytelling and 3 key benefits.",
+    prompt:
+      "Announce our Summer Sale with high-engagement founder storytelling and 3 key benefits.",
     tone: "Bold",
     length: "Medium",
   },
@@ -242,7 +245,7 @@ export function HistoryPage() {
       apiFetch<AIGeneration>(`/ai/generate/${capability}`, {
         method: "POST",
         body: JSON.stringify(payload),
-      })
+      }),
     );
 
     try {
@@ -269,8 +272,7 @@ export function HistoryPage() {
         showToast("success", `Generated ${newItems.length} variation(s) for ${selectedChannel}!`);
       } else {
         const firstError = results.find((r) => r.status === "rejected") as
-          | PromiseRejectedResult
-          | undefined;
+          PromiseRejectedResult | undefined;
         showToast("error", parseAIError(firstError?.reason));
       }
     } catch (error) {
@@ -296,7 +298,7 @@ export function HistoryPage() {
   // Workflow Handlers
   function handleUse(text: string, genId: string) {
     setGenerations((prev) =>
-      prev.map((g) => (g.id === genId ? { ...g, approval_status: "APPROVED" } : g))
+      prev.map((g) => (g.id === genId ? { ...g, approval_status: "APPROVED" } : g)),
     );
     if (navigator.clipboard) {
       void navigator.clipboard.writeText(text);
@@ -352,7 +354,9 @@ export function HistoryPage() {
   if (loading) {
     return (
       <div className={styles.page}>
-        <div style={{ background: "#fff", padding: "40px", borderRadius: "18px", textAlign: "center" }}>
+        <div
+          style={{ background: "#fff", padding: "40px", borderRadius: "18px", textAlign: "center" }}
+        >
           Loading AI Assistant…
         </div>
       </div>
@@ -362,7 +366,9 @@ export function HistoryPage() {
   if (loadError) {
     return (
       <div className={styles.page}>
-        <div style={{ background: "#fff", padding: "40px", borderRadius: "18px", textAlign: "center" }}>
+        <div
+          style={{ background: "#fff", padding: "40px", borderRadius: "18px", textAlign: "center" }}
+        >
           {loadError}
         </div>
       </div>
@@ -372,7 +378,9 @@ export function HistoryPage() {
   if (!canView) {
     return (
       <div className={styles.page}>
-        <div style={{ background: "#fff", padding: "40px", borderRadius: "18px", textAlign: "center" }}>
+        <div
+          style={{ background: "#fff", padding: "40px", borderRadius: "18px", textAlign: "center" }}
+        >
           <h2>Access Denied</h2>
           <p>You don&apos;t have access to the AI Studio.</p>
         </div>
@@ -420,7 +428,9 @@ export function HistoryPage() {
                 <button
                   key={ch.value}
                   type="button"
-                  className={selectedChannel === ch.value ? styles.channelBtnActive : styles.channelBtn}
+                  className={
+                    selectedChannel === ch.value ? styles.channelBtnActive : styles.channelBtn
+                  }
                   onClick={() => setSelectedChannel(ch.value)}
                 >
                   <span>{ch.icon}</span>
@@ -433,7 +443,9 @@ export function HistoryPage() {
           {/* 2. Marketing Context (Optional) */}
           <div className={styles.formSection}>
             <span className={styles.stepLabel}>2. Context (Optional)</span>
-            <p className={styles.stepSubhint}>AI will use this context to create more relevant content.</p>
+            <p className={styles.stepSubhint}>
+              AI will use this context to create more relevant content.
+            </p>
 
             <div className={styles.contextGrid}>
               <div className={styles.contextCol}>
@@ -478,7 +490,9 @@ export function HistoryPage() {
             {/* Context Informational Callout */}
             <div className={styles.contextCallout}>
               <span className={styles.calloutIcon}>✨</span>
-              <span>AI will tailor the content based on your brand voice, audience and campaign goal.</span>
+              <span>
+                AI will tailor the content based on your brand voice, audience and campaign goal.
+              </span>
             </div>
           </div>
 
@@ -506,7 +520,7 @@ export function HistoryPage() {
                     setPromptText(
                       `Write a high-impact ${chip.toLowerCase()} for ${
                         activeCampaign ? activeCampaign.name : "our campaign"
-                      }`
+                      }`,
                     )
                   }
                 >
@@ -563,7 +577,9 @@ export function HistoryPage() {
                 <button
                   key={num}
                   type="button"
-                  className={variationsCount === num ? styles.varNumberBtnActive : styles.varNumberBtn}
+                  className={
+                    variationsCount === num ? styles.varNumberBtnActive : styles.varNumberBtn
+                  }
                   onClick={() => setVariationsCount(num)}
                 >
                   {num}
@@ -600,7 +616,9 @@ export function HistoryPage() {
               <div className={styles.suggestedTitleRow}>
                 <span>✨</span>
                 <h3 className={styles.suggestedTitle}>Suggested for you</h3>
-                <span className={styles.suggestedSub}>Smart suggestions based on your activity</span>
+                <span className={styles.suggestedSub}>
+                  Smart suggestions based on your activity
+                </span>
               </div>
               <button
                 type="button"
@@ -618,10 +636,10 @@ export function HistoryPage() {
                   sug.tagColor === "purple"
                     ? styles.tagPurple
                     : sug.tagColor === "blue"
-                    ? styles.tagBlue
-                    : sug.tagColor === "green"
-                    ? styles.tagGreen
-                    : styles.tagOrange;
+                      ? styles.tagBlue
+                      : sug.tagColor === "green"
+                        ? styles.tagGreen
+                        : styles.tagOrange;
 
                 return (
                   <div
@@ -657,7 +675,11 @@ export function HistoryPage() {
                   <button
                     key={filter}
                     type="button"
-                    className={historyFilter === filter ? styles.historyFilterTabActive : styles.historyFilterTab}
+                    className={
+                      historyFilter === filter
+                        ? styles.historyFilterTabActive
+                        : styles.historyFilterTab
+                    }
                     onClick={() => setHistoryFilter(filter)}
                   >
                     {filter}
@@ -689,13 +711,34 @@ export function HistoryPage() {
 
             {/* Empty State */}
             {generations.length === 0 && (
-              <div style={{ background: "#fff", padding: "48px 24px", borderRadius: "18px", textAlign: "center" }}>
+              <div
+                style={{
+                  background: "#fff",
+                  padding: "48px 24px",
+                  borderRadius: "18px",
+                  textAlign: "center",
+                }}
+              >
                 <div style={{ fontSize: "32px", marginBottom: "8px" }}>✨</div>
-                <h4 style={{ margin: 0, fontSize: "16px", fontWeight: 800, color: "var(--color-dark-text, #0b1b33)" }}>
+                <h4
+                  style={{
+                    margin: 0,
+                    fontSize: "16px",
+                    fontWeight: 800,
+                    color: "var(--color-dark-text, #0b1b33)",
+                  }}
+                >
                   Ready to create with AI
                 </h4>
-                <p style={{ margin: "6px 0 0", fontSize: "13px", color: "var(--color-slate, #64748b)" }}>
-                  Select a suggestion above or enter a prompt on the left to generate content in seconds.
+                <p
+                  style={{
+                    margin: "6px 0 0",
+                    fontSize: "13px",
+                    color: "var(--color-slate, #64748b)",
+                  }}
+                >
+                  Select a suggestion above or enter a prompt on the left to generate content in
+                  seconds.
                 </p>
               </div>
             )}
@@ -710,12 +753,18 @@ export function HistoryPage() {
                     </div>
                     <div>
                       <h4 className={styles.groupTitle}>
-                        {activeCampaign ? `${selectedChannel} copy for ${activeCampaign.name}` : "AI Generated Content"}
+                        {activeCampaign
+                          ? `${selectedChannel} copy for ${activeCampaign.name}`
+                          : "AI Generated Content"}
                       </h4>
                       <div style={{ display: "flex", gap: "10px", marginTop: "2px" }}>
                         <span className={styles.groupMetaTag}>@{selectedChannel}</span>
-                        <span className={styles.groupMetaTag}>🏷️ {activeCampaign ? activeCampaign.name : "General"}</span>
-                        <span className={styles.groupMetaTag}>👥 {activeSegment ? activeSegment.name : "All Contacts"}</span>
+                        <span className={styles.groupMetaTag}>
+                          🏷️ {activeCampaign ? activeCampaign.name : "General"}
+                        </span>
+                        <span className={styles.groupMetaTag}>
+                          👥 {activeSegment ? activeSegment.name : "All Contacts"}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -737,7 +786,9 @@ export function HistoryPage() {
                             {outputText.split("\n")[0] || `Variation ${idx + 1}`}
                           </h5>
                           <p className={styles.variationBody}>
-                            {outputText.length > 220 ? `${outputText.substring(0, 220)}…` : outputText}
+                            {outputText.length > 220
+                              ? `${outputText.substring(0, 220)}…`
+                              : outputText}
                           </p>
                         </div>
 
@@ -828,7 +879,9 @@ export function HistoryPage() {
 
             <div className={styles.brandVoiceField}>
               <span className={styles.brandFieldLabel}>Brand Name</span>
-              <span className={styles.brandFieldValue}>{currentUser.company_name || "Growixa"}</span>
+              <span className={styles.brandFieldValue}>
+                {currentUser.company_name || "Growixa"}
+              </span>
             </div>
 
             <div className={styles.brandVoiceField}>
