@@ -253,11 +253,7 @@ export function SocialPage() {
         <div className={styles.grid}>
           {visiblePosts.map((post) => {
             const statusClass = styles[STATUS_CLASS[post.status]] ?? "";
-            const canCancel =
-              canManage &&
-              (post.status === "DRAFT" ||
-                post.status === "SCHEDULED" ||
-                post.status === "DISPATCHING");
+            const canCancel = canManage && (post.status === "DRAFT" || post.status === "SCHEDULED");
 
             return (
               <Link key={post.id} href={`/dashboard/social/${post.id}`} className={styles.postCard}>

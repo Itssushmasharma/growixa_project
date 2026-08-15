@@ -10,6 +10,7 @@ import styles from "./calendar-page.module.css";
 import type { MeResponse, SocialPost } from "./types";
 
 const VIEW_PERMISSION = "social.view";
+const MANAGE_PERMISSION = "social.manage";
 
 function dateKey(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, {
@@ -28,6 +29,7 @@ export function CalendarPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [canView, setCanView] = useState(false);
+  const [canManage, setCanManage] = useState(false);
   const [posts, setPosts] = useState<SocialPost[]>([]);
 
   useEffect(() => {
@@ -36,6 +38,7 @@ export function CalendarPage() {
         const me = await apiFetch<MeResponse>("/auth/me");
         const hasView = me.permissions.includes(VIEW_PERMISSION);
         setCanView(hasView);
+        setCanManage(me.permissions.includes(MANAGE_PERMISSION));
         if (hasView) {
           const postList = await apiFetch<SocialPost[]>("/social/posts");
           setPosts(postList);
@@ -118,9 +121,11 @@ export function CalendarPage() {
             <Link href="/dashboard/social" className={styles.secondaryButton}>
               Social
             </Link>
-            <Link href="/dashboard/social/new" className={styles.primaryButton}>
-              + Create Post
-            </Link>
+            {canManage && (
+              <Link href="/dashboard/social/new" className={styles.primaryButton}>
+                + Create Post
+              </Link>
+            )}
           </div>
         }
       />
@@ -132,9 +137,11 @@ export function CalendarPage() {
           <p className={styles.emptyStateHint}>
             Schedule social posts to see them organized chronologically in your calendar.
           </p>
-          <Link href="/dashboard/social/new" className={styles.primaryButton}>
-            + Schedule your first post
-          </Link>
+          {canManage && (
+            <Link href="/dashboard/social/new" className={styles.primaryButton}>
+              + Schedule your first post
+            </Link>
+          )}
         </div>
       ) : (
         <div className={styles.groups}>

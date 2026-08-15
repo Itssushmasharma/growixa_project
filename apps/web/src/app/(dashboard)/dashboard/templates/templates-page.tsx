@@ -197,6 +197,12 @@ export function TemplatesPage() {
     return sorted[0] ? formatDate(sorted[0].updated_at) : "N/A";
   }, [templates]);
 
+  const updatedThisMonthCount = useMemo(() => {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - 30);
+    return templates.filter((t) => new Date(t.updated_at) >= cutoff).length;
+  }, [templates]);
+
   if (loading) {
     return (
       <div className={styles.page}>
@@ -245,7 +251,11 @@ export function TemplatesPage() {
           value={TEMPLATE_PRESETS.length}
           subtext="Built-in starter layouts"
         />
-        <StatCard label="Custom Built" value={templates.length} subtext="Created by your team" />
+        <StatCard
+          label="Custom Built"
+          value={updatedThisMonthCount}
+          subtext="Updated in last 30 days"
+        />
         <StatCard
           label="Recently Updated"
           value={latestUpdatedDate}
