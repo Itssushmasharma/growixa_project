@@ -112,8 +112,7 @@ describe("HistoryPage (Growixa AI Marketing Copilot)", () => {
     expect(await screen.findByText("AI Assistant")).toBeInTheDocument();
     expect(screen.getByText("Create with AI")).toBeInTheDocument();
     expect(screen.getByText("Suggested for you")).toBeInTheDocument();
-    expect(screen.getByText("AI Credits")).toBeInTheDocument();
-    expect(screen.getByText("245 / 500")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Generate 3 Variations/i })).toBeInTheDocument();
   });
 
   it("populates prompt and context when clicking a Suggested for you card", async () => {

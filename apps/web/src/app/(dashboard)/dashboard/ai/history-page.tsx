@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
+import { PageHeader } from "@/components/page-header/page-header";
 import { useToast } from "@/components/toast/toast-context";
 import { ApiError, apiFetch } from "@/lib/api-client";
 
@@ -403,58 +404,14 @@ export function HistoryPage() {
     );
   }
 
-  const quotaPercent = Math.min(
-    100,
-    Math.round((usage.period_ai_used / Math.max(1, usage.max_monthly_ai_runs)) * 100)
-  );
-
   return (
     <div className={styles.page}>
-      {/* =========================================================================
-          1. Top Header Bar
-          ========================================================================= */}
-      <header className={styles.headerBar}>
-        <div className={styles.headerLeft}>
-          <h1 className={styles.pageHeading}>
-            <span>✨</span> AI Assistant
-          </h1>
-          <p className={styles.pageSubtitle}>
-            Your AI marketing copilot to create high-performing content in seconds.
-          </p>
-        </div>
-
-        <div className={styles.headerRight}>
-          {/* AI Credits Pill */}
-          <div className={styles.creditsPill}>
-            <span className={styles.creditsLabel}>
-              <span>⚡</span> AI Credits
-            </span>
-            <span className={styles.creditsCount}>
-              {usage.period_ai_used} / {usage.max_monthly_ai_runs}
-            </span>
-            <div className={styles.creditsTrack}>
-              <div className={styles.creditsFill} style={{ width: `${quotaPercent}%` }} />
-            </div>
-          </div>
-
-          {/* Notification Icon */}
-          <button type="button" className={styles.notificationButton} aria-label="Notifications">
-            🔔
-            <span className={styles.notificationBadge}>3</span>
-          </button>
-
-          {/* User Profile Chip */}
-          <div className={styles.userProfileChip}>
-            <div className={styles.userAvatar}>
-              {currentUser.full_name?.charAt(0) || "R"}
-            </div>
-            <div className={styles.userInfo}>
-              <span className={styles.userName}>{currentUser.full_name || "Ravi Sharma"}</span>
-              <span className={styles.userOrg}>{currentUser.company_name || "Growixa"}</span>
-            </div>
-          </div>
-        </div>
-      </header>
+      {/* Reusable Page Header */}
+      <PageHeader
+        icon="✨"
+        title="AI Assistant"
+        description="Your AI marketing copilot to create high-performing content in seconds."
+      />
 
       {/* =========================================================================
           2. Two-Column Main Studio Layout

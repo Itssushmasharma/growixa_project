@@ -110,4 +110,23 @@ describe("DashboardShell", () => {
     expect(audienceHeader).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByRole("link", { name: "Contacts" })).toBeInTheDocument();
   });
+
+  it("renders the global search input, AI credits meter, and user company profile", () => {
+    render(
+      <DashboardShell
+        permissions={[]}
+        fullName="Ravi Sharma"
+        companyName="TechCorp Global"
+      >
+        <p>Dashboard</p>
+      </DashboardShell>
+    );
+
+    expect(screen.getByPlaceholderText(/Search dashboard\.\.\. \(⌘K\)/i)).toBeInTheDocument();
+    expect(screen.getByText("AI Credits")).toBeInTheDocument();
+    expect(screen.getByText("Ravi Sharma")).toBeInTheDocument();
+    expect(screen.getByText("TechCorp Global")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Upgrade/i })).toBeInTheDocument();
+  });
 });
+
