@@ -243,3 +243,17 @@ class CouponOut(BaseModel):
     expires_at: datetime | None
     is_active: bool
     created_at: datetime
+
+
+class QueueDepthsOut(BaseModel):
+    # Value is an int message count, or a status string ("not declared", "error: ...")
+    # -- a queue that was never declared is a normal, healthy state, not a failure.
+    queues: dict[str, int | str]
+
+
+class FinancialMetricsOut(BaseModel):
+    mrr_by_currency: dict[str, float]
+    arr_by_currency: dict[str, float]
+    active_subscription_count: int
+    churned_last_30_days: int
+    churn_rate_percent: float

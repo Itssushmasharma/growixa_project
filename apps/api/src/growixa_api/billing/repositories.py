@@ -3,7 +3,7 @@ from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -379,3 +379,35 @@ async def record_coupon_redemption(
     session.add(CouponRedemption(coupon_code_id=coupon.id, account_id=account_id))
     coupon.redemption_count += 1
     await session.flush()
+
+
+async def list_billable_subscriptions_with_plans(
+    session: AsyncSession,
+) -> Sequence[tuple[AccountSubscription, SubscriptionPlan]]:
+    """Every ACTIVE/PAST_DUE subscription with its plan -- the read model for MRR/ARR
+    (GRX-SAAS-009). PAST_DUE is included deliberately: the account is still on the
+    books and billed for that plan, just at payment risk -- excluding it would
+    understate MRR for a real, still-active subscription."""
+    result = await session.execute(
+        select(AccountSubscription, SubscriptionPlan)
+        .join(SubscriptionPlan, AccountSubscription.plan_id == SubscriptionPlan.id)
+        .where(AccountSubscription.status.in_(["ACTIVE", "PAST_DUE"]))
+    )
+    return [(row[0], row[1]) for row in result.all()]
+
+
+async def count_subscriptions_by_status_since(
+    session: AsyncSession, *, statuses: list[str], since: datetime
+) -> int:
+    """Count of subscriptions whose status is one of `statuses` and whose
+    `updated_at` falls on/after `since` -- used for churn (GRX-SAAS-009): there is no
+    dedicated subscription-status-change history table, so `updated_at` on a
+    `CANCELED` row is used as an approximation of "when this subscription churned".
+    This is a documented approximation, not silently assumed -- see
+    `admin_get_financial_metrics`'s docstring for the exact churn definition."""
+    result = await session.execute(
+        select(func.count())
+        .select_from(AccountSubscription)
+        .where(AccountSubscription.status.in_(statuses), AccountSubscription.updated_at >= since)
+    )
+    return result.scalar_one()
