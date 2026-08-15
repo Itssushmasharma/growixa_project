@@ -467,6 +467,161 @@
   font-weight: 900;
 }
 
+.pricingControls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.currencyToggle {
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 9999px;
+  padding: 4px;
+  display: inline-flex;
+}
+
+.currencyBtn {
+  background: transparent;
+  color: #94a3b8;
+  border: none;
+  border-radius: 9999px;
+  padding: 6px 16px;
+  font-size: 0.875rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.currencyBtnActive {
+  background: linear-gradient(135deg, #38bdf8, #a855f7);
+  color: #ffffff;
+}
+
+.priceContainer {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin: 0.75rem 0 0.5rem;
+}
+
+.planDesc {
+  color: #94a3b8;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  margin-top: 0.5rem;
+  min-height: 2.6rem;
+}
+
+/* Pay-As-You-Go Credit Packs */
+.creditPacksSection {
+  margin-top: 5rem;
+  background: rgba(15, 23, 42, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 24px;
+  padding: 3rem 2.5rem;
+  backdrop-filter: blur(16px);
+}
+
+.creditPacksHeader {
+  text-align: center;
+  max-width: 680px;
+  margin: 0 auto 2.5rem;
+}
+
+.creditPacksBadge {
+  display: inline-block;
+  background: rgba(56, 189, 248, 0.12);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  margin-bottom: 0.75rem;
+}
+
+.creditPacksTitle {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: #ffffff;
+  margin-bottom: 0.75rem;
+}
+
+.creditPacksSub {
+  color: #94a3b8;
+  font-size: 0.9375rem;
+  line-height: 1.6;
+}
+
+.creditPacksGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 1.25rem;
+}
+
+.creditPackCard {
+  background: rgba(30, 41, 59, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 1.5rem;
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.creditPackCard:hover {
+  transform: translateY(-2px);
+  border-color: rgba(56, 189, 248, 0.4);
+}
+
+.creditPackTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.creditPackIcon {
+  font-size: 1.5rem;
+}
+
+.creditPackPrice {
+  font-size: 0.9375rem;
+  font-weight: 800;
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.1);
+  padding: 0.2rem 0.6rem;
+  border-radius: 6px;
+}
+
+.creditPackName {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin-bottom: 0.35rem;
+}
+
+.creditPackDesc {
+  color: #94a3b8;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.creditPacksNote {
+  text-align: center;
+  color: #64748b;
+  font-size: 0.8125rem;
+  margin-top: 2rem;
+  margin-bottom: 0;
+}
+
 /* Footer */
 .footer {
   background: #030712;
