@@ -7,8 +7,8 @@ the real database, and re-run tests.)
 Branch: feature/BACKEND/GRX-SAAS-009
 Worktree: .worktrees/grx-saas-009-monitoring
 Base Commit: 617bfc0
-Latest Commit: c08b5f9
-Status: READY_FOR_REVIEW
+Latest Commit: c364db7
+Status: APPROVED — pending human sign-off (new platform UI)
 
 ## What Changed
 - **Infra monitoring**: `GET /platform/monitoring/queues` — real RabbitMQ queue depths
@@ -196,11 +196,72 @@ queue-depth passive-declare-per-channel rationale is sound — a failed passive 
 invalidate the channel, so a shared channel would break every check after the first
 missing queue.
 
+## Re-Review (after `c08b5f9` / `c364db7`)
+
+Every claimed fix re-verified against the actual diff, the live database, and re-run
+tests — not from the resolution notes above.
+
+1. **Finding 1 (BLOCKER) — genuinely fixed.** `get_mrr_totals` now wraps each sum in a
+   `case()` keyed on `AccountSubscription.currency`, so a plan's `price_usd` is only
+   credited when the subscription actually bills in USD. NULL-priced Enterprise rows still
+   fall through to 0 correctly (the `case` yields NULL, `SUM` skips it, the outer
+   `coalesce` covers the all-NULL case). Re-measured on the live DB: **MRR USD $19.00,
+   MRR INR ₹0.00** — down from the ₹1,499.00 (₹17,988 phantom ARR) the original reported.
+
+2. **Finding 2 (HIGH) — genuinely fixed.** Renamed `active_paying_subscription_count` and
+   propagated end to end: dataclass, `schemas.py`, route, `types.ts`, `finance-page.tsx`,
+   and the test — the rendered label is now "Active paying subscriptions". The query joins
+   the plan and requires a nonzero price *in the subscription's own currency*. Live:
+   **1**, down from 37 (36 of which were the default Free rows).
+
+3. **Finding 3 (MEDIUM) — resolved as far as it honestly can be.** The rate denominator
+   now uses the paying count, removing the dilution half. The under-count itself is
+   documented rather than silently patched: the docstring now names the downgrade-ticker
+   mechanism and states plainly what the number measures ("cancellations still inside
+   their original paid period, not true 30-day churn"). Correct call — the real fix needs
+   a `churned_at` column or status-history table, which is a schema decision, not a
+   review-cycle change. Left open for the product owner below.
+
+4. **Finding 4 (MEDIUM) — genuinely fixed, and I checked the tests now actually bite.**
+   Both are delta-based against a `metrics_before` snapshot. The currency test asserts the
+   USD delta `== pytest.approx(starter.price_usd)`; under the pre-fix code that delta would
+   have been $19 + $49 = $68, so it now fails on exactly the bug its name forbids — which
+   was the whole complaint. The churn test asserts `delta == 1`, so the 90-day row must be
+   excluded by the *metric*, not merely by re-reading its own fixture. The self-referential
+   assertion block is gone.
+
+5. **Finding 5 — no longer applicable.** It was informational, and current `main` is
+   already prettier-clean, so it has resolved itself.
+
+Independently re-run at `c364db7`. Backend, against the real compose stack: **8 passed**;
+`ruff check` clean; `ruff format --check` 7 files already formatted; `mypy` no issues in 6
+source files. Frontend: **42 files / 223 tests passed**, `tsc` 0 errors, `eslint` 0 errors.
+Merges into current `main` with **0 conflicts**.
+
+Two notes, neither blocking:
+
+- **NEW (LOW) — Enterprise is now excluded from "Active paying subscriptions".** The
+  filter is `case(... ) > 0`, and Enterprise carries NULL prices by design
+  (DEC-GRX-030), so `NULL > 0` is NULL and those rows drop out. Zero impact today — I
+  confirmed there are currently **0 active Enterprise subscriptions** — but once a
+  contact-sales customer exists they will be invisible in a count labelled "paying". The
+  metric is really *self-serve* paying subscriptions. Worth either renaming or counting
+  Enterprise explicitly when the first one lands.
+- **Small correction to the resolution note for finding 4.** It says the rewritten tests
+  "would correctly fail if findings 1 or 3's bugs were reintroduced". True for finding 1;
+  not for finding 3, whose under-count is deliberately not fixed, so no test can fail on
+  it. The test does correctly verify the 30-day window, which is what it claims in its
+  name.
+
+`format:check` shows 7 failures in this worktree, but those are base-staleness — the
+branch is cut from `617bfc0` and is 46 commits behind; current `main` is prettier-clean, so
+they disappear on merge. Not a defect in this branch.
+
 ## Review Decision
-*(To be recorded by the independent reviewer on re-review: APPROVED / CHANGES_REQUESTED)*
+APPROVED
 
 ## Reviewed Code Commit
-
+c364db7
 
 ## Review Record Commit
 
@@ -213,4 +274,4 @@ addition — a dedicated table, or a `churned_at` column that survives the downg
 ticker) rather than the documented `updated_at`-proxy limitation? Deferred to the product
 owner rather than guessed; current behavior is honestly documented, not silently wrong.
 
-Status: READY_FOR_REVIEW
+Status: APPROVED — pending human sign-off (new platform UI)
