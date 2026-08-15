@@ -8,7 +8,7 @@ This document maintains a real-time record of all parallel Git worktrees, active
 
 | Worktree Path | Branch Name | Feature / Task | Preview URL | Status | Created |
 |---|---|---|---|---|---|
-| *(No active worktrees running)* | — | — | — | — | — |
+| `.worktrees/grx-ai-studio-redesign` | `feature/FRONTEND/GRX-AI-STUDIO-001` | Global Header + AI Marketing Copilot redesign (`/dashboard/ai`) | `http://localhost:3001` | Informal review done, one fix commit landed (`00a1ed4`), not yet merged | 2026-08-15 |
 
 ---
 
@@ -33,4 +33,11 @@ This document maintains a real-time record of all parallel Git worktrees, active
 1. **Isolation**: Every parallel feature must be built inside `.worktrees/<feature-name>` on a branch named `feature/FRONTEND/...` or `feature/BACKEND/...`.
 2. **Preview Server**: Frontend features run a secondary preview dev server on **`http://localhost:3001`**.
 3. **Commit Attribution**: Every commit includes `Co-Authored-By: Ravi Kant Yadav <ravikantyadav1918@gmail.com>`.
-4. **Merge Protocol**: Once user reviews `http://localhost:3001` and confirms *"Looks good"*, merge to `main`, run build/tests, and remove the worktree.
+4. **Merge Protocol**: A `pr_reviews/<branch>.md` handoff file must exist with
+   `Review Decision: APPROVED` from a different agent/tool, and nothing outside
+   `pr_reviews/**` may have changed between `Reviewed Code Commit` and the branch's
+   current HEAD (see [AGENT_EXECUTION_RULES.md §Independent
+   review](../12-development/AGENT_EXECUTION_RULES.md#independent-review-mandatory-before-merge)).
+   For UI/UX or customer-facing work, the user must also review `http://localhost:3001`
+   and confirm *"Looks good"*. Once both are satisfied, merge to `main`, run build/tests,
+   and remove the worktree.

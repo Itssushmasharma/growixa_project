@@ -10,6 +10,13 @@
 Statuses: `BACKLOG`, `READY`, `IN_PROGRESS`, `BLOCKED`, `IN_REVIEW`, `TESTING`, `DONE`,
 `DEFERRED`, `CANCELLED`. Priorities: `P0`, `P1`, `P2`, `P3`.
 
+`IN_REVIEW` covers the entire independent-review cycle for a branch — including any
+fix/re-review rounds — until it merges (`DONE`) or becomes genuinely `BLOCKED`.
+Review-specific states (`READY_FOR_REVIEW` / `CHANGES_REQUESTED` / `APPROVED`) are not
+task statuses — they live only inside that branch's `pr_reviews/<branch-name>.md` file
+(see [AGENT_EXECUTION_RULES.md §Independent
+review](../12-development/AGENT_EXECUTION_RULES.md#independent-review-mandatory-before-merge)).
+
 No task below `READY` may be started (per [AGENT_EXECUTION_RULES.md](../12-development/AGENT_EXECUTION_RULES.md)).
 A task becomes `READY` only after its dependencies are `DONE` and the
 [Development Readiness Gate](DEVELOPMENT_READINESS.md) passes for its slice.
