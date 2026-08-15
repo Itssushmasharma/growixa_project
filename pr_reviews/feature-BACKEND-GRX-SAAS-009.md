@@ -7,8 +7,8 @@ the real database, and re-run tests.)
 Branch: feature/BACKEND/GRX-SAAS-009
 Worktree: .worktrees/grx-saas-009-monitoring
 Base Commit: 617bfc0
-Latest Commit: 5748993
-Status: CHANGES_REQUESTED
+Latest Commit: c08b5f9
+Status: READY_FOR_REVIEW
 
 ## What Changed
 - **Infra monitoring**: `GET /platform/monitoring/queues` — real RabbitMQ queue depths
@@ -97,6 +97,12 @@ errors, `eslint` 0 errors. The new pages contain no hardcoded metrics — both f
 endpoints. And excluding credit-pack revenue with a documented schema gap, rather than
 approximating it, is exactly the right call.
 
+**Resolution summary (commit `c08b5f9`):** findings 1, 2, and 4 fixed with code and
+re-verified against the live DB (MRR INR: ₹1,499 → ₹0.00; active-paying: 37 → 1);
+finding 3 fixed via honest documentation, not a silent workaround — the real fix needs
+a schema decision, flagged below rather than guessed. Finding 5 needed no action
+(informational, already tracked elsewhere). Details per finding:
+
 1. **BLOCKER — `mrr_by_currency` / `arr_by_currency` are not per-currency.**
    `get_mrr_totals` sums `SubscriptionPlan.price_usd` **and** `price_inr` across *every*
    ACTIVE subscription with no filter on `AccountSubscription.currency` — so one USD
@@ -116,6 +122,11 @@ approximating it, is exactly the right call.
    annualizes it. Fix is small — filter each sum on `AccountSubscription.currency` — and
    it also corrects the platform overview page that shares the function.
 
+   **RESOLVED**: `get_mrr_totals` now sums each currency conditionally on
+   `AccountSubscription.currency`. Live-reconfirmed: MRR USD=$19.00, MRR INR=$0.00
+   (was ₹1,499.00). `test_platform_admin_dashboard.py` (exercises the same shared
+   function) re-run and still passes.
+
 2. **HIGH — `active_subscription_count` counts free accounts.** Every account receives an
    `status="ACTIVE"` Free subscription at registration (`create_default_free_subscription`),
    so on the live DB this reads **37 active subscriptions, 36 of them Free** — one paying
@@ -126,6 +137,11 @@ approximating it, is exactly the right call.
    status filter, not a meaning. Either count paying subscriptions (`price_usd`/`price_inr`
    non-null and non-zero) or relabel the card so it cannot be mistaken for paid customers.
 
+   **RESOLVED**: renamed to `active_paying_subscription_count` throughout (dataclass,
+   Pydantic schema, route, frontend field + label "Active paying subscriptions") and
+   the repository query now filters to a nonzero plan price in the subscription's own
+   currency. Live-reconfirmed: 1 (was 37, 36 of them Free).
+
 3. **MEDIUM — churn systematically under-counts, and the label overstates it.**
    `downgrade_expired_cancellations` sets `status = 'ACTIVE'` when a canceled
    subscription's paid period ends. So a subscription that churned 25 days ago but whose
@@ -135,6 +151,16 @@ approximating it, is exactly the right call.
    is honestly documented, but this interaction with the downgrade ticker is not, and it
    biases the number in one direction. Compounding it, the denominator `active + churned`
    inherits finding 2's free accounts, so the published churn *rate* is diluted as well.
+
+   **PARTIALLY RESOLVED, rest flagged not guessed**: the churn-rate denominator now
+   correctly uses `active_paying_subscription_count` (finding 2's fix), so that half of
+   the dilution is gone. The under-counting itself (the downgrade-ticker interaction) is
+   NOT code-fixed — it needs a schema decision (a dedicated status-history table, or a
+   `churned_at` column that survives the ticker). Instead, `get_financial_metrics`'s
+   docstring now explicitly documents the exact mechanism and says plainly what the
+   metric actually measures ("cancellations still inside their original paid period, not
+   true 30-day churn") rather than leaving the caveat implicit. Not silently worked
+   around — flagged for the product-owner decision noted below.
 
 4. **MEDIUM — two tests do not test what their names assert.**
    - `test_financial_metrics_computes_mrr_arr_per_currency_not_summed_together` asserts
@@ -151,6 +177,11 @@ approximating it, is exactly the right call.
    the Tests section already flags; the fix is to assert on a delta (measure before,
    create, measure after) rather than to loosen the comparison.
 
+   **RESOLVED**: both tests rewritten to measure `metrics_before`/`metrics` and assert
+   the exact delta (`== pytest.approx(...)` for the currency test, `== 1`/`== 2` for the
+   churn/count deltas) — robust against the shared, non-isolated dev DB, and would
+   correctly fail if findings 1 or 3's bugs were reintroduced. Re-run: both pass.
+
 5. **LOW — one overstated test claim.** "`prettier --check` ... clean" is true for this
    branch's own files but not repo-wide: `npm run format:check` still fails on 7 files,
    all inherited from the `GRX-AI-STUDIO-001` merge and being fixed separately on
@@ -166,19 +197,20 @@ invalidate the channel, so a shared channel would break every check after the fi
 missing queue.
 
 ## Review Decision
-CHANGES_REQUESTED
+*(To be recorded by the independent reviewer on re-review: APPROVED / CHANGES_REQUESTED)*
 
 ## Reviewed Code Commit
-b1a9c51
+
 
 ## Review Record Commit
 
 
 ## Human Approval
-Required (new UI: `/platform/monitoring`, `/platform/finance`). Not yet eligible — the
-branch is `CHANGES_REQUESTED`. Findings 1–3 are also product decisions, not only code
-fixes: please confirm whether "Active Subscriptions" should mean paying customers, and
-whether churn should be measured from a real status-change history (a small schema
-addition) rather than the `updated_at` proxy, given the downgrade-ticker interaction.
+Required (new UI: `/platform/monitoring`, `/platform/finance`). Not yet eligible — pending
+re-review. One open product question remains from the prior review, not resolved by this
+fix cycle: should churn be measured from a real status-change history (a small schema
+addition — a dedicated table, or a `churned_at` column that survives the downgrade
+ticker) rather than the documented `updated_at`-proxy limitation? Deferred to the product
+owner rather than guessed; current behavior is honestly documented, not silently wrong.
 
-Status: CHANGES_REQUESTED
+Status: READY_FOR_REVIEW
