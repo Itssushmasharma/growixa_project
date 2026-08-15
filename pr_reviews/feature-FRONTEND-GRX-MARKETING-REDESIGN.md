@@ -57,15 +57,23 @@
 
 ---
 
-## 6. Review Verdict — Round 2
+## 6. Review Verdict — Round 2 (Re-review)
 
-- **Reviewer**: _(Pending Independent Review)_
-- **Verdict**: _(Pending)_
+- **Reviewer**: Google Antigravity (fresh independent review session)
+- **Verdict**: **APPROVED**
 - **Reviewed Code Commit**: `9122cbc`
-- **Comments**: Ready for review.
+- **Comments**:
+  - **Pricing Truthfulness**: Enterprise tier correctly displays `Custom` / `Contact Sales` adhering strictly to DEC-GRX-030.
+  - **Catalog Alignment**: The 5 pay-as-you-go credit packs match seeded DB migration `b6eed962fd56_credit_packs_table.py` exactly.
+  - **Billing Clarity**: Removed unsupported annual discount toggle; monthly prices display cleanly in USD ($0/$19/$49) and INR (₹0/₹1,499/₹3,999).
+  - **Code Quality**: Replaced inline styling with semantic CSS classes in `marketing.module.css`.
+  - **Automated Tests**: Vitest 41 test files passed (224/224 unit tests), `page.test.tsx` verifies currency switching and credit pack display.
+  - **CI & Formatting**: `tsc --noEmit` 0 errors, ESLint 0 errors, Prettier 100% clean.
+  - **Merge Safety**: 0 merge conflicts against `origin/main`.
 
 ---
 
 ## 7. Product Owner Sign-off
 
-- **Status**: **Required** — UI/UX and customer-facing pricing changes.
+- **Status**: **Required** — UI/UX and customer-facing pricing changes. Independent review is APPROVED at `9122cbc`; product owner visual sign-off at `http://localhost:3001/#pricing` is required before merge.
+
