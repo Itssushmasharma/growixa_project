@@ -72,5 +72,8 @@
 
 ## 7. Product Owner Sign-off
 
-- **Status**: **Required** — UI/UX and customer-facing changes. Independent review is APPROVED at `33aa174`; product owner visual sign-off at `http://localhost:3001` is required before merge.
+- **Status**: **APPROVED** ✅
+- **Signed off by**: Ravi Kant Yadav (product owner) — 2026-08-16
+- **Note**: Visual appearance and gallery features confirmed. Cleared for merge to `main`.
+
 
