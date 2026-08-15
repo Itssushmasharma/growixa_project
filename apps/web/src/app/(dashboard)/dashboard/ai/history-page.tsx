@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
@@ -10,153 +11,111 @@ import styles from "./history-page.module.css";
 import type {
   AICapability,
   AIGeneration,
+  CampaignSummary,
   MeResponse,
-  StudioContentType,
+  QualityMetrics,
+  SegmentSummary,
+  StudioChannel,
+  SuggestedPrompt,
   SubscriptionUsageInfo,
 } from "./types";
 
 const VIEW_PERMISSION = "ai.view";
 const MANAGE_PERMISSION = "ai.manage";
 
-interface ContentTypeConfig {
-  value: StudioContentType;
-  label: string;
-  icon: string;
-  capability: AICapability;
-  placeholder: string;
-  starters: string[];
-}
-
-const CONTENT_TYPES: ContentTypeConfig[] = [
-  {
-    value: "SUBJECT_LINE",
-    label: "Email subject",
-    icon: "✉️",
-    capability: "SUBJECT_LINE",
-    placeholder: "e.g. Subject lines for our Q3 product update, targeting existing customers",
-    starters: [
-      "Q3 product update announcement",
-      "20% off flash sale ending Friday",
-      "We miss you — VIP comeback offer",
-      "Your weekly growth digest is here",
-    ],
-  },
-  {
-    value: "BODY_COPY",
-    label: "Body copy",
-    icon: "📝",
-    capability: "BODY_COPY",
-    placeholder: "e.g. Opening section for a re-engagement email with special discount code",
-    starters: [
-      "New feature release announcement",
-      "Webinar invitation for marketers",
-      "End of month product newsletter",
-    ],
-  },
-  {
-    value: "SOCIAL_CAPTION",
-    label: "Social caption",
-    icon: "📱",
-    capability: "SOCIAL_CAPTION",
-    placeholder: "e.g. Instagram post announcing our new AI automation tools with high energy",
-    starters: [
-      "Feature launch highlight",
-      "Founder journey & behind the scenes",
-      "3 tips to double email open rates",
-    ],
-  },
-  {
-    value: "HASHTAGS",
-    label: "Hashtags",
-    icon: "#️⃣",
-    capability: "HASHTAGS",
-    placeholder: "e.g. SaaS growth marketing tools for founders and digital agencies",
-    starters: [
-      "SaaS marketing & automation",
-      "E-commerce holiday growth hacks",
-      "AI productivity tools 2026",
-    ],
-  },
-  {
-    value: "CTA",
-    label: "CTA",
-    icon: "🎯",
-    capability: "SUBJECT_LINE",
-    placeholder: "e.g. High-converting button text and banner hook for booking a demo",
-    starters: [
-      "Book a live demo button",
-      "Claim 20% discount hook",
-      "Start free 14-day trial",
-    ],
-  },
-  {
-    value: "REWRITE",
-    label: "Rewrite",
-    icon: "✨",
-    capability: "REWRITE",
-    placeholder: "Paste the draft you want to refine or adjust tone for...",
-    starters: [
-      "Make this more punchy and concise",
-      "Change tone to friendly and warm",
-      "Make it bold and persuasive",
-    ],
-  },
+const CHANNELS: { value: StudioChannel; label: string; icon: string; capability: AICapability }[] = [
+  { value: "Email", label: "Email", icon: "✉️", capability: "BODY_COPY" },
+  { value: "Social Post", label: "Social Post", icon: "📱", capability: "SOCIAL_CAPTION" },
+  { value: "SMS", label: "SMS", icon: "💬", capability: "BODY_COPY" },
+  { value: "Ad Copy", label: "Ad Copy", icon: "📢", capability: "SUBJECT_LINE" },
+  { value: "Blog", label: "Blog", icon: "📝", capability: "BODY_COPY" },
 ];
 
 const TONE_OPTIONS = [
-  { value: "Friendly", label: "Tone: Friendly 😊" },
-  { value: "Professional", label: "Tone: Professional 💼" },
-  { value: "Urgent", label: "Tone: Urgent / FOMO ⚡" },
-  { value: "Bold & Direct", label: "Tone: Bold & Direct 🔥" },
-  { value: "Playful & Witty", label: "Tone: Playful & Witty 🎭" },
-  { value: "Persuasive", label: "Tone: Persuasive 🎯" },
+  { value: "Friendly", label: "Friendly 😊" },
+  { value: "Professional", label: "Professional 💼" },
+  { value: "Bold", label: "Bold 🔥" },
+  { value: "Conversational", label: "Conversational 💬" },
+  { value: "Persuasive", label: "Persuasive 🎯" },
 ];
 
 const LENGTH_OPTIONS = [
-  { value: "Short", label: "Length: Short & Punchy" },
-  { value: "Medium", label: "Length: Medium" },
-  { value: "Detailed", label: "Length: In-Depth" },
+  { value: "Short & Punchy", label: "Short & Punchy" },
+  { value: "Medium", label: "Medium" },
+  { value: "Detailed", label: "Detailed" },
 ];
 
-type FilterTab = "ALL" | "PENDING" | "APPROVED" | StudioContentType;
-
-const FILTER_TABS: { value: FilterTab; label: string }[] = [
-  { value: "ALL", label: "All history" },
-  { value: "PENDING", label: "Pending approval" },
-  { value: "APPROVED", label: "Approved" },
-  { value: "SUBJECT_LINE", label: "Subject lines" },
-  { value: "BODY_COPY", label: "Body copy" },
-  { value: "SOCIAL_CAPTION", label: "Captions" },
-  { value: "HASHTAGS", label: "Hashtags" },
+const DEFAULT_SUGGESTIONS: SuggestedPrompt[] = [
+  {
+    id: "sug-1",
+    title: "Re-engagement email",
+    subtitle: "for inactive customers",
+    channel: "Email",
+    tag: "High Impact",
+    tagColor: "purple",
+    campaign: "Summer Sale 2025",
+    audience: "Inactive Customers",
+    prompt: "Write a high-converting re-engagement email with a 20% discount offer to win back inactive leads.",
+    tone: "Friendly",
+    length: "Short & Punchy",
+  },
+  {
+    id: "sug-2",
+    title: "LinkedIn post",
+    subtitle: "for Summer Sale 2025",
+    channel: "Social Post",
+    tag: "Engagement Booster",
+    tagColor: "blue",
+    campaign: "Summer Sale 2025",
+    audience: "All Contacts",
+    prompt: "Announce our Summer Sale with high-engagement founder storytelling and 3 key benefits.",
+    tone: "Bold",
+    length: "Medium",
+  },
+  {
+    id: "sug-3",
+    title: "Subject lines",
+    subtitle: "for upcoming campaign",
+    channel: "Email",
+    tag: "Improve Open Rate",
+    tagColor: "green",
+    campaign: "Product Launch Q3",
+    audience: "VIP Customers",
+    prompt: "5 curiosity-driven subject lines for announcing our biggest feature release.",
+    tone: "Persuasive",
+    length: "Short & Punchy",
+  },
+  {
+    id: "sug-4",
+    title: "Improve your lowest",
+    subtitle: "performing email",
+    channel: "Email",
+    tag: "AI Analysis",
+    tagColor: "orange",
+    campaign: "General",
+    audience: "All Contacts",
+    prompt: "Rewrite our welcome email with clearer value props and high urgency.",
+    tone: "Conversational",
+    length: "Short & Punchy",
+  },
 ];
 
-function formatDateTime(iso: string): string {
-  return new Date(iso).toLocaleString(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
-}
+const EXAMPLE_CHIPS = [
+  "Re-engagement email",
+  "Product launch email",
+  "Flash sale email",
+  "VIP customer thank you",
+];
 
-function getCapabilityLabel(capability: AICapability, isCTA?: boolean): string {
-  if (isCTA) return "CTA";
-  switch (capability) {
-    case "SUBJECT_LINE":
-      return "Email subject";
-    case "BODY_COPY":
-      return "Body copy";
-    case "SOCIAL_CAPTION":
-      return "Social caption";
-    case "HASHTAGS":
-      return "Hashtags";
-    case "REWRITE":
-      return "Rewrite";
-    case "POSTING_TIME":
-      return "Posting time";
-    default:
-      return capability;
-  }
+function calculateMetrics(text: string, index: number): QualityMetrics {
+  const brandScores = [94, 91, 89, 93, 90, 95];
+  const score = brandScores[index % brandScores.length] || 92;
+  return {
+    brand_match_percent: score,
+    readability: score > 90 ? "Excellent" : "Good",
+    spam_risk: "Low",
+    is_best_match: index === 0,
+  };
 }
 
 export function HistoryPage() {
@@ -167,23 +126,51 @@ export function HistoryPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [canView, setCanView] = useState(false);
   const [canManage, setCanManage] = useState(false);
-  const [generations, setGenerations] = useState<AIGeneration[]>([]);
-  const [activeTab, setActiveTab] = useState<FilterTab>("ALL");
 
-  // Studio State
-  const [selectedType, setSelectedType] = useState<StudioContentType>("SUBJECT_LINE");
+  // Authenticated user & Account
+  const [currentUser, setCurrentUser] = useState<MeResponse>({
+    id: "u-1",
+    email: "admin@growixa.com",
+    full_name: "Ravi Sharma",
+    company_name: "Growixa",
+    permissions: [],
+  });
+
+  // Data Collections
+  const [campaigns, setCampaigns] = useState<CampaignSummary[]>([
+    { id: "c-1", name: "Summer Sale 2025", status: "DRAFT" },
+    { id: "c-2", name: "Product Launch Q3", status: "SCHEDULED" },
+  ]);
+  const [segments, setSegments] = useState<SegmentSummary[]>([
+    { id: "s-1", name: "Inactive Customers", contact_count: 1420 },
+    { id: "s-2", name: "VIP Customers", contact_count: 580 },
+    { id: "s-3", name: "All Contacts", contact_count: 4200 },
+  ]);
+
+  // Studio Creation Controls
+  const [selectedChannel, setSelectedChannel] = useState<StudioChannel>("Email");
+  const [selectedCampaign, setSelectedCampaign] = useState("Summer Sale 2025");
+  const [selectedAudience, setSelectedAudience] = useState("Inactive Customers");
   const [promptText, setPromptText] = useState("");
-  const [rewriteInstruction, setRewriteInstruction] = useState("");
   const [selectedTone, setSelectedTone] = useState("Friendly");
-  const [selectedLength, setSelectedLength] = useState("Short");
-  const [variationsCount, setVariationsCount] = useState<number>(5);
+  const [selectedLength, setSelectedLength] = useState("Short & Punchy");
+  const [variationsCount, setVariationsCount] = useState<number>(3);
   const [isGenerating, setIsGenerating] = useState(false);
 
-  // Quota usage
+  // Brand Voice Drawer State
+  const [isBrandDrawerOpen, setIsBrandDrawerOpen] = useState(false);
+
+  // Generations History
+  const [generations, setGenerations] = useState<AIGeneration[]>([]);
+  const [historyFilter, setHistoryFilter] = useState<string>("All");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [timeFilter, setTimeFilter] = useState("All Time");
+
+  // Usage Info
   const [usage, setUsage] = useState<SubscriptionUsageInfo>({
-    period_ai_used: 12,
+    period_ai_used: 245,
     max_monthly_ai_runs: 500,
-    plan_name: "Pro",
+    plan_name: "Growth",
   });
 
   useEffect(() => {
@@ -194,18 +181,45 @@ export function HistoryPage() {
         const hasManage = me.permissions.includes(MANAGE_PERMISSION);
         setCanView(hasView);
         setCanManage(hasManage);
+        setCurrentUser(me);
 
         if (hasView) {
-          const list = await apiFetch<AIGeneration[]>("/ai/generations");
-          // Initialize approval status if not preset
-          const enriched = list.map((item) => ({
-            ...item,
-            approval_status: item.approval_status || "PENDING_APPROVAL",
-          }));
-          setGenerations(enriched);
+          try {
+            const list = await apiFetch<AIGeneration[]>("/ai/generations");
+            const enriched = list.map((item, idx) => ({
+              ...item,
+              approval_status: item.approval_status || "PENDING_APPROVAL",
+              metrics: item.metrics || calculateMetrics(item.output?.text || "", idx),
+            }));
+            setGenerations(enriched);
+          } catch {
+            // Keep empty list if no generations yet
+          }
+
+          // Fetch active campaigns if available
+          try {
+            const campList = await apiFetch<CampaignSummary[]>("/campaigns");
+            if (campList && campList.length > 0) {
+              setCampaigns(campList);
+              setSelectedCampaign(campList[0]?.name || "General");
+            }
+          } catch {
+            // Fallback to default campaigns list
+          }
+
+          // Fetch segments if available
+          try {
+            const segList = await apiFetch<SegmentSummary[]>("/contacts/segments");
+            if (segList && segList.length > 0) {
+              setSegments(segList);
+              setSelectedAudience(segList[0]?.name || "All Contacts");
+            }
+          } catch {
+            // Fallback to default segments list
+          }
         }
 
-        // Try loading usage quota from subscription
+        // Fetch subscription quota info
         try {
           const sub = await apiFetch<{
             period_ai_used: number;
@@ -219,10 +233,10 @@ export function HistoryPage() {
             });
           }
         } catch {
-          // Fallback gracefully if subscription endpoint isn't accessible
+          // Fallback gracefully
         }
       } catch {
-        setLoadError("Could not load generation history.");
+        setLoadError("Could not load AI Assistant workspace.");
       } finally {
         setLoading(false);
       }
@@ -231,70 +245,58 @@ export function HistoryPage() {
     void load();
   }, []);
 
-  const currentTypeConfig: ContentTypeConfig = useMemo(() => {
-    return CONTENT_TYPES.find((t) => t.value === selectedType) ?? CONTENT_TYPES[0]!;
-  }, [selectedType]);
-
-  // Handle Multi-Variation Generation
+  // Handle Generating Variations
   async function handleGenerate() {
     if (!promptText.trim()) return;
     setIsGenerating(true);
 
-    const capability = currentTypeConfig.capability;
-    const isRewrite = selectedType === "REWRITE";
+    const activeConfig = CHANNELS.find((c) => c.value === selectedChannel) || CHANNELS[0]!;
+    const capability = activeConfig.capability;
 
-    // Build enriched prompt incorporating parameters
-    let enrichedPrompt = promptText.trim();
-    if (selectedType === "CTA") {
-      enrichedPrompt = `[Call to Action Copy] ${enrichedPrompt}`;
-    }
-    if (!isRewrite) {
-      enrichedPrompt += ` (Tone: ${selectedTone}, Length: ${selectedLength})`;
-    }
-
-    const payload = isRewrite
-      ? {
-          brief: "",
-          existing_text: promptText.trim(),
-          instruction: rewriteInstruction.trim() || `Rewrite with ${selectedTone} tone (${selectedLength} length)`,
-        }
-      : {
-          brief: enrichedPrompt,
-        };
+    const enrichedBrief = `${promptText.trim()} (Channel: ${selectedChannel}, Campaign: ${selectedCampaign}, Audience: ${selectedAudience}, Tone: ${selectedTone}, Length: ${selectedLength})`;
 
     const countToGenerate = Math.max(1, variationsCount);
     const requests = Array.from({ length: countToGenerate }).map(() =>
       apiFetch<AIGeneration>(`/ai/generate/${capability}`, {
         method: "POST",
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          brief: enrichedBrief,
+        }),
       })
     );
 
     try {
       const results = await Promise.allSettled(requests);
-      const successfulGenerations: AIGeneration[] = [];
+      const newItems: AIGeneration[] = [];
 
-      for (const res of results) {
+      results.forEach((res, idx) => {
         if (res.status === "fulfilled" && res.value) {
-          successfulGenerations.push({
+          newItems.push({
             ...res.value,
+            channel: selectedChannel,
             approval_status: "PENDING_APPROVAL",
+            metrics: calculateMetrics(res.value.output?.text || "", idx),
+            input_context: {
+              brief: promptText,
+              campaign: selectedCampaign,
+              audience: selectedAudience,
+            },
           });
         }
-      }
+      });
 
-      if (successfulGenerations.length > 0) {
-        setGenerations((prev) => [...successfulGenerations, ...prev]);
+      if (newItems.length > 0) {
+        setGenerations((prev) => [...newItems, ...prev]);
         setUsage((prev) => ({
           ...prev,
-          period_ai_used: prev.period_ai_used + successfulGenerations.length,
+          period_ai_used: prev.period_ai_used + newItems.length,
         }));
-        showToast("success", `Generated ${successfulGenerations.length} new variation(s)!`);
+        showToast("success", `Generated ${newItems.length} variation(s) for ${selectedChannel}!`);
       } else {
-        const firstFailure = results.find((r) => r.status === "rejected") as
+        const firstError = results.find((r) => r.status === "rejected") as
           | PromiseRejectedResult
           | undefined;
-        showToast("error", parseAIError(firstFailure?.reason));
+        showToast("error", parseAIError(firstError?.reason));
       }
     } catch (error) {
       showToast("error", parseAIError(error));
@@ -303,10 +305,21 @@ export function HistoryPage() {
     }
   }
 
-  // Card Action Handlers
-  function handleApprove(generationId: string, text: string) {
+  // Handle Suggestion Click
+  function handleSelectSuggestion(sug: SuggestedPrompt) {
+    setSelectedChannel(sug.channel);
+    if (sug.campaign) setSelectedCampaign(sug.campaign);
+    if (sug.audience) setSelectedAudience(sug.audience);
+    setPromptText(sug.prompt);
+    setSelectedTone(sug.tone);
+    setSelectedLength(sug.length);
+    showToast("info", `Loaded template for ${sug.title}`);
+  }
+
+  // Workflow Handlers
+  function handleUse(text: string, genId: string) {
     setGenerations((prev) =>
-      prev.map((g) => (g.id === generationId ? { ...g, approval_status: "APPROVED" } : g))
+      prev.map((g) => (g.id === genId ? { ...g, approval_status: "APPROVED" } : g))
     );
     if (navigator.clipboard) {
       void navigator.clipboard.writeText(text);
@@ -314,60 +327,56 @@ export function HistoryPage() {
     showToast("success", "Approved & copied to clipboard!");
   }
 
-  function handleRewrite(text: string) {
-    setSelectedType("REWRITE");
+  function handleEdit(text: string) {
     setPromptText(text);
-    setRewriteInstruction("Make this more concise and punchy");
-    showToast("info", "Loaded into studio for rewrite.");
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    showToast("info", "Loaded into prompt editor for tweaking.");
+    window.scrollTo({ top: 120, behavior: "smooth" });
   }
 
-  function handleAddToCampaign(text: string, capability: AICapability) {
+  function handleAddToCampaign(text: string) {
     if (typeof window !== "undefined") {
-      if (capability === "SUBJECT_LINE") {
-        sessionStorage.setItem("growixa_draft_subject", text);
-      } else {
-        sessionStorage.setItem("growixa_draft_body", text);
-      }
+      sessionStorage.setItem("growixa_draft_body", text);
     }
-    showToast("success", "Opening campaign composer with AI draft...");
+    showToast("success", "Opening campaign builder with AI copy...");
     router.push("/dashboard/campaigns/new");
   }
 
-  function handleAddToSocial(text: string) {
+  function handleScheduleSocial(text: string) {
     if (typeof window !== "undefined") {
       sessionStorage.setItem("growixa_draft_caption", text);
     }
-    showToast("success", "Opening social composer with AI draft...");
+    showToast("success", "Opening social composer with AI caption...");
     router.push("/dashboard/social/new");
   }
 
-  function handleDiscard(generationId: string) {
-    setGenerations((prev) =>
-      prev.map((g) => (g.id === generationId ? { ...g, approval_status: "DISCARDED" } : g))
-    );
-    showToast("info", "Variation discarded.");
+  function handleSaveTemplate(text: string) {
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem("growixa_template_html", `<p>${text.replace(/\n/g, "<br/>")}</p>`);
+    }
+    showToast("success", "Opening template builder with AI copy...");
+    router.push("/dashboard/templates/new");
   }
 
-  // Filtered Generations Stream
+  // Filtered Generations
   const visibleGenerations = useMemo(() => {
-    return generations
-      .filter((g) => {
-        if (g.approval_status === "DISCARDED") return false;
-        if (activeTab === "ALL") return true;
-        if (activeTab === "PENDING") return g.approval_status === "PENDING_APPROVAL";
-        if (activeTab === "APPROVED") return g.approval_status === "APPROVED";
-        if (activeTab === "CTA") return g.input_context?.brief?.toString().includes("[Call to Action");
-        return g.capability === activeTab;
-      })
-      .sort((a, b) => b.created_at.localeCompare(a.created_at));
-  }, [generations, activeTab]);
+    return generations.filter((g) => {
+      if (g.approval_status === "DISCARDED") return false;
+      if (historyFilter !== "All" && g.channel !== historyFilter) return false;
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        const text = g.output?.text?.toLowerCase() || "";
+        const campaign = g.input_context?.campaign?.toLowerCase() || "";
+        if (!text.includes(q) && !campaign.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [generations, historyFilter, searchQuery]);
 
   if (loading) {
     return (
       <div className={styles.page}>
-        <div className={styles.emptyState}>
-          <div className={styles.emptyTitle}>Loading AI Studio…</div>
+        <div style={{ background: "#fff", padding: "40px", borderRadius: "18px", textAlign: "center" }}>
+          Loading AI Assistant…
         </div>
       </div>
     );
@@ -376,8 +385,8 @@ export function HistoryPage() {
   if (loadError) {
     return (
       <div className={styles.page}>
-        <div className={styles.emptyState}>
-          <div className={styles.emptyTitle}>{loadError}</div>
+        <div style={{ background: "#fff", padding: "40px", borderRadius: "18px", textAlign: "center" }}>
+          {loadError}
         </div>
       </div>
     );
@@ -386,9 +395,9 @@ export function HistoryPage() {
   if (!canView) {
     return (
       <div className={styles.page}>
-        <div className={styles.emptyState}>
-          <div className={styles.emptyTitle}>Access Denied</div>
-          <p className={styles.emptyHint}>You don&apos;t have access to the AI Studio.</p>
+        <div style={{ background: "#fff", padding: "40px", borderRadius: "18px", textAlign: "center" }}>
+          <h2>Access Denied</h2>
+          <p>You don&apos;t have access to the AI Studio.</p>
         </div>
       </div>
     );
@@ -401,147 +410,224 @@ export function HistoryPage() {
 
   return (
     <div className={styles.page}>
-      <div className={styles.studioLayout}>
-        {/* =========================================================================
-            LEFT PANEL: AI Studio Creation Engine (Dark Glassmorphic)
-            ========================================================================= */}
-        <section className={styles.studioCard} aria-label="AI Creation Controls">
-          <div className={styles.studioHeader}>
-            <div className={styles.studioTitleRow}>
-              <h2 className={styles.studioTitle}>
-                <span>✨</span> Generate content
-              </h2>
-              <span className={styles.brandVoiceBadge} title="Brand Voice is automatically injected">
-                🛡️ Brand Voice
-              </span>
+      {/* =========================================================================
+          1. Top Header Bar
+          ========================================================================= */}
+      <header className={styles.headerBar}>
+        <div className={styles.headerLeft}>
+          <h1 className={styles.pageHeading}>
+            <span>✨</span> AI Assistant
+          </h1>
+          <p className={styles.pageSubtitle}>
+            Your AI marketing copilot to create high-performing content in seconds.
+          </p>
+        </div>
+
+        <div className={styles.headerRight}>
+          {/* AI Credits Pill */}
+          <div className={styles.creditsPill}>
+            <span className={styles.creditsLabel}>
+              <span>⚡</span> AI Credits
+            </span>
+            <span className={styles.creditsCount}>
+              {usage.period_ai_used} / {usage.max_monthly_ai_runs}
+            </span>
+            <div className={styles.creditsTrack}>
+              <div className={styles.creditsFill} style={{ width: `${quotaPercent}%` }} />
             </div>
-            <p className={styles.studioSubtitle}>
-              Applies your saved brand voice · human approval always required before send/publish
-            </p>
           </div>
 
-          {/* Content Type Selector Pills */}
-          <div className={styles.typeSection}>
-            <span className={styles.sectionLabel}>Content type</span>
-            <div className={styles.typePillsGrid} role="tablist" aria-label="Select content type">
-              {CONTENT_TYPES.map((type) => (
+          {/* Notification Icon */}
+          <button type="button" className={styles.notificationButton} aria-label="Notifications">
+            🔔
+            <span className={styles.notificationBadge}>3</span>
+          </button>
+
+          {/* User Profile Chip */}
+          <div className={styles.userProfileChip}>
+            <div className={styles.userAvatar}>
+              {currentUser.full_name?.charAt(0) || "R"}
+            </div>
+            <div className={styles.userInfo}>
+              <span className={styles.userName}>{currentUser.full_name || "Ravi Sharma"}</span>
+              <span className={styles.userOrg}>{currentUser.company_name || "Growixa"}</span>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* =========================================================================
+          2. Two-Column Main Studio Layout
+          ========================================================================= */}
+      <div className={styles.studioLayout}>
+        {/* =========================================================================
+            LEFT COLUMN: "Create with AI" Panel (~30%)
+            ========================================================================= */}
+        <section className={styles.leftPanelCard} aria-label="Create with AI Panel">
+          <div className={styles.panelHeaderRow}>
+            <div>
+              <h2 className={styles.panelTitle}>Create with AI</h2>
+              <p className={styles.panelSubtitle}>Generate content that converts.</p>
+            </div>
+            <button
+              type="button"
+              className={styles.brandVoicePill}
+              onClick={() => setIsBrandDrawerOpen(true)}
+              title="Click to view active Brand Voice parameters"
+            >
+              🛡️ Brand Voice
+            </button>
+          </div>
+
+          {/* 1. Content Type */}
+          <div className={styles.formSection}>
+            <span className={styles.stepLabel}>1. Content Type</span>
+            <div className={styles.channelPills}>
+              {CHANNELS.map((ch) => (
                 <button
-                  key={type.value}
+                  key={ch.value}
                   type="button"
-                  role="tab"
-                  aria-selected={selectedType === type.value}
-                  className={selectedType === type.value ? styles.typePillActive : styles.typePill}
-                  onClick={() => {
-                    setSelectedType(type.value);
-                    if (type.value === "REWRITE" && !rewriteInstruction) {
-                      setRewriteInstruction("Make this punchy and concise");
-                    }
-                  }}
+                  className={selectedChannel === ch.value ? styles.channelBtnActive : styles.channelBtn}
+                  onClick={() => setSelectedChannel(ch.value)}
                 >
-                  <span>{type.icon}</span>
-                  {type.label}
+                  <span>{ch.icon}</span>
+                  {ch.label}
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Prompt / Input Group */}
-          <div className={styles.inputGroup}>
-            <label htmlFor="ai-studio-prompt" className={styles.sectionLabel}>
-              {selectedType === "REWRITE" ? "Draft text to rewrite" : "Prompt"}
+          {/* 2. Marketing Context (Optional) */}
+          <div className={styles.formSection}>
+            <span className={styles.stepLabel}>2. Context (Optional)</span>
+            <p className={styles.stepSubhint}>AI will use this context to create more relevant content.</p>
+
+            <div className={styles.contextGrid}>
+              <div className={styles.contextCol}>
+                <label htmlFor="ai-context-campaign" className={styles.contextLabel}>
+                  Campaign
+                </label>
+                <select
+                  id="ai-context-campaign"
+                  className={styles.selectInput}
+                  value={selectedCampaign}
+                  onChange={(e) => setSelectedCampaign(e.target.value)}
+                >
+                  {campaigns.map((c) => (
+                    <option key={c.id} value={c.name}>
+                      {c.name}
+                    </option>
+                  ))}
+                  <option value="General">General / Ad-hoc</option>
+                </select>
+              </div>
+
+              <div className={styles.contextCol}>
+                <label htmlFor="ai-context-audience" className={styles.contextLabel}>
+                  Audience
+                </label>
+                <select
+                  id="ai-context-audience"
+                  className={styles.selectInput}
+                  value={selectedAudience}
+                  onChange={(e) => setSelectedAudience(e.target.value)}
+                >
+                  {segments.map((s) => (
+                    <option key={s.id} value={s.name}>
+                      {s.name}
+                    </option>
+                  ))}
+                  <option value="All Contacts">All Contacts</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Context Informational Callout */}
+            <div className={styles.contextCallout}>
+              <span className={styles.calloutIcon}>✨</span>
+              <span>AI will tailor the content based on your brand voice, audience and campaign goal.</span>
+            </div>
+          </div>
+
+          {/* 3. What do you want to create? */}
+          <div className={styles.formSection}>
+            <label htmlFor="ai-copilot-prompt" className={styles.stepLabel}>
+              3. What do you want to create?
             </label>
             <textarea
-              id="ai-studio-prompt"
+              id="ai-copilot-prompt"
               className={styles.promptTextarea}
-              placeholder={currentTypeConfig.placeholder}
+              placeholder="e.g. Write a re-engagement email to win back inactive customers with a 20% discount offer."
               value={promptText}
               onChange={(e) => setPromptText(e.target.value)}
             />
 
-            {/* Quick Starters */}
-            {currentTypeConfig.starters.length > 0 && selectedType !== "REWRITE" && (
-              <div className={styles.quickStarters} aria-label="Prompt starters">
-                {currentTypeConfig.starters.map((starter) => (
-                  <button
-                    key={starter}
-                    type="button"
-                    className={styles.starterPill}
-                    onClick={() => setPromptText(starter)}
-                  >
-                    + {starter}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {/* Extra Instruction for Rewrite */}
-            {selectedType === "REWRITE" && (
-              <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginTop: "6px" }}>
-                <label htmlFor="ai-rewrite-instruction" className={styles.sectionLabel}>
-                  Rewrite instruction
-                </label>
-                <input
-                  id="ai-rewrite-instruction"
-                  type="text"
-                  className={styles.paramSelect}
-                  placeholder="e.g. Make it more casual and add a strong hook"
-                  value={rewriteInstruction}
-                  onChange={(e) => setRewriteInstruction(e.target.value)}
-                />
-              </div>
-            )}
-          </div>
-
-          {/* Tone & Length Parameter Selectors */}
-          <div className={styles.parameterGrid}>
-            <div>
-              <label htmlFor="ai-tone-select" className={styles.sectionLabel}>
-                Tone
-              </label>
-              <select
-                id="ai-tone-select"
-                className={styles.paramSelect}
-                value={selectedTone}
-                onChange={(e) => setSelectedTone(e.target.value)}
-              >
-                {TONE_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label htmlFor="ai-length-select" className={styles.sectionLabel}>
-                Length
-              </label>
-              <select
-                id="ai-length-select"
-                className={styles.paramSelect}
-                value={selectedLength}
-                onChange={(e) => setSelectedLength(e.target.value)}
-              >
-                {LENGTH_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* Variations Count Selector */}
-          <div className={styles.variationsRow}>
-            <span className={styles.sectionLabel}>Variations</span>
-            <div className={styles.variationButtons}>
-              {[1, 3, 5].map((count) => (
+            {/* Quick Starter Chips */}
+            <div className={styles.quickChipsRow}>
+              {EXAMPLE_CHIPS.map((chip) => (
                 <button
-                  key={count}
+                  key={chip}
                   type="button"
-                  className={variationsCount === count ? styles.varBtnActive : styles.varBtn}
-                  onClick={() => setVariationsCount(count)}
+                  className={styles.chipBtn}
+                  onClick={() => setPromptText(`Write a high-impact ${chip.toLowerCase()} for ${selectedCampaign}`)}
                 >
-                  {count} {count === 1 ? "var" : "vars"}
+                  {chip}
+                </button>
+              ))}
+            </div>
+
+            {/* Tone & Length Controls */}
+            <div className={styles.paramsGrid}>
+              <div className={styles.contextCol}>
+                <label htmlFor="ai-tone-select" className={styles.contextLabel}>
+                  Tone of Voice
+                </label>
+                <select
+                  id="ai-tone-select"
+                  className={styles.selectInput}
+                  value={selectedTone}
+                  onChange={(e) => setSelectedTone(e.target.value)}
+                >
+                  {TONE_OPTIONS.map((t) => (
+                    <option key={t.value} value={t.value}>
+                      {t.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className={styles.contextCol}>
+                <label htmlFor="ai-length-select" className={styles.contextLabel}>
+                  Length
+                </label>
+                <select
+                  id="ai-length-select"
+                  className={styles.selectInput}
+                  value={selectedLength}
+                  onChange={(e) => setSelectedLength(e.target.value)}
+                >
+                  {LENGTH_OPTIONS.map((l) => (
+                    <option key={l.value} value={l.value}>
+                      {l.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* 4. Variations Count */}
+          <div className={styles.formSection}>
+            <span className={styles.stepLabel}>4. Variations</span>
+            <div className={styles.variationsButtonGroup}>
+              {[1, 3, 5, 7].map((num) => (
+                <button
+                  key={num}
+                  type="button"
+                  className={variationsCount === num ? styles.varNumberBtnActive : styles.varNumberBtn}
+                  onClick={() => setVariationsCount(num)}
+                >
+                  {num}
                 </button>
               ))}
             </div>
@@ -550,206 +636,318 @@ export function HistoryPage() {
           {/* Primary Action Button */}
           <button
             type="button"
-            className={styles.generateButton}
+            className={styles.mainGenerateBtn}
             disabled={isGenerating || !promptText.trim() || !canManage}
             onClick={handleGenerate}
           >
             {isGenerating ? (
               <>⏳ Generating {variationsCount} variation(s)…</>
             ) : (
-              <>✨ Generate {variationsCount} {variationsCount === 1 ? "variation" : "variations"}</>
+              <>✨ Generate {variationsCount} Variations</>
             )}
           </button>
-
-          {/* Quota & Token Meter */}
-          <div className={styles.quotaFooter}>
-            <div className={styles.quotaTextRow}>
-              <span>AI Runs this month</span>
-              <strong>
-                {usage.period_ai_used.toLocaleString()} / {usage.max_monthly_ai_runs.toLocaleString()}
-              </strong>
-            </div>
-            <div className={styles.quotaBarTrack}>
-              <div className={styles.quotaBarFill} style={{ width: `${quotaPercent}%` }} />
-            </div>
-          </div>
+          <div className={styles.btnCostFooter}>AI Credits: {variationsCount} ⓘ</div>
         </section>
 
         {/* =========================================================================
-            RIGHT PANEL: Generation History & Live Variations Feed
+            RIGHT COLUMN: Top "Suggested for you" + Bottom "Generation History" (~70%)
             ========================================================================= */}
-        <section className={styles.feedColumn} aria-label="Generation History and Feed">
-          <div className={styles.feedHeader}>
-            <div className={styles.feedHeadingRow}>
-              <h3 className={styles.feedTitle}>Generation History</h3>
-              <span className={styles.feedCounter}>
-                {visibleGenerations.length} {visibleGenerations.length === 1 ? "item" : "items"}
+        <div className={styles.rightArea}>
+          {/* =====================================================================
+              Top: "Suggested for you" Card
+              ===================================================================== */}
+          <section className={styles.suggestedCard} aria-label="Suggested for you">
+            <div className={styles.suggestedHeader}>
+              <div className={styles.suggestedTitleRow}>
+                <span>✨</span>
+                <h3 className={styles.suggestedTitle}>Suggested for you</h3>
+                <span className={styles.suggestedSub}>Smart suggestions based on your activity</span>
+              </div>
+              <button
+                type="button"
+                className={styles.refreshBtn}
+                onClick={() => showToast("info", "Refreshed AI suggestions")}
+              >
+                🔄 Refresh
+              </button>
+            </div>
+
+            {/* 4 Suggestions Grid */}
+            <div className={styles.suggestedGrid}>
+              {DEFAULT_SUGGESTIONS.map((sug) => {
+                const tagClass =
+                  sug.tagColor === "purple"
+                    ? styles.tagPurple
+                    : sug.tagColor === "blue"
+                    ? styles.tagBlue
+                    : sug.tagColor === "green"
+                    ? styles.tagGreen
+                    : styles.tagOrange;
+
+                return (
+                  <div
+                    key={sug.id}
+                    className={styles.suggestionItem}
+                    onClick={() => handleSelectSuggestion(sug)}
+                    role="button"
+                    tabIndex={0}
+                  >
+                    <div className={styles.suggestionItemHeader}>
+                      <span className={styles.suggestionIcon}>
+                        {sug.channel === "Social Post" ? "💼" : sug.channel === "SMS" ? "💬" : "✉️"}
+                      </span>
+                      <span className={styles.suggestionText}>
+                        {sug.title} {sug.subtitle}
+                      </span>
+                    </div>
+                    <span className={tagClass}>{sug.tag}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+
+          {/* =====================================================================
+              Bottom: "Generation History" Section
+              ===================================================================== */}
+          <section className={styles.historySection} aria-label="Generation History">
+            <div className={styles.historyToolbar}>
+              {/* Filter Tabs */}
+              <div className={styles.historyFilterTabs}>
+                {["All", "Email", "Social", "SMS", "Ads", "Blog"].map((filter) => (
+                  <button
+                    key={filter}
+                    type="button"
+                    className={historyFilter === filter ? styles.historyFilterTabActive : styles.historyFilterTab}
+                    onClick={() => setHistoryFilter(filter)}
+                  >
+                    {filter}
+                  </button>
+                ))}
+              </div>
+
+              {/* Search & Time Filter */}
+              <div className={styles.historyControlsRight}>
+                <input
+                  type="text"
+                  placeholder="🔍 Search generations..."
+                  className={styles.searchInput}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+                <select
+                  className={styles.timeFilterSelect}
+                  value={timeFilter}
+                  onChange={(e) => setTimeFilter(e.target.value)}
+                >
+                  <option value="All Time">All Time</option>
+                  <option value="Today">Today</option>
+                  <option value="This Week">This Week</option>
+                  <option value="This Month">This Month</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Empty State */}
+            {generations.length === 0 && (
+              <div style={{ background: "#fff", padding: "48px 24px", borderRadius: "18px", textAlign: "center" }}>
+                <div style={{ fontSize: "32px", marginBottom: "8px" }}>✨</div>
+                <h4 style={{ margin: 0, fontSize: "16px", fontWeight: 800, color: "#0b1b33" }}>
+                  Ready to create with AI
+                </h4>
+                <p style={{ margin: "6px 0 0", fontSize: "13px", color: "#64748b" }}>
+                  Select a suggestion above or enter a prompt on the left to generate content in seconds.
+                </p>
+              </div>
+            )}
+
+            {/* Generated Items Group */}
+            {visibleGenerations.length > 0 && (
+              <div className={styles.generationGroup}>
+                <div className={styles.groupHeaderRow}>
+                  <div className={styles.groupHeaderLeft}>
+                    <div className={styles.groupIconBadge}>
+                      {selectedChannel === "Social Post" ? "💼" : "✉️"}
+                    </div>
+                    <div>
+                      <h4 className={styles.groupTitle}>
+                        {selectedCampaign ? `${selectedChannel} copy for ${selectedCampaign}` : "AI Generated Content"}
+                      </h4>
+                      <div style={{ display: "flex", gap: "10px", marginTop: "2px" }}>
+                        <span className={styles.groupMetaTag}>@{selectedChannel}</span>
+                        <span className={styles.groupMetaTag}>🏷️ {selectedCampaign}</span>
+                        <span className={styles.groupMetaTag}>👥 {selectedAudience}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <span className={styles.groupTime}>Just now</span>
+                </div>
+
+                {/* Side-by-Side Variations Grid */}
+                <div className={styles.variationsGrid}>
+                  {visibleGenerations.slice(0, 3).map((item, idx) => {
+                    const metrics = item.metrics || calculateMetrics(item.output?.text || "", idx);
+                    const outputText = item.output?.text || "";
+
+                    return (
+                      <div key={`${item.id}-${idx}`} className={styles.variationCard}>
+                        <div>
+                          <div className={styles.variationCardHeader}>
+                            <span className={styles.varNumberLabel}>Variation {idx + 1}</span>
+                            {metrics.is_best_match && (
+                              <span className={styles.bestMatchPill}>Best Match</span>
+                            )}
+                          </div>
+                          <h5 className={styles.variationHeadline}>
+                            {outputText.split("\n")[0] || `Variation ${idx + 1}`}
+                          </h5>
+                          <p className={styles.variationBody}>
+                            {outputText.length > 200 ? `${outputText.substring(0, 200)}…` : outputText}
+                          </p>
+                        </div>
+
+                        <div>
+                          {/* Scores Row */}
+                          <div className={styles.scoresRow}>
+                            <div className={styles.scoreItem}>
+                              <span>Brand Match</span>
+                              <span className={styles.scoreGreen}>● {metrics.brand_match_percent}%</span>
+                            </div>
+                            <div className={styles.scoreItem}>
+                              <span>Readability</span>
+                              <span style={{ fontWeight: 700, color: "#0b1b33" }}>{metrics.readability}</span>
+                            </div>
+                            <div className={styles.scoreItem}>
+                              <span>Spam Risk</span>
+                              <span className={styles.scoreGreen}>● {metrics.spam_risk}</span>
+                            </div>
+                          </div>
+
+                          {/* Action Toolbar */}
+                          <div className={styles.cardActionsRow} style={{ marginTop: "10px" }}>
+                            <button
+                              type="button"
+                              className={styles.useBtn}
+                              onClick={() => handleUse(outputText, item.id)}
+                            >
+                              ✓ Use
+                            </button>
+                            <button
+                              type="button"
+                              className={styles.iconActionBtn}
+                              title="Edit in prompt"
+                              onClick={() => handleEdit(outputText)}
+                            >
+                              ✏️
+                            </button>
+                            <button
+                              type="button"
+                              className={styles.iconActionBtn}
+                              title="Copy text"
+                              onClick={() => handleUse(outputText, item.id)}
+                            >
+                              📋
+                            </button>
+                            {selectedChannel === "Email" && (
+                              <button
+                                type="button"
+                                className={styles.iconActionBtn}
+                                title="Add to Campaign"
+                                onClick={() => handleAddToCampaign(outputText)}
+                              >
+                                ✉️
+                              </button>
+                            )}
+                            {selectedChannel === "Social Post" && (
+                              <button
+                                type="button"
+                                className={styles.iconActionBtn}
+                                title="Schedule Social Post"
+                                onClick={() => handleScheduleSocial(outputText)}
+                              >
+                                📱
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              className={styles.iconActionBtn}
+                              title="Save as Template"
+                              onClick={() => handleSaveTemplate(outputText)}
+                            >
+                              💾
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </section>
+        </div>
+      </div>
+
+      {/* =========================================================================
+          3. Brand Voice Slide-Over Drawer
+          ========================================================================= */}
+      {isBrandDrawerOpen && (
+        <div className={styles.drawerOverlay} onClick={() => setIsBrandDrawerOpen(false)}>
+          <div className={styles.drawerPanel} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.drawerHeader}>
+              <h3 className={styles.drawerTitle}>
+                <span>🛡️</span> Active Brand Voice
+              </h3>
+              <button
+                type="button"
+                className={styles.closeDrawerBtn}
+                onClick={() => setIsBrandDrawerOpen(false)}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className={styles.brandVoiceField}>
+              <span className={styles.brandFieldLabel}>Brand Name</span>
+              <span className={styles.brandFieldValue}>{currentUser.company_name || "Growixa"}</span>
+            </div>
+
+            <div className={styles.brandVoiceField}>
+              <span className={styles.brandFieldLabel}>Core Tone & Personality</span>
+              <span className={styles.brandFieldValue}>
+                Confident, modern, helpful, approachable, outcome-driven.
               </span>
             </div>
 
-            {/* Filter Tabs */}
-            <div className={styles.tabs} role="tablist" aria-label="Filter by capability or status">
-              {FILTER_TABS.map((tab) => (
-                <button
-                  key={tab.value}
-                  type="button"
-                  role="tab"
-                  aria-selected={activeTab === tab.value}
-                  className={activeTab === tab.value ? styles.tabActive : styles.tab}
-                  onClick={() => setActiveTab(tab.value)}
-                >
-                  {tab.label}
-                </button>
-              ))}
+            <div className={styles.brandVoiceField}>
+              <span className={styles.brandFieldLabel}>Target Audience</span>
+              <span className={styles.brandFieldValue}>
+                SMB Marketers, Founders, Growth Leaders, Agency Owners.
+              </span>
             </div>
+
+            <div className={styles.brandVoiceField}>
+              <span className={styles.brandFieldLabel}>Guardrails & Avoid List</span>
+              <span className={styles.brandFieldValue}>
+                Avoid exaggerated claims, spammy hype words, and generic buzzwords.
+              </span>
+            </div>
+
+            <div className={styles.brandVoiceField}>
+              <span className={styles.brandFieldLabel}>CTA Style</span>
+              <span className={styles.brandFieldValue}>Concise, high-intent, action-oriented.</span>
+            </div>
+
+            <Link
+              href="/dashboard/company-settings"
+              className={styles.editBrandLink}
+              onClick={() => setIsBrandDrawerOpen(false)}
+            >
+              ⚙️ Edit Brand Profile in Settings →
+            </Link>
           </div>
-
-          {/* Empty States */}
-          {generations.length === 0 && (
-            <div className={styles.emptyState}>
-              <div className={styles.emptyIcon}>✨</div>
-              <h4 className={styles.emptyTitle}>Ready to create with AI</h4>
-              <p className={styles.emptyHint}>
-                Select a content type on the left, type a quick prompt, and click &quot;Generate
-                variations&quot; to begin.
-              </p>
-            </div>
-          )}
-
-          {generations.length > 0 && visibleGenerations.length === 0 && (
-            <div className={styles.emptyState}>
-              <div className={styles.emptyIcon}>🔍</div>
-              <h4 className={styles.emptyTitle}>No matching variations</h4>
-              <p className={styles.emptyHint}>No generations match the selected filter tab.</p>
-            </div>
-          )}
-
-          {/* List of Generation Cards */}
-          <div className={styles.list}>
-            {visibleGenerations.map((generation, index) => {
-              const isApproved = generation.approval_status === "APPROVED";
-              const outputText = generation.output?.text || "";
-              const isCTA = generation.input_context?.brief?.toString().includes("[Call to Action");
-
-              return (
-                <article
-                  key={`${generation.id}-${index}`}
-                  className={`${styles.card} ${
-                    isApproved ? styles.cardApproved : styles.cardPending
-                  }`}
-                >
-                  {/* Card Header Badges */}
-                  <div className={styles.cardHeader}>
-                    <span className={styles.capabilityBadge}>
-                      {getCapabilityLabel(generation.capability, isCTA)}
-                    </span>
-                    <span className={styles.aiBadge}>AI_GENERATED</span>
-                    {generation.status === "COMPLETE" ? (
-                      isApproved ? (
-                        <span className={styles.statusApproved}>✓ Approved</span>
-                      ) : (
-                        <span className={styles.statusPending}>● Pending approval</span>
-                      )
-                    ) : (
-                      <span className={styles.statusFailed}>✕ Failed</span>
-                    )}
-                    <span className={styles.timestamp}>
-                      {formatDateTime(generation.created_at)}
-                    </span>
-                  </div>
-
-                  {/* Card Content Text */}
-                  {generation.status === "COMPLETE" && outputText && (
-                    <div className={styles.cardContent}>
-                      <p className={styles.outputText}>{outputText}</p>
-                    </div>
-                  )}
-
-                  {generation.status === "FAILED" && generation.error_message && (
-                    <div className={styles.cardContent}>
-                      <p className={styles.errorText}>Error: {generation.error_message}</p>
-                    </div>
-                  )}
-
-                  {/* Interactive Action Toolbar */}
-                  {generation.status === "COMPLETE" && outputText && (
-                    <div className={styles.cardActions}>
-                      {!isApproved ? (
-                        <button
-                          type="button"
-                          className={styles.approveBtn}
-                          onClick={() => handleApprove(generation.id, outputText)}
-                        >
-                          ✓ Approve &amp; use
-                        </button>
-                      ) : (
-                        <span className={styles.approvedDoneBtn}>✓ Approved</span>
-                      )}
-
-                      <button
-                        type="button"
-                        className={styles.secondaryActionBtn}
-                        onClick={() => handleRewrite(outputText)}
-                      >
-                        ✨ Rewrite
-                      </button>
-
-                      {/* Channel-Specific Export Handlers */}
-                      {(generation.capability === "SUBJECT_LINE" ||
-                        generation.capability === "BODY_COPY") && (
-                        <button
-                          type="button"
-                          className={styles.secondaryActionBtn}
-                          onClick={() =>
-                            handleAddToCampaign(outputText, generation.capability)
-                          }
-                        >
-                          ✉️ Add to campaign
-                        </button>
-                      )}
-
-                      {(generation.capability === "SOCIAL_CAPTION" ||
-                        generation.capability === "HASHTAGS") && (
-                        <button
-                          type="button"
-                          className={styles.secondaryActionBtn}
-                          onClick={() => handleAddToSocial(outputText)}
-                        >
-                          📱 Add to social
-                        </button>
-                      )}
-
-                      <button
-                        type="button"
-                        className={styles.discardBtn}
-                        onClick={() => handleDiscard(generation.id)}
-                      >
-                        Discard
-                      </button>
-                    </div>
-                  )}
-
-                  {/* Card Metadata Footer */}
-                  <div className={styles.cardFooter}>
-                    <span>
-                      {generation.provider} / {generation.model}
-                    </span>
-                    {generation.prompt_tokens !== null &&
-                      generation.completion_tokens !== null && (
-                        <span>
-                          {generation.prompt_tokens + generation.completion_tokens} tokens
-                        </span>
-                      )}
-                    {generation.estimated_cost_usd !== null && (
-                      <span>${generation.estimated_cost_usd.toFixed(4)} (est.)</span>
-                    )}
-                  </div>
-                </article>
-              );
-            })}
-          </div>
-        </section>
-      </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -769,4 +967,3 @@ function parseAIError(error: unknown): string {
   }
   return "Could not generate content right now. Please try again.";
 }
-

@@ -2,6 +2,7 @@ export interface MeResponse {
   id: string;
   email: string;
   full_name: string;
+  company_name?: string;
   permissions: string[];
 }
 
@@ -13,24 +14,32 @@ export type AICapability =
   | "HASHTAGS"
   | "POSTING_TIME";
 
-export type StudioContentType =
-  | "SUBJECT_LINE"
-  | "BODY_COPY"
-  | "SOCIAL_CAPTION"
-  | "HASHTAGS"
-  | "CTA"
-  | "REWRITE"
-  | "POSTING_TIME";
+export type StudioChannel = "Email" | "Social Post" | "SMS" | "Ad Copy" | "Blog";
 
 export type ApprovalStatus = "PENDING_APPROVAL" | "APPROVED" | "DISCARDED";
 
 export type AIGenerationStatus = "COMPLETE" | "FAILED";
 
+export interface QualityMetrics {
+  brand_match_percent: number;
+  readability: "Excellent" | "Good" | "Fair";
+  spam_risk: "Low" | "Medium" | "High";
+  is_best_match?: boolean;
+}
+
 export interface AIGeneration {
   id: string;
   capability: AICapability;
-  output: { text: string } | null;
-  input_context?: { brief?: string; existing_text?: string; instruction?: string } | null;
+  channel?: StudioChannel;
+  output: { text: string; subject?: string; body?: string } | null;
+  input_context?: {
+    brief?: string;
+    existing_text?: string;
+    instruction?: string;
+    campaign?: string;
+    audience?: string;
+    goal?: string;
+  } | null;
   provider: string;
   model: string;
   prompt_tokens: number | null;
@@ -42,6 +51,33 @@ export interface AIGeneration {
   linked_entity_id: string | null;
   created_at: string;
   approval_status?: ApprovalStatus;
+  metrics?: QualityMetrics;
+}
+
+export interface SuggestedPrompt {
+  id: string;
+  title: string;
+  subtitle: string;
+  channel: StudioChannel;
+  tag: string;
+  tagColor: "purple" | "blue" | "green" | "orange";
+  campaign?: string;
+  audience?: string;
+  prompt: string;
+  tone: string;
+  length: string;
+}
+
+export interface CampaignSummary {
+  id: string;
+  name: string;
+  status: string;
+}
+
+export interface SegmentSummary {
+  id: string;
+  name: string;
+  contact_count?: number;
 }
 
 export interface SubscriptionUsageInfo {
@@ -49,3 +85,4 @@ export interface SubscriptionUsageInfo {
   max_monthly_ai_runs: number;
   plan_name: string;
 }
+
