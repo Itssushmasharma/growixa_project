@@ -736,6 +736,37 @@ tables, not the 4 the placeholder below originally speculated — see `DEC-GRX-0
   failure, matching the "best-effort, never blocks the caller" contract
   `send_verification_email` already had.
 
+### `platform_email_validation_provider_config` (ad hoc, `GRX-SAAS-017`)
+
+- Purpose: the platform-wide real-time, vendor-backed mailbox-verification provider
+  (Clearout.io today) used only for paid-plan accounts' `POST /email-validation/check`
+  calls (`GRX-SAAS-016`'s free syntax/MX/disposable/role check stays available to every
+  account regardless of this table's state). Follows the same "picked one Growixa asked
+  for after weighing self-hosted-SMTP-probing risk against a paid vendor" reasoning
+  captured in `MASTER_TASK_TRACKER.md`'s `GRX-SAAS-016`/`017` rows.
+- Primary key: `id` (UUID)
+- Required fields: `provider` (`CHECK IN ('CLEAROUT')` — widen when a second vendor's
+  adapter actually ships, not before), `api_key_encrypted` (Fernet-encrypted, NOT
+  NULL — unlike `platform_ai_provider_config`'s nullable key, every currently-supported
+  vendor requires one), `is_active` (default `true`)
+- Audit fields: `created_by_platform_admin_id` (FK → `platform_admins.id`), `created_at`,
+  `updated_at`
+- One active vendor at a time: `ux_platform_email_validation_provider_config_active`
+  partial unique index on `WHERE is_active`, same deactivate-then-insert convention as
+  every other platform provider config table.
+- Deliberately platform-level only — no per-account bring-your-own table (unlike AI's
+  `ai_provider_connections`): Growixa buys verification credits wholesale from the
+  configured vendor and meters access by the account's own plan tier, not a
+  customer-supplied key.
+- Resolution (`email_validation/providers/factory.py`): a real-time adapter is returned
+  only when BOTH the calling account's current plan slug isn't `free`
+  (`billing.get_account_subscription_with_plan`) AND this table has an active row —
+  otherwise `None`, and the caller falls back to the free basic check. If the vendor call
+  itself fails at request time (bad key, network error, vendor outage),
+  `services.validate_email` also falls back to the basic check rather than erroring —
+  the response's `verification_level` field (`BASIC`/`REALTIME`) always says which one
+  actually ran.
+
 ## Slice 7 entities (full detail)
 
 Per `DEC-GRX-029`/`DEC-GRX-030`. Module ownership follows

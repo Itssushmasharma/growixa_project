@@ -277,6 +277,25 @@ skip sending (logged).
 |---|---|---|---|---|---|
 | `platform.email.manage` | ✅ | ✅ | ❌ | ❌ | ❌ |
 
+## Ad hoc — Platform email-validation vendor config (`GRX-SAAS-017`)
+
+| Code | Meaning |
+|---|---|
+| `platform.validation.manage` | View/edit the platform-wide real-time email-validation vendor configuration (`platform_email_validation_provider_config`) — Clearout.io today, more vendors can be added the same way later |
+
+Same wiring and trust shape as `platform.ai.manage`/`platform.email.manage`
+(`require_platform_permission`, `platform.owner`/`platform.admin` only — gates an
+encrypted vendor API key). Unlike those two, this config is not a fallback for a
+`.env`-only setting — there was never a `.env`-based email-validation vendor, this is the
+first configuration surface for it. Gates a strictly optional capability: with no active
+row, every account (free or paid) gets the free syntax/MX/disposable/role check
+(`GRX-SAAS-016`) — nothing breaks, a paid-plan account just doesn't get the real-time
+upgrade until a vendor is configured.
+
+| Permission | platform.owner | platform.admin | platform.support | platform.finance | platform.operations |
+|---|---|---|---|---|---|
+| `platform.validation.manage` | ✅ | ✅ | ❌ | ❌ | ❌ |
+
 ## Sprint 5 Phase B — platform-level roles (separate namespace, `GRX-SAAS-002`)
 
 This is a **distinct identity class**, not an addition to the roles/permissions above.

@@ -804,6 +804,28 @@ Indexes: unique partial index `ux_platform_email_provider_config_active` on `WHE
 is_active`. Same migration seeds `platform.email.manage` (platform RBAC) and grants it to
 `platform.owner`/`platform.admin` (see [RBAC.md](../08-security/RBAC.md)).
 
+## `platform_email_validation_provider_config` (ad hoc, `GRX-SAAS-017`)
+
+Mirrors `platform_ai_provider_config`'s shape; migration `fa291f6b37ca`. Platform-level
+only — no per-account bring-your-own table, unlike AI's `ai_provider_connections`.
+
+| Column | Type | Constraints |
+|---|---|---|
+| id | uuid | PK |
+| provider | text | NOT NULL, CHECK IN ('CLEAROUT') |
+| api_key_encrypted | text | NOT NULL |
+| is_active | boolean | NOT NULL, DEFAULT true |
+| created_by_platform_admin_id | uuid | FK → platform_admins.id, NULL |
+| created_at | timestamptz | NOT NULL, DEFAULT now() |
+| updated_at | timestamptz | NOT NULL, DEFAULT now() |
+
+Indexes: unique partial index `ux_platform_email_validation_provider_config_active` on
+`WHERE is_active`. Same migration seeds `platform.validation.manage` (platform RBAC) and
+grants it to `platform.owner`/`platform.admin` (see [RBAC.md](../08-security/RBAC.md)).
+Resolved by `email_validation/providers/factory.py` alongside the calling account's
+current plan (`billing.get_account_subscription_with_plan`) — a real-time vendor is only
+returned when both an active row exists here AND the account's plan slug isn't `free`.
+
 ## Slice 7 (Billing) tables
 
 See [DATA_MODEL.md §Slice 7 entities](DATA_MODEL.md#slice-7-entities-full-detail),

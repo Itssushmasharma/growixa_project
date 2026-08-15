@@ -9,6 +9,163 @@
 
 ## Task worked on
 
+`GRX-SAAS-017` — ad hoc, direct same-session follow-up to `GRX-SAAS-016`. The user saw a
+garbled fake address (`rdntechinfosddssddsd@gmail.com`) come back "Valid" under the free
+checks and asked whether Growixa could do real mailbox verification. Explored self-hosting
+first: confirmed outbound port 25 connects fine from this dev environment (a real SMTP
+banner from Gmail's own MX server), but an actual non-destructive `RCPT TO` probe attempt
+was blocked by this session's own safety classifier as reconnaissance against a real third
+party's mail infrastructure — reinforcing the recommendation to use a real vendor instead
+of self-hosting. User then asked for a platform-admin-configurable, **multi-vendor**
+architecture (not hardcoded to Clearout — "we will add multiple vendor in future"), gated
+to **paid-plan accounts only** (Free tier keeps `GRX-SAAS-016`'s free check), plus a
+per-check **opt-out checkbox** so a paid account isn't forced to spend a credit on every
+check.
+
+## Work completed
+
+New `platform_email_validation_provider_config` table (mirrors
+`platform_ai_provider_config`/`platform_email_provider_config`'s "at most one active row"
+pattern) + `platform.validation.manage` platform RBAC. New `providers/` subpackage:
+`base.py` (`EmailValidationProvider` Protocol, `ProviderVerificationResult`, and a shared
+`STATUS_FALLBACK_REASON` dict), `clearout_provider.py` (raw httpx call to Clearout's
+Instant Email Verification API), `factory.py` (`get_effective_email_validation_provider()`
+— returns a real adapter only when the account's plan isn't `free` AND an active platform
+vendor exists, else `None`, so every account always gets a usable result, never an error).
+New `GET /email-validation/availability` and a `use_realtime` flag on
+`POST /email-validation/check`; `services.validate_email()` uses the vendor's verdict as
+authoritative when a provider is resolved, gracefully falling back to the free basic check
+(with a visible reason) if the vendor call itself fails. New platform-admin page at
+`/platform/email-validation-config` (mirrors the AI-config/email-config page pattern
+exactly). Customer page now shows a `Real-time`/`Basic check` badge and, for paid-plan
+accounts, a real-time opt-out checkbox and an upgraded "What we check" panel.
+
+**The user then configured a real Clearout.io API key live** (via the free tier discussed
+earlier), turning what had been an evidence gap into a fully confirmed integration: the
+exact garbled address that started this now correctly returns `INVALID` with a real
+"Mailbox not found" reason from the vendor. This live call surfaced two real bugs no
+mocked test could have caught (see "Real bugs found" below), both fixed on the spot, plus
+one code-organization issue the user caught by inspection.
+
+## Real bugs found and fixed this session
+
+1. **`sub_status` is an object, not a string**: `clearout_provider.py`'s `_parse_response`
+   originally assumed `data.sub_status` was a plain string and built the reason via a
+   naive f-string. The real live response shape is `{"code": 406, "desc": "Mailbox not
+   found"}` — an object — so the UI was rendering Python's raw dict repr
+   (`{'code': 406, 'desc': 'Mailbox not found'}`) directly to the customer. Fixed by
+   extracting `sub_status.desc`, with a defensive branch still handling a plain-string
+   `sub_status` in case some other status category returns one.
+2. **Vendor name leaking into customer-facing text**: the reason string was prefixed
+   `"Clearout: ..."`. The user caught this immediately ("but error log showing to user
+   that vendor output is?") — a customer should only know "Growixa verified this in real
+   time," not which specific third party did the work, especially once a second vendor is
+   added later. Fixed by dropping the vendor name entirely from every customer-facing
+   reason (the Test Connection error path correctly keeps vendor-specific detail, since
+   that message is platform-admin-only).
+3. **Code-organization fix, caught by the user, not a functional bug**: the
+   customer-facing fallback-reason dictionary was originally defined inside
+   `clearout_provider.py` even though its contents (INVALID/DISPOSABLE/ROLE/RISKY
+   wording) describe this module's own status vocabulary, not anything Clearout-specific
+   — every future vendor adapter would have had to duplicate it. Moved to the shared
+   `providers/base.py` as `STATUS_FALLBACK_REASON`. The user then gave a standing
+   instruction to keep code separation/DRY/scalable practice front-of-mind proactively,
+   saved to memory (`feedback_code_quality_standards.md`) for future sessions in this repo.
+4. **Wording pass**: "uses a vendor credit" → "uses one verification credit" on the
+   customer page and its explanatory copy, per the same never-name-the-vendor principle.
+   The user explicitly deferred wiring real credit-ledger deduction (mirroring how AI runs
+   are metered) as separate, larger future work — the checkbox is informational only for
+   now, not yet gated by an actual quota/balance check.
+
+## Files changed
+
+- `apps/api/migrations/versions/fa291f6b37ca_platform_email_validation_provider_.py` (new)
+- `apps/api/migrations/env.py` (bugfix: `email_validation.models` was never imported here, so `alembic check` couldn't see the new table until added)
+- `apps/api/src/growixa_api/email_validation/models.py` (new)
+- `apps/api/src/growixa_api/email_validation/repositories.py` (new)
+- `apps/api/src/growixa_api/email_validation/providers/{__init__,base,clearout_provider,factory}.py` (new)
+- `apps/api/src/growixa_api/email_validation/{schemas,services,api}.py` (extended)
+- `apps/api/src/growixa_api/platform_admin/api.py` (extended: `email_validation_config_router`)
+- `apps/api/src/growixa_api/app.py` (extended: router registration)
+- `apps/web/src/app/(platform)/platform/(protected)/email-validation-config/{page,email-validation-config-page,email-validation-config-page.module,types,email-validation-config-page.test}.{tsx,tsx,css,ts,tsx}` (new)
+- `apps/web/src/app/(platform)/platform/(protected)/sidebar.tsx` (extended: nav entry)
+- `apps/web/src/app/(dashboard)/dashboard/contacts/verify-email/{verify-email-page,verify-email-page.test}.{tsx,tsx}` (extended)
+- `apps/web/src/app/(dashboard)/dashboard/contacts/types.ts` (extended)
+- `apps/api/tests/test_email_validation.py` (extended, 20 new tests)
+- `apps/api/tests/test_platform_email_validation_config.py` (new, 6 tests)
+- `apps/web/src/app/(platform)/platform/(protected)/email-validation-config/email-validation-config-page.test.tsx` (new, 7 tests)
+- `docs/05-data/{DATA_MODEL,DATABASE_SCHEMA}.md`, `docs/08-security/{RBAC,THREAT_MODEL}.md` (extended)
+- `docs/00-project-control/{MASTER_TASK_TRACKER,PROJECT_STATUS,CHANGELOG,AGENT_HANDOFF}.md`
+
+## Commands executed
+
+```bash
+# apps/api
+env $(grep -v '^#' .env.test | xargs) uv run pytest -q --deselect tests/test_campaign_scheduler_ticker.py --deselect tests/test_social_scheduler_ticker.py
+# 373 passed, 8 skipped (up from 353; scheduler tests deselected due to a pre-existing,
+# unrelated Docker Desktop VM clock-drift issue -- confirmed via SELECT now() vs host
+# time, not caused by this session's changes)
+uv run ruff check . && uv run ruff format --check . && uv run mypy src tests   # clean
+env $(grep -v '^#' .env.test | xargs) uv run alembic check                     # no drift
+
+# apps/web
+npx eslint . && npx tsc --noEmit && npx prettier --check .    # clean
+npx vitest run            # 217 passed
+npx next build              # clean; /platform/email-validation-config compiled
+
+# Live Compose stack
+docker compose build api web && docker compose up -d api web
+```
+
+## Blockers
+
+None.
+
+## Known issues / evidence gaps
+
+- No real credit-ledger deduction yet — a deliberate scope decision, not an oversight.
+  The checkbox and "uses one verification credit" copy are informational; a follow-up
+  pass would need to design pricing/quota for this specific capability and wire it
+  through the existing `check_and_consume_quota`-style billing machinery.
+- Only the `"invalid"` Clearout status (with an object-shaped `sub_status`) has been
+  observed against a real API response. `valid`/`disposable`/`role_based`/`catch_all`/
+  `unknown` are still mapped per Clearout's public documentation only.
+
+## Current state
+
+**`GRX-SAAS-017` is code-complete, tested, and live-verified end-to-end against a real
+Clearout.io API key the user configured directly** — the exact scenario that motivated
+this work (a fake address passing as "Valid") is now fixed and confirmed working, with
+clean, vendor-neutral customer-facing text. Not yet committed as of this handoff entry
+being written.
+
+## Exact next task
+
+Commit `GRX-SAAS-017`, confirm with the user before pushing to `origin/main`
+(auto-deploys to both the Hugging Face Space and Netlify via `deploy-prod.yml`).
+
+## Resume commands
+
+```bash
+cd /Users/ravi/Projects/growixa
+git status
+git log --oneline -10
+docker compose up -d
+docker compose logs api --tail 20
+```
+
+## Latest commit
+
+Pending — this session's commit(s) have not yet been created as of this handoff entry
+being written; see `git status` for the exact diff.
+
+---
+
+**Below this point: historical handoff entries from earlier sessions, preserved for
+context. Not updated as part of this session's work.**
+
+## Task worked on
+
 `GRX-SAAS-016` — ad hoc, picked up from a `need_review_docs/EMAIL_VALIDATION_FEATURE_PLAN.md`
 review after `GRX-SAAS-015` closed. The plan's own recommendation was a paid third-party
 provider (Clearout.io/ZeroBounce). Before building anything, asked the user directly

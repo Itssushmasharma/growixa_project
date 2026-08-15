@@ -43,14 +43,18 @@ describe("VerifyEmailPage", () => {
     expect(await screen.findByText("You don't have access to verify emails.")).toBeInTheDocument();
   });
 
-  it("checks a single email and shows the result", async () => {
+  it("checks a single email and shows the basic-check result", async () => {
     const result: EmailValidationResult = {
       email: "test@mailinator.com",
       status: "DISPOSABLE",
       reasons: ["Domain is a known disposable/throwaway provider"],
+      verification_level: "BASIC",
     };
     mockedApiFetch.mockImplementation((path: string, init?: RequestInit) => {
       if (path === "/auth/me") return Promise.resolve(meWithPermissions(["contacts.view"]));
+      if (path === "/email-validation/availability") {
+        return Promise.resolve({ realtime_available: false });
+      }
       if (path === "/email-validation/check" && init?.method === "POST") {
         return Promise.resolve(result);
       }
@@ -66,11 +70,50 @@ describe("VerifyEmailPage", () => {
 
     expect(await screen.findByText("Disposable")).toBeInTheDocument();
     expect(screen.getByText("Domain is a known disposable/throwaway provider")).toBeInTheDocument();
+    expect(screen.getByText("Basic check")).toBeInTheDocument();
+    expect(
+      screen.getByText("Real-time mailbox verification is available on paid plans."),
+    ).toBeInTheDocument();
+  });
+
+  it("shows the real-time checkbox and sends use_realtime when available", async () => {
+    const result: EmailValidationResult = {
+      email: "test@example.org",
+      status: "VALID",
+      reasons: [],
+      verification_level: "REALTIME",
+    };
+    mockedApiFetch.mockImplementation((path: string, init?: RequestInit) => {
+      if (path === "/auth/me") return Promise.resolve(meWithPermissions(["contacts.view"]));
+      if (path === "/email-validation/availability") {
+        return Promise.resolve({ realtime_available: true });
+      }
+      if (path === "/email-validation/check" && init?.method === "POST") {
+        expect(JSON.parse(init.body as string)).toMatchObject({ use_realtime: true });
+        return Promise.resolve(result);
+      }
+      throw new Error(`unexpected call: ${path}`);
+    });
+
+    const user = userEvent.setup();
+    renderPage();
+
+    await screen.findByLabelText("Email");
+    expect(
+      screen.getByText("Use real-time mailbox verification (uses one verification credit)"),
+    ).toBeInTheDocument();
+    await user.type(screen.getByLabelText("Email"), "test@example.org");
+    await user.click(screen.getByRole("button", { name: "Verify email" }));
+
+    expect(await screen.findByText("Real-time")).toBeInTheDocument();
   });
 
   it("shows the bulk CSV drop zone on the Bulk Upload tab", async () => {
     mockedApiFetch.mockImplementation((path: string) => {
       if (path === "/auth/me") return Promise.resolve(meWithPermissions(["contacts.view"]));
+      if (path === "/email-validation/availability") {
+        return Promise.resolve({ realtime_available: false });
+      }
       throw new Error(`unexpected path: ${path}`);
     });
 

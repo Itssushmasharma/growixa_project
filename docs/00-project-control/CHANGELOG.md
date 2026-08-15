@@ -10,6 +10,41 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
+## 2026-08-15 — GRX-SAAS-017: Email Validation — multi-vendor real-time provider config, paid plans (ad hoc)
+
+- Direct follow-up to `GRX-SAAS-016` in the same session: after seeing a garbled fake
+  address pass the free checks as "Valid," the user asked whether Growixa could
+  self-host real mailbox verification instead of paying a provider. A live test
+  confirmed outbound port 25 works from the dev environment, but an actual `RCPT TO`
+  probe attempt was blocked by this session's own safety classifier as reconnaissance
+  against a real third party's mail infrastructure — reinforcing the recommendation to
+  use a real vendor rather than self-host. The user then asked for a **platform-admin
+  configurable, multi-vendor** architecture (not hardcoded to Clearout), gated to
+  **paid-plan accounts only**, plus a per-check **opt-out checkbox** so a paid account
+  isn't forced to spend a credit on every check.
+- New `platform_email_validation_provider_config` table (mirrors
+  `platform_ai_provider_config`/`platform_email_provider_config`'s "one active row"
+  pattern), a `ClearoutProvider` adapter (raw httpx, no vendor SDK), and
+  `providers/factory.py`'s resolution rule: a real-time adapter is only returned when
+  the account's plan isn't `free` AND the platform has an active vendor configured —
+  otherwise every account gets `GRX-SAAS-016`'s free check, never an error.
+- New `GET /email-validation/availability` and a `use_realtime` flag on
+  `POST /email-validation/check`; new platform-admin page at
+  `/platform/email-validation-config`; the customer verify-email page shows a
+  `Real-time`/`Basic check` badge on every result and gracefully falls back to `BASIC`
+  if the vendor call itself fails, with a visible reason.
+- The user then configured a real Clearout.io API key live, closing the evidence gap:
+  the exact garbled address that started this now correctly comes back `INVALID` with a
+  real "Mailbox not found" reason. This surfaced two real bugs only a live call could
+  catch — Clearout's `sub_status` is an object, not a string (was rendering as a raw
+  Python dict repr in the UI), and the reason text was leaking the vendor's name
+  ("Clearout: ...") to the end customer — both fixed. A separate code-review catch moved
+  a shared fallback-reason dictionary out of the Clearout-specific adapter file into
+  `providers/base.py`, since it describes this module's own status vocabulary, not
+  anything Clearout-specific, and every future vendor adapter needs the same wording.
+- No real credit-ledger deduction wired up yet (deliberately deferred, separate scope
+  from this pass) — the checkbox is currently informational only.
+
 ## 2026-08-15 — GRX-SAAS-016: Email Validation — free tier (ad hoc)
 
 - Picked up from a `need_review_docs/EMAIL_VALIDATION_FEATURE_PLAN.md` review. The plan's

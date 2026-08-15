@@ -15,12 +15,24 @@ import dns.exception
 import jwt
 import pytest
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import delete
 
 from growixa_api.app import create_app
+from growixa_api.auth.encryption import encrypt_secret
 from growixa_api.config import get_settings
+from growixa_api.db import async_session_factory
+from growixa_api.email_validation import api as email_validation_api
 from growixa_api.email_validation import checks, services
 from growixa_api.email_validation.api import _enforce_bulk_rate_limit
+from growixa_api.email_validation.models import PlatformEmailValidationProviderConfig
+from growixa_api.email_validation.providers import factory as provider_factory
+from growixa_api.email_validation.providers.base import (
+    EmailValidationProviderError,
+    ProviderVerificationResult,
+)
+from growixa_api.email_validation.providers.clearout_provider import _parse_response
 from growixa_api.email_validation.services import MAX_BULK_ROWS
+from tests.conftest import grant_unlimited_plan
 
 
 def _access_token_cookie(user_id: uuid.UUID) -> dict[str, str]:
@@ -335,3 +347,275 @@ async def test_bulk_csv_over_row_cap_returns_400(
         )
     assert response.status_code == 400
     assert str(MAX_BULK_ROWS) in response.text
+
+
+# ---------------------------------------------------------------------------
+# clearout_provider.py -- pure response-mapping logic only. Per this project's
+# established convention (see test_ai_providers.py), raw httpx internals of a vendor
+# client are never unit-tested directly -- only the request-independent parsing/mapping
+# logic is.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "raw_status,expected_status",
+    [
+        ("valid", "VALID"),
+        ("invalid", "INVALID"),
+        ("disposable", "DISPOSABLE"),
+        ("role_based", "ROLE"),
+        ("catch_all", "RISKY"),
+        ("unknown", "RISKY"),
+        ("spamtrap", "INVALID"),
+    ],
+)
+def test_clearout_parse_response_maps_known_statuses(raw_status: str, expected_status: str) -> None:
+    result = _parse_response({"data": {"status": raw_status, "sub_status": "x"}})
+    assert result.status == expected_status
+    assert result.raw_status == raw_status
+
+
+def test_clearout_parse_response_unrecognized_status_is_risky() -> None:
+    result = _parse_response({"data": {"status": "some_new_vendor_status"}})
+    assert result.status == "RISKY"
+    # raw_status is kept for internal debugging, but the customer-facing reason never
+    # names the vendor or echoes its raw status string.
+    assert result.raw_status == "some_new_vendor_status"
+    assert "some_new_vendor_status" not in result.reasons[0]
+    assert "Clearout" not in result.reasons[0]
+
+
+def test_clearout_parse_response_missing_data_raises() -> None:
+    with pytest.raises(Exception):  # noqa: B017 -- EmailValidationProviderError
+        _parse_response({"status": "success"})
+
+
+def test_clearout_parse_response_extracts_desc_from_object_sub_status() -> None:
+    """Live-observed real shape (GRX-SAAS-017): `sub_status` is an object, not a plain
+    string -- confirm the human-readable `desc` is extracted, not Python's dict repr,
+    and the vendor name never appears in the customer-facing reason."""
+    result = _parse_response(
+        {"data": {"status": "invalid", "sub_status": {"code": 406, "desc": "Mailbox not found"}}}
+    )
+    assert result.status == "INVALID"
+    assert result.reasons == ["Mailbox not found"]
+
+
+def test_clearout_parse_response_falls_back_to_generic_reason_without_sub_status_desc() -> None:
+    result = _parse_response({"data": {"status": "invalid", "sub_status": {"code": 1}}})
+    assert result.status == "INVALID"
+    assert result.reasons == ["This mailbox does not appear to exist"]
+
+
+def test_clearout_parse_response_valid_with_no_detail_has_no_reasons() -> None:
+    """Matches the free-tier convention (empty reasons -> "No issues found" in the UI)
+    rather than injecting filler text for the common, unremarkable VALID case."""
+    result = _parse_response({"data": {"status": "valid", "sub_status": {"code": 1}}})
+    assert result.status == "VALID"
+    assert result.reasons == []
+
+
+# ---------------------------------------------------------------------------
+# providers/factory.py -- plan-tier + platform-config resolution (real DB)
+# ---------------------------------------------------------------------------
+
+
+async def _create_platform_validation_config() -> uuid.UUID:
+    async with async_session_factory() as session:
+        config = PlatformEmailValidationProviderConfig(
+            provider="CLEAROUT", api_key_encrypted=encrypt_secret("co-fake-key")
+        )
+        session.add(config)
+        await session.flush()
+        await session.commit()
+        return config.id
+
+
+async def _cleanup_platform_validation_config(config_id: uuid.UUID) -> None:
+    async with async_session_factory() as session:
+        await session.execute(
+            delete(PlatformEmailValidationProviderConfig).where(
+                PlatformEmailValidationProviderConfig.id == config_id
+            )
+        )
+        await session.commit()
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_free_plan_account_never_resolves_a_provider(
+    user_factory: Callable[..., Awaitable[uuid.UUID]],
+    account_factory: Callable[..., Awaitable[uuid.UUID]],
+) -> None:
+    account_id = await account_factory(name="Free Plan Account")
+    await user_factory(full_name="Free User", account_id=account_id)
+    config_id = await _create_platform_validation_config()
+
+    try:
+        async with async_session_factory() as session:
+            provider = await provider_factory.get_effective_email_validation_provider(
+                session, account_id
+            )
+        assert provider is None
+    finally:
+        await _cleanup_platform_validation_config(config_id)
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_paid_plan_account_with_no_platform_config_resolves_nothing(
+    user_factory: Callable[..., Awaitable[uuid.UUID]],
+    account_factory: Callable[..., Awaitable[uuid.UUID]],
+) -> None:
+    account_id = await account_factory(name="Paid Plan Account")
+    await user_factory(full_name="Paid User", account_id=account_id)
+    await grant_unlimited_plan(account_id)
+
+    async with async_session_factory() as session:
+        provider = await provider_factory.get_effective_email_validation_provider(
+            session, account_id
+        )
+    assert provider is None
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_paid_plan_account_with_active_config_resolves_a_provider(
+    user_factory: Callable[..., Awaitable[uuid.UUID]],
+    account_factory: Callable[..., Awaitable[uuid.UUID]],
+) -> None:
+    account_id = await account_factory(name="Paid Plan Account With Vendor")
+    await user_factory(full_name="Paid User", account_id=account_id)
+    await grant_unlimited_plan(account_id)
+    config_id = await _create_platform_validation_config()
+
+    try:
+        async with async_session_factory() as session:
+            provider = await provider_factory.get_effective_email_validation_provider(
+                session, account_id
+            )
+        assert provider is not None
+    finally:
+        await _cleanup_platform_validation_config(config_id)
+
+
+# ---------------------------------------------------------------------------
+# services.validate_email -- provider path + graceful fallback
+# ---------------------------------------------------------------------------
+
+
+class _FakeProvider:
+    def __init__(self, result: ProviderVerificationResult | Exception) -> None:
+        self._result = result
+
+    async def verify(self, email: str) -> ProviderVerificationResult:
+        if isinstance(self._result, Exception):
+            raise self._result
+        return self._result
+
+
+@pytest.mark.asyncio
+async def test_validate_email_uses_provider_result_when_available() -> None:
+    provider = _FakeProvider(
+        ProviderVerificationResult(status="VALID", reasons=[], raw_status="valid")
+    )
+    result = await services.validate_email("someone@example.com", provider=provider)
+    assert result.status == "VALID"
+    assert result.verification_level == "REALTIME"
+
+
+@pytest.mark.asyncio
+async def test_validate_email_falls_back_to_basic_when_provider_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(services, "domain_has_mail_exchanger", AsyncMock(return_value=True))
+    provider = _FakeProvider(EmailValidationProviderError("vendor down"))
+
+    result = await services.validate_email("someone@example.com", provider=provider)
+    assert result.status == "VALID"
+    assert result.verification_level == "BASIC"
+    assert any("unavailable" in reason for reason in result.reasons)
+
+
+# ---------------------------------------------------------------------------
+# Endpoint tests -- availability + use_realtime toggle
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_availability_route_returns_false_for_a_fresh_free_account(
+    user_factory: Callable[..., Awaitable[uuid.UUID]],
+) -> None:
+    admin_id = await user_factory(full_name="Test Admin", role_name="Admin")
+
+    transport = ASGITransport(app=create_app())
+    async with AsyncClient(
+        transport=transport, base_url="http://test", cookies=_access_token_cookie(admin_id)
+    ) as client:
+        response = await client.get("/email-validation/availability")
+    assert response.status_code == 200
+    assert response.json() == {"realtime_available": False}
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_check_route_uses_realtime_provider_when_resolved(
+    user_factory: Callable[..., Awaitable[uuid.UUID]],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    fake_provider = _FakeProvider(
+        ProviderVerificationResult(
+            status="RISKY",
+            reasons=["Could not confirm this mailbox's existence with confidence"],
+            raw_status="catch_all",
+        )
+    )
+    monkeypatch.setattr(
+        email_validation_api,
+        "get_effective_email_validation_provider",
+        AsyncMock(return_value=fake_provider),
+    )
+    admin_id = await user_factory(full_name="Test Admin", role_name="Admin")
+
+    transport = ASGITransport(app=create_app())
+    async with AsyncClient(
+        transport=transport, base_url="http://test", cookies=_access_token_cookie(admin_id)
+    ) as client:
+        response = await client.post(
+            "/email-validation/check", json={"email": "a@example.com", "use_realtime": True}
+        )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "RISKY"
+    assert body["verification_level"] == "REALTIME"
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_check_route_skips_provider_when_use_realtime_is_false(
+    user_factory: Callable[..., Awaitable[uuid.UUID]],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    resolve_mock = AsyncMock(
+        return_value=_FakeProvider(
+            ProviderVerificationResult(status="VALID", reasons=[], raw_status="valid")
+        )
+    )
+    monkeypatch.setattr(
+        email_validation_api, "get_effective_email_validation_provider", resolve_mock
+    )
+    monkeypatch.setattr(services, "domain_has_mail_exchanger", AsyncMock(return_value=True))
+    admin_id = await user_factory(full_name="Test Admin", role_name="Admin")
+
+    transport = ASGITransport(app=create_app())
+    async with AsyncClient(
+        transport=transport, base_url="http://test", cookies=_access_token_cookie(admin_id)
+    ) as client:
+        response = await client.post(
+            "/email-validation/check", json={"email": "a@example.com", "use_realtime": False}
+        )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["verification_level"] == "BASIC"
+    resolve_mock.assert_not_called()

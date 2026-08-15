@@ -53,6 +53,12 @@ const NAV_ITEMS: NavItem[] = [
     requiresPermission: "platform.email.manage",
   },
   {
+    label: "Email Validation",
+    href: "/platform/email-validation-config",
+    icon: "✅",
+    requiresPermission: "platform.validation.manage",
+  },
+  {
     label: "Subscriptions",
     href: "/platform/subscriptions",
     icon: "💳",

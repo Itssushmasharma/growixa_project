@@ -5,11 +5,14 @@ import uuid
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, Response, UploadFile, status
 from redis.asyncio import Redis
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from growixa_api.auth.rate_limit import RateLimitExceededError, enforce_rate_limit
+from growixa_api.db import get_session
+from growixa_api.email_validation.providers.factory import get_effective_email_validation_provider
 from growixa_api.email_validation.schemas import EmailValidationIn, EmailValidationResultOut
 from growixa_api.email_validation.services import MAX_BULK_ROWS, validate_email, validate_emails
-from growixa_api.permissions.dependencies import require_permission
+from growixa_api.permissions.dependencies import get_current_account_id, require_permission
 from growixa_api.redis import get_redis
 
 router = APIRouter(prefix="/email-validation", tags=["email-validation"])
@@ -33,12 +36,33 @@ async def _enforce_bulk_rate_limit(redis_client: Redis, request: Request) -> Non
         ) from exc
 
 
+@router.get("/availability")
+async def get_availability_route(
+    _actor_id: uuid.UUID = Depends(_require_view),
+    account_id: uuid.UUID = Depends(get_current_account_id),
+    session: AsyncSession = Depends(get_session),
+) -> dict[str, bool]:
+    """Tells the frontend whether a real-time vendor check is even reachable for this
+    account (paid plan + an active platform vendor configured) -- lets the "use
+    real-time verification" checkbox render only when it would actually do anything,
+    without running an actual check just to find out."""
+    provider = await get_effective_email_validation_provider(session, account_id)
+    return {"realtime_available": provider is not None}
+
+
 @router.post("/check", response_model=EmailValidationResultOut)
 async def check_email_route(
     payload: EmailValidationIn,
     _actor_id: uuid.UUID = Depends(_require_view),
+    account_id: uuid.UUID = Depends(get_current_account_id),
+    session: AsyncSession = Depends(get_session),
 ) -> EmailValidationResultOut:
-    return await validate_email(payload.email)
+    provider = (
+        await get_effective_email_validation_provider(session, account_id)
+        if payload.use_realtime
+        else None
+    )
+    return await validate_email(payload.email, provider=provider)
 
 
 @router.post("/bulk-csv")

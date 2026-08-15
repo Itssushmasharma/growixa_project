@@ -24,6 +24,7 @@ const STATUS_LABEL: Record<EmailValidationResult["status"], string> = {
   INVALID: "Invalid",
   DISPOSABLE: "Disposable",
   ROLE: "Role account",
+  RISKY: "Risky",
 };
 
 const STATUS_COLOR: Record<EmailValidationResult["status"], string> = {
@@ -31,6 +32,7 @@ const STATUS_COLOR: Record<EmailValidationResult["status"], string> = {
   INVALID: "var(--color-error)",
   DISPOSABLE: "var(--color-purple)",
   ROLE: "#d97706",
+  RISKY: "#d97706",
 };
 
 const STATUS_CLASS: Record<EmailValidationResult["status"], string> = {
@@ -38,6 +40,7 @@ const STATUS_CLASS: Record<EmailValidationResult["status"], string> = {
   INVALID: shared.statusBounced ?? "",
   DISPOSABLE: shared.statusArchived ?? "",
   ROLE: shared.statusUnsubscribed ?? "",
+  RISKY: shared.statusUnsubscribed ?? "",
 };
 
 type Tab = "single" | "bulk";
@@ -53,6 +56,8 @@ export function VerifyEmailPage() {
   const [email, setEmail] = useState("");
   const [checking, setChecking] = useState(false);
   const [result, setResult] = useState<EmailValidationResult | null>(null);
+  const [realtimeAvailable, setRealtimeAvailable] = useState(false);
+  const [useRealtime, setUseRealtime] = useState(true);
 
   const [bulkLoading, setBulkLoading] = useState(false);
   const [bulkSummary, setBulkSummary] = useState<EmailValidationSummary | null>(null);
@@ -63,7 +68,14 @@ export function VerifyEmailPage() {
     async function load() {
       try {
         const me = await apiFetch<MeResponse>("/auth/me");
-        setCanView(me.permissions.includes(VIEW_PERMISSION));
+        const canViewNow = me.permissions.includes(VIEW_PERMISSION);
+        setCanView(canViewNow);
+        if (canViewNow) {
+          const availability = await apiFetch<{ realtime_available: boolean }>(
+            "/email-validation/availability",
+          );
+          setRealtimeAvailable(availability.realtime_available);
+        }
       } catch {
         setLoadError("Could not load this page.");
       } finally {
@@ -80,7 +92,7 @@ export function VerifyEmailPage() {
     try {
       const checked = await apiFetch<EmailValidationResult>("/email-validation/check", {
         method: "POST",
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, use_realtime: useRealtime }),
       });
       setResult(checked);
     } catch {
@@ -203,6 +215,21 @@ export function VerifyEmailPage() {
                 </button>
               </form>
 
+              {realtimeAvailable ? (
+                <label className={pageStyles.realtimeToggle}>
+                  <input
+                    type="checkbox"
+                    checked={useRealtime}
+                    onChange={(e) => setUseRealtime(e.target.checked)}
+                  />
+                  Use real-time mailbox verification (uses one verification credit)
+                </label>
+              ) : (
+                <p className={pageStyles.realtimeUpsell}>
+                  Real-time mailbox verification is available on paid plans.
+                </p>
+              )}
+
               {result && (
                 <div className={pageStyles.resultRow}>
                   <span
@@ -212,6 +239,9 @@ export function VerifyEmailPage() {
                   <span className={pageStyles.resultEmail}>{result.email}</span>
                   <span className={`${shared.statusBadge} ${STATUS_CLASS[result.status]}`}>
                     {STATUS_LABEL[result.status]}
+                  </span>
+                  <span className={pageStyles.levelBadge}>
+                    {result.verification_level === "REALTIME" ? "Real-time" : "Basic check"}
                   </span>
                   <span className={shared.description}>
                     {result.reasons.length > 0 ? result.reasons.join("; ") : "No issues found."}
@@ -305,10 +335,26 @@ export function VerifyEmailPage() {
               <span className={pageStyles.checkIcon}>✓</span>
               Shared role accounts (info@, admin@, noreply@, ...)
             </li>
+            {realtimeAvailable && (
+              <li className={pageStyles.checkItem}>
+                <span className={pageStyles.checkIcon}>✓</span>
+                Real-time mailbox existence + catch-all scoring (your plan)
+              </li>
+            )}
           </ul>
           <div className={pageStyles.limitBox}>
-            <strong>Doesn&apos;t check:</strong> whether a specific mailbox actually exists, or
-            catch-all domain scoring — both need a paid, real-time SMTP-probing provider.
+            {realtimeAvailable ? (
+              <>
+                Tick <strong>Use real-time mailbox verification</strong> on a check to confirm
+                whether a specific address actually exists, not just its domain — each use spends
+                one verification credit.
+              </>
+            ) : (
+              <>
+                <strong>Doesn&apos;t check:</strong> whether a specific mailbox actually exists, or
+                catch-all domain scoring — both are available on paid plans.
+              </>
+            )}
           </div>
         </div>
       </div>

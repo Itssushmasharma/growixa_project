@@ -20,6 +20,7 @@ from growixa_api.config import get_settings
 from growixa_api.contacts import models as contacts_models  # noqa: F401
 from growixa_api.db import Base, _normalize_database_url
 from growixa_api.email_delivery import models as email_delivery_models  # noqa: F401
+from growixa_api.email_validation import models as email_validation_models  # noqa: F401
 from growixa_api.integrations import models as integrations_models  # noqa: F401
 from growixa_api.notifications import models as notifications_models  # noqa: F401
 from growixa_api.permissions import models as permissions_models  # noqa: F401

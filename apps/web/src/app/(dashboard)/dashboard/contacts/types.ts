@@ -88,12 +88,15 @@ export interface SuppressionImportResult {
   total_rows: number;
 }
 
-export type EmailValidationStatus = "VALID" | "INVALID" | "DISPOSABLE" | "ROLE";
+export type EmailValidationStatus = "VALID" | "INVALID" | "DISPOSABLE" | "ROLE" | "RISKY";
+
+export type EmailValidationLevel = "BASIC" | "REALTIME";
 
 export interface EmailValidationResult {
   email: string;
   status: EmailValidationStatus;
   reasons: string[];
+  verification_level: EmailValidationLevel;
 }
 
 export interface EmailValidationSummary {

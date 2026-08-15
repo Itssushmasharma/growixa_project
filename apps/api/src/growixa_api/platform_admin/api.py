@@ -24,6 +24,18 @@ from growixa_api.billing.services import list_plan_catalog as list_plans_service
 from growixa_api.campaigns.models import Campaign
 from growixa_api.contacts.services import ContactNotFoundError, DuplicateEmailError
 from growixa_api.db import get_session
+from growixa_api.email_validation.providers.base import EmailValidationProviderError
+from growixa_api.email_validation.providers.factory import (
+    test_connection as test_validation_connection,
+)
+from growixa_api.email_validation.schemas import (
+    PlatformEmailValidationProviderConfigIn,
+    PlatformEmailValidationProviderConfigOut,
+)
+from growixa_api.email_validation.services import (
+    get_platform_validation_config,
+    set_platform_validation_config,
+)
 from growixa_api.integrations.smtp_transport import EmailSendError
 from growixa_api.notifications.schemas import (
     PlatformEmailProviderConfigIn,
@@ -138,6 +150,7 @@ support_session_router = APIRouter(prefix="/platform", tags=["platform_admin"])
 ai_config_router = APIRouter(prefix="/platform", tags=["platform_admin"])
 billing_router = APIRouter(prefix="/platform", tags=["platform_admin"])
 email_config_router = APIRouter(prefix="/platform", tags=["platform_admin"])
+email_validation_config_router = APIRouter(prefix="/platform", tags=["platform_admin"])
 
 _require_manage = require_platform_permission("platform.accounts.manage")
 _require_usage_manage = require_platform_permission("platform.usage.manage")
@@ -146,6 +159,7 @@ _require_support_session_write = require_platform_permission("platform.support_s
 _require_ai_manage = require_platform_permission("platform.ai.manage")
 _require_billing_manage = require_platform_permission("platform.billing.manage")
 _require_email_manage = require_platform_permission("platform.email.manage")
+_require_validation_manage = require_platform_permission("platform.validation.manage")
 
 
 def _to_list_item(account: Account, user_count: int) -> AccountListItemOut:
@@ -653,6 +667,47 @@ async def test_platform_ai_config_route(
     except (MissingBaseUrlError, InsecureBaseUrlError) as exc:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
     except AIProviderError as exc:
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, f"Connection test failed: {exc}") from exc
+
+
+@email_validation_config_router.get(
+    "/email-validation-config", response_model=PlatformEmailValidationProviderConfigOut | None
+)
+async def get_platform_email_validation_config_route(
+    _platform_admin_id: uuid.UUID = Depends(_require_validation_manage),
+    session: AsyncSession = Depends(get_session),
+) -> PlatformEmailValidationProviderConfigOut | None:
+    config = await get_platform_validation_config(session)
+    if config is None:
+        return None
+    return PlatformEmailValidationProviderConfigOut.model_validate(config)
+
+
+@email_validation_config_router.put(
+    "/email-validation-config", response_model=PlatformEmailValidationProviderConfigOut
+)
+async def set_platform_email_validation_config_route(
+    payload: PlatformEmailValidationProviderConfigIn,
+    platform_admin_id: uuid.UUID = Depends(_require_validation_manage),
+    session: AsyncSession = Depends(get_session),
+) -> PlatformEmailValidationProviderConfigOut:
+    config = await set_platform_validation_config(session, payload, platform_admin_id)
+    await session.commit()
+    return PlatformEmailValidationProviderConfigOut.model_validate(config)
+
+
+@email_validation_config_router.post(
+    "/email-validation-config/test", status_code=status.HTTP_204_NO_CONTENT
+)
+async def test_platform_email_validation_config_route(
+    payload: PlatformEmailValidationProviderConfigIn,
+    _platform_admin_id: uuid.UUID = Depends(_require_validation_manage),
+) -> None:
+    """Validates credentials via one real verification call before saving — nothing is
+    persisted (same test-before-save convention as GRX-EMAIL-012/GRX-AI-005)."""
+    try:
+        await test_validation_connection(provider_name=payload.provider, api_key=payload.api_key)
+    except EmailValidationProviderError as exc:
         raise HTTPException(status.HTTP_502_BAD_GATEWAY, f"Connection test failed: {exc}") from exc
 
 

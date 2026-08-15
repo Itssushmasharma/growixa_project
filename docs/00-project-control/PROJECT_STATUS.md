@@ -2,7 +2,7 @@
 
 - Document ID: DOC-PROJECT-STATUS
 - Status: ACTIVE
-- Version: 1.51
+- Version: 1.52
 - Last updated: 2026-08-15
 - Owner: Coding agent (on behalf of product owner)
 - Related documents: [MASTER_TASK_TRACKER](MASTER_TASK_TRACKER.md), [WORKTREE_TRACKER](WORKTREE_TRACKER.md), [DECISIONS](DECISIONS.md), [DEVELOPMENT_READINESS](DEVELOPMENT_READINESS.md), [FEATURE_STATUS_MATRIX](FEATURE_STATUS_MATRIX.md)
@@ -452,6 +452,18 @@ slices plus the Sprint 5 multi-tenancy retrofit are now complete.**
     entry. Frontend was redesigned mid-build after the user shared a competitor's Verifier
     page as a layout reference, with an explicit instruction to keep Growixa's own color
     theme and only borrow the layout idea.
+15. **`GRX-SAAS-017` (Email Validation, multi-vendor real-time provider config)**: direct
+    same-session follow-up to `GRX-SAAS-016`. New `platform_email_validation_provider_config`
+    table + admin page, mirroring the AI/email provider config pattern, gated to paid-plan
+    accounts only with a per-check opt-out checkbox; Free-tier accounts are never affected.
+    Self-hosting real mailbox probing was ruled out live (a real `RCPT TO` test attempt
+    tripped this session's own safety classifier as reconnaissance). The user then
+    configured a real Clearout.io key, which surfaced and fixed two real bugs (an
+    object-shaped `sub_status` rendering as a raw Python dict repr; the vendor's name
+    leaking into customer-facing text) plus a code-organization fix (a shared
+    fallback-reason dictionary moved out of the vendor-specific adapter file into
+    `providers/base.py`) — see `CHANGELOG.md`'s 2026-08-15 entry. Real credit-ledger
+    deduction is deliberately not wired up yet; the checkbox is informational only for now.
 
 ## Changelog
 
