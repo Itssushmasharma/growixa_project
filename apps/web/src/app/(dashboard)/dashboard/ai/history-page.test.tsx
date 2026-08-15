@@ -64,13 +64,9 @@ function mockLoad(permissions: string[], generations: AIGeneration[] = []) {
     if (path === "/auth/me") return Promise.resolve(meWithPermissions(permissions));
     if (path === "/ai/generations") return Promise.resolve(generations);
     if (path === "/campaigns")
-      return Promise.resolve([
-        { id: "c-1", name: "Summer Sale 2025", status: "DRAFT" },
-      ]);
+      return Promise.resolve([{ id: "c-1", name: "Summer Sale 2025", status: "DRAFT" }]);
     if (path === "/contacts/segments")
-      return Promise.resolve([
-        { id: "s-1", name: "Inactive Customers", contact_count: 1420 },
-      ]);
+      return Promise.resolve([{ id: "s-1", name: "Inactive Customers", contact_count: 1420 }]);
     if (path === "/billing/subscription")
       return Promise.resolve({
         period_ai_used: 245,
@@ -84,7 +80,7 @@ function renderHistoryPage() {
   return render(
     <ToastProvider>
       <HistoryPage />
-    </ToastProvider>
+    </ToastProvider>,
   );
 }
 
@@ -99,9 +95,7 @@ describe("HistoryPage (Growixa AI Marketing Copilot)", () => {
 
     renderHistoryPage();
 
-    expect(
-      await screen.findByText("You don't have access to the AI Studio.")
-    ).toBeInTheDocument();
+    expect(await screen.findByText("You don't have access to the AI Studio.")).toBeInTheDocument();
   });
 
   it("renders the AI Marketing Copilot header and studio panel", async () => {
@@ -126,7 +120,7 @@ describe("HistoryPage (Growixa AI Marketing Copilot)", () => {
     await user.click(reEngageSuggestion);
 
     const textarea = screen.getByPlaceholderText(
-      /Write a re-engagement email to win back inactive customers/i
+      /Write a re-engagement email to win back inactive customers/i,
     ) as HTMLTextAreaElement;
     expect(textarea.value).toContain("re-engagement email with a 20% discount");
   });
@@ -195,7 +189,7 @@ describe("HistoryPage (Growixa AI Marketing Copilot)", () => {
 
     renderHistoryPage();
     const promptInput = await screen.findByPlaceholderText(
-      /Write a re-engagement email to win back inactive customers/i
+      /Write a re-engagement email to win back inactive customers/i,
     );
     await user.type(promptInput, "Special holiday discount offer");
 
@@ -203,7 +197,9 @@ describe("HistoryPage (Growixa AI Marketing Copilot)", () => {
     await user.click(generateBtn);
 
     await waitFor(() => {
-      expect(screen.getAllByText(/Generated special discount offer/i).length).toBeGreaterThanOrEqual(1);
+      expect(
+        screen.getAllByText(/Generated special discount offer/i).length,
+      ).toBeGreaterThanOrEqual(1);
     });
   });
 });

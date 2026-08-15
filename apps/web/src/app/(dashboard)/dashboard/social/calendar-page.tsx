@@ -3,12 +3,14 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
+import { PageHeader } from "@/components/page-header/page-header";
 import { apiFetch } from "@/lib/api-client";
 
 import styles from "./calendar-page.module.css";
 import type { MeResponse, SocialPost } from "./types";
 
 const VIEW_PERMISSION = "social.view";
+const MANAGE_PERMISSION = "social.manage";
 
 function dateKey(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, {
@@ -27,6 +29,7 @@ export function CalendarPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [canView, setCanView] = useState(false);
+  const [canManage, setCanManage] = useState(false);
   const [posts, setPosts] = useState<SocialPost[]>([]);
 
   useEffect(() => {
@@ -35,6 +38,7 @@ export function CalendarPage() {
         const me = await apiFetch<MeResponse>("/auth/me");
         const hasView = me.permissions.includes(VIEW_PERMISSION);
         setCanView(hasView);
+        setCanManage(me.permissions.includes(MANAGE_PERMISSION));
         if (hasView) {
           const postList = await apiFetch<SocialPost[]>("/social/posts");
           setPosts(postList);
@@ -58,20 +62,24 @@ export function CalendarPage() {
       .map((p) => ({ post: p, at: p.published_at as string }));
     const all = [...upcoming, ...published].sort((a, b) => a.at.localeCompare(b.at));
 
-    const byDate = new Map<string, { post: SocialPost; at: string }[]>();
+    const map = new Map<string, typeof all>();
     for (const item of all) {
       const key = dateKey(item.at);
-      const existing = byDate.get(key) ?? [];
+      const existing = map.get(key) ?? [];
       existing.push(item);
-      byDate.set(key, existing);
+      map.set(key, existing);
     }
-    return byDate;
+    return Array.from(map.entries());
   }, [posts]);
 
   if (loading) {
     return (
       <div className={styles.page}>
-        <div className={styles.card}>Loading…</div>
+        <div
+          style={{ background: "#fff", padding: "40px", borderRadius: "18px", textAlign: "center" }}
+        >
+          Loading calendar…
+        </div>
       </div>
     );
   }
@@ -79,7 +87,11 @@ export function CalendarPage() {
   if (loadError) {
     return (
       <div className={styles.page}>
-        <div className={styles.card}>{loadError}</div>
+        <div
+          style={{ background: "#fff", padding: "40px", borderRadius: "18px", textAlign: "center" }}
+        >
+          {loadError}
+        </div>
       </div>
     );
   }
@@ -87,53 +99,78 @@ export function CalendarPage() {
   if (!canView) {
     return (
       <div className={styles.page}>
-        <div className={styles.card}>You don&apos;t have access to the content calendar.</div>
+        <div
+          style={{ background: "#fff", padding: "40px", borderRadius: "18px", textAlign: "center" }}
+        >
+          <h2>Access Denied</h2>
+          <p>You don&apos;t have access to the content calendar.</p>
+        </div>
       </div>
     );
   }
 
   return (
     <div className={styles.page}>
-      <nav className={styles.breadcrumb} aria-label="Breadcrumb">
-        <Link href="/dashboard/social">Social</Link>
-        <span aria-hidden="true"> / </span>
-        <span>Calendar</span>
-      </nav>
+      {/* Page Header */}
+      <PageHeader
+        icon="📅"
+        title="Social Content Calendar"
+        description="Visual timeline of your scheduled and published social media posts."
+        actions={
+          <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+            <Link href="/dashboard/social" className={styles.secondaryButton}>
+              Social
+            </Link>
+            {canManage && (
+              <Link href="/dashboard/social/new" className={styles.primaryButton}>
+                + Create Post
+              </Link>
+            )}
+          </div>
+        }
+      />
 
-      {groups.size === 0 && (
+      {groups.length === 0 ? (
         <div className={styles.emptyState}>
-          <p className={styles.hint}>No scheduled or published posts yet.</p>
+          <div style={{ fontSize: "36px", marginBottom: "8px" }}>📅</div>
+          <h3 className={styles.emptyStateTitle}>No scheduled or published posts yet.</h3>
+          <p className={styles.emptyStateHint}>
+            Schedule social posts to see them organized chronologically in your calendar.
+          </p>
+          {canManage && (
+            <Link href="/dashboard/social/new" className={styles.primaryButton}>
+              + Schedule your first post
+            </Link>
+          )}
         </div>
-      )}
-
-      <div className={styles.groups}>
-        {Array.from(groups.entries()).map(([date, items]) => (
-          <div className={styles.dateGroup} key={date}>
-            <h3 className={styles.dateHeading}>{date}</h3>
-            <div className={styles.items}>
-              {items.map(({ post, at }) => (
-                <Link href={`/dashboard/social/${post.id}`} className={styles.item} key={post.id}>
-                  {post.media[0] && (
-                    <img src={post.media[0].public_url} alt="" className={styles.thumbnail} />
-                  )}
-                  <div className={styles.itemBody}>
+      ) : (
+        <div className={styles.groups}>
+          {groups.map(([date, items]) => (
+            <div key={date} className={styles.dateGroup}>
+              <h3 className={styles.dateHeading}>📅 {date}</h3>
+              <div className={styles.postsList}>
+                {items.map(({ post, at }) => (
+                  <Link
+                    key={post.id}
+                    href={`/dashboard/social/${post.id}`}
+                    className={styles.calendarEntry}
+                  >
+                    <span className={styles.entryTime}>{timeLabel(at)}</span>
+                    <span className={styles.entryCaption}>{post.caption}</span>
                     <span
                       className={`${styles.statusBadge} ${
-                        post.status === "PUBLISHED"
-                          ? styles.statusPublished
-                          : styles.statusScheduled
+                        post.status === "SCHEDULED" ? styles.statusScheduled : styles.statusSent
                       }`}
                     >
-                      {post.status === "PUBLISHED" ? "Published" : "Scheduled"} · {timeLabel(at)}
+                      {post.status === "SCHEDULED" ? "Scheduled" : "Published"}
                     </span>
-                    <p className={styles.itemCaption}>{post.caption || "(no caption)"}</p>
-                  </div>
-                </Link>
-              ))}
+                  </Link>
+                ))}
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

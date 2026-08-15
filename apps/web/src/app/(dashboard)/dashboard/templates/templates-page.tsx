@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
+import { PageHeader } from "@/components/page-header/page-header";
+import { StatCard } from "@/components/stat-card/stat-card";
 import { useToast } from "@/components/toast/toast-context";
 import { ApiError, apiFetch } from "@/lib/api-client";
 
@@ -195,6 +197,12 @@ export function TemplatesPage() {
     return sorted[0] ? formatDate(sorted[0].updated_at) : "N/A";
   }, [templates]);
 
+  const updatedThisMonthCount = useMemo(() => {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - 30);
+    return templates.filter((t) => new Date(t.updated_at) >= cutoff).length;
+  }, [templates]);
+
   if (loading) {
     return (
       <div className={styles.page}>
@@ -221,59 +229,42 @@ export function TemplatesPage() {
 
   return (
     <div className={styles.page}>
-      {/* Metric Summary Cards */}
-      <div className={styles.metricsGrid}>
-        <div className={styles.metricCard}>
-          <div className={styles.metricIcon}>🎨</div>
-          <div className={styles.metricContent}>
-            <span className={styles.metricLabel}>Total Templates</span>
-            <span className={styles.metricValue}>{templates.length}</span>
-          </div>
-        </div>
-
-        <div className={styles.metricCard}>
-          <div className={styles.metricIcon}>⚡</div>
-          <div className={styles.metricContent}>
-            <span className={styles.metricLabel}>Starter Presets</span>
-            <span className={styles.metricValue}>{TEMPLATE_PRESETS.length}</span>
-          </div>
-        </div>
-
-        <div className={styles.metricCard}>
-          <div className={styles.metricIcon}>🛠️</div>
-          <div className={styles.metricContent}>
-            <span className={styles.metricLabel}>Custom Built</span>
-            <span className={styles.metricValue}>{templates.length}</span>
-          </div>
-        </div>
-
-        <div className={styles.metricCard}>
-          <div className={styles.metricIcon}>⏱️</div>
-          <div className={styles.metricContent}>
-            <span className={styles.metricLabel}>Recently Updated</span>
-            <span className={styles.metricValue} style={{ fontSize: "16px" }}>
-              {latestUpdatedDate}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Main Templates Workspace */}
-      <div className={styles.card}>
-        <div className={styles.headerRow}>
-          <div>
-            <h2 className={styles.headerTitle}>Email Templates</h2>
-            <p className={styles.headerSubtitle}>
-              Manage reusable email layouts, subject lines, and personalized tag variables.
-            </p>
-          </div>
-          {canManage && (
+      {/* Page Header */}
+      <PageHeader
+        icon="📋"
+        title="Email Templates"
+        description="Browse, customize, and manage reusable responsive email templates."
+        actions={
+          canManage ? (
             <Link href="/dashboard/templates/new" className={styles.actionButton}>
               + New template
             </Link>
-          )}
-        </div>
+          ) : undefined
+        }
+      />
 
+      {/* Metric Summary Cards */}
+      <section className={styles.metricsGrid} aria-label="Template Library Overview KPIs">
+        <StatCard label="Total Templates" value={templates.length} subtext="Account library" />
+        <StatCard
+          label="Starter Presets"
+          value={TEMPLATE_PRESETS.length}
+          subtext="Built-in starter layouts"
+        />
+        <StatCard
+          label="Custom Built"
+          value={updatedThisMonthCount}
+          subtext="Updated in last 30 days"
+        />
+        <StatCard
+          label="Recently Updated"
+          value={latestUpdatedDate}
+          subtext="Last modified template"
+        />
+      </section>
+
+      {/* Main Templates Workspace */}
+      <div className={styles.card}>
         {/* Toolbar & View Switcher */}
         {templates.length > 0 && (
           <div className={styles.toolbar}>
