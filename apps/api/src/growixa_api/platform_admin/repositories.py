@@ -149,6 +149,33 @@ async def get_mrr_totals(session: AsyncSession) -> tuple[float, float]:
     return float(row[0]), float(row[1])
 
 
+async def count_active_subscriptions(session: AsyncSession) -> int:
+    """Same ACTIVE-only definition as get_mrr_totals -- the base count for the
+    financial dashboard's churn rate (GRX-SAAS-009) must match the MRR figure shown
+    right next to it, not a different subscription-status filter."""
+    result = await session.execute(
+        select(func.count())
+        .select_from(AccountSubscription)
+        .where(AccountSubscription.status == "ACTIVE")
+    )
+    return result.scalar_one()
+
+
+async def count_subscriptions_canceled_since(session: AsyncSession, *, since: datetime) -> int:
+    """Count of subscriptions with status=CANCELED whose `updated_at` falls on/after
+    `since` -- used for churn (GRX-SAAS-009). There is no dedicated
+    subscription-status-change history table, so `updated_at` on a CANCELED row is
+    used as an approximation of "when this subscription churned". Documented
+    approximation, not silently assumed -- see get_financial_metrics's docstring for
+    the exact churn-rate definition."""
+    result = await session.execute(
+        select(func.count())
+        .select_from(AccountSubscription)
+        .where(AccountSubscription.status == "CANCELED", AccountSubscription.updated_at >= since)
+    )
+    return result.scalar_one()
+
+
 async def get_period_usage_totals(session: AsyncSession) -> tuple[int, int]:
     """Sums each account's current-billing-period usage counters directly -- these are
     the same `period_email_used`/`period_ai_used` values the quota evaluator itself

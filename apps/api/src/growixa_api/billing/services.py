@@ -2,7 +2,7 @@ import logging
 import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from typing import Any, Literal
 
 from sqlalchemy import text
@@ -17,7 +17,6 @@ from growixa_api.billing.models import (
 )
 from growixa_api.billing.providers.base import PaymentGatewayProvider
 from growixa_api.billing.repositories import (
-    count_subscriptions_by_status_since,
     create_coupon,
     create_credit_pack,
     create_plan,
@@ -37,7 +36,6 @@ from growixa_api.billing.repositories import (
     grant_credits,
     list_active_credit_packs,
     list_all_credit_packs,
-    list_billable_subscriptions_with_plans,
     list_coupons,
     list_credit_balances,
     list_plans,
@@ -743,64 +741,3 @@ async def admin_set_coupon_active(
     if coupon is None:
         raise CouponNotFoundError(str(coupon_id))
     return await set_coupon_active(session, coupon, is_active)
-
-
-@dataclass(frozen=True)
-class FinancialMetrics:
-    mrr_by_currency: dict[str, float]
-    arr_by_currency: dict[str, float]
-    active_subscription_count: int
-    churned_last_30_days: int
-    churn_rate_percent: float
-
-
-CHURN_WINDOW_DAYS = 30
-
-
-async def admin_get_financial_metrics(session: AsyncSession) -> FinancialMetrics:
-    """MRR/ARR/churn for the platform-admin financial dashboard (`GRX-SAAS-009`).
-
-    MRR: sum of each ACTIVE/PAST_DUE subscription's plan price in its own billing
-    currency (USD and INR are never summed together -- they're different currencies,
-    not different units of the same one). ARR = MRR x 12; this project bills monthly
-    only (no annual plans exist), so ARR is a straightforward annualization, not a
-    separately-billed figure.
-
-    Top-up/credit-pack revenue is deliberately NOT included here: `account_credit_
-    purchases` records `credits_added` but not the amount paid or currency, and there
-    is no FK back to which `credit_pack`/price was actually purchased -- computing a
-    dollar figure would mean guessing at a mapping the schema doesn't capture. That's
-    a real data-model gap, not a rounding error, and needs its own schema decision
-    (e.g. a `credit_pack_id`/`amount_paid`/`currency` column on the purchase row)
-    rather than an approximation here.
-
-    Churn: there is no dedicated subscription-status-change history table, so this
-    uses `updated_at` on a `CANCELED` row as a proxy for "when it churned" --
-    `churned_last_30_days` = count of subscriptions that became `CANCELED` in the
-    trailing 30 days. `churn_rate_percent` = churned / (currently ACTIVE/PAST_DUE +
-    churned), i.e. churned as a fraction of the accounts that were billable at the
-    start of the window (approximated as today's active count plus the ones that just
-    left it) -- a standard, simple churn-rate definition, not a precise cohort
-    analysis. Documented here so the definition is visible, not assumed.
-    """
-    billable = await list_billable_subscriptions_with_plans(session)
-    mrr: dict[str, float] = {"USD": 0.0, "INR": 0.0}
-    for subscription, plan in billable:
-        price = plan.price_usd if subscription.currency == "USD" else plan.price_inr
-        if price is not None:
-            mrr[subscription.currency] += float(price)
-    arr = {currency: value * 12 for currency, value in mrr.items()}
-
-    since = datetime.now(UTC) - timedelta(days=CHURN_WINDOW_DAYS)
-    churned = await count_subscriptions_by_status_since(session, statuses=["CANCELED"], since=since)
-    active_count = len(billable)
-    base = active_count + churned
-    churn_rate = (churned / base * 100) if base > 0 else 0.0
-
-    return FinancialMetrics(
-        mrr_by_currency=mrr,
-        arr_by_currency=arr,
-        active_subscription_count=active_count,
-        churned_last_30_days=churned,
-        churn_rate_percent=round(churn_rate, 2),
-    )

@@ -16,7 +16,7 @@ from growixa_api.ai.services import (
 from growixa_api.billing.models import AccountSubscription
 from growixa_api.billing.schemas import AccountSubscriptionOut, CreditBalanceOut, CreditPackOut
 from growixa_api.billing.schemas import SubscriptionPlanOut as BillingSubscriptionPlanOut
-from growixa_api.billing.services import admin_get_financial_metrics, get_billing_overview
+from growixa_api.billing.services import get_billing_overview
 from growixa_api.billing.services import (
     list_credit_pack_catalog_for_admin as list_credit_packs_service,
 )
@@ -98,6 +98,7 @@ from growixa_api.platform_admin.services import (
     SupportSessionNotFoundError,
     SupportSessionWriteGateError,
     SupportSessionWriteNotPermittedError,
+    get_financial_metrics,
     list_support_sessions_for_account_service,
 )
 from growixa_api.platform_admin.services import CampaignNotFoundError as CampaignRowNotFoundError
@@ -918,7 +919,7 @@ async def get_financial_metrics_route(
     _platform_admin_id: uuid.UUID = Depends(_require_monitoring_manage),
     session: AsyncSession = Depends(get_session),
 ) -> FinancialMetricsOut:
-    metrics = await admin_get_financial_metrics(session)
+    metrics = await get_financial_metrics(session)
     return FinancialMetricsOut(
         mrr_by_currency=metrics.mrr_by_currency,
         arr_by_currency=metrics.arr_by_currency,

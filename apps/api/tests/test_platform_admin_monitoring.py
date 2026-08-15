@@ -17,9 +17,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from growixa_api.app import create_app
 from growixa_api.billing.models import AccountSubscription, SubscriptionPlan
 from growixa_api.billing.repositories import get_plan_by_slug
-from growixa_api.billing.services import admin_get_financial_metrics
 from growixa_api.db import async_session_factory
 from growixa_api.health import _monitored_queue_names
+from growixa_api.platform_admin.services import get_financial_metrics
 from growixa_api.platform_auth.models import PlatformAdmin
 from tests.conftest import DEFAULT_TEST_PASSWORD
 
@@ -97,7 +97,7 @@ async def test_financial_metrics_computes_mrr_arr_per_currency_not_summed_togeth
         await _set_subscription(session, account_id=usd_account, plan=starter, currency="USD")
         await _set_subscription(session, account_id=inr_account, plan=pro, currency="INR")
 
-        metrics = await admin_get_financial_metrics(session)
+        metrics = await get_financial_metrics(session)
 
     assert metrics.mrr_by_currency["USD"] >= float(starter.price_usd)
     assert metrics.mrr_by_currency["INR"] >= float(pro.price_inr)
@@ -133,7 +133,7 @@ async def test_financial_metrics_churn_counts_only_cancellations_in_the_last_30_
             updated_at=datetime.now(UTC) - timedelta(days=90),
         )
 
-        metrics = await admin_get_financial_metrics(session)
+        metrics = await get_financial_metrics(session)
 
     assert metrics.churned_last_30_days >= 1
     # The 90-day-old cancellation must not be counted in the 30-day churn window.

@@ -1,0 +1,73 @@
+.card {
+  background: #fff;
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
+  padding: 32px;
+}
+
+.headerTitle {
+  margin: 0 0 20px;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table th {
+  text-align: left;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--color-slate);
+  padding: 0 0 10px;
+  border-bottom: 1px solid rgba(15, 42, 86, 0.1);
+}
+
+.table td {
+  padding: 14px 0;
+  border-top: 1px solid rgba(15, 42, 86, 0.08);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.queueCell {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 13px;
+  color: var(--color-dark-text);
+}
+
+.dlqPill {
+  margin-left: 8px;
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: var(--color-error);
+  background: rgba(244, 63, 94, 0.1);
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+
+.depthAlert {
+  color: var(--color-error);
+}
+
+.depthDlqAlert {
+  color: var(--color-error);
+  font-weight: 800;
+}
+
+.notDeclared {
+  color: var(--color-slate-light);
+  font-weight: 500;
+  font-size: 12px;
+}
+
+.empty {
+  color: var(--color-slate);
+  font-size: 13px;
+}
