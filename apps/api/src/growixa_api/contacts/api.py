@@ -1,8 +1,10 @@
+import csv
+import io
 import json
 import uuid
 from collections.abc import Sequence
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from growixa_api.billing.services import PlanLimitExceededError
@@ -29,11 +31,13 @@ from growixa_api.contacts.schemas import (
     ContactUpdateIn,
     CustomFieldIn,
     CustomFieldOut,
+    DomainSuppressionIn,
     SegmentIn,
     SegmentOut,
     SegmentRuleOut,
     SuppressionEntryIn,
     SuppressionEntryOut,
+    SuppressionImportResultOut,
     TagIn,
     TagOut,
     UpdateContactStatusIn,
@@ -48,6 +52,7 @@ from growixa_api.contacts.services import (
     InvalidColumnMappingError,
     InvalidSegmentRuleError,
     SegmentNotFoundError,
+    SuppressionEntryNotFoundError,
     TagNotFoundError,
     UnknownCustomFieldError,
 )
@@ -65,6 +70,9 @@ from growixa_api.contacts.services import get_import as get_import_service
 from growixa_api.contacts.services import get_list_with_count as get_list_service
 from growixa_api.contacts.services import get_segment_with_details as get_segment_service
 from growixa_api.contacts.services import import_contacts_from_csv as import_contacts_service
+from growixa_api.contacts.services import (
+    import_suppressions_from_csv as import_suppressions_service,
+)
 from growixa_api.contacts.services import list_contact_import_rows as list_import_rows_service
 from growixa_api.contacts.services import list_contact_imports as list_imports_service
 from growixa_api.contacts.services import list_contacts_with_fields as list_contacts_service
@@ -78,6 +86,8 @@ from growixa_api.contacts.services import record_consent as record_consent_servi
 from growixa_api.contacts.services import (
     remove_contact_from_list as remove_contact_from_list_service,
 )
+from growixa_api.contacts.services import remove_suppression as remove_suppression_service
+from growixa_api.contacts.services import suppress_domain as suppress_domain_service
 from growixa_api.contacts.services import suppress_email as suppress_email_service
 from growixa_api.contacts.services import update_contact as update_contact_service
 from growixa_api.contacts.services import update_contact_status as update_contact_status_service
@@ -457,6 +467,83 @@ async def suppress_email_route(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Contact not found") from exc
 
     return SuppressionEntryOut.model_validate(entry)
+
+
+@router.post(
+    "/suppression/domains", response_model=SuppressionEntryOut, status_code=status.HTTP_201_CREATED
+)
+async def suppress_domain_route(
+    payload: DomainSuppressionIn,
+    actor_id: uuid.UUID = Depends(_require_manage),
+    account_id: uuid.UUID = Depends(get_current_account_id),
+    session: AsyncSession = Depends(get_session),
+) -> SuppressionEntryOut:
+    entry = await suppress_domain_service(
+        session, account_id=account_id, actor_id=actor_id, domain=payload.domain
+    )
+    return SuppressionEntryOut.model_validate(entry)
+
+
+@router.post("/suppression/import", response_model=SuppressionImportResultOut)
+async def import_suppressions_route(
+    file: UploadFile = File(...),
+    actor_id: uuid.UUID = Depends(_require_manage),
+    account_id: uuid.UUID = Depends(get_current_account_id),
+    session: AsyncSession = Depends(get_session),
+) -> SuppressionImportResultOut:
+    raw = await file.read()
+    try:
+        csv_text = raw.decode("utf-8-sig")
+    except UnicodeDecodeError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "File must be UTF-8 encoded CSV") from exc
+
+    try:
+        created, skipped, total_rows = await import_suppressions_service(
+            session, account_id=account_id, actor_id=actor_id, csv_text=csv_text
+        )
+    except InvalidColumnMappingError as exc:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST, 'CSV must have a header column named "email"'
+        ) from exc
+
+    return SuppressionImportResultOut(created=created, skipped=skipped, total_rows=total_rows)
+
+
+@router.get("/suppression/export")
+async def export_suppressions_route(
+    _actor_id: uuid.UUID = Depends(_require_view),
+    account_id: uuid.UUID = Depends(get_current_account_id),
+    session: AsyncSession = Depends(get_session),
+) -> Response:
+    entries = await list_suppressions_service(session, account_id)
+    buffer = io.StringIO()
+    writer = csv.writer(buffer)
+    writer.writerow(["email", "domain", "reason", "suppressed_at"])
+    for entry in entries:
+        writer.writerow(
+            [entry.email or "", entry.domain or "", entry.reason, entry.suppressed_at.isoformat()]
+        )
+
+    return Response(
+        content=buffer.getvalue(),
+        media_type="text/csv",
+        headers={"Content-Disposition": 'attachment; filename="suppression-list.csv"'},
+    )
+
+
+@router.delete("/suppression/{entry_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def remove_suppression_route(
+    entry_id: uuid.UUID,
+    actor_id: uuid.UUID = Depends(_require_manage),
+    account_id: uuid.UUID = Depends(get_current_account_id),
+    session: AsyncSession = Depends(get_session),
+) -> None:
+    try:
+        await remove_suppression_service(
+            session, account_id=account_id, actor_id=actor_id, entry_id=entry_id
+        )
+    except SuppressionEntryNotFoundError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Suppression entry not found") from exc
 
 
 @router.get("", response_model=list[ContactOut])

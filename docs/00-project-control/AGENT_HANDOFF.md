@@ -3,9 +3,157 @@
 - Document ID: DOC-AGENT-HANDOFF
 - Status: ACTIVE (updated at the end of every work session)
 - Version: 1.0
-- Last updated: 2026-08-14
+- Last updated: 2026-08-15
 - Owner: Coding agent
 - Related documents: [MASTER_TASK_TRACKER](MASTER_TASK_TRACKER.md), [PROJECT_STATUS](PROJECT_STATUS.md), [CHANGELOG](CHANGELOG.md), [FEATURE_STATUS_MATRIX](FEATURE_STATUS_MATRIX.md)
+
+## Task worked on
+
+`GRX-SAAS-015` — ad hoc, user-directed after live-checking the `/dashboard/contacts/
+suppression` page: "why not wokeing" led to clarifying it was actually a login issue
+first (resolved as a false alarm — a synthetic test login, not a real bug), then the user
+asked to pick up work from `need_review_docs/`, confirming the previously-proposed
+suppression/DNC priority. User approved all three proposed pieces at once ("1. yes fix
+all 1,2 and 3"): (1) fix the broken "Remove" button (a real, previously-shipped bug), (2)
+add the `List-Unsubscribe` email header (RFC 8058 compliance gap), (3) add CSV bulk
+import/export and whole-domain suppression to the page.
+
+## Work completed
+
+### 1. Bug fix — `DELETE /contacts/suppression/{id}`
+
+An `Explore` subagent audit of the suppression module (comparing backend routes against
+what the frontend actually calls) found the "Remove" button had been calling a route that
+never existed on the backend — every click silently no-op'd. Added
+`get_suppression_entry_by_id`/`delete_suppression_entry` repositories,
+`remove_suppression` service (writes a `contact.unsuppressed` audit event), and the route
+itself, gated by the existing `contacts.manage`.
+
+### 2. RFC 8058 one-click unsubscribe
+
+Outbound campaign email now carries a `List-Unsubscribe`/`List-Unsubscribe-Post:
+List-Unsubscribe=One-Click` header pair (`apps/worker/src/growixa_worker/send_campaign.py`'s
+new `_unsubscribe_headers`, threaded through `email_sender.py`'s new `extra_headers`
+param) — this is what makes Gmail/Yahoo show their native inbox-level "Unsubscribe"
+button. RFC 8058 requires the linked URL to accept POST, not just GET, so a new
+`POST /unsubscribe/{campaign_recipient_id}` was added alongside the pre-existing `GET`
+(`email_delivery/api.py`), both deliberately public/unauthenticated so a mail client can
+call them directly.
+
+### 3. Domain-level suppression + CSV bulk import/export
+
+`suppression_entries.email` made nullable, new nullable `domain` column, an XOR CHECK
+constraint (`ck_suppression_entries_email_xor_domain` — each row is exactly one of
+exact-email or whole-domain, never both), and a partial unique index on
+`(account_id, domain) WHERE domain IS NOT NULL` (a plain unique constraint doesn't work
+here since Postgres treats every NULL `domain` as mutually distinct). New
+`POST /contacts/suppression/domains` (idempotent — re-blocking an already-blocked domain
+returns the existing row rather than erroring), `POST /contacts/suppression/import` (CSV,
+synchronous parse-and-insert — deliberately not routed through the existing async
+`ContactImport` job machinery, since suppression lists are orders of magnitude smaller
+than full contact lists), and `GET /contacts/suppression/export`. The worker's send-path
+suppression check (`_is_suppressed_or_withdrawn`) now also checks the recipient's
+`@`-suffix domain against domain-only rows. All new routes reuse the existing
+`contacts.manage`/`contacts.view` — no new RBAC permission code.
+
+Frontend (`suppression-page.tsx`): working Remove button, "+ Block a domain" modal,
+"Import CSV"/"Export CSV" buttons, domain rows rendered as `*@domain` with a "DOMAIN
+BLOCK" badge instead of the usual email/reason/contact-name columns.
+
+## Real bugs found and fixed this session
+
+1. **The "Remove" button bug** (see above) — the primary bug this session was scoped to
+   fix, found by an `Explore` subagent audit rather than by guessing.
+2. **Two orphaned-audit-row `ForeignKeyViolationError`s during test teardown**: the new
+   `contact.unsuppressed`/`contact.suppression_bulk_imported` audit actions left rows the
+   existing entity-id-keyed cleanup helper (`_cleanup_suppression`) couldn't find — either
+   the entry was already deleted, or the bulk-import audit row has no `entity_id` at all.
+   Fixed with a new `_cleanup_audit_actions(actor_user_id, *actions)` helper that deletes
+   by `actor_user_id`+`action` directly, called explicitly in the affected tests' `finally`
+   blocks.
+3. **Stray incorrect task-ID references self-caught before commit**: while writing this
+   handoff entry, noticed three code docstrings (`contacts/models.py`,
+   `contacts/services.py`, `worker/send_campaign.py`) had been written referencing
+   `GRX-SAAS-013` (the platform email provider config task) instead of this session's own
+   `GRX-SAAS-015` — fixed before committing.
+
+## Files changed
+
+- `apps/api/migrations/versions/b2c3d4e5f6a7_suppression_domain_support.py` (new)
+- `apps/api/src/growixa_api/contacts/{models,repositories,services,schemas,api}.py` (extended)
+- `apps/worker/src/growixa_worker/{email_sender,send_campaign,models}.py` (extended)
+- `apps/api/src/growixa_api/email_delivery/api.py` (extended: `POST /unsubscribe/{id}`)
+- `apps/web/src/app/(dashboard)/dashboard/contacts/suppression/suppression-page.tsx` (extended)
+- `apps/web/src/app/(dashboard)/dashboard/contacts/types.ts` (extended)
+- `apps/api/tests/test_contacts_consent_and_suppression.py` (extended, 7 new tests)
+- `apps/worker/tests/test_send_campaign.py` (extended, 2 new tests)
+- `apps/web/src/app/(dashboard)/dashboard/contacts/suppression/suppression-page.test.tsx` (extended, 2 new tests)
+- `docs/05-data/{DATA_MODEL,DATABASE_SCHEMA}.md` (extended: `suppression_entries` row-shape/index docs)
+- `docs/08-security/THREAT_MODEL.md` (new ad hoc section, T71–T73)
+- `docs/00-project-control/{MASTER_TASK_TRACKER,PROJECT_STATUS,CHANGELOG,AGENT_HANDOFF}.md`
+
+## Commands executed
+
+```bash
+# apps/api
+env $(grep -v '^#' .env.test | xargs) uv run pytest -q        # 326 passed, 8 skipped (up from 319)
+uv run ruff check . && uv run ruff format --check . && uv run mypy src tests   # clean
+env $(grep -v '^#' .env.test | xargs) uv run alembic check     # no drift
+
+# apps/worker
+uv run pytest -q          # 28 passed (up from 26)
+
+# apps/web
+npx eslint . && npx tsc --noEmit && npx prettier --check .    # clean (4 pre-existing warnings)
+npx vitest run            # 206 passed (up from 204)
+
+# Live Compose stack
+docker compose build api worker && docker compose up -d api worker
+docker compose restart web
+```
+
+## Blockers
+
+None.
+
+## Known issues / evidence gaps
+
+- None new. Suppression work is committed locally as of this handoff entry, pending user
+  confirmation before push (same pattern as every other change this session/project).
+
+## Current state
+
+**`GRX-SAAS-015` is code-complete, tested, and live-verified against local Compose**
+(backend endpoints via direct `curl` calls: DELETE bug fix, domain-block idempotency, CSV
+import/export; frontend via a real browser session at `/dashboard/contacts/suppression`:
+all four buttons render, the domain-block modal works end-to-end, and clicking "Remove"
+on a real entry now actually removes it with a confirming toast and no console errors).
+Not yet committed as of this handoff entry being written.
+
+## Exact next task
+
+Commit `GRX-SAAS-015`, confirm with the user before pushing to `origin/main` (auto-deploys
+to both the Hugging Face Space and Netlify via `deploy-prod.yml`).
+
+## Resume commands
+
+```bash
+cd /Users/ravi/Projects/growixa
+git status
+git log --oneline -10
+docker compose up -d
+docker compose logs api --tail 20
+```
+
+## Latest commit
+
+Pending — this session's commit(s) have not yet been created as of this handoff entry
+being written; see `git status` for the exact diff.
+
+---
+
+**Below this point: historical handoff entries from earlier sessions, preserved for
+context. Not updated as part of this session's work.**
 
 ## Task worked on
 

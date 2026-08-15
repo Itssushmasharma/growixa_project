@@ -168,11 +168,22 @@ class SuppressionEntryIn(BaseModel):
     contact_id: uuid.UUID | None = None
 
 
+class DomainSuppressionIn(BaseModel):
+    domain: str
+
+
 class SuppressionEntryOut(BaseModel):
     model_config = {"from_attributes": True}
 
     id: uuid.UUID
-    email: str
+    email: str | None
+    domain: str | None
     reason: str
     contact_id: uuid.UUID | None
     suppressed_at: datetime
+
+
+class SuppressionImportResultOut(BaseModel):
+    created: int
+    skipped: int
+    total_rows: int

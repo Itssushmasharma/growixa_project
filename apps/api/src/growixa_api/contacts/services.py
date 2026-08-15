@@ -41,7 +41,9 @@ from growixa_api.contacts.repositories import (
     get_custom_field_by_key,
     get_import_by_id,
     get_segment_by_id,
+    get_suppression_by_domain,
     get_suppression_by_email,
+    get_suppression_entry_by_id,
     get_tag_by_id,
     get_tag_by_name,
     get_tag_names_for_contact,
@@ -59,12 +61,18 @@ from growixa_api.contacts.repositories import add_segment_rule as add_segment_ru
 from growixa_api.contacts.repositories import create_consent_record as create_consent_record_row
 from growixa_api.contacts.repositories import create_contact_list as create_contact_list_row
 from growixa_api.contacts.repositories import create_custom_field as create_custom_field_row
+from growixa_api.contacts.repositories import (
+    create_domain_suppression_entry as create_domain_suppression_entry_row,
+)
 from growixa_api.contacts.repositories import create_import as create_import_row
 from growixa_api.contacts.repositories import create_segment as create_segment_row
 from growixa_api.contacts.repositories import (
     create_suppression_entry as create_suppression_entry_row,
 )
 from growixa_api.contacts.repositories import create_tag as create_tag_row
+from growixa_api.contacts.repositories import (
+    delete_suppression_entry as delete_suppression_entry_row,
+)
 from growixa_api.contacts.repositories import get_field_values_for_contact as _get_field_values
 from growixa_api.contacts.repositories import list_contact_lists as list_contact_lists_rows
 from growixa_api.contacts.repositories import list_contacts as list_contacts_rows
@@ -116,6 +124,10 @@ class InvalidColumnMappingError(Exception):
 
 
 class ContactImportNotFoundError(Exception):
+    pass
+
+
+class SuppressionEntryNotFoundError(Exception):
     pass
 
 
@@ -897,3 +909,109 @@ async def list_suppressions(
     session: AsyncSession, account_id: uuid.UUID
 ) -> Sequence[SuppressionEntry]:
     return await list_suppression_entries(session, account_id)
+
+
+async def import_suppressions_from_csv(
+    session: AsyncSession, *, account_id: uuid.UUID, actor_id: uuid.UUID, csv_text: str
+) -> tuple[int, int, int]:
+    """Synchronous bulk import (GRX-SAAS-015 ad hoc pass) -- suppression lists are
+    orders of magnitude smaller than full contact imports, so this skips the
+    `ContactImport` async-job machinery entirely (`GRX-CONTACT-*`'s row-by-row progress
+    tracking exists for lists that can run to 100k+ rows; a suppression list realistically
+    tops out far lower) and just parses + inserts inline in one request. Requires a
+    header row with a column literally named "email" (case-insensitive) -- no configurable
+    column mapping, unlike the full contact importer, since a suppression CSV only ever
+    has the one column that matters. Returns (created, skipped_duplicates, total_rows)."""
+    reader = csv.DictReader(io.StringIO(csv_text))
+    if reader.fieldnames is None:
+        raise InvalidColumnMappingError
+
+    email_column = next(
+        (name for name in reader.fieldnames if name.strip().lower() == "email"), None
+    )
+    if email_column is None:
+        raise InvalidColumnMappingError
+
+    created = 0
+    skipped = 0
+    total_rows = 0
+    for row in reader:
+        raw_email = (row.get(email_column) or "").strip()
+        if not raw_email:
+            continue
+        total_rows += 1
+        existing = await get_suppression_by_email(session, account_id, raw_email)
+        if existing is not None:
+            skipped += 1
+            continue
+        await create_suppression_entry_row(
+            session,
+            account_id=account_id,
+            email=raw_email,
+            reason="MANUAL",
+            contact_id=None,
+            suppressed_by_user_id=actor_id,
+        )
+        created += 1
+
+    if created > 0:
+        await record_event(
+            session,
+            account_id=account_id,
+            actor_user_id=actor_id,
+            action="contact.suppression_bulk_imported",
+            entity_type="suppression_entry",
+            metadata={"created": created, "skipped": skipped, "total_rows": total_rows},
+        )
+        await session.commit()
+
+    return created, skipped, total_rows
+
+
+async def suppress_domain(
+    session: AsyncSession, *, account_id: uuid.UUID, actor_id: uuid.UUID, domain: str
+) -> SuppressionEntry:
+    """Blocks every address at `domain` for this account's future sends (e.g.
+    `*@competitor.com`) -- checked in the worker's pre-send suppression pass alongside
+    exact-email entries, never both matched by the same row (`domain` is always MANUAL,
+    there's no automatic whole-domain unsubscribe/bounce event)."""
+    normalized = domain.strip().lower()
+    existing = await get_suppression_by_domain(session, account_id, normalized)
+    if existing is not None:
+        return existing
+
+    entry = await create_domain_suppression_entry_row(
+        session, account_id=account_id, domain=normalized, suppressed_by_user_id=actor_id
+    )
+    await record_event(
+        session,
+        account_id=account_id,
+        actor_user_id=actor_id,
+        action="contact.domain_suppressed",
+        entity_type="suppression_entry",
+        entity_id=entry.id,
+        metadata={"domain": normalized},
+    )
+    await session.commit()
+    return entry
+
+
+async def remove_suppression(
+    session: AsyncSession, *, account_id: uuid.UUID, actor_id: uuid.UUID, entry_id: uuid.UUID
+) -> None:
+    entry = await get_suppression_entry_by_id(session, account_id, entry_id)
+    if entry is None:
+        raise SuppressionEntryNotFoundError
+
+    identifier = entry.email or entry.domain
+    await record_event(
+        session,
+        account_id=account_id,
+        actor_user_id=actor_id,
+        action="contact.unsuppressed",
+        entity_type="suppression_entry",
+        entity_id=entry.id,
+        metadata={"identifier": identifier, "reason": entry.reason},
+    )
+    await delete_suppression_entry_row(session, entry)
+    await session.commit()

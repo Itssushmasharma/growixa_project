@@ -138,7 +138,8 @@ class SuppressionEntry(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
     account_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
-    email: Mapped[str] = mapped_column(CITEXT, nullable=False)
+    email: Mapped[str | None] = mapped_column(CITEXT, nullable=True)
+    domain: Mapped[str | None] = mapped_column(Text, nullable=True)
     reason: Mapped[str] = mapped_column(Text, nullable=False)
 
 

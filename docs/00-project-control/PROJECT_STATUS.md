@@ -2,8 +2,8 @@
 
 - Document ID: DOC-PROJECT-STATUS
 - Status: ACTIVE
-- Version: 1.49
-- Last updated: 2026-08-14
+- Version: 1.50
+- Last updated: 2026-08-15
 - Owner: Coding agent (on behalf of product owner)
 - Related documents: [MASTER_TASK_TRACKER](MASTER_TASK_TRACKER.md), [WORKTREE_TRACKER](WORKTREE_TRACKER.md), [DECISIONS](DECISIONS.md), [DEVELOPMENT_READINESS](DEVELOPMENT_READINESS.md), [FEATURE_STATUS_MATRIX](FEATURE_STATUS_MATRIX.md)
 
@@ -430,6 +430,16 @@ slices plus the Sprint 5 multi-tenancy retrofit are now complete.**
     `CHANGELOG.md`'s 2026-08-14 entry. The plan's full 4 role-adaptive customer views
     (Marketing Manager/Content Creator/Analyst) remain unbuilt, staged as Release 1.1 by
     the plan itself.
+13. **`GRX-SAAS-015` (Suppression-list fixes)**: user-directed after live-checking the
+    Suppression page found the "Remove" button silently did nothing — it called a
+    `DELETE /contacts/suppression/{id}` route that never existed on the backend, a real
+    previously-shipped bug, now fixed. Also added RFC 8058 one-click unsubscribe (a
+    `List-Unsubscribe` header plus a new POST-capable unsubscribe endpoint, so Gmail/Yahoo
+    show their native inbox-level "Unsubscribe" button), whole-domain suppression
+    (`*@competitor.com`-style blocks via a nullable `domain` column + XOR CHECK constraint
+    on `suppression_entries`), and CSV bulk import/export of the suppression list — see
+    `CHANGELOG.md`'s 2026-08-15 entry. No new RBAC permission codes; all new routes reuse
+    the existing `contacts.manage`/`contacts.view`.
 
 ## Changelog
 

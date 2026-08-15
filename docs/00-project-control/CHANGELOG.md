@@ -10,6 +10,30 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
+## 2026-08-15 — GRX-SAAS-015: Suppression-list fixes — bug fix, one-click unsubscribe, domain blocking, CSV import/export (ad hoc)
+
+- User-directed after live-checking the Suppression page. Three things fixed/added:
+- **Bug fix**: the "Remove" button on `/dashboard/contacts/suppression` called
+  `DELETE /contacts/suppression/{id}` — a route that never existed on the backend, so the
+  button silently did nothing. Added the route plus `remove_suppression` service/repository
+  layer.
+- **RFC 8058 one-click unsubscribe**: outbound campaign emails now carry a
+  `List-Unsubscribe`/`List-Unsubscribe-Post: List-Unsubscribe=One-Click` header, so
+  Gmail/Yahoo show their native inbox-level "Unsubscribe" affordance. Required adding a
+  new `POST /unsubscribe/{campaign_recipient_id}` alongside the existing `GET` — mail
+  clients require the target URL to accept POST for one-click unsubscribe to work.
+- **Domain-level suppression + CSV import/export**: `suppression_entries` extended with a
+  nullable `domain` column and an XOR CHECK constraint (`email` XOR `domain`, never both) —
+  a customer can now block every address at a domain in one action
+  (`POST /contacts/suppression/domains`), and bulk import/export the whole suppression list
+  as CSV (`POST /contacts/suppression/import`, `GET /contacts/suppression/export`). A
+  partial unique index on `(account_id, domain) WHERE domain IS NOT NULL` enforces one
+  active block per domain per account. All new routes reuse the existing
+  `contacts.manage`/`contacts.view` permissions — no new RBAC code.
+- 7 new backend tests, 2 new worker tests, 2 new frontend tests. Live-verified end-to-end
+  against the real running Compose stack via both `curl` and a real browser session.
+  See `MASTER_TASK_TRACKER.md`'s `GRX-SAAS-015` row for the full evidence writeup.
+
 ## 2026-08-14 — GRX-SAAS-014: Dashboards — customer + platform admin overview (ad hoc)
 
 - Driven by a product-planning review of `need_review_docs/DASHBOARDS_METRICS_AND_UI_PLAN.md`.

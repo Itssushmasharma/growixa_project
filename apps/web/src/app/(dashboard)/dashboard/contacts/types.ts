@@ -75,10 +75,17 @@ export interface ConsentRecord {
 
 export interface SuppressionEntry {
   id: string;
-  email: string;
+  email: string | null;
+  domain: string | null;
   reason: "UNSUBSCRIBED" | "BOUNCED" | "COMPLAINED" | "MANUAL";
   contact_id: string | null;
   suppressed_at: string;
+}
+
+export interface SuppressionImportResult {
+  created: number;
+  skipped: number;
+  total_rows: number;
 }
 
 export interface Contact {

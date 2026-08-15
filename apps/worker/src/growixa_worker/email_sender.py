@@ -20,11 +20,14 @@ async def send_email(
     subject: str,
     body_html: str,
     body_text: str | None,
+    extra_headers: dict[str, str] | None = None,
 ) -> None:
     message = EmailMessage()
     message["From"] = f"{from_name} <{from_email}>"
     message["To"] = to_email
     message["Subject"] = subject
+    for name, value in (extra_headers or {}).items():
+        message[name] = value
     message.set_content(body_text or "")
     message.add_alternative(body_html, subtype="html")
 

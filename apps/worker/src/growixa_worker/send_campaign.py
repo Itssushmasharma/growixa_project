@@ -34,7 +34,9 @@ async def _is_suppressed_or_withdrawn(
     list OR whose most recent EMAIL consent is WITHDRAWN is excluded from sending.
     Scoped to the sending campaign's own account (GRX-SAAS-001) -- one account's
     suppression/consent state must never affect another account's send, even for the
-    same email address."""
+    same email address. Also checks whole-domain blocks (GRX-SAAS-015 ad hoc pass) --
+    a domain entry has `email IS NULL`, so it can never match the exact-email query
+    above; it's matched here by the recipient's own domain instead."""
     suppression_result = await session.execute(
         select(SuppressionEntry.id)
         .where(SuppressionEntry.account_id == account_id, SuppressionEntry.email == email)
@@ -42,6 +44,16 @@ async def _is_suppressed_or_withdrawn(
     )
     if suppression_result.scalar_one_or_none() is not None:
         return True
+
+    domain = email.rsplit("@", 1)[-1].lower() if "@" in email else None
+    if domain is not None:
+        domain_result = await session.execute(
+            select(SuppressionEntry.id)
+            .where(SuppressionEntry.account_id == account_id, SuppressionEntry.domain == domain)
+            .limit(1)
+        )
+        if domain_result.scalar_one_or_none() is not None:
+            return True
 
     consent_result = await session.execute(
         select(ConsentRecord.status)
@@ -68,6 +80,18 @@ def _with_unsubscribe_footer(
     html = f'{body_html}<p><a href="{url}">Unsubscribe</a></p>'
     text = f"{body_text}\n\nUnsubscribe: {url}" if body_text else f"Unsubscribe: {url}"
     return html, text
+
+
+def _unsubscribe_headers(campaign_recipient_id: uuid.UUID) -> dict[str, str]:
+    """Gmail/Yahoo's 2024+ bulk-sender requirements mandate a List-Unsubscribe header
+    with one-click support (RFC 8058) on every bulk campaign send, on top of (not instead
+    of) the visible footer link above — reuses the exact same /unsubscribe/{id} route,
+    just surfaced as a header instead of only a body link."""
+    url = f"{get_settings().api_public_url}/unsubscribe/{campaign_recipient_id}"
+    return {
+        "List-Unsubscribe": f"<{url}>",
+        "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+    }
 
 
 async def handle_send_campaign(session: AsyncSession, payload: dict[str, Any]) -> None:
@@ -176,6 +200,7 @@ async def handle_send_campaign(session: AsyncSession, payload: dict[str, Any]) -
                 subject=campaign.subject,
                 body_html=body_html,
                 body_text=body_text,
+                extra_headers=_unsubscribe_headers(recipient.id),
             )
         except EmailSendError as exc:
             delivery.status = "FAILED"

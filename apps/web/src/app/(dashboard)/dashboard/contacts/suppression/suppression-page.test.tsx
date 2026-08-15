@@ -45,6 +45,7 @@ const ALICE: Contact = {
 const BOUNCED_ENTRY: SuppressionEntry = {
   id: "suppression-1",
   email: "bounced@example.com",
+  domain: null,
   reason: "BOUNCED",
   contact_id: null,
   suppressed_at: "2026-07-01T00:00:00Z",
@@ -105,6 +106,7 @@ describe("SuppressionPage", () => {
     const created: SuppressionEntry = {
       id: "suppression-2",
       email: "new@example.com",
+      domain: null,
       reason: "MANUAL",
       contact_id: null,
       suppressed_at: "2026-07-01T00:00:00Z",
@@ -162,5 +164,65 @@ describe("SuppressionPage", () => {
 
     await waitFor(() => expect(screen.getByText("COMPLAINED")).toBeInTheDocument());
     expect(screen.getAllByText("bounced@example.com")).toHaveLength(1);
+  });
+
+  it("removes a suppression entry via the Remove button", async () => {
+    mockedApiFetch.mockImplementation((path: string, init?: RequestInit) => {
+      if (path === "/auth/me") {
+        return Promise.resolve(meWithPermissions(["contacts.view", "contacts.manage"]));
+      }
+      if (path === "/contacts/suppression" && (!init || init.method === undefined)) {
+        return Promise.resolve([BOUNCED_ENTRY]);
+      }
+      if (path === "/contacts") return Promise.resolve([]);
+      if (path === `/contacts/suppression/${BOUNCED_ENTRY.id}` && init?.method === "DELETE") {
+        return Promise.resolve(undefined);
+      }
+      throw new Error(`unexpected call: ${path}`);
+    });
+
+    const user = userEvent.setup();
+    renderSuppressionPage();
+
+    await screen.findByText("bounced@example.com");
+    await user.click(screen.getByRole("button", { name: "Remove" }));
+
+    await waitFor(() => expect(screen.queryByText("bounced@example.com")).not.toBeInTheDocument());
+    expect(await screen.findByText("No suppressed emails yet.")).toBeInTheDocument();
+  });
+
+  it("blocks a domain via the block-domain form", async () => {
+    const domainEntry: SuppressionEntry = {
+      id: "suppression-3",
+      email: null,
+      domain: "competitor.com",
+      reason: "MANUAL",
+      contact_id: null,
+      suppressed_at: "2026-07-01T00:00:00Z",
+    };
+    mockedApiFetch.mockImplementation((path: string, init?: RequestInit) => {
+      if (path === "/auth/me") {
+        return Promise.resolve(meWithPermissions(["contacts.view", "contacts.manage"]));
+      }
+      if (path === "/contacts/suppression" && (!init || init.method === undefined)) {
+        return Promise.resolve([]);
+      }
+      if (path === "/contacts") return Promise.resolve([]);
+      if (path === "/contacts/suppression/domains" && init?.method === "POST") {
+        return Promise.resolve(domainEntry);
+      }
+      throw new Error(`unexpected call: ${path}`);
+    });
+
+    const user = userEvent.setup();
+    renderSuppressionPage();
+
+    await screen.findByText("No suppressed emails yet.");
+    await user.click(screen.getByRole("button", { name: "+ Block a domain" }));
+    await user.type(screen.getByLabelText("Domain"), "competitor.com");
+    await user.click(screen.getByRole("button", { name: "Block domain" }));
+
+    expect(await screen.findByText("*@competitor.com")).toBeInTheDocument();
+    expect(screen.getByText("DOMAIN BLOCK")).toBeInTheDocument();
   });
 });

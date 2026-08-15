@@ -1,7 +1,16 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Integer, Text, UniqueConstraint
+from sqlalchemy import (
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    Text,
+    UniqueConstraint,
+    text,
+)
 from sqlalchemy.dialects.postgresql import CITEXT, JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
@@ -339,15 +348,35 @@ class ConsentRecord(Base):
 
 
 class SuppressionEntry(Base):
+    """Either an exact-email entry (`email` set, `domain` NULL) or a whole-domain block
+    (`domain` set, `email` NULL, e.g. suppress every `*@competitor.com` address) -- never
+    both, enforced by `ck_suppression_entries_email_xor_domain` (GRX-SAAS-015, ad hoc
+    suppression-list pass). Domain entries are always `reason='MANUAL'` -- there is
+    no such thing as an automatic whole-domain unsubscribe/bounce/complaint event."""
+
     __tablename__ = "suppression_entries"
     __table_args__ = (
         CheckConstraint(
             "reason IN ('UNSUBSCRIBED', 'BOUNCED', 'COMPLAINED', 'MANUAL')",
             name="ck_suppression_entries_reason",
         ),
+        CheckConstraint(
+            "(email IS NOT NULL AND domain IS NULL) OR (email IS NULL AND domain IS NOT NULL)",
+            name="ck_suppression_entries_email_xor_domain",
+        ),
         # Suppression is per-account -- an address suppressed by one customer's sends
-        # doesn't suppress it for a different customer's own audience.
+        # doesn't suppress it for a different customer's own audience. NULL emails (every
+        # domain-only row) are all mutually distinct under Postgres NULL semantics, so
+        # this constraint is effectively a no-op for domain rows -- the partial unique
+        # index below is what actually enforces "one active block per domain".
         UniqueConstraint("account_id", "email", name="ux_suppression_entries_account_id_email"),
+        Index(
+            "ux_suppression_entries_account_id_domain",
+            "account_id",
+            "domain",
+            unique=True,
+            postgresql_where=text("domain IS NOT NULL"),
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -357,7 +386,8 @@ class SuppressionEntry(Base):
         nullable=False,
         index=True,
     )
-    email: Mapped[str] = mapped_column(CITEXT, nullable=False)
+    email: Mapped[str | None] = mapped_column(CITEXT, nullable=True)
+    domain: Mapped[str | None] = mapped_column(Text, nullable=True)
     reason: Mapped[str] = mapped_column(Text, nullable=False)
     contact_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("contacts.id"), nullable=True

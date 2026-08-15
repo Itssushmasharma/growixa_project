@@ -1,12 +1,13 @@
 "use client";
 
-import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { type ChangeEvent, type FormEvent, useEffect, useMemo, useRef, useState } from "react";
 
 import { useToast } from "@/components/toast/toast-context";
 import { apiFetch } from "@/lib/api-client";
+import { getApiUrl } from "@/lib/env";
 
 import styles from "../shared.module.css";
-import type { Contact, MeResponse, SuppressionEntry } from "../types";
+import type { Contact, MeResponse, SuppressionEntry, SuppressionImportResult } from "../types";
 
 const VIEW_PERMISSION = "contacts.view";
 const MANAGE_PERMISSION = "contacts.manage";
@@ -37,7 +38,14 @@ export function SuppressionPage() {
   const [addForm, setAddForm] = useState<SuppressionFormState>(EMPTY_FORM);
   const [adding, setAdding] = useState(false);
 
+  const [showDomainModal, setShowDomainModal] = useState(false);
+  const [domainInput, setDomainInput] = useState("");
+  const [blockingDomain, setBlockingDomain] = useState(false);
+
   const [removePendingId, setRemovePendingId] = useState<string | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     async function load() {
@@ -64,7 +72,7 @@ export function SuppressionPage() {
   const visibleEntries = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return entries;
-    return entries.filter((e) => e.email.toLowerCase().includes(q));
+    return entries.filter((e) => (e.email ?? e.domain ?? "").toLowerCase().includes(q));
   }, [entries, search]);
 
   const metrics = useMemo(() => {
@@ -107,6 +115,26 @@ export function SuppressionPage() {
     }
   }
 
+  async function handleBlockDomainSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setBlockingDomain(true);
+
+    try {
+      const entry = await apiFetch<SuppressionEntry>("/contacts/suppression/domains", {
+        method: "POST",
+        body: JSON.stringify({ domain: domainInput }),
+      });
+      setEntries((current) => [entry, ...current.filter((e) => e.id !== entry.id)]);
+      setShowDomainModal(false);
+      setDomainInput("");
+      showToast("success", `Domain "${entry.domain}" blocked.`);
+    } catch {
+      showToast("error", "Could not block domain.");
+    } finally {
+      setBlockingDomain(false);
+    }
+  }
+
   async function handleRemove(id: string) {
     setRemovePendingId(id);
     try {
@@ -117,6 +145,55 @@ export function SuppressionPage() {
       showToast("error", "Could not remove suppression.");
     } finally {
       setRemovePendingId(null);
+    }
+  }
+
+  async function handleImportFile(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    setImporting(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const result = await apiFetch<SuppressionImportResult>("/contacts/suppression/import", {
+        method: "POST",
+        body: formData,
+      });
+      const refreshed = await apiFetch<SuppressionEntry[]>("/contacts/suppression");
+      setEntries(refreshed);
+      showToast(
+        "success",
+        `Imported ${result.created} new suppression${result.created === 1 ? "" : "s"} (${result.skipped} already suppressed, ${result.total_rows} rows read).`,
+      );
+    } catch {
+      showToast("error", 'Could not import CSV — check it has an "email" column.');
+    } finally {
+      setImporting(false);
+    }
+  }
+
+  async function handleExport() {
+    setExporting(true);
+    try {
+      const response = await fetch(`${getApiUrl()}/contacts/suppression/export`, {
+        credentials: "include",
+      });
+      if (!response.ok) throw new Error("export failed");
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "suppression-list.csv";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch {
+      showToast("error", "Could not export suppression list.");
+    } finally {
+      setExporting(false);
     }
   }
 
@@ -176,13 +253,45 @@ export function SuppressionPage() {
             Suppression list <span className={styles.headerCount}>· {visibleEntries.length}</span>
           </h2>
           {canManage && (
-            <button
-              type="button"
-              className={styles.addButton}
-              onClick={() => setShowAddModal(true)}
-            >
-              + Suppress an email
-            </button>
+            <div style={{ display: "flex", gap: 8 }}>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".csv,text/csv"
+                style={{ display: "none" }}
+                onChange={handleImportFile}
+              />
+              <button
+                type="button"
+                className={styles.viewButton}
+                disabled={importing}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                {importing ? "Importing…" : "Import CSV"}
+              </button>
+              <button
+                type="button"
+                className={styles.viewButton}
+                disabled={exporting || entries.length === 0}
+                onClick={handleExport}
+              >
+                {exporting ? "Exporting…" : "Export CSV"}
+              </button>
+              <button
+                type="button"
+                className={styles.viewButton}
+                onClick={() => setShowDomainModal(true)}
+              >
+                + Block a domain
+              </button>
+              <button
+                type="button"
+                className={styles.addButton}
+                onClick={() => setShowAddModal(true)}
+              >
+                + Suppress an email
+              </button>
+            </div>
           )}
         </div>
 
@@ -191,7 +300,7 @@ export function SuppressionPage() {
           <div className={styles.searchGroup}>
             <input
               type="text"
-              placeholder="Search suppressed email address..."
+              placeholder="Search suppressed email or domain..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className={styles.searchInput}
@@ -207,7 +316,7 @@ export function SuppressionPage() {
           <div>
             {/* Table Header Row */}
             <div className={styles.tableHeader}>
-              <div>Email Address</div>
+              <div>Email / Domain</div>
               <div>Reason</div>
               <div>Matching Contact</div>
               <div>Suppressed At</div>
@@ -215,10 +324,13 @@ export function SuppressionPage() {
             </div>
 
             {visibleEntries.map((entry) => {
+              const isDomain = entry.email === null;
               return (
                 <div key={entry.id} className={styles.contactBlock}>
                   <div className={styles.row}>
-                    <div className={styles.name}>{entry.email}</div>
+                    <div className={styles.name}>
+                      {isDomain ? `*@${entry.domain}` : entry.email}
+                    </div>
                     <div>
                       <span
                         className={`${styles.statusBadge} ${
@@ -227,11 +339,11 @@ export function SuppressionPage() {
                             : styles.statusBounced
                         }`}
                       >
-                        {entry.reason}
+                        {isDomain ? "DOMAIN BLOCK" : entry.reason}
                       </span>
                     </div>
                     <div className={styles.description}>
-                      {getMatchingContactName(entry.contact_id)}
+                      {isDomain ? "—" : getMatchingContactName(entry.contact_id)}
                     </div>
                     <div className={styles.description}>
                       {new Date(entry.suppressed_at).toLocaleString()}
@@ -346,6 +458,65 @@ export function SuppressionPage() {
                 </button>
                 <button type="submit" disabled={adding} className={styles.submit}>
                   {adding ? "Suppressing..." : "Suppress email"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Block Domain Modal */}
+      {showDomainModal && (
+        <div
+          className={styles.modalBackdrop}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowDomainModal(false);
+          }}
+        >
+          <div className={styles.modalContent} style={{ maxWidth: 480 }}>
+            <div className={styles.modalHeader}>
+              <h3 className={styles.name} style={{ fontSize: 18, margin: 0 }}>
+                Block a Domain
+              </h3>
+              <button
+                type="button"
+                className={styles.modalCloseButton}
+                onClick={() => setShowDomainModal(false)}
+                aria-label="Close modal"
+              >
+                Close
+              </button>
+            </div>
+            <form onSubmit={handleBlockDomainSubmit}>
+              <div className={styles.createField} style={{ marginBottom: 24 }}>
+                <label className={styles.label} htmlFor="block-domain">
+                  Domain
+                </label>
+                <input
+                  id="block-domain"
+                  type="text"
+                  required
+                  placeholder="competitor.com"
+                  className={styles.input}
+                  value={domainInput}
+                  onChange={(e) => setDomainInput(e.target.value)}
+                />
+                <p style={{ fontSize: 12.5, color: "var(--color-slate)", marginTop: 6 }}>
+                  Blocks every address at this domain from future sends — e.g. entering{" "}
+                  <code>competitor.com</code> blocks anyone@competitor.com.
+                </p>
+              </div>
+
+              <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+                <button
+                  type="button"
+                  className={styles.modalCloseButton}
+                  onClick={() => setShowDomainModal(false)}
+                >
+                  Cancel
+                </button>
+                <button type="submit" disabled={blockingDomain} className={styles.submit}>
+                  {blockingDomain ? "Blocking..." : "Block domain"}
                 </button>
               </div>
             </form>

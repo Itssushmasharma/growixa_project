@@ -234,14 +234,26 @@
   `consent_records`'s append-only history, because its only job is a fast lookup before
   any future send (Slice 3+).
 - Primary key: `id` (UUID)
-- Required fields: `email` (citext, **unique** — one active suppression per address),
-  `reason` (`UNSUBSCRIBED` | `BOUNCED` | `COMPLAINED` | `MANUAL`), `suppressed_at`
-  (default `now()`)
-- Optional fields: `contact_id` (nullable FK → `contacts.id` — an address can be
-  suppressed even with no matching contact record, e.g. a hard bounce), `suppressed_by_user_id`
-  (nullable FK → `users.id`)
+- Row shape (`GRX-SAAS-015`, ad hoc): each row is *either* an exact-email entry (`email`
+  set, `domain` NULL) *or* a whole-domain block (`domain` set, `email` NULL, e.g. suppress
+  every `*@competitor.com` address) — never both, enforced by
+  `ck_suppression_entries_email_xor_domain`. Domain rows are always `reason='MANUAL'`;
+  there's no such thing as an automatic whole-domain unsubscribe/bounce/complaint event.
+- Required fields: `reason` (`UNSUBSCRIBED` | `BOUNCED` | `COMPLAINED` | `MANUAL`),
+  `suppressed_at` (default `now()`)
+- Optional fields (exactly one of the two set per row, per the XOR constraint above):
+  `email` (citext), `domain` (text). Also: `contact_id` (nullable FK → `contacts.id` — an
+  address can be suppressed even with no matching contact record, e.g. a hard bounce; always
+  NULL on domain rows), `suppressed_by_user_id` (nullable FK → `users.id`)
 - Re-suppressing an already-suppressed email updates `reason`/`suppressed_at` in place
-  (upsert on the unique `email` index), it does not create a second row.
+  (upsert on the unique `(account_id, email)` index), it does not create a second row.
+  Re-blocking an already-blocked domain returns the existing row unchanged (idempotent,
+  enforced by the partial unique index on `(account_id, domain) WHERE domain IS NOT NULL`
+  — a plain `(account_id, domain)` unique constraint wouldn't work here since Postgres
+  treats every NULL `domain` value as mutually distinct).
+- A campaign send checks both: the exact recipient email against the unique index, and the
+  recipient's `@`-suffix domain against the domain rows — a domain block has no exact-email
+  row to match, so it's checked as a second, separate query.
 
 ## Slice 3 entities (full detail)
 

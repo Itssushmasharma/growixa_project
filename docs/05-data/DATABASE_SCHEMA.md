@@ -327,13 +327,25 @@ insert-only, same pattern as `audit_logs`.
 | Column | Type | Constraints |
 |---|---|---|
 | id | uuid | PK |
-| email | citext | UNIQUE, NOT NULL |
+| account_id | uuid | FK → accounts.id ON DELETE CASCADE, NOT NULL |
+| email | citext | NULL |
+| domain | text | NULL |
 | reason | text | NOT NULL, CHECK IN ('UNSUBSCRIBED','BOUNCED','COMPLAINED','MANUAL') |
 | contact_id | uuid | FK → contacts.id, NULL |
 | suppressed_at | timestamptz | NOT NULL, DEFAULT now() |
 | suppressed_by_user_id | uuid | FK → users.id, NULL |
 
-Indexes: unique index on `email` (upsert target — re-suppressing updates the existing row).
+Constraints: `ck_suppression_entries_email_xor_domain` — `(email IS NOT NULL AND domain IS
+NULL) OR (email IS NULL AND domain IS NOT NULL)` (`GRX-SAAS-015`, ad hoc) — each row is
+either an exact-email suppression or a whole-domain block, never both. Domain rows are
+always `reason='MANUAL'`.
+
+Indexes: unique index on `(account_id, email)` (upsert target — re-suppressing an email
+updates the existing row in place). Partial unique index
+`ux_suppression_entries_account_id_domain` on `(account_id, domain) WHERE domain IS NOT
+NULL` — enforces "at most one active block per domain per account"; a plain
+`(account_id, domain)` unique constraint doesn't work here since Postgres treats every NULL
+`domain` as mutually distinct, so it would allow unlimited duplicate domain-less rows.
 
 ## Slice 3 (Email Marketing) tables
 
