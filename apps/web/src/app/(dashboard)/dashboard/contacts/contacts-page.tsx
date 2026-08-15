@@ -158,11 +158,19 @@ export function ContactsPage() {
   }, [visibleContacts, startIndex, endIndex]);
 
   const metrics = useMemo(() => {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth();
     return {
       total: contacts.length,
       active: contacts.filter((c) => c.status === "ACTIVE").length,
       suppressed: contacts.filter((c) => c.is_suppressed).length,
       archived: contacts.filter((c) => c.status === "ARCHIVED").length,
+      newThisMonth: contacts.filter((c) => {
+        if (!c.created_at) return false;
+        const created = new Date(c.created_at);
+        return created.getFullYear() === currentYear && created.getMonth() === currentMonth;
+      }).length,
     };
   }, [contacts]);
 
@@ -427,43 +435,17 @@ export function ContactsPage() {
         }
       />
 
-      {/* Metric Summary Cards (5 Cards) */}
+      {/* Metric Summary Cards (Real Derived Counts) */}
       <section className={styles.metricsGrid} aria-label="Contacts Overview KPIs">
-        <StatCard
-          label="Total Contacts"
-          value={metrics.total}
-          trend="14%"
-          trendDirection="up"
-          subtext="vs last month"
-        />
-        <StatCard
-          label="Active Contacts"
-          value={metrics.active}
-          trend="11%"
-          trendDirection="up"
-          subtext="vs last month"
-        />
+        <StatCard label="Total Contacts" value={metrics.total} subtext="All audience" />
+        <StatCard label="Active Contacts" value={metrics.active} subtext="Subscribed" />
         <StatCard
           label="New This Month"
-          value={Math.max(1, Math.round(metrics.total * 0.15))}
-          trend="18%"
-          trendDirection="up"
-          subtext="vs last month"
+          value={metrics.newThisMonth}
+          subtext="Joined this calendar month"
         />
-        <StatCard
-          label="Unsubscribed / Suppressed"
-          value={metrics.suppressed}
-          trend="3%"
-          trendDirection="down"
-          subtext="vs last month"
-        />
-        <StatCard
-          label="Archived"
-          value={metrics.archived}
-          trend="1%"
-          trendDirection="down"
-          subtext="vs last month"
-        />
+        <StatCard label="Suppressed" value={metrics.suppressed} subtext="Unsubscribed & bounced" />
+        <StatCard label="Archived" value={metrics.archived} subtext="Inactive" />
       </section>
 
       <div className={styles.card}>

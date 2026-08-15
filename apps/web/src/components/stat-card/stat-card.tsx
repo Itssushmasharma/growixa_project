@@ -21,8 +21,8 @@ export function StatCard({
     trendDirection === "up"
       ? styles.trendPositive
       : trendDirection === "down"
-      ? styles.trendNegative
-      : styles.trendNeutral;
+        ? styles.trendNegative
+        : styles.trendNeutral;
 
   return (
     <div className={styles.statCard}>

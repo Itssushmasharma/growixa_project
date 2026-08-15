@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -65,7 +65,10 @@ const SUPPRESSED_CONTACT: Contact = {
   is_suppressed: true,
 };
 
-const VIP_TAG: Tag = { id: "tag-1", name: "VIP" };
+const VIP_TAG: Tag = {
+  id: "tag-1",
+  name: "VIP",
+};
 
 const GRANTED_CONSENT: ConsentRecord = {
   id: "consent-1",
@@ -94,8 +97,13 @@ describe("ContactsPage", () => {
 
     expect(await screen.findByText("Alice Anderson")).toBeInTheDocument();
     expect(screen.getByText("Bob")).toBeInTheDocument();
-    expect(screen.getAllByText("Active").length).toBeGreaterThanOrEqual(2);
-    expect(screen.getByText("Suppressed")).toBeInTheDocument();
+    const aliceBlock = screen
+      .getByText("Alice Anderson")
+      .closest("div[class*='contactBlock']") as HTMLElement;
+    const bobBlock = screen.getByText("Bob").closest("div[class*='contactBlock']") as HTMLElement;
+    expect(within(aliceBlock).getByText("Active")).toBeInTheDocument();
+    expect(within(bobBlock).getByText("Active")).toBeInTheDocument();
+    expect(within(bobBlock).getByText("Suppressed")).toBeInTheDocument();
   });
 
   it("shows an access-denied message for a user without contacts.view", async () => {
@@ -217,9 +225,9 @@ describe("ContactsPage", () => {
     await screen.findByText("Alice Anderson");
     await user.click(screen.getByRole("button", { name: "View" }));
     await user.click(screen.getByRole("button", { name: "Archive" }));
-    await waitFor(() =>
-      expect(screen.getAllByText("Archived").length).toBeGreaterThanOrEqual(1),
-    );
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Unarchive" })).toBeInTheDocument();
+    });
   });
 
   it("attaches an existing tag to a contact", async () => {

@@ -178,11 +178,17 @@ export function CampaignsPage() {
 
   const totalCampaigns = campaigns.length;
   const sentCampaigns = campaigns.filter((c) => c.status === "SENT").length;
+  const scheduledCampaigns = campaigns.filter(
+    (c) => c.status === "SCHEDULED" || c.status === "DISPATCHING" || c.status === "SENDING",
+  ).length;
+  const draftCampaigns = campaigns.filter((c) => c.status === "DRAFT").length;
 
   if (loading) {
     return (
       <div className={styles.page}>
-        <div style={{ background: "#fff", padding: "40px", borderRadius: "18px", textAlign: "center" }}>
+        <div
+          style={{ background: "#fff", padding: "40px", borderRadius: "18px", textAlign: "center" }}
+        >
           Loading campaigns…
         </div>
       </div>
@@ -192,7 +198,9 @@ export function CampaignsPage() {
   if (loadError) {
     return (
       <div className={styles.page}>
-        <div style={{ background: "#fff", padding: "40px", borderRadius: "18px", textAlign: "center" }}>
+        <div
+          style={{ background: "#fff", padding: "40px", borderRadius: "18px", textAlign: "center" }}
+        >
           {loadError}
         </div>
       </div>
@@ -202,7 +210,9 @@ export function CampaignsPage() {
   if (!canView) {
     return (
       <div className={styles.page}>
-        <div style={{ background: "#fff", padding: "40px", borderRadius: "18px", textAlign: "center" }}>
+        <div
+          style={{ background: "#fff", padding: "40px", borderRadius: "18px", textAlign: "center" }}
+        >
           <h2>Access Denied</h2>
           <p>You don&apos;t have permission to view campaigns.</p>
         </div>
@@ -226,43 +236,12 @@ export function CampaignsPage() {
         }
       />
 
-      {/* KPI Stats Deck (5 Cards) */}
+      {/* KPI Stats Deck (Real Derived Counts) */}
       <section className={styles.statsDeck} aria-label="Campaigns Overview KPIs">
-        <StatCard
-          label="Total Campaigns"
-          value={totalCampaigns}
-          trend="20%"
-          trendDirection="up"
-          subtext="vs last month"
-        />
-        <StatCard
-          label="Sent Campaigns"
-          value={sentCampaigns}
-          trend="12%"
-          trendDirection="up"
-          subtext="vs last month"
-        />
-        <StatCard
-          label="Open Rate"
-          value={sentCampaigns > 0 ? "27.4%" : "0.0%"}
-          trend="8.3%"
-          trendDirection="up"
-          subtext="vs last month"
-        />
-        <StatCard
-          label="Click Rate"
-          value={sentCampaigns > 0 ? "6.7%" : "0.0%"}
-          trend="1.8%"
-          trendDirection="up"
-          subtext="vs last month"
-        />
-        <StatCard
-          label="Revenue Generated"
-          value={sentCampaigns > 0 ? "₹ 1,24,500" : "₹ 0"}
-          trend="15%"
-          trendDirection="up"
-          subtext="vs last month"
-        />
+        <StatCard label="Total Campaigns" value={totalCampaigns} subtext="All time" />
+        <StatCard label="Sent Campaigns" value={sentCampaigns} subtext="Delivered" />
+        <StatCard label="Scheduled" value={scheduledCampaigns} subtext="Upcoming" />
+        <StatCard label="Drafts" value={draftCampaigns} subtext="In progress" />
       </section>
 
       {/* Toolbar: Category Tabs + Search */}
@@ -307,8 +286,8 @@ export function CampaignsPage() {
             {search.trim()
               ? `No campaigns match "${search}". Try clearing your search.`
               : activeTab === "ALL"
-              ? "You haven't created any campaigns yet. Click '+ Create Campaign' to get started."
-              : `No campaigns in "${STATUS_LABEL[activeTab as Campaign['status']]}" state.`}
+                ? "You haven't created any campaigns yet. Click '+ Create Campaign' to get started."
+                : `No campaigns in "${STATUS_LABEL[activeTab as Campaign["status"]]}" state.`}
           </p>
           {canManage && activeTab === "ALL" && !search.trim() && (
             <Link href="/dashboard/campaigns/new" className={styles.actionButton}>
@@ -348,7 +327,10 @@ export function CampaignsPage() {
                         <div className={styles.campaignTitleCell}>
                           <div className={styles.campaignIcon}>✉️</div>
                           <div>
-                            <Link href={`/dashboard/campaigns/${campaign.id}`} className={styles.campaignName}>
+                            <Link
+                              href={`/dashboard/campaigns/${campaign.id}`}
+                              className={styles.campaignName}
+                            >
                               {campaign.name}
                             </Link>
                             {campaign.subject && (
@@ -372,7 +354,14 @@ export function CampaignsPage() {
                           : formatDate(campaign.created_at)}
                       </td>
                       <td style={{ textAlign: "right" }}>
-                        <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "8px" }}>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "flex-end",
+                            gap: "8px",
+                          }}
+                        >
                           {canCancel && (
                             <button
                               type="button"
