@@ -51,10 +51,84 @@
 
 ## 5. Review Verdict
 
-- **Reviewer**: _(Pending Independent Review)_
-- **Verdict**: _(Pending)_
+- **Reviewer**: Google Antigravity (fresh session — different tool than developer, who was also
+  Google Antigravity; this session has no memory of the developer's work and verified
+  everything against the real diff, real tests, and independent analysis)
+- **Verdict**: **CHANGES_REQUESTED**
 - **Reviewed Code Commit**: `08ef8da`
-- **Comments**: Ready for independent reviewer inspection.
+- **Comments**: See Review Findings below.
+
+### Review Findings
+
+Verified against the actual branch diff (`git diff main...feature/FRONTEND/GRX-DASHBOARD-SUITE-003`),
+not against §1–§3's claims. Risk treated as MEDIUM (customer-facing UI, no schema/auth/RBAC changes).
+
+**§3's test claims independently verified.** Re-ran from the worktree:
+- `npm test --run` → **41 files, 222/222 passed** (matches exactly).
+- `npx tsc --noEmit` → 0 errors (matches).
+- `npm run lint` → 0 errors, 2 pre-existing `no-img-element` warnings in `post-form-page.tsx`
+  (correctly described; this branch does not introduce them).
+- `npm run format:check` → **All matched files use Prettier code style!** ✅ (Prettier clean —
+  this branch did not introduce the 7 inherited failures that landed from `GRX-AI-STUDIO-001`,
+  and those were already fixed by `feature/FRONTEND/GRX-LINT-FORMAT-CLEANUP` at `01da721`,
+  which merged before this branch's format check was run).
+- `git merge-tree` dry-run against `origin/main` → 0 conflict markers.
+- `git diff 08ef8da..e6a121c -- . ':(exclude)pr_reviews/**'` → empty; only the handoff file
+  changed after the code commit.
+
+**Review focus point 2 (genuine data)** passes for the Dashboard Overview and Social page —
+all StatCard values there are derived from real API fields (`overview.*`, `posts.filter(...).length`).
+**Review focus point 3 (permissions)** passes for Dashboard Overview (no write-gated CTAs exposed
+to viewers), Social (`canManage` gates `+ New post` correctly in the header), and Templates
+(`canManage` gates `+ New template`). The AI Copilot and Create Campaign links in the Dashboard
+header are navigation links only, not write actions — acceptable.
+
+---
+
+1. **HIGH — Cancel button shown for `DISPATCHING` posts; backend rejects it.**
+   `social-page.tsx:256–260` enables the Cancel button when
+   `post.status === "DISPATCHING"`. The backend `cancel_post` service (`social/services.py:408`)
+   only accepts `DRAFT` or `SCHEDULED` — a `DISPATCHING` post raises
+   `PostNotCancellableError`. A user with `social.manage` who clicks Cancel on a dispatching
+   post will see an error. The old code used a constant `cancellableStatuses = ["DRAFT",
+   "SCHEDULED"]` that was correct; the new `canCancel` expression widened it. Fix: remove
+   `post.status === "DISPATCHING"` from the `canCancel` expression, or confirm with the
+   product owner that the backend should also accept `DISPATCHING` cancellations and update
+   both.
+
+2. **MEDIUM — `Custom Built` stat card is always equal to `Total Templates`.**
+   `templates-page.tsx:248`: `StatCard label="Custom Built" value={templates.length}`.
+   This is identical to the `Total Templates` value two lines above. `templates` is the list
+   fetched from `GET /templates`, which already contains only account-created templates
+   (not presets). Both cards will always show the same number. The original code had the
+   same duplicate (`templates.length` in two metric cards), so this is not a regression —
+   but it was an opportunity to fix a confusing duplicate metric and wasn't taken. Either
+   derive a meaningful distinct value (e.g. templates created in the last 30 days, or
+   templates with an `html_content` non-null) or drop the `Custom Built` card. As-is it
+   misleads: an operator sees `Total Templates: 5` and `Custom Built: 5` and concludes all
+   5 are custom-built, when the presets column right next to it already shows there are
+   3 presets — implying 2 custom, not 5.
+
+3. **MEDIUM — `+ Create Post` CTA in the Social Calendar header is not gated on `canManage`.**
+   `calendar-page.tsx:122` renders `+ Create Post` unconditionally. The Social Calendar page
+   only fetches `social.view` permission (`VIEW_PERMISSION = "social.view"`) and has no
+   `canManage` derived from `social.manage`. A view-only user (e.g. Analyst) will see both
+   the `+ Create Post` header button and the `+ Schedule your first post` empty-state CTA.
+   Following the same `canManage` pattern used correctly in `social-page.tsx` is the fix.
+
+4. **LOW — Handoff's Changed Files list (§2) is incomplete.**
+   The actual diff includes 9 source files not in the handoff's 9-item list:
+   `dashboard/ai/history-page.tsx`, `dashboard/ai/history-page.module.css`,
+   `dashboard/ai/history-page.test.tsx`, `dashboard/ai/types.ts`,
+   `dashboard/dashboard-shell.tsx`, `dashboard/dashboard-shell.test.tsx`.
+   These are all Prettier reformats with zero semantic change (verified: only whitespace,
+   trailing-comma, and line-wrapping changes). Not a code defect, but the handoff should
+   not claim "Changed Files" and omit half the changed files. Update §2 for accuracy on
+   re-submit.
+
+Security/isolation: no findings. No new endpoints, no `account_id` handling, no permission
+relaxation beyond finding 3. RBAC.md and THREAT_MODEL.md have no additional applicable
+controls here.
 
 ---
 
