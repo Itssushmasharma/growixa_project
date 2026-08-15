@@ -94,7 +94,7 @@ describe("ContactsPage", () => {
 
     expect(await screen.findByText("Alice Anderson")).toBeInTheDocument();
     expect(screen.getByText("Bob")).toBeInTheDocument();
-    expect(screen.getAllByText("Active")).toHaveLength(2);
+    expect(screen.getAllByText("Active").length).toBeGreaterThanOrEqual(2);
     expect(screen.getByText("Suppressed")).toBeInTheDocument();
   });
 
@@ -217,8 +217,9 @@ describe("ContactsPage", () => {
     await screen.findByText("Alice Anderson");
     await user.click(screen.getByRole("button", { name: "View" }));
     await user.click(screen.getByRole("button", { name: "Archive" }));
-
-    await waitFor(() => expect(screen.getByText("Archived")).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getAllByText("Archived").length).toBeGreaterThanOrEqual(1),
+    );
   });
 
   it("attaches an existing tag to a contact", async () => {

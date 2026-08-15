@@ -9,7 +9,80 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 16px;
-  margin-bottom: 24px;
+  margin-bottom: 22px;
+}
+
+.primaryButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 18px;
+  border: none;
+  border-radius: var(--pill-radius, 999px);
+  background: linear-gradient(135deg, var(--color-primary-blue, #1457e6) 0%, #6366f1 100%);
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+  box-shadow: 0 2px 10px rgba(20, 87, 230, 0.25);
+  transition: all 0.15s;
+}
+
+.primaryButton:hover {
+  opacity: 0.95;
+  transform: translateY(-1px);
+}
+
+.statusTabs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.statusTab,
+.statusTabActive {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: var(--pill-radius, 999px);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  color: var(--color-slate, #64748b);
+  transition: all 0.15s ease;
+}
+
+.statusTab:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: var(--color-dark-text, #0b1b33);
+}
+
+.statusTabActive {
+  background: linear-gradient(135deg, var(--color-primary-blue, #1457e6) 0%, #6366f1 100%);
+  border-color: transparent;
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(20, 87, 230, 0.25);
+}
+
+.statusTabCount {
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.statusTabActive .statusTabCount {
+  background: rgba(255, 255, 255, 0.25);
+  color: #ffffff;
 }
 
 .metricCard {
