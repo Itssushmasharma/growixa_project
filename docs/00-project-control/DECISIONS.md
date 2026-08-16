@@ -2,8 +2,8 @@
 
 - Document ID: DOC-DECISIONS
 - Status: ACTIVE
-- Version: 1.2
-- Last updated: 2026-08-07
+- Version: 1.3
+- Last updated: 2026-08-15
 - Owner: Product owner (Ravi) via coding agent
 - Related documents: [OPEN_QUESTIONS](OPEN_QUESTIONS.md), [ASSUMPTIONS](ASSUMPTIONS.md), [ROADMAP](../01-product/ROADMAP.md)
 
@@ -1184,3 +1184,78 @@ Decision statuses: `PROPOSED`, `UNDER_REVIEW`, `APPROVED`, `REJECTED`, `SUPERSED
 
 *Decisions DEC-GRX-033 onward will be logged as they are made — e.g., resolutions to
 OQ-004, OQ-006 through OQ-011 in [OPEN_QUESTIONS.md](OPEN_QUESTIONS.md).*
+
+## DEC-GRX-033: External contact acquisition — scope expansion beyond first-party audiences
+
+- Status: **PROPOSED** — requires the product owner's explicit confirmation. Nothing may
+  be built, scaffolded, or entered into `MASTER_TASK_TRACKER.md` while this is `PROPOSED`.
+- Date: 2026-08-15
+- Context: `FUTURE_SCOPE_LEAD_INTELLIGENCE.md` (2026-07-30) captured three ideas from a
+  revspot.ai review, and gated all three behind one unresolved business-model question.
+  Idea #3 — contact extraction & enrichment from external sources — has now been raised
+  again by the product owner, who directed (2026-08-15) that the gate be opened properly
+  rather than bypassed: resolve the business-model call and write the missing
+  provenance/consent analysis *first*, then build. This entry is that call, drafted for
+  confirmation. It is deliberately `PROPOSED`, not `APPROVED` — an agent may not decide
+  the product's category on the product owner's behalf.
+- The actual question: does Growixa's scope expand from **"automate marketing to contacts
+  a company already has"** to **"also acquire contacts a company does not have yet"**?
+  Per `DEC-GRX-001` and `PRD.md` §9, the former is Growixa's stated positioning. The
+  latter is a different product category — closer to outbound lead-gen than to marketing
+  automation. This is a positioning change, not a feature addition.
+
+### Proposed decision (for confirmation)
+
+1. **Scope does expand**, but narrowly: Growixa may ingest and manage externally-sourced
+   contacts. It is a marketing-automation platform that can *accept* external contact
+   data, not a lead-generation product that *sells* leads or audiences.
+2. **Growixa does not perform acquisition on the customer's behalf in a first version.**
+   The customer supplies the data; Growixa ingests it with mandatory provenance. This
+   keeps collection liability (T84) with the party that chose the source, and it is
+   reversible — Growixa-operated acquisition can be added later, whereas an
+   acquisition-as-a-service posture is very hard to walk back.
+3. **The customer is the data controller** for contacts they supply, and warrants a
+   lawful basis at ingest. Growixa is the processor. This must be reflected in the terms
+   of service before the capability ships — it is not merely an internal position.
+4. **Externally-sourced contacts are not sendable by default** (T82). They enter a
+   distinct, non-sendable consent state; promotion requires an explicit, audited action.
+5. **Inferred enrichment attributes (income band, intent score) are out of scope** for a
+   first version (T87). Verified factual attributes only.
+6. **Sending reputation is ring-fenced** (T83). The specific mechanism — mandatory
+   pre-send validation, separate IP pool/subaccount, volume caps, or some combination —
+   is deferred to a design task, but *some* mechanism is mandatory, not optional.
+
+### Preconditions before any `GRX-*` task may be created
+
+- This decision moves to `APPROVED` by the product owner.
+- `THREAT_MODEL.md` §"Pre-build — External contact acquisition & enrichment" (T81–T87,
+  added 2026-08-15) has its required controls converted into acceptance criteria.
+- `OQ-020` is answered (ESP AUP position — see below).
+- `OQ-008` (retention) and `OQ-017` (suppression storage/provenance) are resolved, since
+  both are load-bearing for T81 and T85.
+
+### Consequences if APPROVED
+
+1. `PRD.md` §9 positioning and §6 target users need amending — the current text describes
+   a first-party-audience product, and would become inaccurate.
+2. `MVP_SCOPE.md` §"Deferred, not cancelled" currently lists "LinkedIn/CSV contact
+   enrichment" as requiring "an explicit scope decision, not just a backlog slot." This
+   is that decision; that bullet must be updated to reference it.
+3. `FUTURE_SCOPE_LEAD_INTELLIGENCE.md` idea #3 leaves idea-capture status and becomes a
+   real feature entry in `FEATURE_CATALOG.md`. Ideas #1 (voice) and #2 (licensed data)
+   are **not** unlocked by this decision and stay gated.
+4. A data-model change (mandatory provenance columns, new consent state) plus a terms-of-
+   service change. The ToS change is the long pole and is not an engineering task.
+
+### Consequences if REJECTED
+
+`FUTURE_SCOPE_LEAD_INTELLIGENCE.md` stays idea-capture only. Customers who want external
+contacts continue to use the existing `GRX-FEAT-007` Contact Import, which already works
+for a CSV the customer sourced themselves — no new capability, no scope change, and the
+existing suppression/unsubscribe/footer machinery already covers the sending obligations.
+This is a genuinely viable "do nothing" path, not a strawman.
+
+- Related: `FUTURE_SCOPE_LEAD_INTELLIGENCE.md`, `THREAT_MODEL.md` T81–T87, `OQ-020`,
+  `DEC-GRX-001` (positioning), `DEC-GRX-008` (suppression/consent mandatory),
+  `DEC-GRX-015` (shared Postmark sending path — the T83 blast radius).
+- Supersedes: none. Narrows, but does not supersede, `DEC-GRX-001` if approved.
