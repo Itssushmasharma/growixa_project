@@ -464,6 +464,16 @@ slices plus the Sprint 5 multi-tenancy retrofit are now complete.**
     fallback-reason dictionary moved out of the vendor-specific adapter file into
     `providers/base.py`) — see `CHANGELOG.md`'s 2026-08-15 entry. Real credit-ledger
     deduction is deliberately not wired up yet; the checkbox is informational only for now.
+16. **`GRX-CONTACT-010` (Contact Deletion & Bulk Operations API)**: `READY` now. Backend task.
+    Single contact deletion (`DELETE /contacts/{id}`), bulk deletion by IDs (`POST /contacts/bulk-delete`),
+    and complete account contact purge (`DELETE /contacts/all`), cascading tags, list memberships,
+    custom field values, and consent records with audit logging (`contact.deleted`/`contact.bulk_deleted`).
+    Gated on `contacts.manage`. Branch: `feature/BACKEND/GRX-CONTACT-010`.
+17. **`GRX-CONTACT-015` (Contacts Table Bulk Actions, Multi-select & Delete/Suppress UI)**: `BACKLOG`.
+    Frontend task, unblocks once `GRX-CONTACT-010` lands. Multi-select table checkboxes on
+    `/dashboard/contacts`, select-all header/page, floating bulk action toolbar with "Delete Selected"
+    and "Move to Suppression List" actions, plus individual "Delete Contact" button in the detail modal.
+    Branch: `feature/FRONTEND/GRX-CONTACT-015`.
 
 ## Changelog
 
