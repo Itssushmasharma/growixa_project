@@ -1550,8 +1550,8 @@ contact someone you have no prior relationship with?
 
 ## DEC-GRX-034: Contact soft deletion — `deleted_at`, enforced invisibility, and re-import behaviour
 
-- Status: **PROPOSED** — requires the product owner's confirmation before `GRX-CONTACT-010`
-  is implemented.
+- Status: **APPROVED** — confirmed by the product owner 2026-08-16, after considering and
+  rejecting the suppress-as-delete alternative recorded in §4a.
 - Date: 2026-08-16
 - Requirement, as stated by the product owner: a customer can delete a contact; Growixa
   retains the row in the database; **the customer cannot see that data anywhere.** Not
