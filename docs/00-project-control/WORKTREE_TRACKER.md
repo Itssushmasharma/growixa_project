@@ -16,6 +16,8 @@ This document maintains a real-time record of all parallel Git worktrees, active
 
 | Worktree Directory | Branch | Feature Delivered | Merged Commit | Merged Date |
 |---|---|---|---|---|
+| `.worktrees/grx-saas-009-monitoring` | `feature/BACKEND/GRX-SAAS-009` | Platform Admin Infrastructure Monitoring (`/platform/monitoring`) & Financial Overview (`/platform/finance`) | `af733c4` | 2026-08-16 |
+| — | `feature/FRONTEND/GRX-SIDEBAR-CLEANUP` | Removed legacy single-tenant System Health link from customer dashboard sidebar | `c078602` | 2026-08-16 |
 | `.worktrees/grx-marketing-redesign` | `feature/FRONTEND/GRX-MARKETING-REDESIGN` | Marketing pricing section redesign & credit pack catalog matching DEC-GRX-030 | `01962ad` | 2026-08-16 |
 | `.worktrees/grx-templates-gallery` | `feature/FRONTEND/GRX-TEMPLATES-GALLERY` | Email Templates gallery visual redesign & interactive live HTML preview modal | `35bda06` | 2026-08-16 |
 | `.worktrees/grx-dev-seed` | `feature/BACKEND/GRX-DEV-SEED-001` | Safe and idempotent dev demo-data seed CLI (`python -m growixa_api.cli.seed_demo_data`) + integration tests | `f1b7744` | 2026-08-15 |
