@@ -7,8 +7,7 @@ This document maintains a real-time record of all parallel Git worktrees, active
 ## 🟢 Active Worktrees & Preview Servers
 
 | Worktree Path | Branch Name | Feature / Task | Preview URL | Status | Created |
-|---|---|---|---|---|---|
-| — | — | — | — | — | — |
+| `.worktrees/grx-saas-007-providers` | `feature/BACKEND/GRX-SAAS-007` | Platform Admin Provider Management Hub (`/platform/providers`) | `http://localhost:3001/platform/providers` | 🟢 In Review | 2026-08-16 |
 
 ---
 

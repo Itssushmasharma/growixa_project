@@ -1,0 +1,253 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.statCard {
+  background: #fff;
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border: 1px solid rgba(15, 42, 86, 0.06);
+}
+
+.statLabel {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-slate);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.statValue {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--color-navy);
+}
+
+.statHint {
+  font-size: 12px;
+  color: var(--color-slate);
+}
+
+.actionBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.providersGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 20px;
+}
+
+.providerCard {
+  background: #fff;
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  border: 1px solid rgba(15, 42, 86, 0.08);
+  position: relative;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.providerCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08);
+}
+
+.cardHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.cardTitleWrapper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cardIcon {
+  font-size: 24px;
+  line-height: 1;
+}
+
+.cardTitle {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--color-navy);
+}
+
+.cardSubtitle {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--color-slate);
+}
+
+.statusBadge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.statusActive {
+  background: rgba(34, 197, 94, 0.12);
+  color: #15803d;
+}
+
+.statusUnconfigured {
+  background: rgba(245, 158, 11, 0.12);
+  color: #b45309;
+}
+
+.detailsList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: #f8fafc;
+  border: 1px solid rgba(15, 42, 86, 0.06);
+  border-radius: 8px;
+  padding: 14px 16px;
+  font-size: 12.5px;
+}
+
+.detailRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.detailLabel {
+  color: var(--color-slate);
+  font-weight: 500;
+}
+
+.detailValue {
+  font-weight: 700;
+  color: var(--color-navy);
+  font-family: var(--font-mono, monospace);
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 180px;
+}
+
+.testResultBanner {
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.testSuccess {
+  background: rgba(34, 197, 94, 0.12);
+  color: #15803d;
+}
+
+.testFailed {
+  background: rgba(239, 68, 68, 0.12);
+  color: #b91c1c;
+}
+
+.cardActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid rgba(15, 42, 86, 0.06);
+}
+
+.btnPrimary {
+  background: var(--color-primary, #2563eb);
+  color: #fff;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: opacity 0.15s ease;
+}
+
+.btnPrimary:hover {
+  opacity: 0.9;
+}
+
+.btnPrimary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btnSecondary {
+  background: #f1f5f9;
+  color: var(--color-navy, #0f2a56);
+  border: 1px solid rgba(15, 42, 86, 0.1);
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.15s ease;
+}
+
+.btnSecondary:hover {
+  background: #e2e8f0;
+}
+
+.btnSecondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.emptyNote {
+  color: var(--color-slate);
+  font-size: 12.5px;
+  font-style: italic;
+  padding: 8px 0;
+}
+
+.accessDenied {
+  background: #fff;
+  border-radius: var(--card-radius);
+  padding: 32px;
+  text-align: center;
+  color: var(--color-slate);
+  box-shadow: var(--card-shadow);
+}

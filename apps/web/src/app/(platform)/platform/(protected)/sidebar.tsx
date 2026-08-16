@@ -41,6 +41,12 @@ const NAV_ITEMS: NavItem[] = [
     requiresPermission: "platform.usage.manage",
   },
   {
+    label: "Providers Hub",
+    href: "/platform/providers",
+    icon: "🔌",
+    requiresPermission: "platform.usage.manage",
+  },
+  {
     label: "AI & LLM Config",
     href: "/platform/ai-config",
     icon: "⚙️",
