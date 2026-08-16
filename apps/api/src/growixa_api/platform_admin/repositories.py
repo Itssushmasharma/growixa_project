@@ -2,7 +2,7 @@ import uuid
 from collections.abc import Sequence
 from datetime import datetime
 
-from sqlalchemy import Row, func, select
+from sqlalchemy import Row, case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from growixa_api.accounts.models import Account
@@ -134,12 +134,34 @@ async def count_active_accounts(session: AsyncSession) -> int:
 
 
 async def get_mrr_totals(session: AsyncSession) -> tuple[float, float]:
-    """Sums each ACTIVE subscription's plan price. NULL-priced plans (Enterprise /
-    contact-sales, DEC-GRX-030) contribute 0 -- there is no self-serve price to sum."""
+    """Sums each ACTIVE subscription's plan price, filtered to that subscription's own
+    billing currency -- a `SubscriptionPlan` row carries both `price_usd` and
+    `price_inr` (needed so the plan can be offered in either currency), so summing both
+    unconditionally would credit a USD subscriber's price to the INR total too (real
+    bug found and fixed in GRX-SAAS-009 review: confirmed live, a lone USD subscriber
+    was inflating INR MRR to a nonzero figure with zero real INR subscribers). NULL or
+    zero-priced plans (Enterprise / contact-sales, Free) contribute 0 -- there is no
+    self-serve price to sum."""
     result = await session.execute(
         select(
-            func.coalesce(func.sum(SubscriptionPlan.price_usd), 0),
-            func.coalesce(func.sum(SubscriptionPlan.price_inr), 0),
+            func.coalesce(
+                func.sum(
+                    case(
+                        (AccountSubscription.currency == "USD", SubscriptionPlan.price_usd),
+                        else_=0,
+                    )
+                ),
+                0,
+            ),
+            func.coalesce(
+                func.sum(
+                    case(
+                        (AccountSubscription.currency == "INR", SubscriptionPlan.price_inr),
+                        else_=0,
+                    )
+                ),
+                0,
+            ),
         )
         .select_from(AccountSubscription)
         .join(SubscriptionPlan, SubscriptionPlan.id == AccountSubscription.plan_id)
@@ -147,6 +169,45 @@ async def get_mrr_totals(session: AsyncSession) -> tuple[float, float]:
     )
     row = result.one()
     return float(row[0]), float(row[1])
+
+
+async def count_active_paying_subscriptions(session: AsyncSession) -> int:
+    """ACTIVE subscriptions on a plan with a real price in that subscription's own
+    currency. Every account gets an ACTIVE Free subscription at registration
+    (create_default_free_subscription), so a raw ACTIVE count would be dominated by
+    non-paying accounts and misread as paying customers on a financial dashboard
+    (real bug found and fixed in GRX-SAAS-009 review: confirmed live, 36 of 37 ACTIVE
+    subscriptions were Free -- one real paying customer)."""
+    result = await session.execute(
+        select(func.count())
+        .select_from(AccountSubscription)
+        .join(SubscriptionPlan, SubscriptionPlan.id == AccountSubscription.plan_id)
+        .where(
+            AccountSubscription.status == "ACTIVE",
+            case(
+                (AccountSubscription.currency == "USD", SubscriptionPlan.price_usd),
+                (AccountSubscription.currency == "INR", SubscriptionPlan.price_inr),
+                else_=0,
+            )
+            > 0,
+        )
+    )
+    return result.scalar_one()
+
+
+async def count_subscriptions_canceled_since(session: AsyncSession, *, since: datetime) -> int:
+    """Count of subscriptions with status=CANCELED whose `updated_at` falls on/after
+    `since` -- used for churn (GRX-SAAS-009). There is no dedicated
+    subscription-status-change history table, so `updated_at` on a CANCELED row is
+    used as an approximation of "when this subscription churned". Documented
+    approximation, not silently assumed -- see get_financial_metrics's docstring for
+    the exact churn-rate definition."""
+    result = await session.execute(
+        select(func.count())
+        .select_from(AccountSubscription)
+        .where(AccountSubscription.status == "CANCELED", AccountSubscription.updated_at >= since)
+    )
+    return result.scalar_one()
 
 
 async def get_period_usage_totals(session: AsyncSession) -> tuple[int, int]:

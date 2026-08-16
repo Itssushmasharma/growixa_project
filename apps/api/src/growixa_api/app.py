@@ -38,6 +38,9 @@ from growixa_api.platform_admin.api import (
 from growixa_api.platform_admin.api import (
     email_validation_config_router as platform_admin_email_validation_config_router,
 )
+from growixa_api.platform_admin.api import (
+    monitoring_router as platform_admin_monitoring_router,
+)
 from growixa_api.platform_admin.api import router as platform_admin_router
 from growixa_api.platform_admin.api import (
     support_session_router as platform_admin_support_session_router,
@@ -108,6 +111,7 @@ def create_app() -> FastAPI:
     app.include_router(platform_admin_billing_router)
     app.include_router(platform_admin_email_config_router)
     app.include_router(platform_admin_email_validation_config_router)
+    app.include_router(platform_admin_monitoring_router)
     app.include_router(accounts_router)
     app.include_router(company_router)
     app.include_router(brand_router)
