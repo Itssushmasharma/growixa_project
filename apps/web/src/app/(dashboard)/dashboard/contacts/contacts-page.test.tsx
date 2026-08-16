@@ -379,4 +379,254 @@ describe("ContactsPage", () => {
 
     await waitFor(() => expect(screen.getByText(/SMS: WITHDRAWN/)).toBeInTheDocument());
   });
+
+  it("selects contacts, toggles select all, and displays bulk action bar", async () => {
+    mockedApiFetch.mockImplementation((path: string, init?: RequestInit) => {
+      if (path === "/auth/me") {
+        return Promise.resolve(meWithPermissions(["contacts.view", "contacts.manage"]));
+      }
+      if (path === "/contacts") return Promise.resolve([ACTIVE_CONTACT, SUPPRESSED_CONTACT]);
+      if (isTagsGet(path, init)) return Promise.resolve([]);
+      throw new Error(`unexpected call: ${path}`);
+    });
+
+    const user = userEvent.setup();
+    renderContactsPage();
+
+    await screen.findByText("Alice Anderson");
+
+    // Initially bulk action bar is not visible
+    expect(screen.queryByTestId("bulk-action-bar")).not.toBeInTheDocument();
+
+    // Select Alice
+    const aliceCheckbox = screen.getByLabelText("Select Alice Anderson");
+    await user.click(aliceCheckbox);
+
+    // Bulk action bar appears
+    expect(screen.getByTestId("bulk-action-bar")).toBeInTheDocument();
+    expect(screen.getByText("1 selected")).toBeInTheDocument();
+
+    // Click select all on page
+    const selectAllCheckbox = screen.getByLabelText("Select all contacts on this page");
+    await user.click(selectAllCheckbox);
+    expect(screen.getByText("2 selected")).toBeInTheDocument();
+
+    // Click clear selection
+    await user.click(screen.getByRole("button", { name: "✕ Clear Selection" }));
+    expect(screen.queryByTestId("bulk-action-bar")).not.toBeInTheDocument();
+  });
+
+  it("performs bulk delete of selected contacts", async () => {
+    let bulkDeletedIds: string[] = [];
+    mockedApiFetch.mockImplementation((path: string, init?: RequestInit) => {
+      if (path === "/auth/me") {
+        return Promise.resolve(meWithPermissions(["contacts.view", "contacts.manage"]));
+      }
+      if (path === "/contacts") return Promise.resolve([ACTIVE_CONTACT, SUPPRESSED_CONTACT]);
+      if (isTagsGet(path, init)) return Promise.resolve([]);
+      if (path === "/contacts/bulk-delete" && init?.method === "POST") {
+        const body = JSON.parse(init.body as string);
+        bulkDeletedIds = body.contact_ids;
+        return Promise.resolve({ deleted_count: bulkDeletedIds.length });
+      }
+      throw new Error(`unexpected call: ${path}`);
+    });
+
+    const user = userEvent.setup();
+    renderContactsPage();
+
+    await screen.findByText("Alice Anderson");
+
+    // Select Alice
+    await user.click(screen.getByLabelText("Select Alice Anderson"));
+
+    // Click Delete Selected in bulk bar
+    await user.click(screen.getByRole("button", { name: /Delete Selected/ }));
+
+    // Confirmation modal appears
+    expect(screen.getByTestId("delete-confirm-modal")).toBeInTheDocument();
+    expect(screen.getByText(/Delete 1 Contacts/)).toBeInTheDocument();
+
+    // Confirm delete
+    await user.click(screen.getByRole("button", { name: "Confirm Delete" }));
+
+    await waitFor(() => {
+      expect(bulkDeletedIds).toEqual(["contact-1"]);
+      expect(screen.queryByText("Alice Anderson")).not.toBeInTheDocument();
+      expect(screen.getByText("Bob")).toBeInTheDocument();
+    });
+  });
+
+  it("performs bulk delete with optional suppression checkbox", async () => {
+    const suppressedEmails: string[] = [];
+    mockedApiFetch.mockImplementation((path: string, init?: RequestInit) => {
+      if (path === "/auth/me") {
+        return Promise.resolve(meWithPermissions(["contacts.view", "contacts.manage"]));
+      }
+      if (path === "/contacts") return Promise.resolve([ACTIVE_CONTACT]);
+      if (isTagsGet(path, init)) return Promise.resolve([]);
+      if (path === "/contacts/suppression" && init?.method === "POST") {
+        const body = JSON.parse(init.body as string);
+        suppressedEmails.push(body.email);
+        return Promise.resolve({ id: "supp-1", email: body.email });
+      }
+      if (path === "/contacts/bulk-delete" && init?.method === "POST") {
+        return Promise.resolve({ deleted_count: 1 });
+      }
+      throw new Error(`unexpected call: ${path}`);
+    });
+
+    const user = userEvent.setup();
+    renderContactsPage();
+
+    await screen.findByText("Alice Anderson");
+    await user.click(screen.getByLabelText("Select Alice Anderson"));
+    await user.click(screen.getByRole("button", { name: /Delete Selected/ }));
+
+    // Check "Also add to suppression list"
+    const suppressCheckbox = screen.getByLabelText(/Also add to suppression list/);
+    await user.click(suppressCheckbox);
+
+    // Confirm delete
+    await user.click(screen.getByRole("button", { name: "Confirm Delete" }));
+
+    await waitFor(() => {
+      expect(suppressedEmails).toContain("alice@example.com");
+      expect(screen.queryByText("Alice Anderson")).not.toBeInTheDocument();
+    });
+  });
+
+  it("moves selected contacts to suppression list in bulk", async () => {
+    const suppressedEmails: string[] = [];
+    mockedApiFetch.mockImplementation((path: string, init?: RequestInit) => {
+      if (path === "/auth/me") {
+        return Promise.resolve(meWithPermissions(["contacts.view", "contacts.manage"]));
+      }
+      if (path === "/contacts") return Promise.resolve([ACTIVE_CONTACT]);
+      if (isTagsGet(path, init)) return Promise.resolve([]);
+      if (path === "/contacts/suppression" && init?.method === "POST") {
+        const body = JSON.parse(init.body as string);
+        suppressedEmails.push(body.email);
+        return Promise.resolve({ id: "supp-1", email: body.email });
+      }
+      throw new Error(`unexpected call: ${path}`);
+    });
+
+    const user = userEvent.setup();
+    renderContactsPage();
+
+    await screen.findByText("Alice Anderson");
+    await user.click(screen.getByLabelText("Select Alice Anderson"));
+
+    // Click Move to Suppression
+    await user.click(screen.getByRole("button", { name: /Move to Suppression/ }));
+
+    await waitFor(() => {
+      expect(suppressedEmails).toContain("alice@example.com");
+      expect(screen.getAllByText("Suppressed").length).toBeGreaterThanOrEqual(2);
+    });
+  });
+
+  it("deletes a single contact from the detail modal with optional suppression", async () => {
+    let deletedId: string | null = null;
+    const suppressedEmails: string[] = [];
+
+    mockedApiFetch.mockImplementation((path: string, init?: RequestInit) => {
+      if (path === "/auth/me") {
+        return Promise.resolve(meWithPermissions(["contacts.view", "contacts.manage"]));
+      }
+      if (path === "/contacts" && (!init || init.method === undefined)) {
+        return Promise.resolve([ACTIVE_CONTACT]);
+      }
+      if (isTagsGet(path, init)) return Promise.resolve([]);
+      if (isConsentGet(path, init)) return Promise.resolve([]);
+      if (path === "/contacts/suppression" && init?.method === "POST") {
+        const body = JSON.parse(init.body as string);
+        suppressedEmails.push(body.email);
+        return Promise.resolve({ id: "supp-1", email: body.email });
+      }
+      if (path === "/contacts/contact-1" && init?.method === "DELETE") {
+        deletedId = "contact-1";
+        return Promise.resolve(undefined);
+      }
+      throw new Error(`unexpected call: ${path}`);
+    });
+
+    const user = userEvent.setup();
+    renderContactsPage();
+
+    await screen.findByText("Alice Anderson");
+    await user.click(screen.getByRole("button", { name: "View" }));
+
+    // Click Delete Contact button inside details modal
+    await user.click(screen.getByRole("button", { name: /Delete contact/ }));
+
+    expect(screen.getByTestId("delete-confirm-modal")).toBeInTheDocument();
+
+    // Also check suppression checkbox
+    await user.click(screen.getByLabelText(/Also add to suppression list/));
+    await user.click(screen.getByRole("button", { name: "Confirm Delete" }));
+
+    await waitFor(() => {
+      expect(deletedId).toBe("contact-1");
+      expect(suppressedEmails).toContain("alice@example.com");
+      expect(screen.queryByText("Alice Anderson")).not.toBeInTheDocument();
+    });
+  });
+
+  it("purges entire audience when purge button is confirmed", async () => {
+    let purgeCalled = false;
+    mockedApiFetch.mockImplementation((path: string, init?: RequestInit) => {
+      if (path === "/auth/me") {
+        return Promise.resolve(meWithPermissions(["contacts.view", "contacts.manage"]));
+      }
+      if (path === "/contacts") return Promise.resolve([ACTIVE_CONTACT, SUPPRESSED_CONTACT]);
+      if (isTagsGet(path, init)) return Promise.resolve([]);
+      if (path === "/contacts/all" && init?.method === "DELETE") {
+        purgeCalled = true;
+        return Promise.resolve({ deleted_count: 2 });
+      }
+      throw new Error(`unexpected call: ${path}`);
+    });
+
+    const user = userEvent.setup();
+    renderContactsPage();
+
+    await screen.findByText("Alice Anderson");
+
+    // Click Purge Audience button
+    await user.click(screen.getByRole("button", { name: /Purge Audience/ }));
+
+    expect(screen.getByTestId("delete-confirm-modal")).toBeInTheDocument();
+    expect(screen.getByText("Purge Entire Audience")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Confirm Delete" }));
+
+    await waitFor(() => {
+      expect(purgeCalled).toBe(true);
+      expect(screen.getByText("No contacts yet.")).toBeInTheDocument();
+    });
+  });
+
+  it("hides checkboxes and bulk toolbar for view-only users", async () => {
+    mockedApiFetch.mockImplementation((path: string, init?: RequestInit) => {
+      if (path === "/auth/me") {
+        return Promise.resolve(meWithPermissions(["contacts.view"]));
+      }
+      if (path === "/contacts") return Promise.resolve([ACTIVE_CONTACT]);
+      if (isTagsGet(path, init)) return Promise.resolve([]);
+      throw new Error(`unexpected call: ${path}`);
+    });
+
+    renderContactsPage();
+
+    await screen.findByText("Alice Anderson");
+    expect(
+      screen.queryByLabelText("Select all contacts on this page"),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Select Alice Anderson")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Purge Audience/ }),
+    ).not.toBeInTheDocument();
+  });
 });

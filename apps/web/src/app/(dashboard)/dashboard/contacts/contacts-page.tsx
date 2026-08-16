@@ -109,6 +109,19 @@ export function ContactsPage() {
   const [consentForm, setConsentForm] = useState<ConsentFormState>(EMPTY_CONSENT_FORM);
   const [consentSubmitting, setConsentSubmitting] = useState(false);
 
+  // Multi-select & Bulk actions state (GRX-CONTACT-015, DEC-GRX-034)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  interface DeleteModalState {
+    mode: "SINGLE" | "BULK" | "PURGE";
+    targetContact?: Contact;
+    count?: number;
+  }
+
+  const [deleteModal, setDeleteModal] = useState<DeleteModalState | null>(null);
+  const [alsoSuppress, setAlsoSuppress] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
   useEffect(() => {
     async function load() {
       try {
@@ -241,6 +254,133 @@ export function ContactsPage() {
       }
     } finally {
       setCreating(false);
+    }
+  }
+
+  const allOnPageSelected =
+    paginatedContacts.length > 0 && paginatedContacts.every((c) => selectedIds.has(c.id));
+  const isIndeterminate =
+    paginatedContacts.some((c) => selectedIds.has(c.id)) && !allOnPageSelected;
+
+  function toggleSelectAllOnPage() {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (allOnPageSelected) {
+        for (const c of paginatedContacts) {
+          next.delete(c.id);
+        }
+      } else {
+        for (const c of paginatedContacts) {
+          next.add(c.id);
+        }
+      }
+      return next;
+    });
+  }
+
+  function toggleSelectContact(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }
+
+  function clearSelection() {
+    setSelectedIds(new Set());
+  }
+
+  async function handleConfirmDelete() {
+    if (!deleteModal) return;
+    setDeleting(true);
+    try {
+      if (deleteModal.mode === "SINGLE" && deleteModal.targetContact) {
+        const target = deleteModal.targetContact;
+        if (alsoSuppress) {
+          await apiFetch("/contacts/suppression", {
+            method: "POST",
+            body: JSON.stringify({ email: target.email, reason: "MANUAL" }),
+          }).catch(() => {});
+        }
+        await apiFetch(`/contacts/${target.id}`, { method: "DELETE" });
+        setContacts((prev) => prev.filter((c) => c.id !== target.id));
+        setSelectedIds((prev) => {
+          const next = new Set(prev);
+          next.delete(target.id);
+          return next;
+        });
+        if (selectedContact?.id === target.id) {
+          closeContactModal();
+        }
+        showToast("success", `Contact ${target.email} deleted.`);
+      } else if (deleteModal.mode === "BULK") {
+        const targetIds = Array.from(selectedIds);
+        if (alsoSuppress) {
+          const targetEmails = contacts
+            .filter((c) => selectedIds.has(c.id))
+            .map((c) => c.email);
+          await Promise.allSettled(
+            targetEmails.map((email) =>
+              apiFetch("/contacts/suppression", {
+                method: "POST",
+                body: JSON.stringify({ email, reason: "MANUAL" }),
+              }),
+            ),
+          );
+        }
+        await apiFetch<{ deleted_count: number }>("/contacts/bulk-delete", {
+          method: "POST",
+          body: JSON.stringify({ contact_ids: targetIds }),
+        });
+        setContacts((prev) => prev.filter((c) => !selectedIds.has(c.id)));
+        setSelectedIds(new Set());
+        showToast(
+          "success",
+          `Deleted ${targetIds.length} contact${targetIds.length > 1 ? "s" : ""}.`,
+        );
+      } else if (deleteModal.mode === "PURGE") {
+        await apiFetch<{ deleted_count: number }>("/contacts/all", { method: "DELETE" });
+        setContacts([]);
+        setSelectedIds(new Set());
+        showToast("success", "All contacts purged successfully.");
+      }
+      setDeleteModal(null);
+      setAlsoSuppress(false);
+    } catch (err) {
+      const msg = err instanceof ApiError ? err.message : "Failed to delete contacts.";
+      showToast("error", msg);
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  async function handleBulkSuppress() {
+    if (selectedIds.size === 0) return;
+    const selectedContacts = contacts.filter((c) => selectedIds.has(c.id));
+    try {
+      await Promise.all(
+        selectedContacts.map((c) =>
+          apiFetch("/contacts/suppression", {
+            method: "POST",
+            body: JSON.stringify({ email: c.email, reason: "MANUAL" }),
+          }),
+        ),
+      );
+      setContacts((prev) =>
+        prev.map((c) => (selectedIds.has(c.id) ? { ...c, is_suppressed: true } : c)),
+      );
+      showToast(
+        "success",
+        `Suppressed ${selectedContacts.length} contact${selectedContacts.length > 1 ? "s" : ""}.`,
+      );
+      setSelectedIds(new Set());
+    } catch (err) {
+      const msg = err instanceof ApiError ? err.message : "Failed to suppress contacts.";
+      showToast("error", msg);
     }
   }
 
@@ -490,6 +630,16 @@ export function ContactsPage() {
             </select>
           </div>
           <div className={styles.actionGroup}>
+            {canManage && contacts.length > 0 && (
+              <button
+                type="button"
+                className={styles.dangerOutlineBtn}
+                onClick={() => setDeleteModal({ mode: "PURGE", count: contacts.length })}
+                title="Delete all contacts in your account"
+              >
+                🗑️ Purge Audience
+              </button>
+            )}
             <button type="button" className={styles.exportButton} onClick={handleExportCsv}>
               📥 Export CSV
             </button>
@@ -573,7 +723,25 @@ export function ContactsPage() {
           <div>
             <div className={styles.tableScrollContainer}>
               {/* Table Header Row */}
-              <div className={styles.tableHeader}>
+              <div
+                className={`${styles.tableHeader} ${
+                  canManage ? styles.tableHeaderManage : ""
+                }`}
+              >
+                {canManage && (
+                  <div className={styles.checkboxHeader}>
+                    <input
+                      type="checkbox"
+                      className={styles.checkbox}
+                      checked={allOnPageSelected}
+                      ref={(el) => {
+                        if (el) el.indeterminate = isIndeterminate;
+                      }}
+                      onChange={toggleSelectAllOnPage}
+                      aria-label="Select all contacts on this page"
+                    />
+                  </div>
+                )}
                 <div>Contact</div>
                 <div>Status</div>
                 <div>Source</div>
@@ -583,8 +751,31 @@ export function ContactsPage() {
 
               {paginatedContacts.map((contact) => {
                 return (
-                  <div key={contact.id} className={styles.contactBlock}>
-                    <div className={styles.row}>
+                  <div
+                    key={contact.id}
+                    className={`${styles.contactBlock} ${
+                      selectedIds.has(contact.id) ? styles.rowSelected : ""
+                    }`}
+                  >
+                    <div
+                      className={`${styles.row} ${
+                        canManage ? styles.rowManage : ""
+                      }`}
+                    >
+                      {canManage && (
+                        <div
+                          className={styles.checkboxCell}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <input
+                            type="checkbox"
+                            className={styles.checkbox}
+                            checked={selectedIds.has(contact.id)}
+                            onChange={() => toggleSelectContact(contact.id)}
+                            aria-label={`Select ${displayName(contact)}`}
+                          />
+                        </div>
+                      )}
                       <div className={styles.identity}>
                         <div className={styles.avatar}>{initialsFor(contact)}</div>
                         <div>
@@ -624,6 +815,41 @@ export function ContactsPage() {
                 );
               })}
             </div>
+
+            {/* Floating Bulk Actions Toolbar */}
+            {canManage && selectedIds.size > 0 && (
+              <div className={styles.floatingBulkBar} data-testid="bulk-action-bar">
+                <div className={styles.bulkInfo}>
+                  <span className={styles.bulkBadge}>{selectedIds.size} selected</span>
+                  <span className={styles.bulkSelectedText}>
+                    {selectedIds.size} of {contacts.length} contact{contacts.length > 1 ? "s" : ""} selected
+                  </span>
+                </div>
+                <div className={styles.bulkActions}>
+                  <button
+                    type="button"
+                    className={styles.bulkBtnDanger}
+                    onClick={() => setDeleteModal({ mode: "BULK", count: selectedIds.size })}
+                  >
+                    🗑️ Delete Selected
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.bulkBtnWarning}
+                    onClick={handleBulkSuppress}
+                  >
+                    🚫 Move to Suppression
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.bulkBtnSecondary}
+                    onClick={clearSelection}
+                  >
+                    ✕ Clear Selection
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Pagination Controls Bar */}
             {visibleContacts.length > 0 && (
@@ -1005,8 +1231,111 @@ export function ContactsPage() {
                       Unarchive
                     </button>
                   )}
+
+                  <button
+                    type="button"
+                    className={styles.dangerOutlineBtn}
+                    onClick={() =>
+                      setDeleteModal({
+                        mode: "SINGLE",
+                        targetContact: selectedContact,
+                      })
+                    }
+                    style={{ marginLeft: "auto" }}
+                  >
+                    🗑️ Delete contact
+                  </button>
                 </form>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal (DEC-GRX-034 §4 & §4a) */}
+      {deleteModal && (
+        <div
+          className={styles.modalBackdrop}
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !deleting) {
+              setDeleteModal(null);
+              setAlsoSuppress(false);
+            }
+          }}
+          data-testid="delete-confirm-modal"
+        >
+          <div className={styles.deleteConfirmBox}>
+            <h3 className={styles.deleteConfirmTitle}>
+              {deleteModal.mode === "SINGLE" && "Delete Contact"}
+              {deleteModal.mode === "BULK" && `Delete ${deleteModal.count} Contacts`}
+              {deleteModal.mode === "PURGE" && "Purge Entire Audience"}
+            </h3>
+
+            <p className={styles.deleteConfirmText}>
+              {deleteModal.mode === "SINGLE" && (
+                <>
+                  Are you sure you want to delete <strong>{deleteModal.targetContact?.email}</strong>?
+                  This contact will be removed from active lists and dynamic segments.
+                </>
+              )}
+              {deleteModal.mode === "BULK" && (
+                <>
+                  Are you sure you want to delete <strong>{deleteModal.count} selected contacts</strong>?
+                  They will be removed from active lists and dynamic segments.
+                </>
+              )}
+              {deleteModal.mode === "PURGE" && (
+                <>
+                  Are you sure you want to delete <strong>all {deleteModal.count} contacts</strong> in
+                  your account? This will clear your entire audience.
+                </>
+              )}
+            </p>
+
+            {deleteModal.mode !== "PURGE" && (
+              <label className={styles.suppressOptionRow}>
+                <input
+                  type="checkbox"
+                  className={styles.checkbox}
+                  checked={alsoSuppress}
+                  onChange={(e) => setAlsoSuppress(e.target.checked)}
+                />
+                <div>
+                  <div className={styles.suppressOptionText}>
+                    Also add to suppression list
+                  </div>
+                  <div className={styles.suppressOptionSubtext}>
+                    Do this if they asked not to be contacted. Prevents future emails from being
+                    sent to these addresses even if re-imported.
+                  </div>
+                </div>
+              </label>
+            )}
+
+            <div className={styles.deleteNotice}>
+              ℹ️ Past campaign delivery reports and historical performance statistics will remain intact.
+            </div>
+
+            <div className={styles.deleteModalFooter}>
+              <button
+                type="button"
+                disabled={deleting}
+                className={styles.deleteCancelBtn}
+                onClick={() => {
+                  setDeleteModal(null);
+                  setAlsoSuppress(false);
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={deleting}
+                className={styles.deleteConfirmBtn}
+                onClick={handleConfirmDelete}
+              >
+                {deleting ? "Deleting..." : "Confirm Delete"}
+              </button>
             </div>
           </div>
         </div>
