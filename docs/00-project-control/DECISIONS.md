@@ -1632,6 +1632,26 @@ Two deliberate exceptions. Both should be stated in the UI rather than discovere
    stay; drill-down to a deleted recipient renders a neutral placeholder ("Deleted
    contact") instead of PII.
 
+### 4a. Deletion and suppression stay separate — with one optional prompt
+
+Considered and rejected: using suppression *as* the delete mechanism ("move the address to
+Suppress instead of building soft delete"). It fails on three counts. It does not deliver
+the stated requirement — the contact stays visible in the list and the address additionally
+appears on the suppression page, so *more* data is visible, not less. It degrades the
+suppression list's purpose: that list is the evidence of opt-out (`DEC-GRX-008`), and
+mixing in records that were merely tidied away makes "this person unsubscribed"
+indistinguishable from "someone cleaned up their CSV". And it makes an everyday action
+irreversible through the most dangerous available control — suppression entries are
+permanent by design, so undoing an accidental delete would require un-suppressing, which is
+the legally sensitive action `OQ-DNC-004` flags as unresolved.
+
+The legitimate need behind the idea is real, though: a contact is often deleted *because*
+they should not be contacted. Proposed instead — the delete confirmation offers an optional,
+unchecked "also add to the suppression list" control, described in terms of intent ("do this
+if they asked not to be contacted"). Two independent actions, one prompt. The customer gets
+the safe outcome when it genuinely applies, and the suppression list keeps holding only real
+opt-outs.
+
 ### 5. Consequences
 
 1. One migration: add `contacts.deleted_at`, swap the unique constraint for the partial
