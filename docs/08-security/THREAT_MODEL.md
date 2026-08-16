@@ -328,9 +328,16 @@ Two threats missing from T81–T87, added after the Lead Intelligence module dis
 | T88 | A source's terms are assumed permissive because its pages are publicly reachable | An adapter is pointed at a directory or dataset whose terms prohibit automated access, bulk extraction, or commercial reuse. Public reachability is not permission, and the decision gets made implicitly by whoever writes the adapter rather than deliberately. Consequences run from IP blocking to breach-of-terms claims to being unable to use a dataset the product now depends on | **REQUIRED — not built:** a Source Registry that gates every acquisition run on an explicit per-source rights profile — permitted operations (discovery / enrichment / commercial use / redistribution), approval status, attribution and permission requirements, and the date the policy was last verified. Sources are allowlisted, never enabled by default, and an adapter cannot run against a source whose profile is missing, `BLOCKED`, or stale. The crawler must not be able to decide for itself that a page is safe to take |
 | T89 | Person-level data enters a system whose compliance design assumed business entities | Company-level records (company name, office phone, published `info@`) carry a far lighter obligation set than person-level records (named individual, work email, mobile). If both flow through one pipeline with one set of controls, the lighter design silently governs the heavier data — and T81, T85 and T87 stop being satisfied without anyone noticing the transition | **REQUIRED — not built:** the entity type is explicit and enforced, not inferred. If `OQ-023` is approved, V1 stores company-level records only and person-level ingestion is rejected at the boundary rather than merely discouraged — including via enrichment responses, which are the most likely path for person data to arrive unannounced (a provider asked about a company can return named contacts). Person-level support is a deliberate later gate with its own review, not a schema that happens to accommodate it |
 
-**On `OQ-020`:** answered against Postmark's published terms — permission-based
-subscription lists only; purchased, rented, free, acquired and cross-branded lists
-prohibited, with suspension or termination as the remedy. T83's mitigation is therefore
-narrower than first written: for the email channel there is no ring-fencing arrangement to
-design on the current sending path. Acquired contacts are simply not emailable through it
-without independently-established permission, which is what channel eligibility enforces.
+**On `OQ-020`, and a correction to T83 (2026-08-16):** Postmark's published terms allow
+permission-based subscription lists only, prohibiting purchased, rented, free, acquired and
+cross-branded lists, with suspension or termination as the remedy. So on the Postmark path
+there is no ring-fencing arrangement to design — acquired contacts are simply not sendable
+without independently-established permission.
+
+But T83 as written above assumed all sending is shared. That is wrong. `DEC-GRX-016` added
+`CUSTOM_SMTP` as a second provider, and on that path the customer sends through their own
+server or ESP account, from their own domain and IP. **T83's defining property — that the
+blast radius is other customers — does not hold there.** A spam trap hit on `CUSTOM_SMTP`
+damages the sending customer alone. T83 should be read as scoped to shared sending
+infrastructure, and the eligibility engine must be path-aware rather than applying one
+global rule (`OQ-024`).

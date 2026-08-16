@@ -2,7 +2,7 @@
 
 - Document ID: DOC-DECISIONS
 - Status: ACTIVE
-- Version: 1.4
+- Version: 1.5
 - Last updated: 2026-08-16
 - Owner: Product owner (Ravi) via coding agent
 - Related documents: [OPEN_QUESTIONS](OPEN_QUESTIONS.md), [ASSUMPTIONS](ASSUMPTIONS.md), [ROADMAP](../01-product/ROADMAP.md)
@@ -1283,12 +1283,25 @@ Three consequences:
    at campaign-recipient selection. Per channel — email, SMS, WhatsApp, voice — each
    independently `ELIGIBLE` / `NOT_ELIGIBLE` / `UNKNOWN`, defaulting to `UNKNOWN`, with
    `UNKNOWN` non-sendable.
-3. **V1 ships with its primary channel closed.** Acquired leads cannot be emailed through
-   Growixa's existing sending path. Lead Intelligence V1 therefore delivers *sales
-   prospecting and research* value, not campaign value — a sales-intelligence product
-   attached to a marketing-automation product, with no connection between them at launch.
-   That may still be worth building. It should be an informed choice, not a discovery made
-   after the module exists.
+3. **Eligibility is evaluated per sending path, not globally.** *(Corrected 2026-08-16 —
+   an earlier draft of this addendum claimed V1 ships with its email channel closed
+   outright. That was wrong: it overlooked `DEC-GRX-016`, which added `CUSTOM_SMTP`
+   alongside Postmark.)* The two paths differ materially:
+   - **Postmark** — closed for acquired contacts, per `OQ-020`. Growixa's own vendor
+     relationship is at stake and every account on this path shares the reputation, so
+     T83's blast radius is other customers.
+   - **`CUSTOM_SMTP`** — the customer sends through their own server or ESP account.
+     Postmark's AUP is irrelevant to it; the binding constraints become the customer's
+     own provider's AUP, the recipient's jurisdiction, and Growixa's terms of service.
+     **T83's cross-customer blast radius does not exist on this path** — a spam trap
+     damages the sending customer's own domain and IP, not anyone else's.
+
+   This makes `CUSTOM_SMTP` the architecturally honest home for externally-sourced
+   sending, and it means Lead Intelligence V1 does have a viable outbound path rather
+   than being research-only. Whether Growixa *permits* that, and on what attestation, is
+   `OQ-024` — still open. The eligibility engine must be path-aware from the first
+   commit; retrofitting a per-path dimension onto a global flag later is exactly the kind
+   of rework this decision exists to avoid.
 
 #### Adopted into the proposal
 
@@ -1357,3 +1370,51 @@ scraper is not promoted into the production pipeline.
 contradicts point 2 of the original proposal), `OQ-022` (customer-facing product or
 Growixa's own sales tooling), `OQ-023` (company-level-only V1). `OQ-008` and `OQ-017`
 remain preconditions as stated above.
+
+#### Entity model — and why this is not `contacts` (added 2026-08-16)
+
+The product owner listed the attributes wanted on a lead: name, email, number, website,
+LinkedIn, role, business name, social accounts (Instagram/Telegram/other), address, sector
+category. That list is not one entity — it is two, and separating them is what makes
+`OQ-023`'s company-level V1 coherent rather than arbitrary:
+
+| Company / business entity | Person entity |
+|---|---|
+| Business name | Name |
+| Website | Role / job title |
+| Address | Work email |
+| Sector / category | Direct number / mobile |
+| Business phone | LinkedIn URL |
+| Business email (`info@`, `sales@`) | Personal social handles |
+| Social accounts (Instagram, Telegram, …) | — |
+
+Two things follow directly.
+
+**The compliance weight sits almost entirely in the right-hand column.** A school's name,
+published office number, and `info@` address are business-entity data. A named
+individual's role, work email, and mobile are personal data, and that is where T81, T85,
+T87 and T89 bite. `OQ-023`'s proposal — company-level V1, person-level behind a later gate
+— is exactly this table cut down the middle. It is also, in practice, close to the whole
+of what directory-sourced records like the ~35k already collected actually contain: the
+left column is populated, the right column is mostly empty. The compliance-expensive half
+is the half that is not there yet.
+
+**It also validates the Discovery/Enrichment split.** The left column is what discovery and
+extraction produce. The right column is what an enrichment provider adds. They come from
+different sources with different rights, arrive at different times, and carry different
+confidence — which is the argument for field-level provenance rather than one flat record.
+
+**This does not go in the `contacts` table.** `contacts` is Growixa's first-party audience
+model — people the customer already has a relationship with, carrying consent status and
+suppression state built for exactly that (`GRX-FEAT-010`, `DEC-GRX-008`). Widening it with
+enrichment columns would collapse the very distinction this decision exists to preserve:
+that an enriched lead is *not* a contact you may email. Lead Intelligence gets its own
+entities, and promotion from lead to contact is an explicit, audited, eligibility-checked
+transition — the one place the two modules touch.
+
+The list above is also not the full set to design against; it omits, at minimum, the
+provenance and eligibility fields that every entity needs regardless of channel
+(source, source URL, collection method, collected-at, provider, purpose, owning account,
+consent status, lawful basis, retention status, per-channel eligibility). Those are not
+optional extras — they are what makes the record defensible, and they must exist from the
+first migration rather than being added once the data is already in.
