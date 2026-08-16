@@ -85,15 +85,14 @@ describe("DashboardShell", () => {
     expect(screen.getByRole("link", { name: "Dashboard" })).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Team" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Audit Log" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "System Health" })).not.toBeInTheDocument();
 
     rerender(
-      <DashboardShell permissions={["admin.access"]} fullName="Admin User">
+      <DashboardShell permissions={["audit.view"]} fullName="Admin User">
         <p>Page content</p>
       </DashboardShell>,
     );
 
-    expect(screen.getByRole("link", { name: "System Health" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Audit Log" })).toBeInTheDocument();
   });
 
   it("collapses and expands an individual section independently of the others", async () => {
