@@ -20,6 +20,8 @@ from growixa_api.contacts.models import (
 from growixa_api.contacts.schemas import (
     AddListMemberIn,
     AttachTagIn,
+    BulkDeleteContactsIn,
+    BulkDeleteContactsOut,
     ConsentRecordIn,
     ConsentRecordOut,
     ContactImportOut,
@@ -58,11 +60,15 @@ from growixa_api.contacts.services import (
 )
 from growixa_api.contacts.services import add_contact_to_list as add_contact_to_list_service
 from growixa_api.contacts.services import attach_tag_to_contact as attach_tag_service
+from growixa_api.contacts.services import (
+    bulk_delete_contacts as bulk_delete_contacts_service,
+)
 from growixa_api.contacts.services import create_custom_field as create_custom_field_service
 from growixa_api.contacts.services import create_list as create_list_service
 from growixa_api.contacts.services import create_or_update_contact as create_or_update_service
 from growixa_api.contacts.services import create_segment_with_rules as create_segment_service
 from growixa_api.contacts.services import create_tag as create_tag_service
+from growixa_api.contacts.services import delete_contact as delete_contact_service
 from growixa_api.contacts.services import detach_tag_from_contact as detach_tag_service
 from growixa_api.contacts.services import get_consent_history as get_consent_history_service
 from growixa_api.contacts.services import get_contact_with_fields as get_contact_service
@@ -82,6 +88,9 @@ from growixa_api.contacts.services import list_segment_members as list_segment_m
 from growixa_api.contacts.services import list_segments_with_details as list_segments_service
 from growixa_api.contacts.services import list_suppressions as list_suppressions_service
 from growixa_api.contacts.services import list_tags as list_tags_service
+from growixa_api.contacts.services import (
+    purge_all_contacts as purge_all_contacts_service,
+)
 from growixa_api.contacts.services import record_consent as record_consent_service
 from growixa_api.contacts.services import (
     remove_contact_from_list as remove_contact_from_list_service,
@@ -593,6 +602,51 @@ async def create_contact_route(
         ) from exc
 
     return _to_out(contact, fields, tags, suppressed)
+
+
+@router.delete("/all", response_model=BulkDeleteContactsOut)
+async def purge_all_contacts_route(
+    actor_id: uuid.UUID = Depends(_require_manage),
+    account_id: uuid.UUID = Depends(get_current_account_id),
+    session: AsyncSession = Depends(get_session),
+) -> BulkDeleteContactsOut:
+    deleted_count = await purge_all_contacts_service(
+        session, account_id=account_id, actor_id=actor_id
+    )
+    return BulkDeleteContactsOut(deleted_count=deleted_count)
+
+
+@router.post("/bulk-delete", response_model=BulkDeleteContactsOut)
+async def bulk_delete_contacts_route(
+    payload: BulkDeleteContactsIn,
+    actor_id: uuid.UUID = Depends(_require_manage),
+    account_id: uuid.UUID = Depends(get_current_account_id),
+    session: AsyncSession = Depends(get_session),
+) -> BulkDeleteContactsOut:
+    deleted_count = await bulk_delete_contacts_service(
+        session,
+        account_id=account_id,
+        actor_id=actor_id,
+        contact_ids=payload.contact_ids,
+    )
+    return BulkDeleteContactsOut(deleted_count=deleted_count)
+
+
+@router.delete("/{contact_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_contact_route(
+    contact_id: uuid.UUID,
+    actor_id: uuid.UUID = Depends(_require_manage),
+    account_id: uuid.UUID = Depends(get_current_account_id),
+    session: AsyncSession = Depends(get_session),
+) -> Response:
+    try:
+        await delete_contact_service(
+            session, account_id=account_id, actor_id=actor_id, contact_id=contact_id
+        )
+    except ContactNotFoundError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Contact not found") from exc
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get("/{contact_id}", response_model=ContactOut)

@@ -187,3 +187,11 @@ class SuppressionImportResultOut(BaseModel):
     created: int
     skipped: int
     total_rows: int
+
+
+class BulkDeleteContactsIn(BaseModel):
+    contact_ids: list[uuid.UUID]
+
+
+class BulkDeleteContactsOut(BaseModel):
+    deleted_count: int

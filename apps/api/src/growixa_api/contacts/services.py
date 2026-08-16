@@ -28,6 +28,7 @@ from growixa_api.contacts.repositories import (
     add_segment_members,
     apply_contact_fields,
     attach_tag,
+    bulk_soft_delete_contacts,
     count_active_contacts,
     count_dynamic_segment_members,
     count_list_members,
@@ -54,7 +55,9 @@ from growixa_api.contacts.repositories import (
     list_saved_segment_members,
     list_segment_rules,
     list_suppression_entries,
+    purge_all_contacts_in_account,
     remove_list_member,
+    soft_delete_contact,
     upsert_field_value,
 )
 from growixa_api.contacts.repositories import add_segment_rule as add_segment_rule_row
@@ -1015,3 +1018,78 @@ async def remove_suppression(
     )
     await delete_suppression_entry_row(session, entry)
     await session.commit()
+
+
+async def delete_contact(
+    session: AsyncSession,
+    *,
+    account_id: uuid.UUID,
+    actor_id: uuid.UUID,
+    contact_id: uuid.UUID,
+) -> None:
+    """Soft-deletes a single contact (DEC-GRX-034). Enforces account isolation,
+    sets deleted_at, and writes an audit event."""
+    contact = await get_contact_by_id(session, account_id, contact_id)
+    if contact is None:
+        raise ContactNotFoundError
+
+    await soft_delete_contact(session, account_id, contact_id)
+    await record_event(
+        session,
+        account_id=account_id,
+        actor_user_id=actor_id,
+        action="contact.deleted",
+        entity_type="contact",
+        entity_id=contact.id,
+        metadata={"email": contact.email},
+    )
+    await session.commit()
+
+
+async def bulk_delete_contacts(
+    session: AsyncSession,
+    *,
+    account_id: uuid.UUID,
+    actor_id: uuid.UUID,
+    contact_ids: Sequence[uuid.UUID],
+) -> int:
+    """Bulk soft-deletes a list of contacts by ID (DEC-GRX-034). Only affects contacts
+    belonging to the given account_id that are not already deleted."""
+    deleted_count = await bulk_soft_delete_contacts(session, account_id, contact_ids)
+    if deleted_count > 0:
+        await record_event(
+            session,
+            account_id=account_id,
+            actor_user_id=actor_id,
+            action="contact.bulk_deleted",
+            entity_type="contact",
+            entity_id=None,
+            metadata={
+                "count": deleted_count,
+                "contact_ids": [str(c_id) for c_id in contact_ids],
+            },
+        )
+    await session.commit()
+    return deleted_count
+
+
+async def purge_all_contacts(
+    session: AsyncSession,
+    *,
+    account_id: uuid.UUID,
+    actor_id: uuid.UUID,
+) -> int:
+    """Soft-deletes all contacts in an account (audience purge, DEC-GRX-034)."""
+    deleted_count = await purge_all_contacts_in_account(session, account_id)
+    if deleted_count > 0:
+        await record_event(
+            session,
+            account_id=account_id,
+            actor_user_id=actor_id,
+            action="contact.purged",
+            entity_type="contact",
+            entity_id=None,
+            metadata={"count": deleted_count},
+        )
+    await session.commit()
+    return deleted_count

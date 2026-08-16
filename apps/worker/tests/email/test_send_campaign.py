@@ -80,9 +80,19 @@ async def _create_sender_identity(session: AsyncSession) -> uuid.UUID:
 
 
 async def _create_contact(
-    session: AsyncSession, email: str, *, status: str = "ACTIVE"
+    session: AsyncSession,
+    email: str,
+    *,
+    status: str = "ACTIVE",
+    deleted_at: datetime | None = None,
 ) -> uuid.UUID:
-    contact = Contact(id=uuid.uuid4(), account_id=_ACCOUNT_ID, email=email, status=status)
+    contact = Contact(
+        id=uuid.uuid4(),
+        account_id=_ACCOUNT_ID,
+        email=email,
+        status=status,
+        deleted_at=deleted_at,
+    )
     session.add(contact)
     await session.flush()
     return contact.id
@@ -542,5 +552,31 @@ async def test_domain_suppressed_contacts_are_excluded(
             "blocked@suppressed-domain.com": "SUPPRESSED",
             "eligible@example.com": "SENT",
         }
+    finally:
+        await _cleanup(session)
+
+
+@pytest.mark.integration
+async def test_soft_deleted_contacts_are_excluded_from_send(
+    session: AsyncSession, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    sent_to: list[str] = []
+
+    async def _fake_send_email(**kwargs: object) -> None:
+        sent_to.append(str(kwargs["to_email"]))
+
+    monkeypatch.setattr(send_campaign_module, "send_email", _fake_send_email)
+
+    try:
+        sender_identity_id = await _create_sender_identity(session)
+        await _create_contact(session, "live@example.com")
+        await _create_contact(session, "deleted@example.com", deleted_at=datetime.now(UTC))
+        campaign_id = await _create_campaign(
+            session, sender_identity_id, recipient_type="ALL_CONTACTS"
+        )
+
+        await handle_send_campaign(session, {"campaign_id": campaign_id})
+
+        assert sent_to == ["live@example.com"]
     finally:
         await _cleanup(session)

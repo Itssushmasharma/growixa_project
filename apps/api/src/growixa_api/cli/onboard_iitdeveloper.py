@@ -11,7 +11,6 @@ Options (env vars):
 
 import asyncio
 import os
-import sys
 import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -50,9 +49,7 @@ from growixa_api.platform_auth import models as platform_auth_models  # noqa: F4
 from growixa_api.roles import models as roles_models  # noqa: F401
 from growixa_api.roles.models import Role
 from growixa_api.social import models as social_models  # noqa: F401
-from growixa_api.social.models import SocialConnection, SocialPost
 from growixa_api.templates import models as templates_models  # noqa: F401
-from growixa_api.templates.models import EmailTemplate, EmailTemplateVersion
 from growixa_api.users import models as users_models  # noqa: F401
 from growixa_api.users.models import User, UserRole
 
@@ -100,19 +97,34 @@ IITDEVELOPER_COMPANY: dict[str, Any] = {
 IITDEVELOPER_BRAND: dict[str, Any] = {
     "brand_voice": (
         "Direct, witty, engineering-driven, reliable, and results-focused. "
-        "We automate things… including your headaches. We turn caffeine into high-performance code, "
-        "build production-ready systems, and scale businesses with AI workflows and modern tech. "
-        "Fast, reliable, tested on real users, and built to last."
+        "We automate things… including your headaches. We turn caffeine into high-performance "
+        "code, build production-ready systems, and scale businesses with AI workflows and "
+        "modern tech. Fast, reliable, tested on real users, and built to last."
     ),
     "required_facts": [
-        "Founded in 2019 as a remote-first engineering and AI automation company registered in India.",
-        "Delivers 12 core services spanning custom web/mobile apps, AI agents, cloud DevOps, and growth marketing.",
+        (
+            "Founded in 2019 as a remote-first engineering and AI automation "
+            "company registered in India."
+        ),
+        (
+            "Delivers 12 core services spanning custom web/mobile apps, AI agents, "
+            "cloud DevOps, and growth marketing."
+        ),
         "Provides 24/7 support availability for production systems and client operations.",
-        "Official company website is https://iitdeveloper.com with direct contact at info@iitdeveloper.com.",
+        (
+            "Official company website is https://iitdeveloper.com with direct contact "
+            "at info@iitdeveloper.com."
+        ),
     ],
     "forbidden_claims": [
-        "Never make unverified promises of overnight #1 Google ranking or instant traffic without data.",
-        "Never present IITDeveloper as a generic body shop; emphasize senior engineering ownership and craftsmanship.",
+        (
+            "Never make unverified promises of overnight #1 Google ranking or instant traffic "
+            "without data."
+        ),
+        (
+            "Never present IITDeveloper as a generic body shop; emphasize senior engineering "
+            "ownership and craftsmanship."
+        ),
         "Never ship unverified AI hallucinations or non-functional code snippets.",
     ],
 }
@@ -124,10 +136,14 @@ async def onboard_account(target_email: str) -> None:
 
     async with async_session_factory() as session:
         # 1. Resolve Account
-        acc_stmt = select(Account).where(Account.name.ilike("%IIT%")).order_by(Account.created_at.asc())
+        acc_stmt = (
+            select(Account).where(Account.name.ilike("%IIT%")).order_by(Account.created_at.asc())
+        )
         account = (await session.execute(acc_stmt)).scalars().first()
         if not account:
-            acc_stmt = select(Account).where(Account.id == uuid.UUID("00000000-0000-0000-0000-000000000001"))
+            acc_stmt = select(Account).where(
+                Account.id == uuid.UUID("00000000-0000-0000-0000-000000000001")
+            )
             account = (await session.execute(acc_stmt)).scalar_one()
 
         account.name = "IITDeveloper"
@@ -161,7 +177,13 @@ async def onboard_account(target_email: str) -> None:
                 )
                 session.add(user)
                 await session.flush()
-                session.add(UserRole(account_id=account.id, user_id=user.id, role_id=super_admin_role.id))
+                session.add(
+                    UserRole(
+                        account_id=account.id,
+                        user_id=user.id,
+                        role_id=super_admin_role.id,
+                    )
+                )
                 print(f"[+] Created active user: {email} with Super Admin role")
             else:
                 user.account_id = account.id
@@ -171,7 +193,13 @@ async def onboard_account(target_email: str) -> None:
                 ur_stmt = select(UserRole).where(UserRole.user_id == user.id)
                 ur = (await session.execute(ur_stmt)).scalars().first()
                 if not ur:
-                    session.add(UserRole(account_id=account.id, user_id=user.id, role_id=super_admin_role.id))
+                    session.add(
+                        UserRole(
+                            account_id=account.id,
+                            user_id=user.id,
+                            role_id=super_admin_role.id,
+                        )
+                    )
                 print(f"[+] Updated active user: {email}")
 
         # 4. Upsert CompanyProfile
@@ -218,7 +246,9 @@ async def onboard_account(target_email: str) -> None:
         plan_stmt = select(SubscriptionPlan).where(SubscriptionPlan.slug == "pro")
         pro_plan = (await session.execute(plan_stmt)).scalar_one_or_none()
         if pro_plan:
-            sub_stmt = select(AccountSubscription).where(AccountSubscription.account_id == account.id)
+            sub_stmt = select(AccountSubscription).where(
+                AccountSubscription.account_id == account.id
+            )
             sub = (await session.execute(sub_stmt)).scalar_one_or_none()
             if sub is None:
                 sub = AccountSubscription(
@@ -264,7 +294,7 @@ async def onboard_account(target_email: str) -> None:
         # 8. Ensure Email Provider Connection & Sender Identities
         epc_stmt = select(EmailProviderConnection).where(
             EmailProviderConnection.account_id == account.id,
-            EmailProviderConnection.is_active == True,
+            EmailProviderConnection.is_active,
         )
         epc = (await session.execute(epc_stmt)).scalars().first()
         if epc is None:
