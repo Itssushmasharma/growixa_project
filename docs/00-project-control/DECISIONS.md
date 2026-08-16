@@ -1547,3 +1547,105 @@ contact someone you have no prior relationship with?
    not an agent's reading of secondary sources, including this one. Every jurisdictional
    claim recorded in these documents should be treated as a research starting point for
    that review, not as a cleared position.
+
+## DEC-GRX-034: Contact soft deletion — `deleted_at`, enforced invisibility, and re-import behaviour
+
+- Status: **PROPOSED** — requires the product owner's confirmation before `GRX-CONTACT-010`
+  is implemented.
+- Date: 2026-08-16
+- Requirement, as stated by the product owner: a customer can delete a contact; Growixa
+  retains the row in the database; **the customer cannot see that data anywhere.** Not
+  erasure — retention with enforced invisibility. Hard erasure for data-subject requests
+  stays separate (`GRX-CONTACT-013`), and the retention/purge window is explicitly
+  deferred (`OQ-008`, `OQ-028`).
+
+### 1. `deleted_at`, not a third `status` value
+
+Add a nullable `contacts.deleted_at TIMESTAMPTZ`. Do **not** add `DELETED` to the existing
+`status` CHECK constraint.
+
+`status` and deletion answer different questions and must stay orthogonal:
+
+| | `status` (`ACTIVE` / `ARCHIVED`) | `deleted_at` (NULL / timestamp) |
+|---|---|---|
+| Answers | may we mail this contact? | may the customer see this contact? |
+| Already enforced | yes — worker filters `status == 'ACTIVE'` in all four recipient queries; `count_active_contacts` excludes `ARCHIVED` from `max_contacts` | new |
+
+Collapsing them into one enum forces a false choice — a contact deleted while `ARCHIVED`
+would lose the fact that it was archived, so restore could not put it back correctly. With
+two fields, restore is simply `deleted_at = NULL` and the prior `status` is still there.
+It is also the conventional soft-delete shape, which matters for a codebase worked by
+several agents: `deleted_at IS NULL` is recognised on sight; a third enum value is not.
+
+### 2. Invisibility must be enforced structurally, not by remembering to filter
+
+This is the part that decides whether the feature holds up. Per-query filtering is how soft
+delete fails in practice — someone adds a query six months later, omits the predicate, and
+deleted contacts reappear in one screen.
+
+Proposed, reusing patterns this repository already trusts:
+
+1. **One shared selectable** in `contacts/repositories.py` (e.g. `visible_contacts()`) that
+   every customer-facing read path goes through. Including deleted rows requires calling a
+   separate, explicitly-named function — the unsafe thing must be the one you have to type
+   deliberately.
+2. **An audit test**, modelled directly on the existing `test_protected_routes_audit.py`,
+   that fails when a `select(Contact)` in a customer-facing path does not go through the
+   shared selectable. This project already uses an audit test to keep RBAC honest across
+   every route; the same technique keeps deletion honest across every query. Without this,
+   item 1 is a convention, and conventions decay.
+3. **Worker paths inherit it too** — `apps/worker/.../recipients.py` resolves recipients
+   independently of the API's repositories, so its four queries need the `deleted_at IS
+   NULL` predicate added alongside their existing `status == 'ACTIVE'` filter. A deleted
+   contact must not receive mail even though the row still exists.
+
+### 3. Re-import collision — the concrete bug this design must not ship with
+
+`ux_contacts_account_id_email` is a plain unique constraint on `(account_id, email)`. If a
+contact is soft-deleted and hidden, and the customer then re-imports that same address, the
+insert violates a constraint **against a row the customer cannot see** — surfacing as
+"contact already exists" for a contact that is, as far as they can tell, gone. This will
+happen on the first CSV re-import after the feature ships.
+
+Proposed: replace it with a **partial unique index** on `(account_id, email) WHERE
+deleted_at IS NULL`. Re-importing a deleted address then creates a clean new contact and
+leaves the deleted record deleted. This repository already uses exactly this pattern —
+`ux_suppression_entries_account_id_domain ... postgresql_where=text("domain IS NOT NULL")`
+(`GRX-SAAS-015`).
+
+Rejected alternative: silently resurrecting the soft-deleted row on re-import. It brings
+back the old tags, custom fields and list memberships the customer believed they had
+deleted, which is surprising in the wrong direction.
+
+### 4. What "cannot see any of this data" cannot cover — and why
+
+Two deliberate exceptions. Both should be stated in the UI rather than discovered:
+
+1. **Suppression entries stay visible.** `suppression_entries` is keyed on `email`/`domain`
+   with only a nullable `contact_id`, so a deleted contact who had unsubscribed still
+   appears on the suppression page as an address. This is required, not a leak —
+   `DEC-GRX-008` makes suppression non-deletable, and losing it would let that address be
+   re-imported and mailed. **Deleting a contact must never un-suppress them.**
+2. **Historical campaign reports keep their numbers.** `campaign_recipients.contact_id` is
+   `NOT NULL`; a past campaign's sent/opened/clicked totals must not change because a
+   contact was later deleted, or every historical report becomes unreproducible. The rows
+   stay; drill-down to a deleted recipient renders a neutral placeholder ("Deleted
+   contact") instead of PII.
+
+### 5. Consequences
+
+1. One migration: add `contacts.deleted_at`, swap the unique constraint for the partial
+   unique index. No data backfill — existing rows get `NULL`.
+2. `count_active_contacts` (`max_contacts`, `GRX-BILL-005`) must also exclude deleted rows,
+   or a customer stays billed against contacts they deleted. Restore must re-check the cap
+   rather than silently exceeding it.
+3. Segment membership, contact search, CSV export, and dashboard counts all read through
+   the shared selectable and therefore exclude deleted rows with no per-feature work.
+4. `GRX-CONTACT-013` (hard erasure) is unaffected and still required for data-subject
+   requests — soft deletion retains the PII and does not satisfy an erasure request.
+5. Nothing here creates a retention window. Deleted rows persist until a purge policy is
+   decided (`OQ-008`), which the product owner has deferred.
+
+- Related: `GRX-CONTACT-010` (implements this), `GRX-CONTACT-013` (hard erasure),
+  `DEC-GRX-008` (suppression non-deletable), `GRX-BILL-005` (contact quota), `OQ-008`.
+- Supersedes: none.
