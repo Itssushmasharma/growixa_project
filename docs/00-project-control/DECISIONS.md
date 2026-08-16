@@ -2,8 +2,8 @@
 
 - Document ID: DOC-DECISIONS
 - Status: ACTIVE
-- Version: 1.2
-- Last updated: 2026-08-07
+- Version: 1.5
+- Last updated: 2026-08-16
 - Owner: Product owner (Ravi) via coding agent
 - Related documents: [OPEN_QUESTIONS](OPEN_QUESTIONS.md), [ASSUMPTIONS](ASSUMPTIONS.md), [ROADMAP](../01-product/ROADMAP.md)
 
@@ -1184,3 +1184,488 @@ Decision statuses: `PROPOSED`, `UNDER_REVIEW`, `APPROVED`, `REJECTED`, `SUPERSED
 
 *Decisions DEC-GRX-033 onward will be logged as they are made — e.g., resolutions to
 OQ-004, OQ-006 through OQ-011 in [OPEN_QUESTIONS.md](OPEN_QUESTIONS.md).*
+
+## DEC-GRX-033: External contact acquisition — scope expansion beyond first-party audiences
+
+- Status: **PROPOSED** — requires the product owner's explicit confirmation. Nothing may
+  be built, scaffolded, or entered into `MASTER_TASK_TRACKER.md` while this is `PROPOSED`.
+- Date: 2026-08-15
+- Context: `FUTURE_SCOPE_LEAD_INTELLIGENCE.md` (2026-07-30) captured three ideas from a
+  revspot.ai review, and gated all three behind one unresolved business-model question.
+  Idea #3 — contact extraction & enrichment from external sources — has now been raised
+  again by the product owner, who directed (2026-08-15) that the gate be opened properly
+  rather than bypassed: resolve the business-model call and write the missing
+  provenance/consent analysis *first*, then build. This entry is that call, drafted for
+  confirmation. It is deliberately `PROPOSED`, not `APPROVED` — an agent may not decide
+  the product's category on the product owner's behalf.
+- The actual question: does Growixa's scope expand from **"automate marketing to contacts
+  a company already has"** to **"also acquire contacts a company does not have yet"**?
+  Per `DEC-GRX-001` and `PRD.md` §9, the former is Growixa's stated positioning. The
+  latter is a different product category — closer to outbound lead-gen than to marketing
+  automation. This is a positioning change, not a feature addition.
+
+### Proposed decision (for confirmation)
+
+1. **Scope does expand**, but narrowly: Growixa may ingest and manage externally-sourced
+   contacts. It is a marketing-automation platform that can *accept* external contact
+   data, not a lead-generation product that *sells* leads or audiences.
+2. **Growixa does not perform acquisition on the customer's behalf in a first version.**
+   The customer supplies the data; Growixa ingests it with mandatory provenance. This
+   keeps collection liability (T84) with the party that chose the source, and it is
+   reversible — Growixa-operated acquisition can be added later, whereas an
+   acquisition-as-a-service posture is very hard to walk back.
+3. **The customer is the data controller** for contacts they supply, and warrants a
+   lawful basis at ingest. Growixa is the processor. This must be reflected in the terms
+   of service before the capability ships — it is not merely an internal position.
+4. **Externally-sourced contacts are not sendable by default** (T82). They enter a
+   distinct, non-sendable consent state; promotion requires an explicit, audited action.
+5. **Inferred enrichment attributes (income band, intent score) are out of scope** for a
+   first version (T87). Verified factual attributes only.
+6. **Sending reputation is ring-fenced** (T83). The specific mechanism — mandatory
+   pre-send validation, separate IP pool/subaccount, volume caps, or some combination —
+   is deferred to a design task, but *some* mechanism is mandatory, not optional.
+
+### Preconditions before any `GRX-*` task may be created
+
+- This decision moves to `APPROVED` by the product owner.
+- `THREAT_MODEL.md` §"Pre-build — External contact acquisition & enrichment" (T81–T87,
+  added 2026-08-15) has its required controls converted into acceptance criteria.
+- `OQ-020` is answered (ESP AUP position — see below).
+- `OQ-008` (retention) and `OQ-017` (suppression storage/provenance) are resolved, since
+  both are load-bearing for T81 and T85.
+
+### Consequences if APPROVED
+
+1. `PRD.md` §9 positioning and §6 target users need amending — the current text describes
+   a first-party-audience product, and would become inaccurate.
+2. `MVP_SCOPE.md` §"Deferred, not cancelled" currently lists "LinkedIn/CSV contact
+   enrichment" as requiring "an explicit scope decision, not just a backlog slot." This
+   is that decision; that bullet must be updated to reference it.
+3. `FUTURE_SCOPE_LEAD_INTELLIGENCE.md` idea #3 leaves idea-capture status and becomes a
+   real feature entry in `FEATURE_CATALOG.md`. Ideas #1 (voice) and #2 (licensed data)
+   are **not** unlocked by this decision and stay gated.
+4. A data-model change (mandatory provenance columns, new consent state) plus a terms-of-
+   service change. The ToS change is the long pole and is not an engineering task.
+
+### Consequences if REJECTED
+
+`FUTURE_SCOPE_LEAD_INTELLIGENCE.md` stays idea-capture only. Customers who want external
+contacts continue to use the existing `GRX-FEAT-007` Contact Import, which already works
+for a CSV the customer sourced themselves — no new capability, no scope change, and the
+existing suppression/unsubscribe/footer machinery already covers the sending obligations.
+This is a genuinely viable "do nothing" path, not a strawman.
+
+- Related: `FUTURE_SCOPE_LEAD_INTELLIGENCE.md`, `THREAT_MODEL.md` T81–T87, `OQ-020`,
+  `DEC-GRX-001` (positioning), `DEC-GRX-008` (suppression/consent mandatory),
+  `DEC-GRX-015` (shared Postmark sending path — the T83 blast radius).
+- Supersedes: none. Narrows, but does not supersede, `DEC-GRX-001` if approved.
+
+### Addendum, 2026-08-16 — Lead Intelligence module shape
+
+Recorded after an extended product discussion. Kept as an addendum rather than a rewrite
+so the original proposal above stays auditable. Still `PROPOSED` — none of this is
+approved, and the addendum raises two questions that must be answered *before* approval
+(`OQ-021`, `OQ-023`).
+
+**`OQ-020` is now answered, and it constrains everything below.** Postmark's published
+Terms of Service require permission-based subscription lists with explicit opt-in and
+prohibit purchased, rented, free, acquired, and cross-branded lists, with suspension or
+termination as the stated remedy; their "sending on behalf of others" guidance states that
+customers wanting to send to acquired lists are not a good fit for the platform. Verified
+directly against the vendor's own terms, not inferred.
+
+Three consequences:
+
+1. **Enrichment is not permission.** A contact being discovered, enriched, and verified
+   says nothing about whether it may be emailed. These must be separate states in the data
+   model, never collapsed. This becomes a core product rule, not an implementation detail.
+2. **Channel eligibility is mandatory architecture** (point 6 above), enforced server-side
+   at campaign-recipient selection. Per channel — email, SMS, WhatsApp, voice — each
+   independently `ELIGIBLE` / `NOT_ELIGIBLE` / `UNKNOWN`, defaulting to `UNKNOWN`, with
+   `UNKNOWN` non-sendable.
+3. **Eligibility is evaluated per sending path, not globally.** *(Corrected 2026-08-16 —
+   an earlier draft of this addendum claimed V1 ships with its email channel closed
+   outright. That was wrong: it overlooked `DEC-GRX-016`, which added `CUSTOM_SMTP`
+   alongside Postmark.)* The two paths differ materially:
+   - **Postmark** — closed for acquired contacts, per `OQ-020`. Growixa's own vendor
+     relationship is at stake and every account on this path shares the reputation, so
+     T83's blast radius is other customers.
+   - **`CUSTOM_SMTP`** — the customer sends through their own server or ESP account.
+     Postmark's AUP is irrelevant to it; the binding constraints become the customer's
+     own provider's AUP, the recipient's jurisdiction, and Growixa's terms of service.
+     **T83's cross-customer blast radius does not exist on this path** — a spam trap
+     damages the sending customer's own domain and IP, not anyone else's.
+
+   This makes `CUSTOM_SMTP` the architecturally honest home for externally-sourced
+   sending, and it means Lead Intelligence V1 does have a viable outbound path rather
+   than being research-only. Whether Growixa *permits* that, and on what attestation, is
+   `OQ-024` — still open. The eligibility engine must be path-aware from the first
+   commit; retrofitting a per-path dimension onto a global flag later is exactly the kind
+   of rework this decision exists to avoid.
+
+#### Adopted into the proposal
+
+- **A distinct `Lead Intelligence` module**, not 50 more columns on `contacts`. Keeps the
+  existing Contacts module simple and gives enrichment, verification, provenance,
+  eligibility, scoring, and (later) qualification one owning boundary.
+- **Discovery / Extraction / Enrichment are three separate stages**, not one thing called
+  "scraping". Different sources, different rights, different risk. Two distinct provider
+  interfaces — `LeadSourceProvider` (discovers/imports a base entity) and
+  `LeadEnrichmentProvider` (adds attributes to an existing entity) — never one generic
+  provider doing both.
+- **A Source Registry with a per-source rights profile**, checked before any acquisition
+  runs: source type, access method, approval status, permitted operations (discovery /
+  enrichment / commercial use / redistribution), attribution and permission requirements,
+  and the date the policy was last verified. The crawler must never be able to conclude
+  on its own that "public page = safe to scrape." This is the strongest idea to come out
+  of the discussion and it should be built before the first adapter, not after.
+- **Field-level provenance**, not record-level. Each significant attribute carries its own
+  value, provider, provider record ID, confidence, verification status and timestamp,
+  source type and source timestamp. Source value, provider prediction, verified value, and
+  customer-entered value must never collapse into one indistinguishable field. This is the
+  same evidence-classification convention PRD §24 already requires for metrics.
+- **No LinkedIn scraping, in any version.** LinkedIn's User Agreement prohibits crawlers,
+  bots, scripts, and browser extensions used to copy profile data. Where a LinkedIn URL is
+  useful, it is an *input identifier* handed to a licensed enrichment provider — never a
+  page Growixa fetches itself. Also excluded permanently: authenticated-session scraping,
+  CAPTCHA bypass, and scraping behind access controls.
+- **Deterministic, inspectable scoring.** Where lead or qualification scores exist, the
+  formula is visible and configurable and each input cites its evidence — not an opaque
+  model output presented as a percentage. Consistent with `DEC-GRX-011`'s refusal of
+  unevidenced completion claims and PRD §24's evidence classification.
+
+#### Proposed staging
+
+- **V1 — Company Intelligence.** Business entities only, per `OQ-023`. Source registry and
+  rights gate, provider interfaces, customer CSV/URL import, business-website extraction,
+  normalization, deduplication, provenance ledger, verification, channel eligibility, UI.
+- **V1.5 — Person Intelligence.** Named decision-makers, work email/phone via licensed
+  enrichment provider. Separate gate; this is where personal-data obligations begin in
+  earnest and where T81–T87 apply in full.
+- **V2 — AI voice qualification** (`FUTURE_SCOPE_LEAD_INTELLIGENCE.md` idea #1). Slots
+  into this module cleanly once provenance, phone, and eligibility exist. Needs its own
+  telephony vendor decision, its own module boundary, its own threat-model section
+  (call recording and consent-to-record law are untouched by anything written so far),
+  and jurisdiction-aware voice rules — India's TRAI regime treats promotional voice calls
+  differently depending on explicit consent.
+- **V3+ — Licensed audiences** (idea #2) remains gated, and if ever built should be an
+  audience *partner marketplace* rather than Growixa owning and reselling personal data.
+  Unchanged by this addendum.
+
+#### Existing research data
+
+The ~35k directory records already collected are **`QUARANTINED_RESEARCH_DATA`**: not
+exposed to customers, not searchable as production leads, not emailed, not resold, and not
+used as Growixa's commercial dataset, unless and until source rights are confirmed to
+permit that use. Directory terms of this kind commonly prohibit automated access and
+commercial exploitation of extracted data, so the permissive reading cannot be assumed.
+Engineering and tests use synthetic fixtures with the same schema rather than depending on
+those records. The scraper's *reusable components* — pagination, parsing, website
+discovery, normalization — may be generalized into provider adapters; the source-specific
+scraper is not promoted into the production pipeline.
+
+#### Still open before approval
+
+`OQ-021` (does Growixa acquire, or only ingest — this addendum's discovery engine
+contradicts point 2 of the original proposal), `OQ-022` (customer-facing product or
+Growixa's own sales tooling), `OQ-023` (company-level-only V1). `OQ-008` and `OQ-017`
+remain preconditions as stated above.
+
+#### Entity model — and why this is not `contacts` (added 2026-08-16)
+
+The product owner listed the attributes wanted on a lead: name, email, number, website,
+LinkedIn, role, business name, social accounts (Instagram/Telegram/other), address, sector
+category. That list is not one entity — it is two, and separating them is what makes
+`OQ-023`'s company-level V1 coherent rather than arbitrary:
+
+| Company / business entity | Person entity |
+|---|---|
+| Business name | Name |
+| Website | Role / job title |
+| Address | Work email |
+| Sector / category | Direct number / mobile |
+| Business phone | LinkedIn URL |
+| Business email (`info@`, `sales@`) | Personal social handles |
+| Social accounts (Instagram, Telegram, …) | — |
+
+Two things follow directly.
+
+**The compliance weight sits almost entirely in the right-hand column.** A school's name,
+published office number, and `info@` address are business-entity data. A named
+individual's role, work email, and mobile are personal data, and that is where T81, T85,
+T87 and T89 bite. `OQ-023`'s proposal — company-level V1, person-level behind a later gate
+— is exactly this table cut down the middle. It is also, in practice, close to the whole
+of what directory-sourced records like the ~35k already collected actually contain: the
+left column is populated, the right column is mostly empty. The compliance-expensive half
+is the half that is not there yet.
+
+**It also validates the Discovery/Enrichment split.** The left column is what discovery and
+extraction produce. The right column is what an enrichment provider adds. They come from
+different sources with different rights, arrive at different times, and carry different
+confidence — which is the argument for field-level provenance rather than one flat record.
+
+**This does not go in the `contacts` table.** `contacts` is Growixa's first-party audience
+model — people the customer already has a relationship with, carrying consent status and
+suppression state built for exactly that (`GRX-FEAT-010`, `DEC-GRX-008`). Widening it with
+enrichment columns would collapse the very distinction this decision exists to preserve:
+that an enriched lead is *not* a contact you may email. Lead Intelligence gets its own
+entities, and promotion from lead to contact is an explicit, audited, eligibility-checked
+transition — the one place the two modules touch.
+
+The list above is also not the full set to design against; it omits, at minimum, the
+provenance and eligibility fields that every entity needs regardless of channel
+(source, source URL, collection method, collected-at, provider, purpose, owning account,
+consent status, lawful basis, retention status, per-channel eligibility). Those are not
+optional extras — they are what makes the record defensible, and they must exist from the
+first migration rather than being added once the data is already in.
+
+#### Addendum 2, 2026-08-16 — the three layers, and which of them is a different business
+
+The product owner described Lead Intelligence as a customer-facing product with three
+capabilities. They carry very different risk and should not be approved as one thing.
+
+**Layer A — Real-time provider pass-through.** The customer specifies a filter ("software
+companies in Noida", "schools in Sharjah"); Growixa queries a licensed provider on demand
+and returns matching records to that customer. Growixa is a router. The provider holds the
+data, the collection chain, and the redistribution rights. **Lowest risk, and this should
+be V1's shape.** It also aligns with the provider-abstraction design already adopted above.
+
+**Layer B — A pooled Growixa-owned dataset.** Records Growixa has acquired (by discovery,
+crawling, or provider calls) accumulate into a shared pool that any customer can search.
+**This is not a bigger version of Layer A. It is a different business with its own
+regulatory regime**, and it is the single highest-risk item in this decision:
+
+- *It meets the working definition of a data broker* — a business that collects and sells,
+  licenses, or transfers personal information about individuals with whom it has no direct
+  relationship, assembled from third-party sources, public records, or purchased data.
+  Four US states (California, Texas, Vermont, Oregon) require data brokers to register with
+  a state agency, with annual fees and deadlines; California's Delete Act adds the DROP
+  platform, through which a consumer deletes their data across every registered broker in
+  one request, and registered brokers must honor those requests. Verified 2026-08-16.
+- *Access rights are not redistribution rights.* Most directory and provider terms permit a
+  subscriber to use data; far fewer permit redistributing it onward to that subscriber's own
+  customers, which is exactly what a pooled dataset does. Directory terms commonly prohibit
+  bulk extraction and building or enhancing a competing dataset outright — which is what
+  Layer B is, by construction. **The ~35k already-collected records cannot seed this pool**
+  under their source's terms (`QUARANTINED_RESEARCH_DATA`, above).
+- *Two mitigations make a legitimate version possible.* First, **company-level only**: data
+  broker regimes target personal information about individuals; business-entity records
+  (company name, published office number, `info@`) largely fall outside them. Nearly every
+  regime defines its subject matter the same way — personal data means data relating to an
+  identified or identifiable *natural person* — so the company/person cut narrows exposure
+  under all of them at once rather than under one country's rules. Second, **source
+  redistribution rights as a hard gate**: only sources whose terms explicitly permit onward
+  distribution may feed the pool, enforced by the Source Registry (T88) rather than by
+  anyone's memory.
+
+  This is the third distinct reason `OQ-023`'s company-level V1 has paid for itself, which
+  is a strong signal it is the right cut.
+
+**Layer C — Autonomous conversion.** Analyze a prospect from their website, predict
+likelihood of converting, generate a personalized message, send it, follow up
+automatically, and keep going until the lead converts.
+
+This is the most differentiated idea of the three, and it **directly contradicts rules this
+project has locked**, so it cannot be adopted implicitly:
+
+- `GRX-AI-002` and `GRX-AI-003` (PRD §23): AI output cannot send email or publish, and a
+  human must review and approve before send/publish.
+- `DEC-GRX-006`: human approval required for AI content, "no exceptions in MVP".
+- `DEC-GRX-012`: broad autonomous marketing agents are deferred.
+- `PRD.md` §11 Non-goals lists "sending AI-generated content without human approval" as
+  **not a goal of Growixa at all, at any stage** — not deferred, rejected. Layer C as
+  described is that.
+
+**There is a version that does not require tearing any of that up**, and it is close to the
+same product: AI drafts the whole sequence — analysis, message, follow-up ladder — and a
+human approves *the sequence* once, after which execution proceeds automatically against
+that approved plan. That is approval-gated automation, not autonomy. It preserves the
+principle (a human authorized what goes out under the company's name) while delivering
+almost all of the leverage. Moving from per-message to per-sequence approval is still a
+change to `DEC-GRX-006` and needs its own decision — but it is a narrow amendment rather
+than a reversal of the product's founding safety position.
+
+Whatever is built, conversion prediction must be deterministic and inspectable, with each
+input citing its evidence, per the scoring rule already adopted above. "AI says 93%" with
+no defensible calculation is not acceptable output for a product that also promises
+evidence classification on its metrics (PRD §24).
+
+**Proposed staging across the three layers:** Layer A in V1 (company-level, pass-through).
+Layer B only after `OQ-025` is answered and only from redistribution-cleared sources.
+Layer C's approval-gated form after `OQ-026`; its fully autonomous form is not proposed at
+all, and would require amending PRD §11.
+
+#### Addendum 3, 2026-08-16 — global scope, and jurisdiction as a first-class field
+
+The product owner clarified that Lead Intelligence targets **global business**, not a
+single market. The UAE dataset was sample data, not the scope.
+
+This makes the design harder, not easier, and in one specific way: **"global" does not mean
+one permissive rule. It means the strictest applicable rule, determined per record by where
+the recipient is.** A single lead table sent under a single policy will be simultaneously
+lawful for some recipients and unlawful for others, and nothing in the system would show
+which is which.
+
+The regimes are genuinely divergent on the exact question this product asks — may you
+contact someone you have no prior relationship with?
+
+- **United States** is the most permissive for email: unsolicited commercial email is
+  lawful with identification, a physical postal address, and a working opt-out — all of
+  which Growixa already ships (`GRX-SAAS-015`). But the US is also where the *data broker*
+  registration regimes live, which bear on Layer B rather than on sending.
+- **Canada (CASL)** is effectively opt-in for commercial electronic messages, with limited
+  business-relationship exceptions and significant penalties. Among the strictest.
+- **EU/UK (GDPR)** requires a lawful basis and, for data not collected from the person, a
+  notice obligation at first contact (Art. 14). Legitimate interest is available for B2B
+  but is a documented assessment, not an assumption.
+- **India (DPDP)** is in active implementation with its own consent architecture.
+- Others — Brazil, China, Japan, Australia, UAE — each add their own variation.
+
+**Design consequences, none of which are optional for a global product:**
+
+1. **Jurisdiction is a mandatory, resolved field on every lead** — not inferred at send
+   time from a phone prefix or a TLD guess, but resolved at ingest, stored with its own
+   confidence and provenance like any other enriched field, and re-resolvable. A lead whose
+   jurisdiction is `UNKNOWN` is not sendable, the same way `UNKNOWN` eligibility is not.
+2. **Channel eligibility is evaluated per channel *and* per jurisdiction *and* per sending
+   path.** Three dimensions, not one flag. `OQ-024` established the sending-path dimension;
+   this addendum adds the jurisdiction one. All three must exist in the first migration —
+   this is precisely the kind of dimension that cannot be retrofitted onto a boolean once
+   millions of rows exist.
+3. **Policy is data, not code.** Per-jurisdiction rules change, and they change on
+   legislative timelines rather than release timelines. They belong in a configurable
+   policy table with an effective-date and a review date, alongside the Source Registry —
+   not in `if country == "CA"` branches scattered through the send path.
+4. **The company-level V1 cut (`OQ-023`) gets stronger, not weaker, at global scope.**
+   Business-entity records sit outside the personal-data definition in essentially every
+   one of these regimes simultaneously. It is the one design choice that reduces exposure
+   under all of them at once, rather than requiring a per-country analysis before the
+   product can ship anywhere. **At global scope this stops being a cost-saving measure and
+   becomes the thing that makes a V1 shippable at all.**
+5. **Growixa cannot carry this as legal advice.** A global product asserting per-country
+   sending lawfulness needs external counsel to validate the policy table before launch —
+   not an agent's reading of secondary sources, including this one. Every jurisdictional
+   claim recorded in these documents should be treated as a research starting point for
+   that review, not as a cleared position.
+
+## DEC-GRX-034: Contact soft deletion — `deleted_at`, enforced invisibility, and re-import behaviour
+
+- Status: **APPROVED** — confirmed by the product owner 2026-08-16, after considering and
+  rejecting the suppress-as-delete alternative recorded in §4a.
+- Date: 2026-08-16
+- Requirement, as stated by the product owner: a customer can delete a contact; Growixa
+  retains the row in the database; **the customer cannot see that data anywhere.** Not
+  erasure — retention with enforced invisibility. Hard erasure for data-subject requests
+  stays separate (`GRX-CONTACT-013`), and the retention/purge window is explicitly
+  deferred (`OQ-008`, `OQ-028`).
+
+### 1. `deleted_at`, not a third `status` value
+
+Add a nullable `contacts.deleted_at TIMESTAMPTZ`. Do **not** add `DELETED` to the existing
+`status` CHECK constraint.
+
+`status` and deletion answer different questions and must stay orthogonal:
+
+| | `status` (`ACTIVE` / `ARCHIVED`) | `deleted_at` (NULL / timestamp) |
+|---|---|---|
+| Answers | may we mail this contact? | may the customer see this contact? |
+| Already enforced | yes — worker filters `status == 'ACTIVE'` in all four recipient queries; `count_active_contacts` excludes `ARCHIVED` from `max_contacts` | new |
+
+Collapsing them into one enum forces a false choice — a contact deleted while `ARCHIVED`
+would lose the fact that it was archived, so restore could not put it back correctly. With
+two fields, restore is simply `deleted_at = NULL` and the prior `status` is still there.
+It is also the conventional soft-delete shape, which matters for a codebase worked by
+several agents: `deleted_at IS NULL` is recognised on sight; a third enum value is not.
+
+### 2. Invisibility must be enforced structurally, not by remembering to filter
+
+This is the part that decides whether the feature holds up. Per-query filtering is how soft
+delete fails in practice — someone adds a query six months later, omits the predicate, and
+deleted contacts reappear in one screen.
+
+Proposed, reusing patterns this repository already trusts:
+
+1. **One shared selectable** in `contacts/repositories.py` (e.g. `visible_contacts()`) that
+   every customer-facing read path goes through. Including deleted rows requires calling a
+   separate, explicitly-named function — the unsafe thing must be the one you have to type
+   deliberately.
+2. **An audit test**, modelled directly on the existing `test_protected_routes_audit.py`,
+   that fails when a `select(Contact)` in a customer-facing path does not go through the
+   shared selectable. This project already uses an audit test to keep RBAC honest across
+   every route; the same technique keeps deletion honest across every query. Without this,
+   item 1 is a convention, and conventions decay.
+3. **Worker paths inherit it too** — `apps/worker/.../recipients.py` resolves recipients
+   independently of the API's repositories, so its four queries need the `deleted_at IS
+   NULL` predicate added alongside their existing `status == 'ACTIVE'` filter. A deleted
+   contact must not receive mail even though the row still exists.
+
+### 3. Re-import collision — the concrete bug this design must not ship with
+
+`ux_contacts_account_id_email` is a plain unique constraint on `(account_id, email)`. If a
+contact is soft-deleted and hidden, and the customer then re-imports that same address, the
+insert violates a constraint **against a row the customer cannot see** — surfacing as
+"contact already exists" for a contact that is, as far as they can tell, gone. This will
+happen on the first CSV re-import after the feature ships.
+
+Proposed: replace it with a **partial unique index** on `(account_id, email) WHERE
+deleted_at IS NULL`. Re-importing a deleted address then creates a clean new contact and
+leaves the deleted record deleted. This repository already uses exactly this pattern —
+`ux_suppression_entries_account_id_domain ... postgresql_where=text("domain IS NOT NULL")`
+(`GRX-SAAS-015`).
+
+Rejected alternative: silently resurrecting the soft-deleted row on re-import. It brings
+back the old tags, custom fields and list memberships the customer believed they had
+deleted, which is surprising in the wrong direction.
+
+### 4. What "cannot see any of this data" cannot cover — and why
+
+Two deliberate exceptions. Both should be stated in the UI rather than discovered:
+
+1. **Suppression entries stay visible.** `suppression_entries` is keyed on `email`/`domain`
+   with only a nullable `contact_id`, so a deleted contact who had unsubscribed still
+   appears on the suppression page as an address. This is required, not a leak —
+   `DEC-GRX-008` makes suppression non-deletable, and losing it would let that address be
+   re-imported and mailed. **Deleting a contact must never un-suppress them.**
+2. **Historical campaign reports keep their numbers.** `campaign_recipients.contact_id` is
+   `NOT NULL`; a past campaign's sent/opened/clicked totals must not change because a
+   contact was later deleted, or every historical report becomes unreproducible. The rows
+   stay; drill-down to a deleted recipient renders a neutral placeholder ("Deleted
+   contact") instead of PII.
+
+### 4a. Deletion and suppression stay separate — with one optional prompt
+
+Considered and rejected: using suppression *as* the delete mechanism ("move the address to
+Suppress instead of building soft delete"). It fails on three counts. It does not deliver
+the stated requirement — the contact stays visible in the list and the address additionally
+appears on the suppression page, so *more* data is visible, not less. It degrades the
+suppression list's purpose: that list is the evidence of opt-out (`DEC-GRX-008`), and
+mixing in records that were merely tidied away makes "this person unsubscribed"
+indistinguishable from "someone cleaned up their CSV". And it makes an everyday action
+irreversible through the most dangerous available control — suppression entries are
+permanent by design, so undoing an accidental delete would require un-suppressing, which is
+the legally sensitive action `OQ-DNC-004` flags as unresolved.
+
+The legitimate need behind the idea is real, though: a contact is often deleted *because*
+they should not be contacted. Proposed instead — the delete confirmation offers an optional,
+unchecked "also add to the suppression list" control, described in terms of intent ("do this
+if they asked not to be contacted"). Two independent actions, one prompt. The customer gets
+the safe outcome when it genuinely applies, and the suppression list keeps holding only real
+opt-outs.
+
+### 5. Consequences
+
+1. One migration: add `contacts.deleted_at`, swap the unique constraint for the partial
+   unique index. No data backfill — existing rows get `NULL`.
+2. `count_active_contacts` (`max_contacts`, `GRX-BILL-005`) must also exclude deleted rows,
+   or a customer stays billed against contacts they deleted. Restore must re-check the cap
+   rather than silently exceeding it.
+3. Segment membership, contact search, CSV export, and dashboard counts all read through
+   the shared selectable and therefore exclude deleted rows with no per-feature work.
+4. `GRX-CONTACT-013` (hard erasure) is unaffected and still required for data-subject
+   requests — soft deletion retains the PII and does not satisfy an erasure request.
+5. Nothing here creates a retention window. Deleted rows persist until a purge policy is
+   decided (`OQ-008`), which the product owner has deferred.
+
+- Related: `GRX-CONTACT-010` (implements this), `GRX-CONTACT-013` (hard erasure),
+  `DEC-GRX-008` (suppression non-deletable), `GRX-BILL-005` (contact quota), `OQ-008`.
+- Supersedes: none.

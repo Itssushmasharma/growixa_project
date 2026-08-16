@@ -2,8 +2,8 @@
 
 - Document ID: DOC-SEC-THREAT
 - Status: ACTIVE (expanded per slice, not redesigned)
-- Version: 1.3
-- Last updated: 2026-08-07
+- Version: 1.5
+- Last updated: 2026-08-16
 - Owner: Coding agent
 - Related documents: [SECURITY_ARCHITECTURE](SECURITY_ARCHITECTURE.md), [AUTHENTICATION](AUTHENTICATION.md), [RBAC](RBAC.md)
 
@@ -277,3 +277,67 @@ mailbox-verification vendor (Clearout.io today) for paid-plan accounts only, mir
 | T78 | Config-test endpoint used as a credential-validity oracle | `POST /platform/email-validation-config/test` makes a real call to the vendor on behalf of the server using an attacker-supplied API key, which could be used to brute-force-validate stolen Clearout credentials | Gated to `platform.validation.manage` (`platform.owner`/`platform.admin` only), the same narrow trust tier as `platform.ai.manage`/`platform.email.manage` since this also gates an encrypted credential; the endpoint returns only success/failure (via the vendor's own real response), not response content, bounding the oracle's usefulness — accepted risk for MVP, same framing as `GRX-AI-005`/`GRX-SAAS-013`'s own test-connection endpoints |
 | T79 | Real-time verification result trusted without accounting for a vendor error being silently downgraded | If the vendor call fails (network error, bad key, vendor outage), `services.validate_email` falls back to the free basic check rather than erroring — a customer could mistake a `BASIC`-level "Valid" result for the paid-tier real-time guarantee they expect | `EmailValidationResultOut.verification_level` (`BASIC`/`REALTIME`) is always included in the response and rendered as a visible badge on the frontend, plus a `reasons` entry explicitly noting "Real-time provider was unavailable" when the fallback occurs — never silently presented as a real-time result |
 | T80 | Plan-tier gating bypass via a stale/cached account-plan read | `providers/factory.py` resolves the account's plan fresh on every `/email-validation/check` call (no caching) specifically so a downgraded account can't keep using the real-time check past its billing period | No caching layer sits between the plan lookup (`get_account_subscription_with_plan`) and the gating decision — verified live: downgrading the test account back to Free immediately flipped `GET /email-validation/availability` back to `false` on the very next call |
+
+## Pre-build — External contact acquisition & enrichment (`FUTURE_SCOPE_LEAD_INTELLIGENCE.md` idea #3)
+
+**This section is different from every other section in this document.** All of the above
+analyze surfaces that already exist. This one analyzes a capability that does **not**
+exist and is **not** approved — Growixa discovering, ingesting, or enriching contacts a
+customer does not already have, from an external source (directory scraping, LinkedIn,
+CSV enrichment, licensed audience packs).
+
+It exists because `FUTURE_SCOPE_LEAD_INTELLIGENCE.md` requires that the provenance and
+consent questions be addressed "before this is built, not after," and because that
+document was the only place the requirement lived — this file had no coverage of it at
+all until 2026-08-15. Written during product intake triage at the product owner's
+direction, alongside `DEC-GRX-033` (PROPOSED).
+
+Read the "Mitigation" column here as **required control — not built**. Nothing in this
+table is implemented. `DEC-GRX-033` must be APPROVED, and these controls specified as
+acceptance criteria, before any `GRX-*` task for this capability may be created.
+
+The single most important entry is **T83**: unlike every other threat in this document,
+its blast radius is *other customers*, because Growixa's customers share sending
+infrastructure and therefore share sender reputation.
+
+| # | Threat | Vector | Mitigation |
+|---|---|---|---|
+| T81 | No lawful basis recorded for an ingested contact | A contact enters the store from an external source with no record of where it came from, when, under what basis, or from which collection run. On a data-subject request, a regulator complaint, or an abuse report, neither Growixa nor its customer can answer "how did you get this address?" | **REQUIRED — not built:** every externally-acquired contact carries mandatory, immutable provenance — source type, source identifier/URL, acquisition timestamp, acquiring account, and the asserted lawful basis. Provenance is set at ingest and never nullable; a contact without it cannot exist. This is a data-model precondition, not a reporting feature bolted on later |
+| T82 | Externally-sourced contacts silently inherit first-party consent semantics | `contacts.consent_status` and the suppression model were designed for a company's *own* audience (`GRX-FEAT-010`, `DEC-GRX-008`). An external contact has no consent state that honestly describes it, so it defaults into a value implying a relationship that never existed — and then flows into campaigns as if opted in | **REQUIRED — not built:** a distinct consent state representing "externally sourced, never opted in," which is *not* sendable by default; promotion out of that state requires an explicit, audited action. Segment builders and campaign recipient selection must treat it as excluded unless deliberately included |
+| T83 | Spam traps in scraped data destroy deliverability **for every other customer** | Public directories are seeded with spam-trap/honeypot addresses precisely to catch scraping. Sending to one can blacklist the sending domain and shared IP. Because Growixa's accounts share sending infrastructure (`DEC-GRX-015`, Postmark SMTP relay), one customer's scraped list can degrade or destroy delivery for **every unrelated customer on the platform** — and it can also get Growixa terminated by its own ESP, whose AUP prohibits scraped/purchased lists | **REQUIRED — not built:** externally-sourced lists cannot use shared sending reputation on the same terms as first-party lists. Options to be decided in `DEC-GRX-033`: mandatory validation before send, a separate IP pool/subaccount for externally-sourced sends, hard volume caps, or refusing the capability on shared infrastructure entirely. **This is a platform-survival risk, not an account-level one** — and it must be resolved before, not after, the ESP notices |
+| T84 | Source-side ToS violation and IP blocking attributed to Growixa | Scraping runs from Growixa's infrastructure violate a source's terms of service or anti-automation controls, getting Growixa's egress IPs blocked, its accounts terminated, or (in some jurisdictions and under some source agreements) exposing it to legal claims — including where the source is a platform with an explicit anti-scraping clause, such as LinkedIn | **REQUIRED — not built:** per-source legal review before any source is enabled; an explicit allowlist of permitted sources rather than an open-ended crawler; robots/ToS compliance posture recorded per source; no source enabled by default. `DEC-GRX-033` must state whether Growixa performs acquisition itself or only ingests what the customer supplies — these carry materially different liability |
+| T85 | GDPR Art. 14 notice obligation unmet for indirectly-collected data | Personal data obtained from a source other than the data subject triggers a notification duty — generally within one month, or at first communication. A capability that ingests EU personal data with no notice mechanism is non-compliant from the first record, regardless of how the sending is done | **REQUIRED — not built:** a first-contact notice mechanism (source disclosure, controller identity, objection route) and the retention/erasure path to honor an objection. Interacts with `OQ-008` (retention) and `OQ-017` (suppression storage), neither resolved |
+| T86 | Scraped field content reaching AI prompts as instructions | Enrichment and scraped fields (company description, bio, notes) are attacker-controllable free text that flows into AI generation for personalization — the exact prompt-injection surface `GRX-AI-007` names, but arriving through a new, higher-volume, entirely untrusted channel | **REQUIRED — not built:** externally-sourced fields are treated as untrusted data under `GRX-AI-007` with no exception, and the AI module's existing approval gate (`GRX-AI-002`/`GRX-AI-003`, `DEC-GRX-006`) applies unchanged. Bulk-personalization flows must not become a path around per-item human approval |
+| T87 | Enrichment attributes constitute profiling, with accuracy and special-category exposure | Idea #3's "50+ data points" include inferred attributes (income band, profession, intent score). Inferred attributes about identified people are profiling; some inferences approach special-category data; and inaccurate inferences carry their own rectification obligation. Growixa would be presenting vendor guesses as facts in its own UI | **REQUIRED — not built:** decide whether inferred attributes are in scope at all (recommend: no, for a first version — sharply lower risk for a marketing-automation product); if any are, they must be labeled as inferred with their source, never displayed as verified, and be correctable. Note this is the same evidence-classification convention PRD §24 already requires for metrics |
+
+### Explicitly out of scope for this section
+
+Idea #1 (AI voice qualification) and idea #2 (licensed audience packs) are **not** analyzed
+here. Voice adds telephony, call recording, and consent-to-record law — an entirely
+separate threat surface with no module boundary today. Licensed data has a materially
+different provenance story (the vendor's contractual chain, not Growixa's collection), and
+would need its own analysis, mostly around what the vendor's warranties actually cover.
+Each needs its own section if and when it is picked up.
+
+### Addendum, 2026-08-16 — source rights, and the company/person split
+
+Two threats missing from T81–T87, added after the Lead Intelligence module discussion.
+
+| # | Threat | Vector | Mitigation |
+|---|---|---|---|
+| T88 | A source's terms are assumed permissive because its pages are publicly reachable | An adapter is pointed at a directory or dataset whose terms prohibit automated access, bulk extraction, or commercial reuse. Public reachability is not permission, and the decision gets made implicitly by whoever writes the adapter rather than deliberately. Consequences run from IP blocking to breach-of-terms claims to being unable to use a dataset the product now depends on | **REQUIRED — not built:** a Source Registry that gates every acquisition run on an explicit per-source rights profile — permitted operations (discovery / enrichment / commercial use / redistribution), approval status, attribution and permission requirements, and the date the policy was last verified. Sources are allowlisted, never enabled by default, and an adapter cannot run against a source whose profile is missing, `BLOCKED`, or stale. The crawler must not be able to decide for itself that a page is safe to take |
+| T89 | Person-level data enters a system whose compliance design assumed business entities | Company-level records (company name, office phone, published `info@`) carry a far lighter obligation set than person-level records (named individual, work email, mobile). If both flow through one pipeline with one set of controls, the lighter design silently governs the heavier data — and T81, T85 and T87 stop being satisfied without anyone noticing the transition | **REQUIRED — not built:** the entity type is explicit and enforced, not inferred. If `OQ-023` is approved, V1 stores company-level records only and person-level ingestion is rejected at the boundary rather than merely discouraged — including via enrichment responses, which are the most likely path for person data to arrive unannounced (a provider asked about a company can return named contacts). Person-level support is a deliberate later gate with its own review, not a schema that happens to accommodate it |
+
+**On `OQ-020`, and a correction to T83 (2026-08-16):** Postmark's published terms allow
+permission-based subscription lists only, prohibiting purchased, rented, free, acquired and
+cross-branded lists, with suspension or termination as the remedy. So on the Postmark path
+there is no ring-fencing arrangement to design — acquired contacts are simply not sendable
+without independently-established permission.
+
+But T83 as written above assumed all sending is shared. That is wrong. `DEC-GRX-016` added
+`CUSTOM_SMTP` as a second provider, and on that path the customer sends through their own
+server or ESP account, from their own domain and IP. **T83's defining property — that the
+blast radius is other customers — does not hold there.** A spam trap hit on `CUSTOM_SMTP`
+damages the sending customer alone. T83 should be read as scoped to shared sending
+infrastructure, and the eligibility engine must be path-aware rather than applying one
+global rule (`OQ-024`).

@@ -2,8 +2,8 @@
 
 - Document ID: DOC-FEATURE-STATUS-MATRIX
 - Status: ACTIVE
-- Version: 1.1
-- Last updated: 2026-07-31
+- Version: 1.2
+- Last updated: 2026-08-15
 - Owner: Coding agent
 - Related documents: [FEATURE_CATALOG](../02-features/FEATURE_CATALOG.md), [MASTER_TASK_TRACKER](MASTER_TASK_TRACKER.md), [PROJECT_STATUS](PROJECT_STATUS.md)
 
@@ -39,9 +39,31 @@ criteria met, gaps noted), `DONE` (fully built and verified per its owning `GRX-
 
 ## Slices 3–6
 
-Not started — no tasks exist yet for email (Slice 3), campaign scheduling (Slice 4), social
-(Slice 5), or AI content assistant (Slice 6). See [ROADMAP.md](../01-product/ROADMAP.md) and
+> ⚠️ **This section is stale as of 2026-08-15.** It was last assessed 2026-07-31, when
+> Slices 3–6 genuinely had no tasks. Since then `GRX-EMAIL-001..012`, `GRX-SCHED-*`,
+> `GRX-SOCIAL-001..011`, and `GRX-AI-001..011` have all reached `DONE` in
+> [MASTER_TASK_TRACKER.md](MASTER_TASK_TRACKER.md), as has the entire Sprint 5 /
+> billing track. A full re-audit of `GRX-FEAT-011`–`028` against the shipped code is
+> needed — the same kind of pass `GRX-DOC-003` did for Slices 1–2. That re-audit is out
+> of scope for the product-intake triage that added this note; only the two rows below,
+> which the triage actually verified, are recorded.
+
+Original (2026-07-31) assessment, retained for history: not started — no tasks exist yet
+for email (Slice 3), campaign scheduling (Slice 4), social (Slice 5), or AI content
+assistant (Slice 6). See [ROADMAP.md](../01-product/ROADMAP.md) and
 [MVP_SCOPE.md](../01-product/MVP_SCOPE.md).
+
+## Post-MVP / ad hoc features (verified 2026-08-15)
+
+Verified during the `need_review_docs/` product intake triage. These features came from
+ad hoc `GRX-SAAS-*` tasks rather than a Slice 1–6 sprint, so they had no row on this
+matrix.
+
+| Feature ID | Feature | Status | Evidence | Notes |
+|---|---|---|---|---|
+| GRX-FEAT-030 | Email Validation | DONE | `GRX-SAAS-016`, `GRX-SAAS-017` | Free in-house checks (syntax, MX/A with RFC 5321 implicit-MX fallback, disposable list, role list) for all plans; platform-admin-configurable multi-vendor real-time verification (Clearout first) for paid plans, with a per-check opt-out. No SMTP mailbox probe or catch-all detection — deliberately excluded, see the task note. |
+| GRX-FEAT-010 | Suppression and Consent (post-MVP extension) | DONE | `GRX-CONTACT-005/009`, `GRX-SAAS-015` | Extends the Slice 2 entry above: whole-domain blocking, CSV import/export, working remove, and RFC 8058 `List-Unsubscribe`/`List-Unsubscribe-Post` headers on outbound campaign mail. Hashed storage and a global cross-account list are **not** built and **not** scheduled — see `OQ-017`. |
+| GRX-FEAT-023 / GRX-FEAT-028 | Analytics dashboard + platform admin overview | PARTIAL | `GRX-SAAS-014` | Customer overview (`GET /dashboard/overview`) and platform admin overview (`GET /platform/dashboard/summary`) shipped, replacing empty placeholders. Scoped to the source plan's own MVP tier: one unified view per surface. The 4 role-adaptive lenses and the "AI Next Best Actions" card are **not** built and **not** scheduled — see `GRX-FEAT-036` and `OQ-016`. No `account_daily_metrics` rollup table or Redis cache layer (accepted risk, direct SQL aggregation). |
 
 ## Summary
 

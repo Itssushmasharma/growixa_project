@@ -1,9 +1,11 @@
 # Future Scope: Voice Qualification, Licensed Audiences & Contact Enrichment
 
 - Document ID: DOC-FUTURE-SCOPE-LEAD-INTELLIGENCE
-- Status: ACTIVE (idea capture only — not approved, not scheduled into any release)
-- Version: 1.0
-- Last updated: 2026-07-30
+- Status: ACTIVE — idea #3 is now under an open product-direction call
+  ([DEC-GRX-033](../00-project-control/DECISIONS.md), **PROPOSED**); ideas #1 and #2
+  remain idea capture only, not approved, not scheduled
+- Version: 1.1
+- Last updated: 2026-08-15
 - Owner: Product owner (Ravi) via coding agent
 - Related documents: [DECISIONS §DEC-GRX-001](../00-project-control/DECISIONS.md), [MVP_SCOPE](MVP_SCOPE.md), [PRD](PRD.md), [FEATURE_CATALOG](../02-features/FEATURE_CATALOG.md), [DESIGN_REFERENCE_REVSPOT](../03-ux-ui/DESIGN_REFERENCE_REVSPOT.md)
 
@@ -78,6 +80,32 @@ marketing automation for existing audiences).
 
 That's not a reason to reject them — voice-AI qualification in particular is a strong,
 differentiated idea — but it's a product-direction call, not a routine backlog addition.
+
+## Update, 2026-08-15 — idea #3 gate opened (not passed)
+
+The product owner raised idea #3 again and directed that the gate below be worked
+properly rather than bypassed. Two of the four preconditions in the next section are now
+addressed for idea #3 specifically:
+
+- The business-model/product-direction call is drafted as
+  [DEC-GRX-033](../00-project-control/DECISIONS.md) — **`PROPOSED`, awaiting the product
+  owner's confirmation.** It proposes a narrow expansion: Growixa ingests
+  customer-supplied external contacts with mandatory provenance, does not perform
+  acquisition itself in a first version, and does not sell audiences.
+- The provenance/consent analysis this document asked for now exists:
+  [THREAT_MODEL.md §"Pre-build — External contact acquisition & enrichment"](../08-security/THREAT_MODEL.md)
+  (T81–T87). It had no coverage anywhere before this date. T83 is the one to read first —
+  scraped-list spam traps degrade sending reputation for *every other customer* on the
+  shared Postmark path, which makes this a platform risk rather than an account risk.
+
+One new blocker surfaced that this document did not anticipate: `OQ-020` — whether the
+ESP's acceptable-use policy permits externally-sourced lists at all. Most ESPs prohibit
+them. That is a question for the vendor, and it can invalidate the capability regardless
+of what is decided internally.
+
+**Status is unchanged in the way that matters:** nothing is approved and nothing is
+scheduled. Ideas #1 (voice) and #2 (licensed data) are untouched by this and remain fully
+gated.
 
 ## Read this before picking any of these up
 

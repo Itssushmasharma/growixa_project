@@ -2,8 +2,8 @@
 
 - Document ID: DOC-ROADMAP
 - Status: ACTIVE
-- Version: 1.0
-- Last updated: 2026-07-22
+- Version: 1.1
+- Last updated: 2026-08-15
 - Owner: Product owner (Ravi) via coding agent
 - Related documents: [MVP_SCOPE](MVP_SCOPE.md), [FUTURE_SCOPE_SEO_AEO_GEO](FUTURE_SCOPE_SEO_AEO_GEO.md), [DECISIONS §DEC-GRX-001](../00-project-control/DECISIONS.md)
 
@@ -27,6 +27,26 @@ Scope: [MVP_SCOPE.md](MVP_SCOPE.md) §A–E, delivered as Slices 1–6:
 
 Content calendar refinement, topic-agnostic content ideas backlog, stronger segmentation,
 additional email analytics, team-approval workflows for campaigns.
+
+Candidates raised from product intake but **not yet accepted into this release** — Email
+Warmup (`GRX-FEAT-032`), the Growixa MCP Server (`GRX-FEAT-035`), and role-adaptive
+dashboard views (`GRX-FEAT-036`). Their release targets are unconfirmed (`OQ-018`), and
+two carry unresolved conflicts with locked decisions (`OQ-015`, `OQ-016`). They are
+catalogued in [FEATURE_CATALOG.md §Proposed features](../02-features/FEATURE_CATALOG.md)
+and must not be scheduled from this list.
+
+## Shipped ahead of roadmap staging
+
+Recorded 2026-08-15 so this roadmap doesn't misstate what exists. Two capabilities shipped
+via ad hoc `GRX-SAAS-*` tasks rather than through a release above:
+
+- **Email Validation** (`GRX-FEAT-030`, `GRX-SAAS-016`/`017`) — list-hygiene checks plus
+  paid-plan real-time vendor verification. Never staged into a release; built on request.
+- **Customer + platform admin overview dashboards** (`GRX-SAAS-014`) — the MVP tier of
+  `GRX-FEAT-023`/`GRX-FEAT-028`. The four role-adaptive lenses remain unscheduled.
+
+Also shipped as extensions to existing MVP features: whole-domain suppression, suppression
+CSV import/export, and RFC 8058 one-click `List-Unsubscribe` headers (`GRX-SAAS-015`).
 
 ## Release 1.2 — Marketing breadth
 
