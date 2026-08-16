@@ -6,7 +6,7 @@
 - **Branch**: `feature/BACKEND/GRX-SAAS-007`
 - **Worktree**: `.worktrees/grx-saas-007-providers`
 - **Base Commit**: `f789dbb`
-- **Developer Commit**: `c106a1d`
+- **Developer Commit**: `73e5855`
 
 ---
 
@@ -20,6 +20,9 @@ Delivers the **Platform Provider Management Hub** (`/platform/providers`), unify
 2. **Interactive Live Health Verification**: One-click "Test Connection" per card and a top-level "⚡ Test All Active" button to test connections across all configured providers.
 3. **Seamless Credential Rotation & Navigation**: Direct action buttons on each card to navigate directly to `/platform/ai-config`, `/platform/email-config`, or `/platform/email-validation-config`.
 4. **Navigation Integration**: Added "Providers Hub" to the Platform Admin sidebar navigation (`apps/web/src/app/(platform)/platform/(protected)/sidebar.tsx`).
+5. **Model Refresh & Migration Fixes**:
+   - Added `session.refresh(profile)` after commit in company and brand update endpoints to prevent `MissingGreenlet` during serialization.
+   - Made platform monitoring permissions migration idempotent with `ON CONFLICT DO NOTHING`.
 
 ---
 
@@ -40,6 +43,10 @@ Delivers the **Platform Provider Management Hub** (`/platform/providers`), unify
 - `apps/web/src/app/(platform)/platform/(protected)/providers/providers-page.test.tsx` (Unit tests)
 - `apps/web/src/app/(platform)/platform/(protected)/sidebar.tsx` (Navigation update)
 - `apps/web/src/app/(platform)/platform/(protected)/sidebar.test.tsx` (Sidebar unit test)
+- `apps/api/src/growixa_api/company/api.py` (Session refresh fix)
+- `apps/api/src/growixa_api/brand/api.py` (Session refresh fix)
+- `apps/api/migrations/versions/039f01bed830_platform_monitoring_manage_permission.py` (Idempotent migration)
+- `apps/api/src/growixa_api/cli/onboard_iitdeveloper.py` (Tenant onboarding CLI)
 - `docs/00-project-control/WORKTREE_TRACKER.md` (Worktree registration)
 
 ---
@@ -47,6 +54,7 @@ Delivers the **Platform Provider Management Hub** (`/platform/providers`), unify
 ## 5. Verification & Test Results
 
 ```bash
+# Frontend validation
 cd apps/web && npm test
 # Output: 44 test files passed (236 / 236 tests)
 
@@ -58,6 +66,13 @@ cd apps/web && npm run lint
 
 cd apps/web && npx prettier --check src/
 # Output: All matched files use Prettier code style!
+
+# Backend validation
+cd apps/api && uv run ruff check .
+# Output: All checks passed!
+
+cd apps/api && uv run ruff format --check .
+# Output: 286 files already formatted
 ```
 
 ---
@@ -67,51 +82,42 @@ cd apps/web && npx prettier --check src/
 1. Verification that all 3 provider types correctly fetch from their respective `/platform/*-config` APIs.
 2. Verification that "Test Connection" requests call their respective `/platform/*-config/test` endpoints with active configuration parameters.
 3. Verification that sidebar navigation permission filtering handles the new item properly.
+4. Clean linter and formatter passes on all new/modified files.
 
 ---
 
 ## 7. Review Decision
 
-**CHANGES_REQUESTED**
+**APPROVED**
 
-- **Reviewer**: Google Antigravity (fresh independent review session)
-- **Reviewed Code Commit**: `c106a1d`
+- **Reviewer**: Google Antigravity (fresh independent re-review session)
+- **Reviewed Code Commit**: `73e5855`
 
-### Review Findings
+### Re-Review Findings
 
-Verified against the actual code diff (`git diff main...feature/BACKEND/GRX-SAAS-007`).
+Verified against the actual code diff (`git diff main...feature/BACKEND/GRX-SAAS-007` at commit `73e5855`).
 
-**What checks out:**
-- **Provider Hub UI & Integration**: All 3 provider pillars (AI, Outbound SMTP, Email Validation) load accurately from their respective `/platform/*-config` APIs.
-- **Connection Testing**: Interactive "Test Connection" and "Test All Active" triggers work and provide real-time status updates without modifying active credentials.
-- **Sidebar & RBAC**: Navigation item `Providers Hub` is properly gated by `platform.usage.manage` in `sidebar.tsx` and passes tests.
-- **Frontend Test Suite**: 44 test files passed (236/236 tests passed). `npx tsc --noEmit` is clean (0 errors), Prettier is clean.
-
-**Issues requiring changes before merge:**
-
-1. **BLOCKER (CI) — Backend `ruff check` failures in new CLI file:**
-   `src/growixa_api/cli/onboard_iitdeveloper.py` introduces 17 ruff linting errors:
-   - 2 `F401` unused imports (`EmailTemplate`, `EmailTemplateVersion`).
-   - 14 `E501` line-length violations (>100 characters).
-   - 1 `E712` comparison to `True` (`EmailProviderConnection.is_active == True`).
-   CI job `backend` runs `ruff check .` and will fail on these errors.
-
-2. **BLOCKER (CI) — Backend `ruff format --check` failure:**
-   `src/growixa_api/cli/onboard_iitdeveloper.py` is not formatted with ruff formatting. CI job `backend` runs `ruff format --check .` and will fail.
-
-3. **LOW (ESLint Warnings) — Unused imports in frontend:**
-   - `providers-page.test.tsx:4`: `ApiError` is imported but unused.
-   - `providers-page.tsx:13`: `ConnectionStatus` is imported but unused.
+**Verification Checklist:**
+1. **CI Linting Fixes Verified**:
+   - `apps/api/src/growixa_api/cli/onboard_iitdeveloper.py`: All 17 previous ruff errors resolved. All imports used, line lengths formatted within 100 chars, `is_active` boolean checked properly.
+   - `uv run ruff check .` and `uv run ruff format --check .` both pass with 0 errors across 286 backend files.
+2. **Frontend Cleanliness**:
+   - Removed unused `ConnectionStatus` from `providers-page.tsx` and `ApiError` from `providers-page.test.tsx`.
+   - `npm run lint` clean (0 errors), `npx tsc --noEmit` clean (0 errors), `prettier` clean.
+   - All 44 test files / 236 tests pass green.
+3. **Core Provider Hub Functionality**:
+   - Clean UI state handling for unconfigured vs active providers.
+   - Secure error masking and toast notifications.
+   - RBAC check `platform.usage.manage` on sidebar navigation.
 
 ---
 
 ## 8. Reviewed Code Commit
 
-`c106a1d`
+`73e5855`
 
 ## 9. Review Record Commit
 
 ## 10. Human Approval
 
-Required (UI/UX and platform administration changes). Note: Branch must first resolve CI blockers above and be re-reviewed.
-
+Required before merge (UI/UX and platform administration changes).
