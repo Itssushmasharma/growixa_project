@@ -1418,3 +1418,132 @@ provenance and eligibility fields that every entity needs regardless of channel
 consent status, lawful basis, retention status, per-channel eligibility). Those are not
 optional extras — they are what makes the record defensible, and they must exist from the
 first migration rather than being added once the data is already in.
+
+#### Addendum 2, 2026-08-16 — the three layers, and which of them is a different business
+
+The product owner described Lead Intelligence as a customer-facing product with three
+capabilities. They carry very different risk and should not be approved as one thing.
+
+**Layer A — Real-time provider pass-through.** The customer specifies a filter ("software
+companies in Noida", "schools in Sharjah"); Growixa queries a licensed provider on demand
+and returns matching records to that customer. Growixa is a router. The provider holds the
+data, the collection chain, and the redistribution rights. **Lowest risk, and this should
+be V1's shape.** It also aligns with the provider-abstraction design already adopted above.
+
+**Layer B — A pooled Growixa-owned dataset.** Records Growixa has acquired (by discovery,
+crawling, or provider calls) accumulate into a shared pool that any customer can search.
+**This is not a bigger version of Layer A. It is a different business with its own
+regulatory regime**, and it is the single highest-risk item in this decision:
+
+- *It meets the working definition of a data broker* — a business that collects and sells,
+  licenses, or transfers personal information about individuals with whom it has no direct
+  relationship, assembled from third-party sources, public records, or purchased data.
+  Four US states (California, Texas, Vermont, Oregon) require data brokers to register with
+  a state agency, with annual fees and deadlines; California's Delete Act adds the DROP
+  platform, through which a consumer deletes their data across every registered broker in
+  one request, and registered brokers must honor those requests. Verified 2026-08-16.
+- *Access rights are not redistribution rights.* Most directory and provider terms permit a
+  subscriber to use data; far fewer permit redistributing it onward to that subscriber's own
+  customers, which is exactly what a pooled dataset does. Directory terms commonly prohibit
+  bulk extraction and building or enhancing a competing dataset outright — which is what
+  Layer B is, by construction. **The ~35k already-collected records cannot seed this pool**
+  under their source's terms (`QUARANTINED_RESEARCH_DATA`, above).
+- *Two mitigations make a legitimate version possible.* First, **company-level only**: data
+  broker regimes target personal information about individuals; business-entity records
+  (company name, published office number, `info@`) largely fall outside them. Nearly every
+  regime defines its subject matter the same way — personal data means data relating to an
+  identified or identifiable *natural person* — so the company/person cut narrows exposure
+  under all of them at once rather than under one country's rules. Second, **source
+  redistribution rights as a hard gate**: only sources whose terms explicitly permit onward
+  distribution may feed the pool, enforced by the Source Registry (T88) rather than by
+  anyone's memory.
+
+  This is the third distinct reason `OQ-023`'s company-level V1 has paid for itself, which
+  is a strong signal it is the right cut.
+
+**Layer C — Autonomous conversion.** Analyze a prospect from their website, predict
+likelihood of converting, generate a personalized message, send it, follow up
+automatically, and keep going until the lead converts.
+
+This is the most differentiated idea of the three, and it **directly contradicts rules this
+project has locked**, so it cannot be adopted implicitly:
+
+- `GRX-AI-002` and `GRX-AI-003` (PRD §23): AI output cannot send email or publish, and a
+  human must review and approve before send/publish.
+- `DEC-GRX-006`: human approval required for AI content, "no exceptions in MVP".
+- `DEC-GRX-012`: broad autonomous marketing agents are deferred.
+- `PRD.md` §11 Non-goals lists "sending AI-generated content without human approval" as
+  **not a goal of Growixa at all, at any stage** — not deferred, rejected. Layer C as
+  described is that.
+
+**There is a version that does not require tearing any of that up**, and it is close to the
+same product: AI drafts the whole sequence — analysis, message, follow-up ladder — and a
+human approves *the sequence* once, after which execution proceeds automatically against
+that approved plan. That is approval-gated automation, not autonomy. It preserves the
+principle (a human authorized what goes out under the company's name) while delivering
+almost all of the leverage. Moving from per-message to per-sequence approval is still a
+change to `DEC-GRX-006` and needs its own decision — but it is a narrow amendment rather
+than a reversal of the product's founding safety position.
+
+Whatever is built, conversion prediction must be deterministic and inspectable, with each
+input citing its evidence, per the scoring rule already adopted above. "AI says 93%" with
+no defensible calculation is not acceptable output for a product that also promises
+evidence classification on its metrics (PRD §24).
+
+**Proposed staging across the three layers:** Layer A in V1 (company-level, pass-through).
+Layer B only after `OQ-025` is answered and only from redistribution-cleared sources.
+Layer C's approval-gated form after `OQ-026`; its fully autonomous form is not proposed at
+all, and would require amending PRD §11.
+
+#### Addendum 3, 2026-08-16 — global scope, and jurisdiction as a first-class field
+
+The product owner clarified that Lead Intelligence targets **global business**, not a
+single market. The UAE dataset was sample data, not the scope.
+
+This makes the design harder, not easier, and in one specific way: **"global" does not mean
+one permissive rule. It means the strictest applicable rule, determined per record by where
+the recipient is.** A single lead table sent under a single policy will be simultaneously
+lawful for some recipients and unlawful for others, and nothing in the system would show
+which is which.
+
+The regimes are genuinely divergent on the exact question this product asks — may you
+contact someone you have no prior relationship with?
+
+- **United States** is the most permissive for email: unsolicited commercial email is
+  lawful with identification, a physical postal address, and a working opt-out — all of
+  which Growixa already ships (`GRX-SAAS-015`). But the US is also where the *data broker*
+  registration regimes live, which bear on Layer B rather than on sending.
+- **Canada (CASL)** is effectively opt-in for commercial electronic messages, with limited
+  business-relationship exceptions and significant penalties. Among the strictest.
+- **EU/UK (GDPR)** requires a lawful basis and, for data not collected from the person, a
+  notice obligation at first contact (Art. 14). Legitimate interest is available for B2B
+  but is a documented assessment, not an assumption.
+- **India (DPDP)** is in active implementation with its own consent architecture.
+- Others — Brazil, China, Japan, Australia, UAE — each add their own variation.
+
+**Design consequences, none of which are optional for a global product:**
+
+1. **Jurisdiction is a mandatory, resolved field on every lead** — not inferred at send
+   time from a phone prefix or a TLD guess, but resolved at ingest, stored with its own
+   confidence and provenance like any other enriched field, and re-resolvable. A lead whose
+   jurisdiction is `UNKNOWN` is not sendable, the same way `UNKNOWN` eligibility is not.
+2. **Channel eligibility is evaluated per channel *and* per jurisdiction *and* per sending
+   path.** Three dimensions, not one flag. `OQ-024` established the sending-path dimension;
+   this addendum adds the jurisdiction one. All three must exist in the first migration —
+   this is precisely the kind of dimension that cannot be retrofitted onto a boolean once
+   millions of rows exist.
+3. **Policy is data, not code.** Per-jurisdiction rules change, and they change on
+   legislative timelines rather than release timelines. They belong in a configurable
+   policy table with an effective-date and a review date, alongside the Source Registry —
+   not in `if country == "CA"` branches scattered through the send path.
+4. **The company-level V1 cut (`OQ-023`) gets stronger, not weaker, at global scope.**
+   Business-entity records sit outside the personal-data definition in essentially every
+   one of these regimes simultaneously. It is the one design choice that reduces exposure
+   under all of them at once, rather than requiring a per-country analysis before the
+   product can ship anywhere. **At global scope this stops being a cost-saving measure and
+   becomes the thing that makes a V1 shippable at all.**
+5. **Growixa cannot carry this as legal advice.** A global product asserting per-country
+   sending lawfulness needs external counsel to validate the policy table before launch —
+   not an agent's reading of secondary sources, including this one. Every jurisdictional
+   claim recorded in these documents should be treated as a research starting point for
+   that review, not as a cleared position.
