@@ -39,4 +39,5 @@ async def update_brand_profile(
             "Company profile must be created before brand settings",
         ) from exc
     await session.commit()
+    await session.refresh(profile)
     return BrandProfileOut.model_validate(profile)

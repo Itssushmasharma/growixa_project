@@ -33,4 +33,5 @@ async def update_company_profile(
 ) -> CompanyProfileOut:
     profile = await save_profile(session, account_id, payload)
     await session.commit()
+    await session.refresh(profile)
     return CompanyProfileOut.model_validate(profile)

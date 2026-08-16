@@ -34,14 +34,16 @@ def upgrade() -> None:
         sa.text(
             "INSERT INTO platform_permissions (id, code, description) "
             "VALUES (:id, 'platform.monitoring.manage', "
-            "'View RabbitMQ queue depths and the MRR/ARR/churn financial dashboard')"
+            "'View RabbitMQ queue depths and the MRR/ARR/churn financial dashboard') "
+            "ON CONFLICT (id) DO NOTHING"
         ).bindparams(id=PLATFORM_PERM_MONITORING_MANAGE)
     )
     for role in GRANTED_ROLES:
         op.execute(
             sa.text(
                 "INSERT INTO platform_role_permissions (role, permission_id) "
-                "VALUES (:role, :permission_id)"
+                "VALUES (:role, :permission_id) "
+                "ON CONFLICT DO NOTHING"
             ).bindparams(role=role, permission_id=PLATFORM_PERM_MONITORING_MANAGE)
         )
 
