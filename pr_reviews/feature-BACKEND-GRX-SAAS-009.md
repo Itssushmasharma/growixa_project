@@ -267,11 +267,6 @@ c364db7
 
 
 ## Human Approval
-Required (new UI: `/platform/monitoring`, `/platform/finance`). Not yet eligible — pending
-re-review. One open product question remains from the prior review, not resolved by this
-fix cycle: should churn be measured from a real status-change history (a small schema
-addition — a dedicated table, or a `churned_at` column that survives the downgrade
-ticker) rather than the documented `updated_at`-proxy limitation? Deferred to the product
-owner rather than guessed; current behavior is honestly documented, not silently wrong.
+Confirmed by product owner (2026-08-16) — cleared for merge.
 
-Status: APPROVED — pending human sign-off (new platform UI)
+Status: APPROVED
