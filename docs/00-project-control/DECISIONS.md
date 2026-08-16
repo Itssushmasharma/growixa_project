@@ -2,8 +2,8 @@
 
 - Document ID: DOC-DECISIONS
 - Status: ACTIVE
-- Version: 1.3
-- Last updated: 2026-08-15
+- Version: 1.4
+- Last updated: 2026-08-16
 - Owner: Product owner (Ravi) via coding agent
 - Related documents: [OPEN_QUESTIONS](OPEN_QUESTIONS.md), [ASSUMPTIONS](ASSUMPTIONS.md), [ROADMAP](../01-product/ROADMAP.md)
 
@@ -1259,3 +1259,101 @@ This is a genuinely viable "do nothing" path, not a strawman.
   `DEC-GRX-001` (positioning), `DEC-GRX-008` (suppression/consent mandatory),
   `DEC-GRX-015` (shared Postmark sending path — the T83 blast radius).
 - Supersedes: none. Narrows, but does not supersede, `DEC-GRX-001` if approved.
+
+### Addendum, 2026-08-16 — Lead Intelligence module shape
+
+Recorded after an extended product discussion. Kept as an addendum rather than a rewrite
+so the original proposal above stays auditable. Still `PROPOSED` — none of this is
+approved, and the addendum raises two questions that must be answered *before* approval
+(`OQ-021`, `OQ-023`).
+
+**`OQ-020` is now answered, and it constrains everything below.** Postmark's published
+Terms of Service require permission-based subscription lists with explicit opt-in and
+prohibit purchased, rented, free, acquired, and cross-branded lists, with suspension or
+termination as the stated remedy; their "sending on behalf of others" guidance states that
+customers wanting to send to acquired lists are not a good fit for the platform. Verified
+directly against the vendor's own terms, not inferred.
+
+Three consequences:
+
+1. **Enrichment is not permission.** A contact being discovered, enriched, and verified
+   says nothing about whether it may be emailed. These must be separate states in the data
+   model, never collapsed. This becomes a core product rule, not an implementation detail.
+2. **Channel eligibility is mandatory architecture** (point 6 above), enforced server-side
+   at campaign-recipient selection. Per channel — email, SMS, WhatsApp, voice — each
+   independently `ELIGIBLE` / `NOT_ELIGIBLE` / `UNKNOWN`, defaulting to `UNKNOWN`, with
+   `UNKNOWN` non-sendable.
+3. **V1 ships with its primary channel closed.** Acquired leads cannot be emailed through
+   Growixa's existing sending path. Lead Intelligence V1 therefore delivers *sales
+   prospecting and research* value, not campaign value — a sales-intelligence product
+   attached to a marketing-automation product, with no connection between them at launch.
+   That may still be worth building. It should be an informed choice, not a discovery made
+   after the module exists.
+
+#### Adopted into the proposal
+
+- **A distinct `Lead Intelligence` module**, not 50 more columns on `contacts`. Keeps the
+  existing Contacts module simple and gives enrichment, verification, provenance,
+  eligibility, scoring, and (later) qualification one owning boundary.
+- **Discovery / Extraction / Enrichment are three separate stages**, not one thing called
+  "scraping". Different sources, different rights, different risk. Two distinct provider
+  interfaces — `LeadSourceProvider` (discovers/imports a base entity) and
+  `LeadEnrichmentProvider` (adds attributes to an existing entity) — never one generic
+  provider doing both.
+- **A Source Registry with a per-source rights profile**, checked before any acquisition
+  runs: source type, access method, approval status, permitted operations (discovery /
+  enrichment / commercial use / redistribution), attribution and permission requirements,
+  and the date the policy was last verified. The crawler must never be able to conclude
+  on its own that "public page = safe to scrape." This is the strongest idea to come out
+  of the discussion and it should be built before the first adapter, not after.
+- **Field-level provenance**, not record-level. Each significant attribute carries its own
+  value, provider, provider record ID, confidence, verification status and timestamp,
+  source type and source timestamp. Source value, provider prediction, verified value, and
+  customer-entered value must never collapse into one indistinguishable field. This is the
+  same evidence-classification convention PRD §24 already requires for metrics.
+- **No LinkedIn scraping, in any version.** LinkedIn's User Agreement prohibits crawlers,
+  bots, scripts, and browser extensions used to copy profile data. Where a LinkedIn URL is
+  useful, it is an *input identifier* handed to a licensed enrichment provider — never a
+  page Growixa fetches itself. Also excluded permanently: authenticated-session scraping,
+  CAPTCHA bypass, and scraping behind access controls.
+- **Deterministic, inspectable scoring.** Where lead or qualification scores exist, the
+  formula is visible and configurable and each input cites its evidence — not an opaque
+  model output presented as a percentage. Consistent with `DEC-GRX-011`'s refusal of
+  unevidenced completion claims and PRD §24's evidence classification.
+
+#### Proposed staging
+
+- **V1 — Company Intelligence.** Business entities only, per `OQ-023`. Source registry and
+  rights gate, provider interfaces, customer CSV/URL import, business-website extraction,
+  normalization, deduplication, provenance ledger, verification, channel eligibility, UI.
+- **V1.5 — Person Intelligence.** Named decision-makers, work email/phone via licensed
+  enrichment provider. Separate gate; this is where personal-data obligations begin in
+  earnest and where T81–T87 apply in full.
+- **V2 — AI voice qualification** (`FUTURE_SCOPE_LEAD_INTELLIGENCE.md` idea #1). Slots
+  into this module cleanly once provenance, phone, and eligibility exist. Needs its own
+  telephony vendor decision, its own module boundary, its own threat-model section
+  (call recording and consent-to-record law are untouched by anything written so far),
+  and jurisdiction-aware voice rules — India's TRAI regime treats promotional voice calls
+  differently depending on explicit consent.
+- **V3+ — Licensed audiences** (idea #2) remains gated, and if ever built should be an
+  audience *partner marketplace* rather than Growixa owning and reselling personal data.
+  Unchanged by this addendum.
+
+#### Existing research data
+
+The ~35k directory records already collected are **`QUARANTINED_RESEARCH_DATA`**: not
+exposed to customers, not searchable as production leads, not emailed, not resold, and not
+used as Growixa's commercial dataset, unless and until source rights are confirmed to
+permit that use. Directory terms of this kind commonly prohibit automated access and
+commercial exploitation of extracted data, so the permissive reading cannot be assumed.
+Engineering and tests use synthetic fixtures with the same schema rather than depending on
+those records. The scraper's *reusable components* — pagination, parsing, website
+discovery, normalization — may be generalized into provider adapters; the source-specific
+scraper is not promoted into the production pipeline.
+
+#### Still open before approval
+
+`OQ-021` (does Growixa acquire, or only ingest — this addendum's discovery engine
+contradicts point 2 of the original proposal), `OQ-022` (customer-facing product or
+Growixa's own sales tooling), `OQ-023` (company-level-only V1). `OQ-008` and `OQ-017`
+remain preconditions as stated above.

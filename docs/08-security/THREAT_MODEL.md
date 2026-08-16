@@ -2,8 +2,8 @@
 
 - Document ID: DOC-SEC-THREAT
 - Status: ACTIVE (expanded per slice, not redesigned)
-- Version: 1.4
-- Last updated: 2026-08-15
+- Version: 1.5
+- Last updated: 2026-08-16
 - Owner: Coding agent
 - Related documents: [SECURITY_ARCHITECTURE](SECURITY_ARCHITECTURE.md), [AUTHENTICATION](AUTHENTICATION.md), [RBAC](RBAC.md)
 
@@ -318,3 +318,19 @@ separate threat surface with no module boundary today. Licensed data has a mater
 different provenance story (the vendor's contractual chain, not Growixa's collection), and
 would need its own analysis, mostly around what the vendor's warranties actually cover.
 Each needs its own section if and when it is picked up.
+
+### Addendum, 2026-08-16 — source rights, and the company/person split
+
+Two threats missing from T81–T87, added after the Lead Intelligence module discussion.
+
+| # | Threat | Vector | Mitigation |
+|---|---|---|---|
+| T88 | A source's terms are assumed permissive because its pages are publicly reachable | An adapter is pointed at a directory or dataset whose terms prohibit automated access, bulk extraction, or commercial reuse. Public reachability is not permission, and the decision gets made implicitly by whoever writes the adapter rather than deliberately. Consequences run from IP blocking to breach-of-terms claims to being unable to use a dataset the product now depends on | **REQUIRED — not built:** a Source Registry that gates every acquisition run on an explicit per-source rights profile — permitted operations (discovery / enrichment / commercial use / redistribution), approval status, attribution and permission requirements, and the date the policy was last verified. Sources are allowlisted, never enabled by default, and an adapter cannot run against a source whose profile is missing, `BLOCKED`, or stale. The crawler must not be able to decide for itself that a page is safe to take |
+| T89 | Person-level data enters a system whose compliance design assumed business entities | Company-level records (company name, office phone, published `info@`) carry a far lighter obligation set than person-level records (named individual, work email, mobile). If both flow through one pipeline with one set of controls, the lighter design silently governs the heavier data — and T81, T85 and T87 stop being satisfied without anyone noticing the transition | **REQUIRED — not built:** the entity type is explicit and enforced, not inferred. If `OQ-023` is approved, V1 stores company-level records only and person-level ingestion is rejected at the boundary rather than merely discouraged — including via enrichment responses, which are the most likely path for person data to arrive unannounced (a provider asked about a company can return named contacts). Person-level support is a deliberate later gate with its own review, not a schema that happens to accommodate it |
+
+**On `OQ-020`:** answered against Postmark's published terms — permission-based
+subscription lists only; purchased, rented, free, acquired and cross-branded lists
+prohibited, with suspension or termination as the remedy. T83's mitigation is therefore
+narrower than first written: for the email channel there is no ring-fencing arrangement to
+design on the current sending path. Acquired contacts are simply not emailable through it
+without independently-established permission, which is what channel eligibility enforces.
