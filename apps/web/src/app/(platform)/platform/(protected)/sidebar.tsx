@@ -70,6 +70,18 @@ const NAV_ITEMS: NavItem[] = [
     icon: "🏷️",
     requiresPermission: "platform.billing.manage",
   },
+  {
+    label: "Monitoring",
+    href: "/platform/monitoring",
+    icon: "🩺",
+    requiresPermission: "platform.monitoring.manage",
+  },
+  {
+    label: "Finance",
+    href: "/platform/finance",
+    icon: "💰",
+    requiresPermission: "platform.monitoring.manage",
+  },
 ];
 
 export function Sidebar({ permissions }: { permissions: string[] }) {

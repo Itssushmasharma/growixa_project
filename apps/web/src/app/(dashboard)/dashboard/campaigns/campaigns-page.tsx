@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
+import { PageHeader } from "@/components/page-header/page-header";
+import { StatCard } from "@/components/stat-card/stat-card";
 import { useToast } from "@/components/toast/toast-context";
 import { ApiError, apiFetch } from "@/lib/api-client";
 
@@ -15,11 +17,12 @@ const MANAGE_PERMISSION = "campaigns.manage";
 type FilterTab = "ALL" | Campaign["status"];
 
 const FILTER_TABS: { value: FilterTab; label: string }[] = [
-  { value: "ALL", label: "All" },
-  { value: "DRAFT", label: "Draft" },
+  { value: "ALL", label: "All Campaigns" },
+  { value: "SENT", label: "Sent" },
   { value: "SCHEDULED", label: "Scheduled" },
   { value: "SENDING", label: "Sending" },
-  { value: "SENT", label: "Sent" },
+  { value: "DRAFT", label: "Drafts" },
+  { value: "CANCELLED", label: "Cancelled" },
   { value: "FAILED", label: "Failed" },
 ];
 
@@ -126,7 +129,7 @@ export function CampaignsPage() {
   }
 
   async function handleCancel(campaign: Campaign, event: React.MouseEvent) {
-    event.preventDefault(); // prevent Link navigation
+    event.preventDefault();
     event.stopPropagation();
     if (!window.confirm(`Cancel "${campaign.name}"? This cannot be undone.`)) return;
     setCancellingId(campaign.id);
@@ -160,21 +163,34 @@ export function CampaignsPage() {
     return counts;
   }, [campaigns]);
 
-  const visibleCampaigns = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    return campaigns
-      .filter((c) => activeTab === "ALL" || c.status === activeTab)
-      .filter(
-        (c) =>
-          !query || c.name.toLowerCase().includes(query) || c.subject.toLowerCase().includes(query),
-      )
-      .sort((a, b) => b.updated_at.localeCompare(a.updated_at));
-  }, [campaigns, search, activeTab]);
+  const filteredCampaigns = useMemo(() => {
+    return campaigns.filter((c) => {
+      if (activeTab !== "ALL" && c.status !== activeTab) return false;
+      if (search.trim()) {
+        const query = search.toLowerCase();
+        const matchesName = c.name.toLowerCase().includes(query);
+        const matchesSubject = (c.subject ?? "").toLowerCase().includes(query);
+        if (!matchesName && !matchesSubject) return false;
+      }
+      return true;
+    });
+  }, [campaigns, activeTab, search]);
+
+  const totalCampaigns = campaigns.length;
+  const sentCampaigns = campaigns.filter((c) => c.status === "SENT").length;
+  const scheduledCampaigns = campaigns.filter(
+    (c) => c.status === "SCHEDULED" || c.status === "DISPATCHING" || c.status === "SENDING",
+  ).length;
+  const draftCampaigns = campaigns.filter((c) => c.status === "DRAFT").length;
 
   if (loading) {
     return (
       <div className={styles.page}>
-        <div className={styles.card}>Loading…</div>
+        <div
+          style={{ background: "#fff", padding: "40px", borderRadius: "18px", textAlign: "center" }}
+        >
+          Loading campaigns…
+        </div>
       </div>
     );
   }
@@ -182,7 +198,11 @@ export function CampaignsPage() {
   if (loadError) {
     return (
       <div className={styles.page}>
-        <div className={styles.card}>{loadError}</div>
+        <div
+          style={{ background: "#fff", padding: "40px", borderRadius: "18px", textAlign: "center" }}
+        >
+          {loadError}
+        </div>
       </div>
     );
   }
@@ -190,17 +210,43 @@ export function CampaignsPage() {
   if (!canView) {
     return (
       <div className={styles.page}>
-        <div className={styles.card}>You don&apos;t have access to campaigns.</div>
+        <div
+          style={{ background: "#fff", padding: "40px", borderRadius: "18px", textAlign: "center" }}
+        >
+          <h2>Access Denied</h2>
+          <p>You don&apos;t have permission to view campaigns.</p>
+        </div>
       </div>
     );
   }
 
-  const cancellableStatuses: Campaign["status"][] = ["DRAFT", "SCHEDULED"];
-
   return (
     <div className={styles.page}>
-      <div className={styles.topRow}>
-        <div className={styles.tabs} role="tablist" aria-label="Filter campaigns by status">
+      {/* Page Header */}
+      <PageHeader
+        icon="📧"
+        title="Campaigns"
+        description="Create, schedule and track your marketing campaigns."
+        actions={
+          canManage ? (
+            <Link href="/dashboard/campaigns/new" className={styles.actionButton}>
+              + Create Campaign
+            </Link>
+          ) : null
+        }
+      />
+
+      {/* KPI Stats Deck (Real Derived Counts) */}
+      <section className={styles.statsDeck} aria-label="Campaigns Overview KPIs">
+        <StatCard label="Total Campaigns" value={totalCampaigns} subtext="All time" />
+        <StatCard label="Sent Campaigns" value={sentCampaigns} subtext="Delivered" />
+        <StatCard label="Scheduled" value={scheduledCampaigns} subtext="Upcoming" />
+        <StatCard label="Drafts" value={draftCampaigns} subtext="In progress" />
+      </section>
+
+      {/* Toolbar: Category Tabs + Search */}
+      <div className={styles.toolbarRow}>
+        <div className={styles.tabsGroup} role="tablist">
           {FILTER_TABS.map((tab) => (
             <button
               key={tab.value}
@@ -210,80 +256,150 @@ export function CampaignsPage() {
               className={activeTab === tab.value ? styles.tabActive : styles.tab}
               onClick={() => setActiveTab(tab.value)}
             >
-              {tab.label}
-              {tab.value !== "ALL" && tabCounts[tab.value] > 0 && (
-                <span className={styles.tabCount}>{tabCounts[tab.value]}</span>
-              )}
+              <span>{tab.label === "All Campaigns" ? "All" : tab.label}</span>
+              <span className={styles.tabCount}>{tabCounts[tab.value]}</span>
             </button>
           ))}
         </div>
-        <div className={styles.topActions}>
-          {campaigns.length > 0 && (
+
+        <div className={styles.toolbarActions}>
+          <div className={styles.searchWrapper}>
+            <span className={styles.searchIcon}>🔍</span>
             <input
-              type="search"
-              className={styles.searchInput}
-              placeholder="Search by name or subject…"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
+              type="text"
+              placeholder="Search campaigns..."
               aria-label="Search campaigns"
+              className={styles.searchInput}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
             />
-          )}
-          {canManage && (
+          </div>
+        </div>
+      </div>
+
+      {/* Empty State */}
+      {filteredCampaigns.length === 0 && (
+        <div className={styles.emptyState}>
+          <div style={{ fontSize: "36px", marginBottom: "8px" }}>📧</div>
+          <h3 className={styles.emptyStateTitle}>No campaigns found</h3>
+          <p className={styles.emptyStateHint}>
+            {search.trim()
+              ? `No campaigns match "${search}". Try clearing your search.`
+              : activeTab === "ALL"
+                ? "You haven't created any campaigns yet. Click '+ Create Campaign' to get started."
+                : `No campaigns in "${STATUS_LABEL[activeTab as Campaign["status"]]}" state.`}
+          </p>
+          {canManage && activeTab === "ALL" && !search.trim() && (
             <Link href="/dashboard/campaigns/new" className={styles.actionButton}>
-              + New campaign
+              + Create your first campaign
             </Link>
           )}
         </div>
-      </div>
-
-      {campaigns.length === 0 && (
-        <div className={styles.emptyState}>
-          <p className={styles.hint}>No campaigns yet.</p>
-        </div>
-      )}
-      {campaigns.length > 0 && visibleCampaigns.length === 0 && (
-        <div className={styles.emptyState}>
-          <p className={styles.hint}>No campaigns match this filter.</p>
-        </div>
       )}
 
-      <div className={styles.grid}>
-        {visibleCampaigns.map((campaign) => (
-          <Link
-            href={`/dashboard/campaigns/${campaign.id}`}
-            className={styles.campaignCard}
-            key={campaign.id}
-          >
-            <span className={`${styles.statusBadge} ${styles[STATUS_CLASS[campaign.status]]}`}>
-              {STATUS_LABEL[campaign.status]}
+      {/* Table Data Grid */}
+      {filteredCampaigns.length > 0 && (
+        <div className={styles.tableCard}>
+          <div className={styles.tableWrapper}>
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th>Campaign Name</th>
+                  <th>Type</th>
+                  <th>Status</th>
+                  <th>Recipients</th>
+                  <th>Created / Scheduled</th>
+                  <th style={{ textAlign: "right" }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredCampaigns.map((campaign) => {
+                  const statusClass = styles[STATUS_CLASS[campaign.status]] ?? "";
+                  const canCancel =
+                    canManage &&
+                    (campaign.status === "DRAFT" ||
+                      campaign.status === "SCHEDULED" ||
+                      campaign.status === "DISPATCHING");
+
+                  return (
+                    <tr key={campaign.id}>
+                      <td>
+                        <div className={styles.campaignTitleCell}>
+                          <div className={styles.campaignIcon}>✉️</div>
+                          <div>
+                            <Link
+                              href={`/dashboard/campaigns/${campaign.id}`}
+                              className={styles.campaignName}
+                            >
+                              {campaign.name}
+                            </Link>
+                            {campaign.subject && (
+                              <div className={styles.campaignSubject}>{campaign.subject}</div>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <span className={styles.typeBadge}>Email</span>
+                      </td>
+                      <td>
+                        <span className={`${styles.statusBadge} ${statusClass}`}>
+                          ● {STATUS_LABEL[campaign.status]}
+                        </span>
+                      </td>
+                      <td>{recipientLabel(campaign)}</td>
+                      <td>
+                        {campaign.status === "SCHEDULED" && campaign.scheduled_at
+                          ? `Scheduled: ${formatScheduledAt(campaign.scheduled_at)}`
+                          : formatDate(campaign.created_at)}
+                      </td>
+                      <td style={{ textAlign: "right" }}>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "flex-end",
+                            gap: "8px",
+                          }}
+                        >
+                          {canCancel && (
+                            <button
+                              type="button"
+                              className={styles.cancelButton}
+                              aria-label={`Cancel campaign ${campaign.name}`}
+                              disabled={cancellingId === campaign.id}
+                              onClick={(e) => handleCancel(campaign, e)}
+                            >
+                              {cancellingId === campaign.id ? "Cancelling…" : "Cancel"}
+                            </button>
+                          )}
+                          <Link
+                            href={`/dashboard/campaigns/${campaign.id}`}
+                            style={{
+                              fontSize: "12.5px",
+                              fontWeight: 700,
+                              color: "var(--color-primary-blue, #1457e6)",
+                              textDecoration: "none",
+                              padding: "4px 8px",
+                            }}
+                          >
+                            View →
+                          </Link>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <div className={styles.tableFooter}>
+            <span>
+              Showing 1 to {filteredCampaigns.length} of {campaigns.length} campaigns
             </span>
-            <div className={styles.campaignName}>{campaign.name}</div>
-            <div className={styles.campaignSubject}>{campaign.subject}</div>
-            {campaign.status === "SCHEDULED" && campaign.scheduled_at && (
-              <div className={styles.scheduledAtLabel}>
-                Scheduled for {formatScheduledAt(campaign.scheduled_at)}
-              </div>
-            )}
-            <div className={styles.cardFooter}>
-              <span className={styles.hint}>{recipientLabel(campaign)}</span>
-              <div className={styles.cardActions}>
-                <span className={styles.hint}>Updated {formatDate(campaign.updated_at)}</span>
-                {canManage && cancellableStatuses.includes(campaign.status) && (
-                  <button
-                    type="button"
-                    className={styles.cancelButton}
-                    disabled={cancellingId === campaign.id}
-                    onClick={(e) => handleCancel(campaign, e)}
-                    aria-label={`Cancel campaign ${campaign.name}`}
-                  >
-                    {cancellingId === campaign.id ? "Cancelling…" : "Cancel"}
-                  </button>
-                )}
-              </div>
-            </div>
-          </Link>
-        ))}
-      </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

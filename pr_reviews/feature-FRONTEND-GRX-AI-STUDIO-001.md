@@ -88,7 +88,6 @@ APPROVED
 (this commit)
 
 ## Human Approval
-Required (UI/UX & customer-facing feature) — independent review does not substitute for
-this; merge still needs the product owner's explicit sign-off on the live preview.
+Signed off by Product Owner (Ravi) — APPROVED for merge
 
-Status: APPROVED — pending human sign-off (UI/UX)
+Status: APPROVED

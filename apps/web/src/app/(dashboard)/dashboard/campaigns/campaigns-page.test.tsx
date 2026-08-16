@@ -114,7 +114,7 @@ describe("CampaignsPage", () => {
 
     renderWithToast(<CampaignsPage />);
 
-    expect(await screen.findByText("You don't have access to campaigns.")).toBeInTheDocument();
+    expect(await screen.findByText(/don't have permission to view campaigns/i)).toBeInTheDocument();
   });
 
   it("shows the campaign list to a view-only user without a New campaign link", async () => {
@@ -124,16 +124,16 @@ describe("CampaignsPage", () => {
 
     expect(await screen.findByText("Spring Sale")).toBeInTheDocument();
     expect(screen.getByText("Spring is here 🌸")).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "+ New campaign" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "+ Create Campaign" })).not.toBeInTheDocument();
   });
 
   it("shows the New campaign link for a campaigns.manage user", async () => {
     mockLoad(["campaigns.view", "campaigns.manage"], []);
 
     renderWithToast(<CampaignsPage />);
-    await screen.findByText("No campaigns yet.");
+    await screen.findByText("No campaigns found");
 
-    expect(screen.getByRole("link", { name: "+ New campaign" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "+ Create Campaign" })).toHaveAttribute(
       "href",
       "/dashboard/campaigns/new",
     );
@@ -147,10 +147,10 @@ describe("CampaignsPage", () => {
 
     expect(screen.getByText("List: VIP Customers")).toBeInTheDocument();
     expect(screen.getByText("Segment: Active Users")).toBeInTheDocument();
-    const draftCard = screen.getByText("Spring Sale").closest("a")!;
-    const sentCard = screen.getByText("Monthly Digest").closest("a")!;
-    expect(within(draftCard).getByText("Draft")).toBeInTheDocument();
-    expect(within(sentCard).getByText("Sent")).toBeInTheDocument();
+    const draftRow = screen.getByText("Spring Sale").closest("tr")!;
+    const sentRow = screen.getByText("Monthly Digest").closest("tr")!;
+    expect(within(draftRow).getByText(/Draft/)).toBeInTheDocument();
+    expect(within(sentRow).getByText(/Sent/)).toBeInTheDocument();
   });
 
   it("links each row to its detail page", async () => {
@@ -189,7 +189,7 @@ describe("CampaignsPage", () => {
     expect(screen.queryByText("Spring Sale")).not.toBeInTheDocument();
     expect(screen.getByText("Monthly Digest")).toBeInTheDocument();
 
-    await user.click(screen.getByRole("tab", { name: "All" }));
+    await user.click(screen.getByRole("tab", { name: /^All/ }));
 
     expect(screen.getByText("Spring Sale")).toBeInTheDocument();
     expect(screen.getByText("Monthly Digest")).toBeInTheDocument();

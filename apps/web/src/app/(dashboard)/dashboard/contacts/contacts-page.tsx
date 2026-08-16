@@ -1,7 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 
+import { PageHeader } from "@/components/page-header/page-header";
+import { StatCard } from "@/components/stat-card/stat-card";
 import { useToast } from "@/components/toast/toast-context";
 import { ApiError, apiFetch } from "@/lib/api-client";
 
@@ -155,11 +158,19 @@ export function ContactsPage() {
   }, [visibleContacts, startIndex, endIndex]);
 
   const metrics = useMemo(() => {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth();
     return {
       total: contacts.length,
       active: contacts.filter((c) => c.status === "ACTIVE").length,
       suppressed: contacts.filter((c) => c.is_suppressed).length,
       archived: contacts.filter((c) => c.status === "ARCHIVED").length,
+      newThisMonth: contacts.filter((c) => {
+        if (!c.created_at) return false;
+        const created = new Date(c.created_at);
+        return created.getFullYear() === currentYear && created.getMonth() === currentMonth;
+      }).length,
     };
   }, [contacts]);
 
@@ -397,47 +408,64 @@ export function ContactsPage() {
   }
 
   return (
-    <div>
-      {/* Metric Summary Cards */}
-      <div className={styles.metricsGrid}>
-        <div className={styles.metricCard}>
-          <div className={styles.metricLabel}>Total Contacts</div>
-          <div className={styles.metricValue}>{metrics.total}</div>
-        </div>
-        <div className={styles.metricCard}>
-          <div className={styles.metricLabel}>Active Contacts</div>
-          <div className={styles.metricValue} style={{ color: "var(--color-success)" }}>
-            {metrics.active}
+    <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+      {/* Page Header */}
+      <PageHeader
+        icon="👥"
+        title="Contacts"
+        description="Manage and engage your audience effectively."
+        actions={
+          <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+            <button type="button" className={styles.exportButton} onClick={handleExportCsv}>
+              📥 Export CSV
+            </button>
+            <Link href="/dashboard/contacts/imports" className={styles.exportButton}>
+              📥 Import Contacts
+            </Link>
+            {canManage && (
+              <button
+                type="button"
+                className={styles.primaryButton}
+                onClick={() => setShowCreateForm(!showCreateForm)}
+              >
+                {showCreateForm ? "Cancel" : "+ Add contact"}
+              </button>
+            )}
           </div>
-        </div>
-        <div className={styles.metricCard}>
-          <div className={styles.metricLabel}>Suppressed Contacts</div>
-          <div className={styles.metricValue} style={{ color: "var(--color-error)" }}>
-            {metrics.suppressed}
-          </div>
-        </div>
-        <div className={styles.metricCard}>
-          <div className={styles.metricLabel}>Archived Contacts</div>
-          <div className={styles.metricValue} style={{ color: "var(--color-slate)" }}>
-            {metrics.archived}
-          </div>
-        </div>
-      </div>
+        }
+      />
+
+      {/* Metric Summary Cards (Real Derived Counts) */}
+      <section className={styles.metricsGrid} aria-label="Contacts Overview KPIs">
+        <StatCard label="Total Contacts" value={metrics.total} subtext="All audience" />
+        <StatCard label="Active Contacts" value={metrics.active} subtext="Subscribed" />
+        <StatCard
+          label="New This Month"
+          value={metrics.newThisMonth}
+          subtext="Joined this calendar month"
+        />
+        <StatCard label="Suppressed" value={metrics.suppressed} subtext="Unsubscribed & bounced" />
+        <StatCard label="Archived" value={metrics.archived} subtext="Inactive" />
+      </section>
 
       <div className={styles.card}>
-        <div className={styles.header}>
-          <h2 className={styles.headerTitle}>
-            Contacts <span className={styles.headerCount}>· {visibleContacts.length}</span>
-          </h2>
-          {canManage && (
+        {/* Status Filter Tabs */}
+        <div className={styles.statusTabs}>
+          {[
+            { value: "ALL", label: "All Contacts", count: metrics.total },
+            { value: "ACTIVE", label: "Active", count: metrics.active },
+            { value: "ARCHIVED", label: "Archived", count: metrics.archived },
+          ].map((tab) => (
             <button
+              key={tab.value}
               type="button"
-              className={styles.addButton}
-              onClick={() => setShowCreateForm(!showCreateForm)}
+              className={statusFilter === tab.value ? styles.statusTabActive : styles.statusTab}
+              onClick={() => setStatusFilter(tab.value)}
             >
-              {showCreateForm ? "Cancel" : "+ Add contact"}
+              <span>{tab.label}</span>
+              <span className={styles.statusTabCount}>{tab.count}</span>
             </button>
-          )}
+          ))}
         </div>
 
         {/* Search & Filter Toolbar */}

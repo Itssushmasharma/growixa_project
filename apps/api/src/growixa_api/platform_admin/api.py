@@ -22,6 +22,7 @@ from growixa_api.billing.services import (
 )
 from growixa_api.billing.services import list_plan_catalog as list_plans_service
 from growixa_api.campaigns.models import Campaign
+from growixa_api.config import get_settings
 from growixa_api.contacts.services import ContactNotFoundError, DuplicateEmailError
 from growixa_api.db import get_session
 from growixa_api.email_validation.providers.base import EmailValidationProviderError
@@ -36,6 +37,7 @@ from growixa_api.email_validation.services import (
     get_platform_validation_config,
     set_platform_validation_config,
 )
+from growixa_api.health import get_queue_depths
 from growixa_api.integrations.smtp_transport import EmailSendError
 from growixa_api.notifications.schemas import (
     PlatformEmailProviderConfigIn,
@@ -63,9 +65,11 @@ from growixa_api.platform_admin.schemas import (
     CouponUpdateActiveIn,
     CreditPackCreateIn,
     CreditPackUpdateIn,
+    FinancialMetricsOut,
     GrantCreditsIn,
     PlanDistributionItemOut,
     PlatformDashboardSummaryOut,
+    QueueDepthsOut,
     SecurityEventOut,
     SubscriptionPlanCreateIn,
     SubscriptionPlanUpdateIn,
@@ -94,6 +98,7 @@ from growixa_api.platform_admin.services import (
     SupportSessionNotFoundError,
     SupportSessionWriteGateError,
     SupportSessionWriteNotPermittedError,
+    get_financial_metrics,
     list_support_sessions_for_account_service,
 )
 from growixa_api.platform_admin.services import CampaignNotFoundError as CampaignRowNotFoundError
@@ -151,6 +156,7 @@ ai_config_router = APIRouter(prefix="/platform", tags=["platform_admin"])
 billing_router = APIRouter(prefix="/platform", tags=["platform_admin"])
 email_config_router = APIRouter(prefix="/platform", tags=["platform_admin"])
 email_validation_config_router = APIRouter(prefix="/platform", tags=["platform_admin"])
+monitoring_router = APIRouter(prefix="/platform", tags=["platform_admin"])
 
 _require_manage = require_platform_permission("platform.accounts.manage")
 _require_usage_manage = require_platform_permission("platform.usage.manage")
@@ -160,6 +166,7 @@ _require_ai_manage = require_platform_permission("platform.ai.manage")
 _require_billing_manage = require_platform_permission("platform.billing.manage")
 _require_email_manage = require_platform_permission("platform.email.manage")
 _require_validation_manage = require_platform_permission("platform.validation.manage")
+_require_monitoring_manage = require_platform_permission("platform.monitoring.manage")
 
 
 def _to_list_item(account: Account, user_count: int) -> AccountListItemOut:
@@ -897,3 +904,26 @@ async def test_platform_email_config_route(
         await test_platform_email_config(payload)
     except EmailSendError as exc:
         raise HTTPException(status.HTTP_502_BAD_GATEWAY, f"Connection test failed: {exc}") from exc
+
+
+@monitoring_router.get("/monitoring/queues", response_model=QueueDepthsOut)
+async def get_queue_depths_route(
+    _platform_admin_id: uuid.UUID = Depends(_require_monitoring_manage),
+) -> QueueDepthsOut:
+    depths = await get_queue_depths(get_settings())
+    return QueueDepthsOut(queues=depths)
+
+
+@monitoring_router.get("/monitoring/financials", response_model=FinancialMetricsOut)
+async def get_financial_metrics_route(
+    _platform_admin_id: uuid.UUID = Depends(_require_monitoring_manage),
+    session: AsyncSession = Depends(get_session),
+) -> FinancialMetricsOut:
+    metrics = await get_financial_metrics(session)
+    return FinancialMetricsOut(
+        mrr_by_currency=metrics.mrr_by_currency,
+        arr_by_currency=metrics.arr_by_currency,
+        active_paying_subscription_count=metrics.active_paying_subscription_count,
+        churned_last_30_days=metrics.churned_last_30_days,
+        churn_rate_percent=metrics.churn_rate_percent,
+    )

@@ -120,7 +120,7 @@ export function DashboardShell({
     : 0;
 
   const filteredJumpRoutes = QUICK_JUMP_ROUTES.filter((r) =>
-    r.label.toLowerCase().includes(searchQuery.toLowerCase())
+    r.label.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   return (
@@ -191,7 +191,11 @@ export function DashboardShell({
           <div className={topbarStyles.rightArea}>
             {/* AI Credits Meter (Rendered when usage is resolved) */}
             {!usageLoading && usage && (
-              <Link href="/dashboard/billing" className={topbarStyles.creditsPill} title="AI Credits Usage">
+              <Link
+                href="/dashboard/billing"
+                className={topbarStyles.creditsPill}
+                title="AI Credits Usage"
+              >
                 <span className={topbarStyles.creditsLabel}>
                   <span>⚡</span> AI Credits
                 </span>
@@ -205,8 +209,8 @@ export function DashboardShell({
             )}
 
             {/* Subscription Action Button */}
-            {!usageLoading && (
-              isPaidPlan ? (
+            {!usageLoading &&
+              (isPaidPlan ? (
                 <Link href="/dashboard/billing" className={topbarStyles.managePlanBtn}>
                   Manage Plan
                 </Link>
@@ -214,8 +218,7 @@ export function DashboardShell({
                 <Link href="/dashboard/billing" className={topbarStyles.upgradeBtn}>
                   Upgrade
                 </Link>
-              )
-            )}
+              ))}
 
             {/* Notifications Bell */}
             <button
