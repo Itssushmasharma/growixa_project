@@ -10,7 +10,7 @@ import type { PlatformAIProviderConfig } from "../ai-config/types";
 import type { PlatformEmailProviderConfig } from "../email-config/types";
 import type { PlatformEmailValidationProviderConfig } from "../email-validation-config/types";
 import styles from "./providers-page.module.css";
-import type { ConnectionStatus, ProviderHealthState, ProvidersState } from "./types";
+import type { ProviderHealthState, ProvidersState } from "./types";
 
 function errorDetail(error: unknown, fallback: string): string {
   if (error instanceof ApiError) {
