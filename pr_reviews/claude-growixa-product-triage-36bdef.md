@@ -1,11 +1,11 @@
 Task: Product intake triage (no single GRX-* ID — product-management pass); introduces DEC-GRX-033 (PROPOSED), DEC-GRX-034 (APPROVED), OQ-014..028, GRX-CONTACT-010..015
 Developer: Claude (product/feature manager role)
-Reviewer: UNASSIGNED — must be a different agent/tool; the author is disqualified
+Reviewer: Claude Code (fresh session — same tool as author, no other tool available; documented fallback. Did not author this branch.)
 Branch: claude/growixa-product-triage-36bdef
 Worktree: .claude/worktrees/growixa-product-triage-36bdef
 Base Commit: f789dbb4a7be4de078d9d5d5c538939c096a0f9a
-Latest Commit: 7587775b3d8b33fdf939494857479a18566fff25
-Status: READY_FOR_REVIEW
+Latest Commit: 2fe4577
+Status: APPROVED — pending product-owner sign-off
 
 ## What Changed
 
@@ -74,20 +74,79 @@ main's MASTER_TASK_TRACKER content is intact alongside the new rows.
 
 ## Review Findings
 
-_(reviewer to complete)_
+Reviewer: Claude Code — a **fresh session, same tool as the author, no other tool
+available**: the explicitly-documented weaker fallback per AGENT_EXECUTION_RULES.md
+§Who reviews. This session did not write any part of this branch and verified every
+claim below against the real files and the real application code.
+
+All five review-focus points check out. Each was verified, not taken on trust.
+
+**Focus 2 — DEC-GRX-034's three code claims: all three are exactly right.** This mattered
+most, since `GRX-CONTACT-010` is specified on top of them:
+
+| Claim | Verified |
+|---|---|
+| `contacts` has a *plain* unique constraint on `(account_id, email)` | ✅ `contacts/models.py:28` — `UniqueConstraint("account_id", "email", name="ux_contacts_account_id_email")`, no partial predicate |
+| worker `recipients.py` filters `status == 'ACTIVE'` in **four** places | ✅ exactly four — lines 65, 81, 96, 104 of `apps/worker/src/growixa_worker/recipients.py` |
+| `suppression_entries.contact_id` is nullable with no cascade | ✅ `Mapped[uuid.UUID \| None]`, `ForeignKey("contacts.id")` with no `ondelete` |
+
+The first claim is the load-bearing one: because the constraint is plain rather than
+partial, a soft-deleted contact's address stays blocked, and re-importing it would fail on
+a row the customer cannot see. §2's partial-unique-index remedy is the correct fix, and it
+cites a real precedent in the same codebase (`ux_suppression_entries_account_id_domain`,
+which I confirmed uses exactly that `postgresql_where` shape).
+
+**Focus 3 — the design cannot un-suppress.** Structurally confirmed, not just asserted:
+`suppression_entries` is keyed on `email`/`domain`, and `contact_id` is a nullable
+back-reference with no cascade, so deleting a contact cannot remove its suppression row.
+§4 states the rule outright ("Deleting a contact must never un-suppress them") and cites
+`DEC-GRX-008` correctly. §4a's rejection of suppress-as-delete is well-argued on its own
+terms — it would make *more* data visible, degrade the opt-out evidence, and route an
+accidental deletion through a control that is permanent by design.
+
+**Focus 1 — scope discipline holds.** `DEC-GRX-033` is `PROPOSED` and states that nothing
+may enter `MASTER_TASK_TRACKER.md` while it stays that way. I grepped the tracker for lead
+intelligence, enrichment, scraping, voice qualification, data brokers and purchased lists:
+**zero matches**. `GRX-CONTACT-014` is `BLOCKED` as required; `010` is `READY`, the rest
+`BACKLOG` — exactly the distribution claimed.
+
+**Focus 4 — merge integrity confirmed.** Every one of the 103 `GRX-*` tracker rows on
+`main` is present on the branch (set difference is empty); the branch has 109, i.e. the
+six new `GRX-CONTACT-010..015` rows and nothing lost from either side.
+
+**Focus 5 — decision statuses are honest.** `DEC-GRX-033` records `PROPOSED` with an
+explicit build-freeze clause; `DEC-GRX-034` records `APPROVED` attributed to the product
+owner on 2026-08-16, with the rejected alternative preserved in §4a rather than discarded.
+Nothing is marked approved that the handoff does not claim was actually approved.
+
+Scope is docs-only — `git diff main...HEAD` touches only `docs/` and `pr_reviews/`, no
+code, tests, migrations or dependencies. Nothing to run.
+
+The two disclosures in §Known Issues are accurate and correctly scoped: the jurisdictional
+and vendor claims are secondary-source research rather than cleared positions (`OQ-027`
+already requires counsel), and `FEATURE_STATUS_MATRIX.md` Slices 3–6 remains stale, flagged
+in place rather than half-fixed. Both are the right calls.
+
+**One live tension to surface, not a defect in this branch.** `DEC-GRX-033` is `PROPOSED`
+and forbids building external-contact-acquisition work while it stays that way — but a
+branch doing exactly that already exists unmerged (`claude/extract-email-number-d98ed3`,
+"UAE business directory scraper and contact dataset tooling"), and untracked `ALL_DATA.csv`
+/ `scripts/` sit in the working tree. This branch is what makes that visible, which is a
+point in its favour; the sequencing question belongs to the product owner. Recorded here
+so approving this branch is not mistaken for approving `DEC-GRX-033`.
 
 ## Review Decision
-_(reviewer to complete — APPROVED / CHANGES_REQUESTED)_
+APPROVED
 
 ## Reviewed Code Commit
-_(reviewer to complete)_
+2fe4577
 
 ## Review Record Commit
-_(reviewer to complete)_
+(this commit)
 
 ## Human Approval
 **Required.** These are product-scope documents. `DEC-GRX-034` was approved by the product
 owner in-session on 2026-08-16; the branch as a whole still needs their explicit sign-off
 recorded here before merge.
 
-Status: READY_FOR_REVIEW
+Status: APPROVED — pending product-owner sign-off
