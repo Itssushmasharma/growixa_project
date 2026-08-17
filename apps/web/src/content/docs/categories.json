@@ -1,0 +1,44 @@
+[
+  {
+    "id": "getting-started",
+    "name": "Getting Started",
+    "description": "Essential setup guides to start sending automated campaigns with Growixa.",
+    "icon": "🚀",
+    "color": "#3b82f6"
+  },
+  {
+    "id": "contacts",
+    "name": "Audience & Contacts",
+    "description": "Manage subscribers, custom fields, dynamic segments, suppression lists, and contact lifecycle.",
+    "icon": "👥",
+    "color": "#10b981"
+  },
+  {
+    "id": "campaigns",
+    "name": "Campaigns & Email Marketing",
+    "description": "Build responsive emails, schedule automated blasts, and track deliverability metrics.",
+    "icon": "✉️",
+    "color": "#8b5cf6"
+  },
+  {
+    "id": "ai-assistant",
+    "name": "AI Marketing Copilot",
+    "description": "Generate high-converting marketing copy with mandatory human review safeguards.",
+    "icon": "✨",
+    "color": "#ec4899"
+  },
+  {
+    "id": "integrations",
+    "name": "Integrations & SMTP",
+    "description": "Connect email delivery providers and custom AI API credentials.",
+    "icon": "🔌",
+    "color": "#f59e0b"
+  },
+  {
+    "id": "billing",
+    "name": "Billing & Subscriptions",
+    "description": "Manage subscription tiers, contact quotas, send limits, and Razorpay billing.",
+    "icon": "💳",
+    "color": "#06b6d4"
+  }
+]

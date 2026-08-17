@@ -7,6 +7,10 @@
     "node": ">=22"
   },
   "scripts": {
+    "docs:compile": "node scripts/compile-docs.js",
+    "predev": "node scripts/compile-docs.js",
+    "prebuild": "node scripts/compile-docs.js",
+    "pretest": "node scripts/compile-docs.js",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
