@@ -2,13 +2,50 @@
 
 - Document ID: DOC-CHANGELOG
 - Status: ACTIVE
-- Version: 1.0
-- Last updated: 2026-07-22
+- Version: 1.0.0
+- Last updated: 2026-08-17
 - Owner: Coding agent
 - Related documents: [PROJECT_STATUS](PROJECT_STATUS.md), [DECISIONS](DECISIONS.md), [MASTER_TASK_TRACKER](MASTER_TASK_TRACKER.md)
 
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
+
+## 2026-08-17 — GRX-INFRA-002: Unified Multi-Environment CI/CD (GitHub Actions, GHCR, Production & UAT on OVH VPS)
+
+- Implemented automated, self-contained multi-environment CI/CD pipeline on OVH VPS (`149.56.101.2`), replacing legacy external hosting dependencies (Hugging Face and Netlify).
+- Created `.github/workflows/deploy-production.yml` (triggered on `v*.*.*` release tags) and `.github/workflows/deploy-uat.yml` (triggered on `v*-rc*` release-candidate tags).
+- Built modular Docker Compose configurations in `deploy/docker/` (`compose.prod.yaml`, `compose.uat.yaml`, `compose.local.yaml`) with isolated database ports (5432 vs 5433), RabbitMQ ports (5672 vs 5673), and web/API bindings (3000/8000 vs 3001/8001).
+- Implemented automated rollout and backup scripts in `deploy/scripts/` (`deploy_prod.sh`, `deploy_uat.sh`, `backup_db.sh` with gzip compression and 14-day retention).
+- Configured host-level Caddy reverse proxy dual-domain routing for `https://growixa.iitdeveloper.com` (Production) and `https://uat.growixa.iitdeveloper.com` (UAT Staging) with automatic Let's Encrypt TLS certificates.
+- Upgraded CI runner Node.js engine to v22 to satisfy `undici` and `jsdom` test dependencies across all 243 frontend tests.
+- Created universal AI coding agent skill at `.agents/skills/growixa-infra/SKILL.md` and referenced in `AGENTS.md`.
+- Landed in commit `a12c8c1`, `39226ca`. Handed off in `pr_reviews/feature-BACKEND-GRX-INFRA-002.md`.
+
+## 2026-08-17 — GRX-INFRA-001: OVH VPS Production Deployment Guide & Automated Scripts
+
+- Created comprehensive production-grade deployment runbook (`docs/11-devops/OVH_VPS_DEPLOYMENT.md`) tailored for OVHcloud VPS (`149.56.101.2`, 6 vCores, 12GB RAM, 96GB NVMe SSD).
+- Hardened server security: UFW firewall configuration isolating internal databases/brokers, 4GB swap space configuration, and Caddy reverse proxy setup.
+- Created 1-click update script and database backup script with size validation.
+- Landed in commit `79e7b8c`. Handed off in `pr_reviews/feature-BACKEND-GRX-INFRA-001.md`.
+
+## 2026-08-17 — GRX-SAAS-007: Platform Admin Provider Management Hub (`/platform/providers`)
+
+- Built unified Super Admin provider management hub at `/platform/providers` consolidating Email (Postmark, Resend, SendGrid, Custom SMTP), AI (OpenAI, Anthropic, Gemini), and Email Validation (Clearout) configurations into a unified tabbed interface.
+- Added live provider connectivity tests (`POST /platform/ai-config/test-connection`, `/platform/email-config/test-connection`) with real-time UI status feedback.
+- Landed in commit `434a464`. Handed off in `pr_reviews/feature-BACKEND-GRX-SAAS-007.md`.
+
+## 2026-08-17 — GRX-CONTACT-015: Soft delete — customer-facing UI (delete, bulk delete, suppression, purge)
+
+- Implemented customer-facing soft-delete UI for contacts table: row and header multi-select checkboxes, floating bulk action bar with item counter, Delete Confirmation Modal with optional suppression list checkbox, and Audience Purge with type-to-confirm safeguard (`DEC-GRX-034`).
+- Permission-gated for `contacts.manage`.
+- 18 component/unit tests passing in `contacts-page.test.tsx`.
+- Landed in commit `a97bef2`. Handed off in `pr_reviews/feature-FRONTEND-GRX-CONTACT-015.md`.
+
+## 2026-08-17 — GRX-CONTACT-010: Soft delete — schema, repository layer & query filtering
+
+- Implemented database schema migration adding nullable `deleted_at` timestamp to `contacts` table and partial unique indexes (`(account_id, email) WHERE deleted_at IS NULL`).
+- Updated repository queries to filter out soft-deleted contacts by default across list, count, segment, and campaign evaluation queries.
+- Landed in commit `8d6ec7a`. Handed off in `pr_reviews/feature-BACKEND-GRX-CONTACT-010.md`.
 
 ## 2026-08-15 — GRX-SAAS-017: Email Validation — multi-vendor real-time provider config, paid plans (ad hoc)
 
