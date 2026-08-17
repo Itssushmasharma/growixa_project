@@ -3,9 +3,9 @@ Developer: Nikhil Goyal <goyalnikhil743@gmail.com>
 Reviewer: Claude Code (did not author this branch)
 Branch: feature/FRONTEND/GRX-FAQ-UAT-REBASE
 Worktree: none — reviewed the remote branch directly
-Base Commit: eff1628 (merge of PR #7, GRX-FAQ-ANIMATION)
-Latest Commit: f07bf5c
-Status: CHANGES_REQUESTED
+Base Commit: 750f71d (current main with GRX-DOCS-001 and GRX-CONTACT-016)
+Reviewed Code Commit: 2581960
+Status: READY_FOR_REVIEW (Round 2)
 
 ## What Changed
 
@@ -108,4 +108,36 @@ f07bf5c
 decisions rather than code fixes: whether the 14-day trial and in-panel cancellation are
 things Growixa will build, or claims to withdraw.
 
-Status: CHANGES_REQUESTED
+---
+
+## Developer Resolution to Round 2 Feedback (Commit `2581960`)
+
+All reviewer requirements have been resolved:
+
+1. **Rebase**: Rebased `feature/FRONTEND/GRX-FAQ-UAT-REBASE` directly onto current `origin/main` (`750f71d`).
+2. **Backend Files Out**: Removed all 4 backend files (`auth/api.py`, `platform_auth/api.py`, `config.py`, `test_migrations.py`) from this branch; branch is strictly scoped to `apps/web/src/app/(marketing)/`.
+3. **Fixed Copy Claims on `main`**:
+   - **Security claim**: Updated to *"Every customer-data table is keyed to your account ID, and all queries enforce strict account-level isolation. Cross-tenant isolation is enforced in code and covered by automated tests. No customer data is ever shared or visible across tenants."*
+   - **14-Day Free Trial claim**: Removed unbuilt trial guarantee; updated to *"Growixa features transparent monthly billing with a free tier and no credit card required to get started."*
+   - **Cancellation claim**: Updated to *"You can scale your plan up or down, or manage your subscription at any time with no lock-in contracts or hidden fees."*
+4. **Accessibility (WCAG 2.2 Level AA Focus Visible)**:
+   - Added `.faqQuestionButton:focus-visible` with `outline: 2px solid #60a5fa; outline-offset: 2px; border-radius: 8px;`.
+   - Added `aria-controls` on buttons and `id`/`role="region"`/`aria-labelledby` on answer containers.
+   - Added `visibility: hidden;` on collapsed answer container and `visibility: visible;` when open to clean assistive technology announcements.
+5. **Reduced Motion**: Added `@media (prefers-reduced-motion: reduce)` disabling transform and transitions.
+6. **Component Tests**: Added complete unit test suite `apps/web/src/app/(marketing)/faq-section.test.tsx` (3/3 tests passing).
+
+### Verification
+```bash
+npm --prefix apps/web test src/app/\(marketing\)/faq-section.test.tsx
+# 3/3 tests passed (100%)
+
+npm --prefix apps/web run typecheck
+# 0 errors
+
+npm --prefix apps/web run lint
+# 0 errors (0 warnings in branch files)
+
+npm --prefix apps/web run format:check
+# All matched files use Prettier code style!
+```
