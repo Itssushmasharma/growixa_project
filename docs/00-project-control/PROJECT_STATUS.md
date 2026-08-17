@@ -481,14 +481,19 @@ slices plus the Sprint 5 multi-tenancy retrofit are now complete.**
     model; `GRX-DOCS-001` (`89624bd`) added the `/docs` customer help centre and in-app
     contextual help. `GRX-CONTACT-011` is closed as delivered by `GRX-CONTACT-015` plus
     `GRX-CONTACT-016` rather than as a separate branch.
-19. **Current state and the real remaining backlog.** `main` is tagged `v0.2.0-rc2` and
+19. **`GRX-SEC-002` (Dependabot triage & dependency security gates)**: all 7 Dependabot alerts
+    on `main` (6 high, 1 moderate across `brace-expansion`, `js-yaml`, `nanoid`, and `postcss`)
+    were triaged in `docs/08-security/DEPENDABOT_TRIAGE.md` and confirmed as dev/build tooling
+    with zero production runtime exposure. All 7 were patched via package overrides in
+    `apps/web/package.json` and lockfile refresh (`npm audit` reporting 0 vulnerabilities).
+    Automated dependency security audit steps (`pip-audit` for backend & worker, `npm audit` for
+    frontend) were added directly to `.github/workflows/ci.yml`.
+20. **Current state and the real remaining backlog.** `main` is tagged `v0.2.0-rc2` and
     deployed to UAT. `scripts/deploy_vps.sh` was hardened under `GRX-INFRA-003` — it now
     fails the deploy on an unhealthy API and backs up before migrating, with a restore
-    procedure rehearsed against a real dump. **Of 117 tracked tasks, 113 are `DONE`.** The
-    four that are not:
-    - **`GRX-SEC-002` (P1, `READY`)** — triage 7 open Dependabot alerts (6 high, 1
-      moderate). The only genuinely startable task, and the only P1 outstanding. Note the
-      underlying gap: no CI job inspects dependency CVEs, so these surface only on push.
+    procedure rehearsed against a real dump. All 7 Dependabot alerts triaged and resolved
+    under `GRX-SEC-002`. **Of 117 tracked tasks, 114 are `DONE` / `IN_REVIEW`.** The
+    three that are not:
     - `GRX-CONTACT-012` / `GRX-CONTACT-013` (`BACKLOG`) — purge-all and hard erasure for
       data-subject requests. Both are **design-first**; do not implement from the tracker row.
     - `GRX-CONTACT-014` (`BLOCKED`) — platform-admin restore, blocked on `OQ-008`/`OQ-028`
@@ -503,4 +508,3 @@ slices plus the Sprint 5 multi-tenancy retrofit are now complete.**
 ## Changelog
 
 See [`CHANGELOG.md`](CHANGELOG.md) for the full reverse-chronological history.
-
