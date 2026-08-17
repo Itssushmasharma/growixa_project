@@ -143,7 +143,7 @@ function compileDocs() {
     });
   }
 
-  fs.writeFileSync(outputFile, JSON.stringify(compiledCategories, null, 2), "utf-8");
+  fs.writeFileSync(outputFile, JSON.stringify(compiledCategories, null, 2) + "\n", "utf-8");
   console.log(
     `[Growixa Docs] Successfully compiled ${compiledCategories.reduce((acc, c) => acc + c.articles.length, 0)} markdown articles from src/content/docs into generated-docs.json`,
   );
