@@ -57,3 +57,6 @@ dummy/
 # Local review docs — never commit
 need_review_docs/
 data/
+
+# Claude-Flow daemon & session state (local tooling, never source)
+.claude-flow/
