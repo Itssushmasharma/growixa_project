@@ -269,6 +269,78 @@ chmod +x /opt/growixa/scripts/backup_db.sh
 
 ---
 
+## 8a. Database Restore Procedure
+
+`GRX-NFR-008` requires a **defined and tested** restore procedure, not just automated
+backups. A backup nobody has restored is an assumption, not a recovery plan — and the
+size check in `backup_db.sh` only proves the archive is non-empty, never that it restores.
+
+**This procedure was rehearsed against a real Growixa dump on 2026-08-17**, restoring into
+a scratch database and comparing it to the source: 60 tables, matching row counts on
+`accounts` (75), `users` (79) and `subscription_plans` (4), and the same
+`alembic_version` (`c1d2e3f4a5b6`). Re-rehearse it whenever the schema changes materially.
+
+### Restore into a scratch database (always do this first)
+
+Never restore straight over a live database. Restore into a scratch one, verify it, then
+decide.
+
+```bash
+BACKUP=/opt/growixa/backups/growixa_pg_YYYYMMDD_HHMMSS.sql.gz   # pick the archive
+
+docker compose exec -T postgres psql -U growixa -d postgres \
+  -c "DROP DATABASE IF EXISTS growixa_restore_test;"
+docker compose exec -T postgres psql -U growixa -d postgres \
+  -c "CREATE DATABASE growixa_restore_test;"
+
+gunzip -c "$BACKUP" | docker compose exec -T postgres psql -U growixa -d growixa_restore_test
+```
+
+### Verify before trusting it
+
+```bash
+# schema revision should match what the application expects
+docker compose exec -T postgres psql -U growixa -d growixa_restore_test \
+  -tAc "SELECT version_num FROM alembic_version;"
+
+# table count and a few row counts, compared against the live database
+docker compose exec -T postgres psql -U growixa -d growixa_restore_test \
+  -tAc "SELECT count(*) FROM information_schema.tables WHERE table_schema='public';"
+for t in accounts users contacts campaigns subscription_plans; do
+  echo -n "$t: "
+  docker compose exec -T postgres psql -U growixa -d growixa_restore_test -tAc "SELECT count(*) FROM $t;"
+done
+```
+
+An empty or much smaller row count means the archive is bad — stop and try an older one.
+
+### Promote the restored copy (only after verifying)
+
+Stop the application first so nothing writes during the swap.
+
+```bash
+docker compose stop api worker web
+
+docker compose exec -T postgres psql -U growixa -d postgres \
+  -c "ALTER DATABASE growixa RENAME TO growixa_broken_$(date +%Y%m%d_%H%M%S);"
+docker compose exec -T postgres psql -U growixa -d postgres \
+  -c "ALTER DATABASE growixa_restore_test RENAME TO growixa;"
+
+docker compose up -d api worker web
+curl -sf http://localhost:8000/health
+```
+
+The damaged database is renamed rather than dropped — keep it until the restore is
+confirmed good, then drop it deliberately.
+
+### Notes
+
+- `scripts/deploy_vps.sh` takes a fresh backup immediately before `alembic upgrade head`,
+  so a migration that goes wrong has a restore point from minutes earlier rather than
+  from the 02:00 cron run.
+- `RENAME` requires no other sessions on the database. If it refuses, confirm `api`,
+  `worker` and `web` are stopped.
+
 ## 9. 1-Click Deployment for Future Updates
 
 To deploy new code updates seamlessly:
