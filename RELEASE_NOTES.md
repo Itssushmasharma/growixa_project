@@ -41,10 +41,11 @@
 ### ⚡ Infrastructure & DevOps
 - Backend and worker test suites reorganised into domain/job folders (`GRX-TEST-ORG-001`) — 62 files moved, rename-only.
 - CI: Node runner upgraded to v22; explicit `working-directory` on pytest and npm steps; test environment variables passed to all backend and worker jobs; GHCR authentication during SSH deployment.
+- Hardened VPS Deployment (`GRX-INFRA-004`): `docker image prune -f` in `scripts/deploy_vps.sh` moved to run only after the post-deploy health check passes, preserving previous Docker images for immediate rollback on failure.
 - `.claude-flow/` and `data/` added to `.gitignore` (`GRX-CHORE-001`).
 
 ### 📌 Known Issues
-- `docker image prune -f` still runs before the post-deploy health check, discarding the rollback image before the new one is confirmed healthy.
+- None.
 
 ---
 
