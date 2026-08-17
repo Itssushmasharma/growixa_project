@@ -55,6 +55,9 @@ Before starting development on any new feature or task:
 
 - Follow all standards in
   [`docs/12-development/AGENT_EXECUTION_RULES.md`](docs/12-development/AGENT_EXECUTION_RULES.md).
+- Infrastructure & DevOps Playbook:
+  [`.agents/skills/growixa-infra/SKILL.md`](.agents/skills/growixa-infra/SKILL.md) and
+  [`docs/11-devops/OVH_VPS_DEPLOYMENT.md`](docs/11-devops/OVH_VPS_DEPLOYMENT.md).
 - Keep `docs/00-project-control/PROJECT_STATUS.md` and
   `docs/00-project-control/MASTER_TASK_TRACKER.md` updated as tasks progress.
 - Definition of Done:
