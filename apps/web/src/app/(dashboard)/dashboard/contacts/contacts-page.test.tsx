@@ -78,6 +78,22 @@ const GRANTED_CONSENT: ConsentRecord = {
   recorded_at: "2026-07-01T00:00:00Z",
 };
 
+const DELETED_CONTACT: Contact = {
+  id: "contact-3",
+  email: "charlie@example.com",
+  first_name: "Charlie",
+  last_name: "Chaplin",
+  phone: null,
+  status: "ACTIVE",
+  source: null,
+  created_at: "2026-07-01T00:00:00Z",
+  updated_at: "2026-07-01T00:00:00Z",
+  deleted_at: "2026-08-01T00:00:00Z",
+  custom_fields: {},
+  tags: [],
+  is_suppressed: false,
+};
+
 beforeEach(() => {
   mockedApiFetch.mockReset();
 });
@@ -627,5 +643,122 @@ describe("ContactsPage", () => {
     expect(screen.queryByLabelText("Select all contacts on this page")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Select Alice Anderson")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Purge Audience/ })).not.toBeInTheDocument();
+  });
+
+  it("renders deleted tab, fetches deleted contacts, and restores single contact", async () => {
+    let restoreCalled = false;
+    mockedApiFetch.mockImplementation((path: string, init?: RequestInit) => {
+      if (path === "/auth/me") {
+        return Promise.resolve(meWithPermissions(["contacts.view", "contacts.manage"]));
+      }
+      if (path === "/contacts") return Promise.resolve([ACTIVE_CONTACT]);
+      if (path === "/contacts?deleted_only=true") return Promise.resolve([DELETED_CONTACT]);
+      if (isTagsGet(path, init)) return Promise.resolve([]);
+      if (path === "/contacts/contact-3/restore" && init?.method === "POST") {
+        restoreCalled = true;
+        return Promise.resolve({ ...DELETED_CONTACT, deleted_at: null });
+      }
+      throw new Error(`unexpected call: ${path}`);
+    });
+
+    const user = userEvent.setup();
+    renderContactsPage();
+
+    await screen.findByText("Alice Anderson");
+
+    // Click Deleted tab
+    await user.click(screen.getByRole("button", { name: /Deleted/ }));
+
+    // Charlie Chaplin should appear with Deleted badge
+    expect(await screen.findByText("Charlie Chaplin")).toBeInTheDocument();
+    expect(screen.getAllByText("Deleted").length).toBeGreaterThanOrEqual(2);
+
+    // Click Restore button
+    const restoreBtn = screen.getByRole("button", { name: "🔄 Restore" });
+    expect(restoreBtn).toBeInTheDocument();
+    await user.click(restoreBtn);
+
+    await waitFor(() => {
+      expect(restoreCalled).toBe(true);
+      expect(screen.queryByText("Charlie Chaplin")).not.toBeInTheDocument();
+    });
+  });
+
+  it("supports bulk restore in deleted contacts tab", async () => {
+    let bulkRestoreCalled = false;
+    mockedApiFetch.mockImplementation((path: string, init?: RequestInit) => {
+      if (path === "/auth/me") {
+        return Promise.resolve(meWithPermissions(["contacts.view", "contacts.manage"]));
+      }
+      if (path === "/contacts") return Promise.resolve([ACTIVE_CONTACT]);
+      if (path === "/contacts?deleted_only=true") return Promise.resolve([DELETED_CONTACT]);
+      if (isTagsGet(path, init)) return Promise.resolve([]);
+      if (path === "/contacts/bulk-restore" && init?.method === "POST") {
+        bulkRestoreCalled = true;
+        return Promise.resolve({ restored_count: 1 });
+      }
+      throw new Error(`unexpected call: ${path}`);
+    });
+
+    const user = userEvent.setup();
+    renderContactsPage();
+
+    await screen.findByText("Alice Anderson");
+
+    // Switch to Deleted tab
+    await user.click(screen.getByRole("button", { name: /Deleted/ }));
+    await screen.findByText("Charlie Chaplin");
+
+    // Select Charlie
+    await user.click(screen.getByLabelText("Select Charlie Chaplin"));
+
+    // Bulk bar appears with Restore Selected
+    const bulkBar = screen.getByTestId("bulk-action-bar");
+    expect(within(bulkBar).getByText("1 selected")).toBeInTheDocument();
+    const bulkRestoreBtn = within(bulkBar).getByRole("button", { name: "🔄 Restore Selected" });
+    await user.click(bulkRestoreBtn);
+
+    await waitFor(() => {
+      expect(bulkRestoreCalled).toBe(true);
+    });
+  });
+
+  it("renders deleted contact notice and restore button inside details modal", async () => {
+    let restoreCalled = false;
+    mockedApiFetch.mockImplementation((path: string, init?: RequestInit) => {
+      if (path === "/auth/me") {
+        return Promise.resolve(meWithPermissions(["contacts.view", "contacts.manage"]));
+      }
+      if (path === "/contacts") return Promise.resolve([ACTIVE_CONTACT]);
+      if (path === "/contacts?deleted_only=true") return Promise.resolve([DELETED_CONTACT]);
+      if (isTagsGet(path, init)) return Promise.resolve([]);
+      if (isConsentGet(path, init)) return Promise.resolve([]);
+      if (path === "/contacts/contact-3/restore" && init?.method === "POST") {
+        restoreCalled = true;
+        return Promise.resolve({ ...DELETED_CONTACT, deleted_at: null });
+      }
+      throw new Error(`unexpected call: ${path}`);
+    });
+
+    const user = userEvent.setup();
+    renderContactsPage();
+
+    await screen.findByText("Alice Anderson");
+
+    // Switch to Deleted tab
+    await user.click(screen.getByRole("button", { name: /Deleted/ }));
+    await screen.findByText("Charlie Chaplin");
+
+    // Open modal
+    await user.click(screen.getByRole("button", { name: "View" }));
+
+    expect(await screen.findByText("Soft-deleted Contact:")).toBeInTheDocument();
+    const modalRestoreBtn = screen.getByRole("button", { name: "🔄 Restore Contact" });
+    expect(modalRestoreBtn).toBeInTheDocument();
+    await user.click(modalRestoreBtn);
+
+    await waitFor(() => {
+      expect(restoreCalled).toBe(true);
+    });
   });
 });

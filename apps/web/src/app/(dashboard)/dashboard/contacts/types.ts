@@ -117,6 +117,7 @@ export interface Contact {
   source: string | null;
   created_at: string;
   updated_at: string;
+  deleted_at?: string | null;
   custom_fields: Record<string, string>;
   tags: (Tag | string)[];
   is_suppressed: boolean;

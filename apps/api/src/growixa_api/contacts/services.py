@@ -38,8 +38,10 @@ from growixa_api.contacts.repositories import (
     evaluate_segment_rules,
     get_contact_by_email,
     get_contact_by_id,
+    get_contact_by_id_including_deleted,
     get_contact_list_by_id,
     get_custom_field_by_key,
+    get_deleted_contacts_by_ids,
     get_import_by_id,
     get_segment_by_id,
     get_suppression_by_domain,
@@ -61,6 +63,9 @@ from growixa_api.contacts.repositories import (
     upsert_field_value,
 )
 from growixa_api.contacts.repositories import add_segment_rule as add_segment_rule_row
+from growixa_api.contacts.repositories import (
+    bulk_restore_contacts as bulk_restore_contacts_rows,
+)
 from growixa_api.contacts.repositories import create_consent_record as create_consent_record_row
 from growixa_api.contacts.repositories import create_contact_list as create_contact_list_row
 from growixa_api.contacts.repositories import create_custom_field as create_custom_field_row
@@ -82,6 +87,9 @@ from growixa_api.contacts.repositories import list_contacts as list_contacts_row
 from growixa_api.contacts.repositories import list_custom_fields as list_custom_fields_rows
 from growixa_api.contacts.repositories import list_segments as list_segments_rows
 from growixa_api.contacts.repositories import list_tags as list_tags_rows
+from growixa_api.contacts.repositories import (
+    restore_contact as restore_contact_row,
+)
 
 ContactSnapshot = tuple[Contact, dict[str, str], list[str], bool]
 SegmentDetail = tuple[Segment, Sequence[SegmentRule], int]
@@ -329,9 +337,15 @@ async def get_contact_with_fields(
 
 
 async def list_contacts_with_fields(
-    session: AsyncSession, account_id: uuid.UUID
+    session: AsyncSession,
+    account_id: uuid.UUID,
+    *,
+    include_deleted: bool = False,
+    deleted_only: bool = False,
 ) -> list[ContactSnapshot]:
-    contacts = await list_contacts_rows(session, account_id)
+    contacts = await list_contacts_rows(
+        session, account_id, include_deleted=include_deleted, deleted_only=deleted_only
+    )
     return [await _snapshot(session, account_id, contact) for contact in contacts]
 
 
@@ -1093,3 +1107,100 @@ async def purge_all_contacts(
         )
     await session.commit()
     return deleted_count
+
+
+async def restore_contact(
+    session: AsyncSession,
+    *,
+    account_id: uuid.UUID,
+    actor_id: uuid.UUID,
+    contact_id: uuid.UUID,
+) -> ContactSnapshot:
+    """Restores a soft-deleted contact (GRX-CONTACT-016). Enforces plan quota
+    if active, prevents duplicate active email conflict, and emits audit event."""
+    contact = await get_contact_by_id_including_deleted(session, account_id, contact_id)
+    if contact is None:
+        raise ContactNotFoundError
+
+    if contact.deleted_at is None:
+        return await _snapshot(session, account_id, contact)
+
+    # Check if another active contact exists with the same email in this account
+    existing_active = await get_contact_by_email(session, account_id, contact.email)
+    if existing_active is not None and existing_active.id != contact.id:
+        raise DuplicateEmailError
+
+    # Quota limit check: only active contacts consume max_contacts quota
+    if contact.status == "ACTIVE":
+        current_count = await count_active_contacts(session, account_id)
+        await check_plan_limit(
+            session,
+            account_id=account_id,
+            limit_attr="max_contacts",
+            current_count=current_count,
+            resource="contacts",
+        )
+
+    await restore_contact_row(session, account_id, contact_id)
+    await record_event(
+        session,
+        account_id=account_id,
+        actor_user_id=actor_id,
+        action="contact.restored",
+        entity_type="contact",
+        entity_id=contact.id,
+        metadata={"email": contact.email},
+    )
+    await session.commit()
+    await session.refresh(contact)
+    return await _snapshot(session, account_id, contact)
+
+
+async def bulk_restore_contacts(
+    session: AsyncSession,
+    *,
+    account_id: uuid.UUID,
+    actor_id: uuid.UUID,
+    contact_ids: Sequence[uuid.UUID],
+) -> int:
+    """Bulk restores soft-deleted contacts by ID (GRX-CONTACT-016). Enforces plan
+    quota for any active contacts, prevents duplicate email conflicts, and emits audit event."""
+    deleted_contacts = await get_deleted_contacts_by_ids(session, account_id, contact_ids)
+    if not deleted_contacts:
+        return 0
+
+    # Check duplicate active emails
+    for contact in deleted_contacts:
+        existing_active = await get_contact_by_email(session, account_id, contact.email)
+        if existing_active is not None and existing_active.id != contact.id:
+            raise DuplicateEmailError
+
+    # Count how many are status == "ACTIVE" to check plan quota
+    active_count = sum(1 for c in deleted_contacts if c.status == "ACTIVE")
+    if active_count > 0:
+        current_count = await count_active_contacts(session, account_id)
+        await check_plan_limit(
+            session,
+            account_id=account_id,
+            limit_attr="max_contacts",
+            current_count=current_count + active_count - 1,
+            resource="contacts",
+        )
+
+    target_ids = [c.id for c in deleted_contacts]
+    restored_count = await bulk_restore_contacts_rows(session, account_id, target_ids)
+    if restored_count > 0:
+        await record_event(
+            session,
+            account_id=account_id,
+            actor_user_id=actor_id,
+            action="contact.bulk_restored",
+            entity_type="contact",
+            entity_id=None,
+            metadata={
+                "count": restored_count,
+                "contact_ids": [str(c_id) for c_id in target_ids],
+            },
+        )
+    await session.commit()
+    return restored_count

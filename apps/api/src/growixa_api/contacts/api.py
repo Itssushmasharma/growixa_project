@@ -22,6 +22,8 @@ from growixa_api.contacts.schemas import (
     AttachTagIn,
     BulkDeleteContactsIn,
     BulkDeleteContactsOut,
+    BulkRestoreContactsIn,
+    BulkRestoreContactsOut,
     ConsentRecordIn,
     ConsentRecordOut,
     ContactImportOut,
@@ -63,6 +65,9 @@ from growixa_api.contacts.services import attach_tag_to_contact as attach_tag_se
 from growixa_api.contacts.services import (
     bulk_delete_contacts as bulk_delete_contacts_service,
 )
+from growixa_api.contacts.services import (
+    bulk_restore_contacts as bulk_restore_contacts_service,
+)
 from growixa_api.contacts.services import create_custom_field as create_custom_field_service
 from growixa_api.contacts.services import create_list as create_list_service
 from growixa_api.contacts.services import create_or_update_contact as create_or_update_service
@@ -96,6 +101,7 @@ from growixa_api.contacts.services import (
     remove_contact_from_list as remove_contact_from_list_service,
 )
 from growixa_api.contacts.services import remove_suppression as remove_suppression_service
+from growixa_api.contacts.services import restore_contact as restore_contact_service
 from growixa_api.contacts.services import suppress_domain as suppress_domain_service
 from growixa_api.contacts.services import suppress_email as suppress_email_service
 from growixa_api.contacts.services import update_contact as update_contact_service
@@ -122,6 +128,7 @@ def _to_out(
         source=contact.source,
         created_at=contact.created_at,
         updated_at=contact.updated_at,
+        deleted_at=contact.deleted_at,
         custom_fields=custom_fields,
         tags=tags,
         is_suppressed=is_suppressed,
@@ -557,11 +564,15 @@ async def remove_suppression_route(
 
 @router.get("", response_model=list[ContactOut])
 async def list_contacts_route(
+    include_deleted: bool = False,
+    deleted_only: bool = False,
     _actor_id: uuid.UUID = Depends(_require_view),
     account_id: uuid.UUID = Depends(get_current_account_id),
     session: AsyncSession = Depends(get_session),
 ) -> list[ContactOut]:
-    contacts_with_fields = await list_contacts_service(session, account_id)
+    contacts_with_fields = await list_contacts_service(
+        session, account_id, include_deleted=include_deleted, deleted_only=deleted_only
+    )
     return [
         _to_out(contact, fields, tags, suppressed)
         for contact, fields, tags, suppressed in contacts_with_fields
@@ -630,6 +641,74 @@ async def bulk_delete_contacts_route(
         contact_ids=payload.contact_ids,
     )
     return BulkDeleteContactsOut(deleted_count=deleted_count)
+
+
+@router.post("/bulk-restore", response_model=BulkRestoreContactsOut)
+async def bulk_restore_contacts_route(
+    payload: BulkRestoreContactsIn,
+    actor_id: uuid.UUID = Depends(_require_manage),
+    account_id: uuid.UUID = Depends(get_current_account_id),
+    session: AsyncSession = Depends(get_session),
+) -> BulkRestoreContactsOut:
+    try:
+        restored_count = await bulk_restore_contacts_service(
+            session,
+            account_id=account_id,
+            actor_id=actor_id,
+            contact_ids=payload.contact_ids,
+        )
+    except DuplicateEmailError as exc:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "One or more contacts cannot be restored because an active contact "
+            "with the same email already exists",
+        ) from exc
+    except PlanLimitExceededError as exc:
+        raise HTTPException(
+            status.HTTP_402_PAYMENT_REQUIRED,
+            detail={
+                "message": (
+                    "Plan limit reached for contacts. Upgrade your plan to restore contacts."
+                ),
+                "resource": exc.resource,
+                "upgrade_url": "/dashboard/billing",
+            },
+        ) from exc
+
+    return BulkRestoreContactsOut(restored_count=restored_count)
+
+
+@router.post("/{contact_id}/restore", response_model=ContactOut)
+async def restore_contact_route(
+    contact_id: uuid.UUID,
+    actor_id: uuid.UUID = Depends(_require_manage),
+    account_id: uuid.UUID = Depends(get_current_account_id),
+    session: AsyncSession = Depends(get_session),
+) -> ContactOut:
+    try:
+        contact, fields, tags, suppressed = await restore_contact_service(
+            session, account_id=account_id, actor_id=actor_id, contact_id=contact_id
+        )
+    except ContactNotFoundError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Contact not found") from exc
+    except DuplicateEmailError as exc:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "An active contact with this email already exists in your audience",
+        ) from exc
+    except PlanLimitExceededError as exc:
+        raise HTTPException(
+            status.HTTP_402_PAYMENT_REQUIRED,
+            detail={
+                "message": (
+                    "Plan limit reached for contacts. Upgrade your plan to restore this contact."
+                ),
+                "resource": exc.resource,
+                "upgrade_url": "/dashboard/billing",
+            },
+        ) from exc
+
+    return _to_out(contact, fields, tags, suppressed)
 
 
 @router.delete("/{contact_id}", status_code=status.HTTP_204_NO_CONTENT)
