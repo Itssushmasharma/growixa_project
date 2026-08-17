@@ -6,6 +6,7 @@ hashing via the shared user_factory fixture (conftest.py).
 
 import uuid
 from collections.abc import Awaitable, Callable, Iterator
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -169,6 +170,43 @@ async def test_request_response_never_leaks_token_outside_local_environment(
 
     assert known_response.json() == unknown_response.json()
     assert known_response.json()["token"] is None
+
+    async with async_session_factory() as session:
+        await session.execute(
+            delete(AuditLog).where(AuditLog.action == "user.password_reset_requested")
+        )
+        await session.commit()
+
+    await _cleanup(user_id)
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_request_sends_email_only_for_known_users_without_changing_public_response(
+    user_factory: Callable[..., Awaitable[uuid.UUID]],
+    _production_env: None,
+) -> None:
+    user_id = await user_factory(full_name="Email Reset User")
+    email = await _get_email(user_id)
+
+    transport = ASGITransport(app=create_app())
+    with patch("growixa_api.auth.api.send_password_reset_email", new=AsyncMock()) as mock_send:
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            known_response = await client.post(
+                "/auth/password-reset/request", json={"email": email}
+            )
+            unknown_email = f"{uuid.uuid4()}@example.com"
+            unknown_response = await client.post(
+                "/auth/password-reset/request", json={"email": unknown_email}
+            )
+
+    assert known_response.status_code == unknown_response.status_code == 200
+    assert known_response.json() == unknown_response.json()
+    mock_send.assert_awaited_once()
+    kwargs = mock_send.call_args.kwargs
+    assert kwargs["to_email"] == email
+    assert isinstance(kwargs["raw_token"], str)
+    assert kwargs["raw_token"]
 
     async with async_session_factory() as session:
         await session.execute(

@@ -1,7 +1,7 @@
 import uuid
 from typing import Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, Response, status
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -27,6 +27,7 @@ from growixa_api.auth.services import refresh as refresh_service
 from growixa_api.auth.services import request_password_reset as request_password_reset_service
 from growixa_api.config import get_settings
 from growixa_api.db import get_session
+from growixa_api.notifications.email import send_password_reset_email
 from growixa_api.permissions.dependencies import get_current_user_id
 from growixa_api.permissions.repositories import list_permission_codes_for_user
 from growixa_api.redis import get_redis
@@ -184,6 +185,7 @@ _PASSWORD_RESET_REQUESTED_MESSAGE = (
 async def password_reset_request_route(
     payload: PasswordResetRequestIn,
     request: Request,
+    background_tasks: BackgroundTasks,
     session: AsyncSession = Depends(get_session),
     redis_client: Redis = Depends(get_redis),
 ) -> PasswordResetRequestOut:
@@ -198,11 +200,14 @@ async def password_reset_request_route(
         raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, _RATE_LIMIT_MESSAGE) from exc
 
     raw_token = await request_password_reset_service(session, email=payload.email)
+    if raw_token is not None:
+        background_tasks.add_task(
+            send_password_reset_email, to_email=payload.email, raw_token=raw_token
+        )
 
     # Response is identical for a known vs. unknown email — per THREAT_MODEL.md T11 — with
-    # the raw token echoed back only in local dev and the pytest suite, neither of which has
-    # a real email-delivery channel (same "local" vs. "test" reasoning as _set_auth_cookies'
-    # secure-cookie decision above).
+    # the raw token echoed back only in local dev and the pytest suite for diagnostics
+    # (same "local" vs. "test" reasoning as _set_auth_cookies' secure-cookie decision above).
     token = raw_token if get_settings().environment in ("local", "test") else None
     return PasswordResetRequestOut(message=_PASSWORD_RESET_REQUESTED_MESSAGE, token=token)
 

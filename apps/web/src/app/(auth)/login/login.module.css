@@ -98,3 +98,36 @@
   opacity: 0.6;
   cursor: not-allowed;
 }
+
+.footer {
+  margin-top: 20px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--color-nav-inactive);
+}
+
+.footerLink {
+  color: var(--color-mint);
+  font-weight: 600;
+}
+
+.successIcon {
+  font-size: 40px;
+  margin-bottom: 12px;
+  text-align: center;
+}
+
+.successTitle {
+  font-size: 18px;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 8px;
+  text-align: center;
+}
+
+.successBody {
+  font-size: 14px;
+  color: var(--color-nav-inactive);
+  line-height: 1.6;
+  text-align: center;
+}

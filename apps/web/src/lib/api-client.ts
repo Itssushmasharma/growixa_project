@@ -15,6 +15,8 @@ export class ApiError extends Error {
 // forever (refresh calling itself) or mask a real authentication failure as a transient one.
 const NO_REFRESH_RETRY_PATHS = [
   "/auth/login",
+  "/auth/password-reset/request",
+  "/auth/password-reset/complete",
   "/auth/refresh",
   "/auth/logout",
   "/platform/auth/login",

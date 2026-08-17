@@ -55,6 +55,42 @@ async def send_verification_email(*, to_email: str, full_name: str, raw_token: s
         logger.exception("failed to send verification email to %s", to_email)
 
 
+async def send_password_reset_email(*, to_email: str, raw_token: str) -> None:
+    """Best-effort password reset notification using the same platform transactional email
+    channel as account verification. Failures are logged without raising so the public
+    request endpoint can keep its enumeration-safe generic response."""
+    settings = get_settings()
+    reset_url = f"{settings.frontend_base_url}/reset-password?token={raw_token}"
+    body_html = (
+        "<p>We received a request to reset your Growixa password.</p>"
+        "<p>Click the link below to choose a new password:</p>"
+        f'<p><a href="{reset_url}">{reset_url}</a></p>'
+        "<p>This link expires in "
+        f"{settings.password_reset_ttl_minutes} minutes and can be used once.</p>"
+        "<p>If you did not request this, you can ignore this email.</p>"
+    )
+    body_text = (
+        "We received a request to reset your Growixa password.\n\n"
+        f"Choose a new password here:\n{reset_url}\n\n"
+        f"This link expires in {settings.password_reset_ttl_minutes} minutes "
+        "and can be used once.\n\n"
+        "If you did not request this, you can ignore this email."
+    )
+    subject = "Reset your Growixa password"
+
+    try:
+        async with async_session_factory() as session:
+            await _send(
+                session,
+                to_email=to_email,
+                subject=subject,
+                body_html=body_html,
+                body_text=body_text,
+            )
+    except EmailSendError:
+        logger.exception("failed to send password reset email to %s", to_email)
+
+
 async def _send(
     session: AsyncSession, *, to_email: str, subject: str, body_html: str, body_text: str
 ) -> None:
