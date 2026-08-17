@@ -61,6 +61,6 @@ beb7b17f254e229c385ce024a51262ce84c62df0
 This commit (review-record metadata only).
 
 ## Human Approval
-Required; scheduling workflow is customer-facing.
+Approved by Ravi Kant Yadav via Codex chat on 2026-08-18; scheduling workflow is customer-facing.
 
 Status: APPROVED
