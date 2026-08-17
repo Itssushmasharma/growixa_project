@@ -78,6 +78,6 @@ e500e67ea08401a928aae3416ceb9cf42d390d6e
 This commit (review-record metadata only).
 
 ## Human Approval
-Required; this is customer-facing authentication UX.
+Approved by Ravi after local browser testing on 2026-08-18.
 
 Status: APPROVED
