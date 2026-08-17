@@ -10,6 +10,23 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
+## 2026-08-18 — v0.2.0-rc3 UAT release: Dependabot 7 CVE remediation & CI security audit gates
+
+- **`GRX-SEC-002`** — triaged and remediated all 7 Dependabot alerts (6 high, 1 moderate) on `main`:
+  - Documented technical triage in [`docs/08-security/DEPENDABOT_TRIAGE.md`](../08-security/DEPENDABOT_TRIAGE.md), confirming all CVEs were isolated to dev/build tooling with zero customer data or runtime API exposure.
+  - Applied package overrides for `postcss@^8.5.26`, `nanoid@^3.3.18`, `js-yaml@^4.3.1`, and version-selector overrides for `brace-expansion@^1.1.0: ^1.1.18` + `brace-expansion@^5.0.0: ^5.0.9`.
+  - Refreshed lockfile; **`npm audit` reports 0 vulnerabilities** across all dependencies.
+  - Maintained Next.js `15.5.21` stability without forcing breaking major bumps.
+  - Added automated security gates to `.github/workflows/ci.yml`: `pip-audit` for backend & worker, and `npm audit --audit-level=high` for frontend.
+- **Codebase Quality & Lint Hygiene**:
+  - Resolved `ruff` E501 line-length violations in `auth/api.py` and `platform_auth/api.py`.
+  - Cleaned up unused import in `tests/infrastructure/test_migrations.py`.
+  - Added trailing newline to `scripts/compile-docs.js` output and formatted `generated-docs.json`.
+- **Tagged `v0.2.0-rc3`**:
+  - Deployed automatically to the UAT environment on the OVH VPS via `.github/workflows/deploy-uat.yml`.
+  - Landed in merge commit `c84b61d` and push `0d2bfa9`.
+
+
 ## 2026-08-18 — Task-tracker correction and the process gap that caused it
 
 - Marked seven merged tasks `DONE` that were still showing as outstanding work:
