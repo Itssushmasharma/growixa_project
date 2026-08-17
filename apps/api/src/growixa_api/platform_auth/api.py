@@ -29,9 +29,7 @@ def _set_platform_auth_cookie(
     settings = get_settings()
     is_https = False
     if request:
-        is_https = (
-            request.url.scheme == "https" or request.headers.get("x-forwarded-proto") == "https"
-        )
+        is_https = request.url.scheme == "https" or request.headers.get("x-forwarded-proto") == "https"
     secure = is_https and settings.environment not in ("local", "test")
     samesite: Literal["lax", "none"] = "none" if secure else "lax"
     response.set_cookie(
