@@ -464,7 +464,15 @@ slices plus the Sprint 5 multi-tenancy retrofit are now complete.**
     fallback-reason dictionary moved out of the vendor-specific adapter file into
     `providers/base.py`) — see `CHANGELOG.md`'s 2026-08-15 entry. Real credit-ledger
     deduction is deliberately not wired up yet; the checkbox is informational only for now.
+16. **`GRX-INFRA-001` (OVH VPS Production Deployment Guide & Automation Scripts)**:
+    Delivered comprehensive production installation runbook (`docs/11-devops/OVH_VPS_DEPLOYMENT.md`)
+    and automation scripts (`scripts/backup_db.sh` for PostgreSQL backups with 14-day retention,
+    `scripts/deploy_vps.sh` for 1-click zero-downtime updates) tailored to the OVHcloud
+    VPS target (`149.56.101.2`, 6 vCores, 12GB RAM). Covers UFW firewall rules (22/80/443),
+    Docker Engine & Compose, Caddy reverse proxy with automated Let's Encrypt SSL,
+    database migrations, and platform admin bootstrap.
 
 ## Changelog
 
 See [`CHANGELOG.md`](CHANGELOG.md) for the full reverse-chronological history.
+
