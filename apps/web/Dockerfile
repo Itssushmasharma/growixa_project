@@ -1,14 +1,16 @@
-# Local development image (next dev with hot reload via bind mount). Not a production
-# build — revisit under a dedicated deployment task (standalone output, non-root user, etc).
 FROM node:22-alpine
 
 WORKDIR /app
 
 COPY package.json package-lock.json ./
-RUN npm install
+RUN npm ci
 
 COPY . .
 
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV NODE_ENV=production
+RUN npm run build
+
 EXPOSE 3000
 
-CMD ["npm", "run", "dev"]
+CMD ["sh", "-c", "if [ \"$NODE_ENV\" = \"production\" ]; then npm run start; else npm run dev; fi"]
