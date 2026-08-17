@@ -114,10 +114,61 @@ Verified against the actual code diff (`git diff main...feature/BACKEND/GRX-SAAS
 
 ## 8. Reviewed Code Commit
 
-`73e5855`
+`d670293` — re-anchored, see §8a. (Antigravity reviewed `73e5855`; the rebase onto current
+`main` rewrote it. Content verified identical.)
+
+## 8a. Post-rebase unblock and re-anchor (Claude Code, 2026-08-17)
+
+Antigravity's `APPROVED` verdict **stands** and is re-anchored to the rebased SHA. Two
+problems were blocking the merge; both are now resolved.
+
+**Problem 1 — the approval anchor was dangling.** `73e5855` no longer exists on the branch
+after the rebase, so the §4.3 merge gate could not be evaluated at all. Re-anchored to
+`d670293` after checksumming all seven reviewed source files (`providers-page.tsx`,
+`.module.css`, `.test.tsx`, `page.tsx`, `types.ts`, `sidebar.tsx`, `sidebar.test.tsx`)
+against `73e5855` — **all identical**. Nothing Antigravity approved has changed.
+
+**Problem 2 — the branch would have regressed the task tracker.** The rebase replayed the
+obsolete commit that staged `GRX-CONTACT-010`/`015` as upcoming work. Both merged on
+2026-08-17 (`a8419ff`, `a97bef2`) and `main` records them `DONE`, so the branch carried
+**four** `GRX-CONTACT-01[05]` rows against main's two — duplicates with contradictory
+statuses (`READY`/`BACKLOG` alongside `DONE`/`DONE`). Merging would have described shipped
+features as staged.
+
+Resolved by `git revert` rather than dropping the commit: the branch is published to
+`origin`, and AGENTS.md forbids rewriting published history without explicit approval. The
+revert is docs-only and cancels the obsolete commit exactly — the merge gate
+(`git diff d670293..HEAD -- . ':(exclude)pr_reviews/**'`) is now **empty**, and the tracker
+shows 2 rows, both `DONE`, matching `main`.
+
+**Verification actually run** — the round-2 response claimed a "full verification pipeline"
+but listed only frontend checks, on a `feature/BACKEND/` branch. Both halves run here:
+
+- Frontend: `npm test` **43 files / 243 tests passed** · `typecheck` 0 errors · `lint` 0
+  errors (2 pre-existing `no-img-element` warnings, untouched) · `format:check` clean.
+- Backend: `mypy .` clean across 288 files · `ruff format --check` 290 files formatted ·
+  `pytest --collect-only` **404 tests**, unchanged from `main`.
+
+**Scope observation, not a defect:** this branch now changes **zero** backend files. Its
+backend half reached `main` independently via `8d75129`, so despite the
+`feature/BACKEND/` prefix the remaining delta is the frontend Provider Hub plus docs.
+Worth knowing when judging risk.
+
+### Merge-order dependency
+
+`ruff check .` reports **16 errors** on this branch — all `I001` in test files this branch
+does not touch, inherited from `main`, where the backend CI job has been red since the
+`GRX-TEST-ORG-001` merge. Not this branch's defect, and not fixable here. It is fixed on
+`feature/BACKEND/GRX-LINT-RUFF-001`. **Merge that first**, or this branch lands onto a
+red backend job through no fault of its own.
 
 ## 9. Review Record Commit
 
+(this commit)
+
 ## 10. Human Approval
 
-Required before merge (UI/UX and platform administration changes).
+Required before merge (UI/UX and platform administration changes). Independent review is
+`APPROVED` (Antigravity, re-anchored above) and both verification halves now pass, so the
+remaining gate is the product owner's explicit sign-off on the real
+`/platform/providers` screen.
