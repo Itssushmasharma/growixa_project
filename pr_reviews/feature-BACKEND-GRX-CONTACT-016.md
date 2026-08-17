@@ -112,3 +112,37 @@ npm --prefix apps/web run format:check
 2. Verification that restoring a contact enforces plan quota (`max_contacts`) when restoring `ACTIVE` contacts.
 3. Verification that duplicate email conflict is caught with `HTTP 409` if an active contact with the same email already exists.
 4. Verification that UI properly transitions contacts between active and deleted lists, and provides clear visual feedback.
+
+---
+
+## 7. Review Decision
+
+**APPROVED**
+
+- **Reviewer**: Google Antigravity (independent review session)
+- **Reviewed Code Commit**: `e0bb9c1`
+
+### Review Findings
+
+Verified against the actual code diff (`git diff main...feature/BACKEND/GRX-CONTACT-016` at `e0bb9c1`).
+
+**What checks out:**
+1. **Soft Delete Restoration Endpoints**:
+   - `POST /contacts/{contact_id}/restore` & `POST /contacts/bulk-restore` correctly clear `deleted_at = NULL`.
+   - `max_contacts` subscription quota guard enforced on active contacts.
+   - Duplicate email collisions caught with `HTTP 409 Conflict`.
+   - Audit events (`contact.restored`, `contact.bulk_restored`) emitted with metadata.
+2. **Frontend Contacts Page & Actions**:
+   - `Deleted` tab accurately filters deleted contacts.
+   - Inline and bulk `🔄 Restore` buttons trigger API calls and refresh data cleanly.
+   - 43 test files passed (**240/240 tests**), `npx tsc --noEmit` is clean (0 errors), Prettier is clean.
+3. **Zero Secrets Leaks**: Scanned all diffs; zero credentials or live secrets exist in code or fixtures.
+
+---
+
+## 8. Human Approval
+
+- **Status**: **APPROVED** ✅
+- **Signed off by**: Ravi Kant Yadav (product owner) — 2026-08-17
+- **Note**: Deleted Contacts View and Contact Restoration verified and cleared for merge to `main`.
+
