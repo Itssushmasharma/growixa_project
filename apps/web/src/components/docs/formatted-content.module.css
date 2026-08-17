@@ -1,0 +1,51 @@
+.formattedWrapper {
+  font-size: 14.5px;
+  line-height: 1.7;
+  color: #334155;
+}
+
+.paragraph {
+  margin: 0 0 14px;
+}
+
+.docBold {
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.docCode {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12.5px;
+  color: #0f172a;
+}
+
+.docLink {
+  color: var(--color-primary-blue, #1457e6);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  transition: opacity 0.15s ease;
+}
+
+.docLink:hover {
+  opacity: 0.8;
+}
+
+.orderedList,
+.unorderedList {
+  padding-left: 24px;
+  margin: 12px 0 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.orderedList li,
+.unorderedList li {
+  line-height: 1.6;
+}

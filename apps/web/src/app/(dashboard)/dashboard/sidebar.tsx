@@ -119,6 +119,11 @@ const NAV_SECTIONS: NavSection[] = [
         icon: "🔌",
         requiresPermission: "integrations.manage",
       },
+      {
+        label: "Documentation",
+        href: "/docs",
+        icon: "📖",
+      },
     ],
   },
 ];

@@ -6,6 +6,7 @@ import { type ReactNode, useEffect, useState } from "react";
 
 import { apiFetch } from "@/lib/api-client";
 
+import { HelpDrawer } from "@/components/help/help-drawer";
 import layoutStyles from "./layout.module.css";
 import { LogoutButton } from "./logout-button";
 import { Sidebar } from "./sidebar";
@@ -46,6 +47,7 @@ export function DashboardShell({
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [helpDrawerOpen, setHelpDrawerOpen] = useState(false);
   const [usage, setUsage] = useState<{ used: number; max: number; planName: string } | null>(null);
   const [usageLoading, setUsageLoading] = useState(true);
 
@@ -220,6 +222,17 @@ export function DashboardShell({
                 </Link>
               ))}
 
+            {/* Help Drawer Trigger Button */}
+            <button
+              type="button"
+              className={topbarStyles.helpButton}
+              onClick={() => setHelpDrawerOpen(true)}
+              title="Help & Documentation"
+              aria-label="Help & Documentation"
+            >
+              ❓ Help
+            </button>
+
             {/* Notifications Bell */}
             <button
               type="button"
@@ -245,6 +258,8 @@ export function DashboardShell({
 
         <SupportSessionBanner />
         <div className={layoutStyles.content}>{children}</div>
+
+        <HelpDrawer isOpen={helpDrawerOpen} onClose={() => setHelpDrawerOpen(false)} />
       </div>
     </div>
   );
