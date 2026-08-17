@@ -4,26 +4,40 @@
 
 ## 🚧 [v0.2.0] — Unreleased (In Active Development)
 
-> **Target Release Tag**: `v0.2.0`  
-> **Status**: 🟡 In Progress (Preview on UAT via `v0.2.0-rc1`)  
-> **Target Release Date**: August 2026  
+> **Target Release Tag**: `v0.2.0`
+> **Status**: 🟡 In Progress — preview on UAT via `v0.2.0-rc2`
+> **Target Release Date**: August 2026
 
 ### 🚀 Added
-- **Customer Help Center (`/docs`)**: Full documentation and in-app assistance system at `/docs` with instant search, 6 categorized guide suites, rich markdown viewer with step badges, callout alerts, code copy, and Table of Contents ([`GRX-DOCS-001`](docs/00-project-control/MASTER_TASK_TRACKER.md)).
-- **In-App Contextual Help Drawer**: Slide-over `<HelpDrawer />` accessible across dashboard navigation for inline guide reading without losing context.
-- **Inline `<HelpTooltip />`**: Contextual helper tooltips across campaign and contact forms.
-- **Deleted Contacts View & Recovery**: Dedicated "Deleted" tab in the Contacts CRM with individual and bulk restoration actions ([`GRX-CONTACT-016`](docs/00-project-control/MASTER_TASK_TRACKER.md)).
+- **Customer Help Center (`/docs`)**: Documentation and in-app assistance at `/docs` — instant client-side search, 6 categorised guide suites, markdown viewer with step badges, callout alerts, code copy and a table of contents (`GRX-DOCS-001`).
+- **Git-backed docs architecture**: Articles are authored as markdown under `apps/web/src/content/docs/` and compiled to a manifest by `scripts/compile-docs.js` on `predev`/`prebuild`/`pretest`, so documentation is reviewed as source rather than embedded in TypeScript.
+- **In-App Contextual Help Drawer**: Slide-over `<HelpDrawer />` across dashboard navigation for reading guides without losing context.
+- **Inline `<HelpTooltip />`**: Contextual helpers on campaign and contact forms.
+- **Deleted Contacts View & Recovery**: A "Deleted" tab in the Contacts CRM with individual and bulk restoration (`GRX-CONTACT-016`).
+- **Agent playbooks**: Tool-neutral `growixa-developer` and `growixa-reviewer` skills under `.agents/skills/`, linked from `AGENTS.md`, covering the pick-up-to-merge sequence, repo-specific traps, the exact commands CI runs, reviewer eligibility and the merge gate (`GRX-AGENT-DEV-001`).
 
 ### 🛠️ Fixed
-- **Contact Quota Overflow**: Added plan quota check safeguard when restoring bulk soft-deleted contacts to prevent exceeding tier limits.
+- **Deployment reported success on a broken deploy**: `scripts/deploy_vps.sh` printed a warning on a failed health check and then "Deployment Successfully Completed!" with exit code 0, so cron, CI and operators saw success while the API was down. It now exits non-zero (`GRX-INFRA-003`).
+- **Production migrations ran without a restore point**: the deploy script now takes a fresh backup immediately before `alembic upgrade head`, instead of relying on the 02:00 cron backup which could be up to 24 hours stale (`GRX-INFRA-003`).
+- **Contact Quota Overflow**: plan quota check when restoring bulk soft-deleted contacts, preventing tier limits being exceeded.
+- **Backend CI was red**: ruff import ordering broke across 16 test files when the suites were reorganised into domain folders; resolved and the ordering restored.
+- **Frontend CI was red**: `generated-docs.json` is emitted by the docs compiler on every build in a layout prettier rejects, so `format:check` failed after each rebuild. The manifest is now excluded from formatting, as `package-lock.json` already was.
+- **Marketing FAQ removed**: the FAQ section was reverted and the marketing site restored to its `v0.1.0-rc2` state.
 
 ### 🔒 Security & Compliance
-- **Restoration Un-Suppress Safeguard**: Restoring a soft-deleted contact strictly verifies that previously suppressed email addresses remain suppressed.
+- **Tested database restore procedure** (`docs/11-devops/OVH_VPS_DEPLOYMENT.md` §8a): `GRX-NFR-008` requires a restore procedure that is *tested*, not merely defined. The documented procedure was rehearsed against a real dump — restored into a scratch database and compared with the source (60 tables, `accounts` 75, `users` 79, `subscription_plans` 4, matching `alembic_version`). It restores to a scratch database first and promotes by rename, so a damaged database stays recoverable.
+- **Restoration Un-Suppress Safeguard**: restoring a soft-deleted contact verifies that previously suppressed addresses remain suppressed (`DEC-GRX-008`).
+- **Marketing claim accuracy**: unsupported public claims were removed from the site — a "14-day free trial" with no trial implementation, in-panel cancellation with no cancel endpoint, and an overstated tenant-isolation claim.
+- **WCAG 2.2 AA focus indicator**: a `outline: none` with no replacement left keyboard users with no visible focus indicator (SC 2.4.7), against the `GRX-NFR-003` target. Corrected before removal of the affected section.
 
-### 📚 Reference Documentation
-- **Active Branches**: `feature/FRONTEND/GRX-DOCS-001`, `feature/BACKEND/GRX-CONTACT-016`
-- **Worktrees**: `.worktrees/grx-docs-help-center`, `.worktrees/grx-contact-016-restore`
-- **Review Handoff**: `pr_reviews/feature-FRONTEND-GRX-DOCS-001.md`
+### ⚡ Infrastructure & DevOps
+- Backend and worker test suites reorganised into domain/job folders (`GRX-TEST-ORG-001`) — 62 files moved, rename-only.
+- CI: Node runner upgraded to v22; explicit `working-directory` on pytest and npm steps; test environment variables passed to all backend and worker jobs; GHCR authentication during SSH deployment.
+- `.claude-flow/` and `data/` added to `.gitignore` (`GRX-CHORE-001`).
+
+### 📌 Known Issues
+- **7 Dependabot alerts (6 high, 1 moderate)** remain open on `main`. No gate in the review process inspects dependency CVEs — `ruff`, `mypy`, `pytest`, `eslint`, `tsc` and `prettier` are all blind to them — so they are invisible to CI and to reviewers. Tracked as `GRX-SEC-002`.
+- `docker image prune -f` still runs before the post-deploy health check, discarding the rollback image before the new one is confirmed healthy.
 
 ---
 
