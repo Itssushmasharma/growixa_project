@@ -5,7 +5,7 @@ Branch: feature/BACKEND/GRX-CONTACT-010
 Worktree: .worktrees/grx-contact-010-deletion
 Base Commit: 8d751290b2844c2452dbdcf0a7b6fc5d5430de7e
 Latest Commit: b68d487a06a8647c8d0d009c6d3d4813a5679f3b
-Status: APPROVED — pending product-owner sign-off
+Status: APPROVED — cleared for merge
 
 ## What Changed
 
@@ -207,4 +207,32 @@ merge additionally needs the product owner's explicit sign-off. Worth deciding a
 time whether the purge endpoint should require an explicit confirmation parameter rather
 than leaving that solely to the `GRX-CONTACT-015` UI.
 
-Status: APPROVED — pending product-owner sign-off
+### GRANTED — Ravi Kant Yadav (product owner), 2026-08-17
+
+Purge is approved product scope, not merely approved code. Given on the
+`GRX-CONTACT-015` handoff, where the "Purge Audience" UI this endpoint serves was signed
+off; recorded here because `DELETE /contacts/all` is the destructive surface itself and
+AGENTS.md §4.4 requires the approval against the branch that ships it.
+
+Scope: covers `DELETE /contacts/{id}`, `POST /contacts/bulk-delete` and
+`DELETE /contacts/all` as implemented. It does **not** approve a restore endpoint or an
+include-deleted listing filter — neither is built, and both are tracked as
+`GRX-CONTACT-016`.
+
+The open design question above is **not** resolved by this sign-off: the purge endpoint
+still takes no confirmation parameter of its own, so the only guard is the
+`GRX-CONTACT-015` UI's type-to-confirm. Any other caller — a script, a direct API call, a
+future client — reaches it with nothing but `contacts.manage`. Left as a deliberate,
+recorded decision rather than a silent one; worth revisiting alongside a `DECISIONS.md`
+entry for purge, since the authorisation currently exists only in these two handoffs.
+
+### Reviewer note — test relocated after approval (pre-authorised, not a re-review trigger)
+
+`test_contacts_deletion.py` has been moved from `apps/api/tests/` to
+`apps/api/tests/contacts/`, resolving the LOW finding recorded in the re-anchor section
+above. This is a pure `git mv` with no content change, implementing a correction this
+review itself required, so it does not invalidate the approval. Verified after the move:
+`pytest --collect-only` → **404 tests collected** (396 from `main` plus this branch's 8),
+and `pytest tests/contacts/test_contacts_deletion.py` → **8 passed** at the new path.
+
+Status: APPROVED — cleared for merge
