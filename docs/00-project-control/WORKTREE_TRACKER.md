@@ -8,7 +8,8 @@ This document maintains a real-time record of all parallel Git worktrees, active
 
 | Worktree Path | Branch Name | Feature / Task | Preview URL | Status | Created |
 |---|---|---|---|---|---|
-| `.worktrees/test-folder-organization` | `feature/BACKEND/test-folder-organization` | `GRX-TEST-ORG-001` — Reorganize API/worker test folders by domain | — | 🟢 Active | 2026-08-17 |
+| `.worktrees/grx-contact-010-deletion` | `feature/BACKEND/GRX-CONTACT-010` | `GRX-CONTACT-010` — Contact Deletion & Bulk Operations API | — | 🟢 Active | 2026-08-16 |
+| `.worktrees/grx-contact-015-ui` | `feature/FRONTEND/GRX-CONTACT-015` | `GRX-CONTACT-015` — Contacts Table Bulk Actions, Multi-Select & Delete/Suppress UI | `http://localhost:3000` | 🟢 Active | 2026-08-17 |
 
 ---
 
@@ -16,6 +17,7 @@ This document maintains a real-time record of all parallel Git worktrees, active
 
 | Worktree Directory | Branch | Feature Delivered | Merged Commit | Merged Date |
 |---|---|---|---|---|
+| `.worktrees/test-folder-organization` | `feature/BACKEND/test-folder-organization` | `GRX-TEST-ORG-001` — API and worker pytest suites reorganized into domain/job folders (rename-only, 62 files) | `f4d2b13` | 2026-08-17 |
 | `.worktrees/grx-saas-009-monitoring` | `feature/BACKEND/GRX-SAAS-009` | Platform Admin Infrastructure Monitoring (`/platform/monitoring`) & Financial Overview (`/platform/finance`) | `af733c4` | 2026-08-16 |
 | — | `feature/FRONTEND/GRX-SIDEBAR-CLEANUP` | Removed legacy single-tenant System Health link from customer dashboard sidebar | `c078602` | 2026-08-16 |
 | `.worktrees/grx-marketing-redesign` | `feature/FRONTEND/GRX-MARKETING-REDESIGN` | Marketing pricing section redesign & credit pack catalog matching DEC-GRX-030 | `01962ad` | 2026-08-16 |
