@@ -10,6 +10,20 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
+## 2026-08-18 — GRX-INFRA-005 production deploy port-collision hotfix
+
+- **`GRX-INFRA-005`** — fixed the GHCR Compose production deploy path after `v0.2.0`
+  rollout failed during migrations with `Bind for 127.0.0.1:5432 failed: port is already
+  allocated`.
+- Production Postgres is now Docker-network-internal only in `compose.prod.yaml`; API and
+  worker still connect through `postgres:5432`, and operators use `docker compose exec`
+  for DB access instead of a host port.
+- `deploy_prod.sh`, `deploy_uat.sh` and `backup_db.sh` now use stable Compose project names
+  (`growixa-prod`, `growixa-uat`) while explicit volume names preserve the existing
+  `docker_*` data volumes during the project-name migration.
+- The OVH runbook and Growixa infra playbook now document internal-only production DB
+  access and the safe triage commands for a `5432` owner on the VPS.
+
 ## 2026-08-18 — v0.2.0 production release
 
 - Promoted the validated `v0.2.0-rc4` payload to production via tag `v0.2.0`.

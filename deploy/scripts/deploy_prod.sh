@@ -9,6 +9,7 @@ set -euo pipefail
 RELEASE_TAG="${1:-latest}"
 PROD_DIR="/opt/growixa"
 COMPOSE_FILE="${PROD_DIR}/deploy/docker/compose.prod.yaml"
+COMPOSE_PROJECT_NAME="growixa-prod"
 
 echo "================================================================="
 echo "🚀 Deploying Growixa Production (${RELEASE_TAG}) to OVH VPS"
@@ -28,13 +29,16 @@ export WORKER_IMAGE="ghcr.io/iitdeveloper-git/growixa-worker:${RELEASE_TAG}"
 export WEB_IMAGE="ghcr.io/iitdeveloper-git/growixa-web:${RELEASE_TAG}"
 
 echo "📦 Pulling release images from GitHub Container Registry..."
-sudo docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" pull api worker web
+sudo docker compose --project-name "${COMPOSE_PROJECT_NAME}" --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" pull api worker web
+
+echo "🧱 Ensuring production backing services are running..."
+sudo docker compose --project-name "${COMPOSE_PROJECT_NAME}" --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" up -d postgres redis rabbitmq
 
 echo "🗄️ Executing PostgreSQL database migrations..."
-sudo docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" run --rm api alembic upgrade head
+sudo docker compose --project-name "${COMPOSE_PROJECT_NAME}" --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" run --rm api alembic upgrade head
 
 echo "🔄 Performing zero-downtime container rollout..."
-sudo docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" up -d --no-deps api worker web
+sudo docker compose --project-name "${COMPOSE_PROJECT_NAME}" --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" up -d --no-deps api worker web
 
 echo "⏳ Waiting for services to pass health checks..."
 sleep 5
@@ -47,7 +51,7 @@ else
     echo "⚠️ Warning: Production Health Check returned HTTP ${HEALTH_STATUS}. Checking container status..."
 fi
 
-sudo docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" ps
+sudo docker compose --project-name "${COMPOSE_PROJECT_NAME}" --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" ps
 echo "================================================================="
 echo "🎉 Growixa Production Deployment (${RELEASE_TAG}) Complete!"
 echo "================================================================="

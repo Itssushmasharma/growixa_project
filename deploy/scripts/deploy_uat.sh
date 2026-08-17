@@ -9,6 +9,7 @@ set -euo pipefail
 RELEASE_TAG="${1:-uat}"
 UAT_DIR="/opt/growixa-uat"
 COMPOSE_FILE="${UAT_DIR}/deploy/docker/compose.uat.yaml"
+COMPOSE_PROJECT_NAME="growixa-uat"
 
 echo "================================================================="
 echo "🧪 Deploying Growixa UAT / Staging (${RELEASE_TAG}) to OVH VPS"
@@ -28,13 +29,16 @@ export WORKER_IMAGE="ghcr.io/iitdeveloper-git/growixa-worker:${RELEASE_TAG}"
 export WEB_IMAGE="ghcr.io/iitdeveloper-git/growixa-web:${RELEASE_TAG}"
 
 echo "📦 Pulling release candidate images from GitHub Container Registry..."
-sudo docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" pull api worker web
+sudo docker compose --project-name "${COMPOSE_PROJECT_NAME}" --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" pull api worker web
+
+echo "🧱 Ensuring UAT backing services are running..."
+sudo docker compose --project-name "${COMPOSE_PROJECT_NAME}" --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" up -d postgres redis rabbitmq
 
 echo "🗄️ Executing PostgreSQL database migrations on UAT DB..."
-sudo docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" run --rm api alembic upgrade head
+sudo docker compose --project-name "${COMPOSE_PROJECT_NAME}" --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" run --rm api alembic upgrade head
 
 echo "🔄 Performing container rollout on UAT stack..."
-sudo docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" up -d --no-deps api worker web
+sudo docker compose --project-name "${COMPOSE_PROJECT_NAME}" --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" up -d --no-deps api worker web
 
 echo "⏳ Waiting for services to initialize..."
 sleep 5
@@ -47,7 +51,7 @@ else
     echo "ℹ️ UAT Health Check returned HTTP ${HEALTH_STATUS} (Ensure uat.growixa DNS record is configured)."
 fi
 
-sudo docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" ps
+sudo docker compose --project-name "${COMPOSE_PROJECT_NAME}" --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" ps
 echo "================================================================="
 echo "🎉 Growixa UAT Deployment (${RELEASE_TAG}) Complete!"
 echo "================================================================="
