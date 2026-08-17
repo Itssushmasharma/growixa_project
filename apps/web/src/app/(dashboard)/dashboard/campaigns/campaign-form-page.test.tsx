@@ -542,5 +542,6 @@ describe("CampaignFormPage", () => {
       "/campaigns/campaign-1/schedule",
       expect.objectContaining({ method: "POST" }),
     );
+    await waitFor(() => expect(mockPush).toHaveBeenCalledWith("/dashboard/campaigns"));
   });
 });

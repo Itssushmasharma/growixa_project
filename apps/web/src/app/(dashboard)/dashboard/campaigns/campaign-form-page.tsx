@@ -277,6 +277,7 @@ export function CampaignFormPage({ mode, campaignId }: CampaignFormPageProps) {
         "success",
         `Campaign scheduled for ${new Date(utcIso).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}.`,
       );
+      router.push("/dashboard/campaigns");
     } catch (error) {
       showToast("error", parseApiErrorDetail(error, "Could not schedule that campaign."));
     } finally {
