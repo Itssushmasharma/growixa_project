@@ -1,11 +1,11 @@
 Task: Bugfix - return to all campaigns after scheduling
 Developer: Codex
-Reviewer:
+Reviewer: Codex
 Branch: feature/FRONTEND/campaign-schedule-redirect
 Worktree: /Users/ravi/Projects/growixa/.worktrees/campaign-schedule-redirect
 Base Commit: ba7290cf9518e0f374c27f998741dbc894226e3f
 Latest Commit: beb7b17f254e229c385ce024a51262ce84c62df0
-Status: READY_FOR_REVIEW
+Status: APPROVED
 
 ## What Changed
 
@@ -36,16 +36,31 @@ After confirming a schedule, the UI stayed on the campaign edit/detail page. The
 
 ## Review Findings
 
+No blocking findings.
+
+Review notes:
+- Verified the reviewed-code diff is limited to adding the success redirect in `CampaignFormPage` and extending the existing schedule regression test.
+- Confirmed the redirect runs only after `POST /campaigns/:id/schedule` succeeds; the error path remains on-page and surfaces the existing toast.
+- Confirmed scheduling controls remain behind the existing `campaigns.send` and `campaigns.manage` UI checks.
+- Confirmed no secret-shaped material was introduced in the reviewed diff.
+
+Reviewer validation on 2026-08-18:
+- `cd apps/web && npm run test -- campaign-form-page.test.tsx` - passed, 18 tests.
+- `cd apps/web && npm run lint` - passed with 0 errors and 4 existing unrelated warnings in contacts/social files.
+- `cd apps/web && npm run typecheck` - passed.
+- `cd apps/web && npm run format:check` - passed.
+
 
 ## Review Decision
-CHANGES_REQUESTED / APPROVED
+APPROVED
 
 ## Reviewed Code Commit
 beb7b17f254e229c385ce024a51262ce84c62df0
 
 ## Review Record Commit
+This commit (review-record metadata only).
 
 ## Human Approval
 Required; scheduling workflow is customer-facing.
 
-Status: READY_FOR_REVIEW
+Status: APPROVED
