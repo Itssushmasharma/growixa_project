@@ -11,7 +11,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from growixa_api.app import create_app
@@ -60,7 +60,7 @@ async def _set_subscription(
         # Bypass the onupdate=func.now() trigger to simulate a cancellation that
         # happened at a specific point in the past, for the churn-window test.
         await session.execute(
-            AccountSubscription.__table__.update()
+            update(AccountSubscription)
             .where(AccountSubscription.id == subscription.id)
             .values(updated_at=updated_at)
         )
@@ -102,6 +102,8 @@ async def test_financial_metrics_computes_mrr_arr_per_currency_not_summed_togeth
 
         metrics = await get_financial_metrics(session)
 
+    assert starter.price_usd is not None
+    assert pro.price_inr is not None
     assert metrics.mrr_by_currency["USD"] - metrics_before.mrr_by_currency["USD"] == pytest.approx(
         float(starter.price_usd)
     )

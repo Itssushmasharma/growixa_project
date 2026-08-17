@@ -22,7 +22,9 @@ def _shift_month(dt: datetime, months: int) -> datetime:
 async def count_active_contacts(session: AsyncSession, account_id: uuid.UUID) -> int:
     result = await session.execute(
         select(func.count(Contact.id)).where(
-            Contact.account_id == account_id, Contact.status == "ACTIVE"
+            Contact.account_id == account_id,
+            Contact.status == "ACTIVE",
+            Contact.deleted_at.is_(None),
         )
     )
     return result.scalar_one()
@@ -88,7 +90,9 @@ async def get_contact_growth(
 
     baseline_result = await session.execute(
         select(func.count(Contact.id)).where(
-            Contact.account_id == account_id, Contact.created_at < window_start
+            Contact.account_id == account_id,
+            Contact.created_at < window_start,
+            Contact.deleted_at.is_(None),
         )
     )
     baseline = baseline_result.scalar_one()
@@ -98,7 +102,11 @@ async def get_contact_growth(
             func.date_trunc("month", Contact.created_at).label("month"),
             func.count(Contact.id),
         )
-        .where(Contact.account_id == account_id, Contact.created_at >= window_start)
+        .where(
+            Contact.account_id == account_id,
+            Contact.created_at >= window_start,
+            Contact.deleted_at.is_(None),
+        )
         .group_by("month")
     )
     monthly_new = {row[0].strftime("%Y-%m"): row[1] for row in monthly_result.all()}

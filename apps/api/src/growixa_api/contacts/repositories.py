@@ -1,9 +1,9 @@
 import uuid
 from collections.abc import Sequence
 from datetime import datetime
-from typing import Any
+from typing import Any, cast
 
-from sqlalchemy import ColumnElement, Select, and_, func, select
+from sqlalchemy import ColumnElement, CursorResult, Select, and_, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from growixa_api.contacts.models import (
@@ -40,7 +40,11 @@ async def get_contact_by_email(
     session: AsyncSession, account_id: uuid.UUID, email: str
 ) -> Contact | None:
     result = await session.execute(
-        select(Contact).where(Contact.account_id == account_id, Contact.email == email)
+        select(Contact).where(
+            Contact.account_id == account_id,
+            Contact.email == email,
+            Contact.deleted_at.is_(None),
+        )
     )
     return result.scalar_one_or_none()
 
@@ -49,27 +53,87 @@ async def get_contact_by_id(
     session: AsyncSession, account_id: uuid.UUID, contact_id: uuid.UUID
 ) -> Contact | None:
     result = await session.execute(
-        select(Contact).where(Contact.account_id == account_id, Contact.id == contact_id)
+        select(Contact).where(
+            Contact.account_id == account_id,
+            Contact.id == contact_id,
+            Contact.deleted_at.is_(None),
+        )
     )
     return result.scalar_one_or_none()
 
 
 async def count_active_contacts(session: AsyncSession, account_id: uuid.UUID) -> int:
-    """Feeds the plan's `max_contacts` cap check (`GRX-BILL-005`) -- archived contacts
-    don't count against it, only live ones."""
+    """Feeds the plan's `max_contacts` cap check (`GRX-BILL-005`) -- archived and
+    soft-deleted contacts don't count against it, only live active ones."""
     result = await session.execute(
         select(func.count())
         .select_from(Contact)
-        .where(Contact.account_id == account_id, Contact.status == "ACTIVE")
+        .where(
+            Contact.account_id == account_id,
+            Contact.status == "ACTIVE",
+            Contact.deleted_at.is_(None),
+        )
     )
     return result.scalar_one()
 
 
 async def list_contacts(session: AsyncSession, account_id: uuid.UUID) -> Sequence[Contact]:
     result = await session.execute(
-        select(Contact).where(Contact.account_id == account_id).order_by(Contact.created_at.desc())
+        select(Contact)
+        .where(Contact.account_id == account_id, Contact.deleted_at.is_(None))
+        .order_by(Contact.created_at.desc())
     )
     return result.scalars().all()
+
+
+async def soft_delete_contact(
+    session: AsyncSession, account_id: uuid.UUID, contact_id: uuid.UUID
+) -> bool:
+    """Soft-deletes a single contact by setting deleted_at to current timestamp."""
+    result = await session.execute(
+        update(Contact)
+        .where(
+            Contact.account_id == account_id,
+            Contact.id == contact_id,
+            Contact.deleted_at.is_(None),
+        )
+        .values(deleted_at=func.now())
+    )
+    await session.flush()
+    return int(cast(CursorResult[Any], result).rowcount) > 0
+
+
+async def bulk_soft_delete_contacts(
+    session: AsyncSession, account_id: uuid.UUID, contact_ids: Sequence[uuid.UUID]
+) -> int:
+    """Soft-deletes multiple contacts belonging to the account by setting deleted_at."""
+    if not contact_ids:
+        return 0
+    result = await session.execute(
+        update(Contact)
+        .where(
+            Contact.account_id == account_id,
+            Contact.id.in_(contact_ids),
+            Contact.deleted_at.is_(None),
+        )
+        .values(deleted_at=func.now())
+    )
+    await session.flush()
+    return int(cast(CursorResult[Any], result).rowcount)
+
+
+async def purge_all_contacts_in_account(session: AsyncSession, account_id: uuid.UUID) -> int:
+    """Soft-deletes all non-deleted contacts belonging to the account."""
+    result = await session.execute(
+        update(Contact)
+        .where(
+            Contact.account_id == account_id,
+            Contact.deleted_at.is_(None),
+        )
+        .values(deleted_at=func.now())
+    )
+    await session.flush()
+    return int(cast(CursorResult[Any], result).rowcount)
 
 
 async def create_contact(session: AsyncSession, **fields: Any) -> Contact:
@@ -255,9 +319,11 @@ async def create_contact_list(
 
 async def count_list_members(session: AsyncSession, list_id: uuid.UUID) -> int:
     result = await session.execute(
-        select(ContactListMember).where(ContactListMember.list_id == list_id)
+        select(func.count(ContactListMember.contact_id))
+        .join(Contact, Contact.id == ContactListMember.contact_id)
+        .where(ContactListMember.list_id == list_id, Contact.deleted_at.is_(None))
     )
-    return len(result.scalars().all())
+    return result.scalar_one()
 
 
 async def is_list_member(
@@ -351,7 +417,10 @@ def _matching_contacts_query(
     account_id: uuid.UUID, rules: Sequence[SegmentRule]
 ) -> Select[tuple[Contact]]:
     conditions = [build_rule_condition(r.field, r.operator, r.value) for r in rules]
-    query = select(Contact).where(Contact.account_id == account_id)
+    query = select(Contact).where(
+        Contact.account_id == account_id,
+        Contact.deleted_at.is_(None),
+    )
     if conditions:
         query = query.where(and_(*conditions))
     return query
@@ -368,7 +437,14 @@ async def count_dynamic_segment_members(
     session: AsyncSession, account_id: uuid.UUID, rules: Sequence[SegmentRule]
 ) -> int:
     conditions = [build_rule_condition(r.field, r.operator, r.value) for r in rules]
-    query = select(func.count()).select_from(Contact).where(Contact.account_id == account_id)
+    query = (
+        select(func.count())
+        .select_from(Contact)
+        .where(
+            Contact.account_id == account_id,
+            Contact.deleted_at.is_(None),
+        )
+    )
     if conditions:
         query = query.where(and_(*conditions))
     result = await session.execute(query)
@@ -444,9 +520,9 @@ async def add_segment_members(
 
 async def count_saved_segment_members(session: AsyncSession, segment_id: uuid.UUID) -> int:
     result = await session.execute(
-        select(func.count())
-        .select_from(SegmentMember)
-        .where(SegmentMember.segment_id == segment_id)
+        select(func.count(SegmentMember.contact_id))
+        .join(Contact, Contact.id == SegmentMember.contact_id)
+        .where(SegmentMember.segment_id == segment_id, Contact.deleted_at.is_(None))
     )
     return result.scalar_one()
 
@@ -457,7 +533,7 @@ async def list_saved_segment_members(
     result = await session.execute(
         select(Contact)
         .join(SegmentMember, SegmentMember.contact_id == Contact.id)
-        .where(SegmentMember.segment_id == segment_id)
+        .where(SegmentMember.segment_id == segment_id, Contact.deleted_at.is_(None))
     )
     return result.scalars().all()
 

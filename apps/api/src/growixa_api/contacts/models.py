@@ -25,7 +25,15 @@ class Contact(Base):
         # GRX-SAAS-001: dedup is per-account, not global -- two different customers may
         # legitimately both have a contact at the same email address (unlike users.email,
         # which stays globally unique because it's a login identity, not audience data).
-        UniqueConstraint("account_id", "email", name="ux_contacts_account_id_email"),
+        # DEC-GRX-034: partial unique index so soft-deleted contacts don't block
+        # re-import of the same email
+        Index(
+            "ux_contacts_account_id_email",
+            "account_id",
+            "email",
+            unique=True,
+            postgresql_where=text("deleted_at IS NULL"),
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -43,6 +51,9 @@ class Contact(Base):
     source: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
+    )
+    deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, default=None
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False

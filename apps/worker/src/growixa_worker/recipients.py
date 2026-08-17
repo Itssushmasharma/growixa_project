@@ -62,7 +62,11 @@ async def _resolve_dynamic_segment(
     )
     rules = rules_result.scalars().all()
     conditions = [_build_rule_condition(r.field, r.operator, r.value) for r in rules]
-    query = select(Contact).where(Contact.account_id == account_id, Contact.status == "ACTIVE")
+    query = select(Contact).where(
+        Contact.account_id == account_id,
+        Contact.status == "ACTIVE",
+        Contact.deleted_at.is_(None),
+    )
     if conditions:
         query = query.where(and_(*conditions))
     contacts_result = await session.execute(query)
@@ -79,6 +83,7 @@ async def _resolve_saved_segment(
             Contact.account_id == account_id,
             SegmentMember.segment_id == segment_id,
             Contact.status == "ACTIVE",
+            Contact.deleted_at.is_(None),
         )
     )
     return result.scalars().all()
@@ -94,6 +99,7 @@ async def _resolve_list(
             Contact.account_id == account_id,
             ContactListMember.list_id == list_id,
             Contact.status == "ACTIVE",
+            Contact.deleted_at.is_(None),
         )
     )
     return result.scalars().all()
@@ -101,7 +107,11 @@ async def _resolve_list(
 
 async def _resolve_all_contacts(session: AsyncSession, account_id: uuid.UUID) -> Sequence[Contact]:
     result = await session.execute(
-        select(Contact).where(Contact.account_id == account_id, Contact.status == "ACTIVE")
+        select(Contact).where(
+            Contact.account_id == account_id,
+            Contact.status == "ACTIVE",
+            Contact.deleted_at.is_(None),
+        )
     )
     return result.scalars().all()
 
