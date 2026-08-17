@@ -471,6 +471,34 @@ slices plus the Sprint 5 multi-tenancy retrofit are now complete.**
     VPS target (`149.56.101.2`, 6 vCores, 12GB RAM). Covers UFW firewall rules (22/80/443),
     Docker Engine & Compose, Caddy reverse proxy with automated Let's Encrypt SSL,
     database migrations, and platform admin bootstrap.
+17. **`GRX-INFRA-002` (Unified multi-environment CI/CD)**: replaced the legacy Hugging Face
+    and Netlify hosting with a self-contained pipeline on the OVH VPS. Tags now route by
+    pattern — `*-rc*` deploys to UAT (`uat.growixa.iitdeveloper.com`), `v*.*.*` without a
+    suffix deploys to production (`growixa.iitdeveloper.com`) — with isolated ports and
+    databases per environment. Landed `a12c8c1`, `39226ca`.
+18. **Contacts and help-centre completion**: `GRX-CONTACT-016` (`95189af`) added the
+    Deleted view with single and bulk restore, completing the `DEC-GRX-034` soft-deletion
+    model; `GRX-DOCS-001` (`89624bd`) added the `/docs` customer help centre and in-app
+    contextual help. `GRX-CONTACT-011` is closed as delivered by `GRX-CONTACT-015` plus
+    `GRX-CONTACT-016` rather than as a separate branch.
+19. **Current state and the real remaining backlog.** `main` is tagged `v0.2.0-rc2` and
+    deployed to UAT. `scripts/deploy_vps.sh` was hardened under `GRX-INFRA-003` — it now
+    fails the deploy on an unhealthy API and backs up before migrating, with a restore
+    procedure rehearsed against a real dump. **Of 117 tracked tasks, 113 are `DONE`.** The
+    four that are not:
+    - **`GRX-SEC-002` (P1, `READY`)** — triage 7 open Dependabot alerts (6 high, 1
+      moderate). The only genuinely startable task, and the only P1 outstanding. Note the
+      underlying gap: no CI job inspects dependency CVEs, so these surface only on push.
+    - `GRX-CONTACT-012` / `GRX-CONTACT-013` (`BACKLOG`) — purge-all and hard erasure for
+      data-subject requests. Both are **design-first**; do not implement from the tracker row.
+    - `GRX-CONTACT-014` (`BLOCKED`) — platform-admin restore, blocked on `OQ-008`/`OQ-028`
+      (retention window). This is a product decision, and may prove unnecessary entirely
+      under indefinite soft delete.
+
+    Two known issues are carried deliberately rather than silently: `docker image prune -f`
+    in `deploy_vps.sh` still runs *before* the health check, discarding the rollback image
+    before the new one is confirmed; and a GitHub merge does not consult the `pr_reviews/`
+    verdict, which is how PR #7 reached `main` carrying `CHANGES_REQUESTED`.
 
 ## Changelog
 

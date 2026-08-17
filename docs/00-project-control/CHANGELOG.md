@@ -3,12 +3,94 @@
 - Document ID: DOC-CHANGELOG
 - Status: ACTIVE
 - Version: 1.0.0
-- Last updated: 2026-08-17
+- Last updated: 2026-08-18
 - Owner: Coding agent
 - Related documents: [PROJECT_STATUS](PROJECT_STATUS.md), [DECISIONS](DECISIONS.md), [MASTER_TASK_TRACKER](MASTER_TASK_TRACKER.md)
 
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
+
+## 2026-08-18 — Task-tracker correction and the process gap that caused it
+
+- Marked seven merged tasks `DONE` that were still showing as outstanding work:
+  `GRX-TEST-ORG-001` (`f4d2b13`, was `IN_REVIEW`), `GRX-SAAS-007` (`434a464`, was
+  `BACKLOG`), `GRX-SAAS-009` (`af733c4`, was `IN_REVIEW`), `GRX-CONTACT-016` (`95189af`),
+  `GRX-DOCS-001` (`89624bd`), `GRX-INFRA-003` and `GRX-CHORE-001` (both `b11cbb2`, were
+  `READY`).
+- Marked `GRX-CONTACT-011` `DONE` — delivered by `GRX-CONTACT-015` and `GRX-CONTACT-016`
+  rather than as its own branch. Verified against its own acceptance criteria on `main`
+  (multi-select, select-all, bulk delete, bulk suppress, bulk restore, and the
+  `contacts.manage` gate all covered by named tests), not merged by association.
+- Corrected stale `GRX-CONTACT-010 (READY, not started)` dependency text on
+  `GRX-CONTACT-011` and `GRX-CONTACT-014`; `GRX-CONTACT-010` merged as `a8419ff`.
+  `GRX-CONTACT-014` remains `BLOCKED` — it depends on `OQ-008`/`OQ-028`, which are
+  unresolved product decisions.
+- **Why this mattered**: a project-manager agent read the tracker and reported three tasks
+  as `READY` that were already shipped. The tracker is what every agent reads to pick up
+  work, so a merged task left at `READY` sends the next agent to re-implement it.
+  `GRX-SAAS-007` sat at `BACKLOG` while merged.
+- Root cause was structural, not clerical: the developer sequence ended at handoff, so no
+  role owned moving the row after merge. Added `DEFINITION_OF_DONE.md` item 23, and named
+  the owner in `growixa-developer` step 9 and `growixa-reviewer` §5.
+- Fixed table hygiene: `GRX-CONTACT-016` was missing its closing `|`, silently dropping its
+  last column. Seven rows split wide because cells contain a literal `|` inside code spans
+  (`str | None`); confirmed this never shifted the `Status` field, so it did not cause the
+  misreport.
+- Added `scripts/tracker_to_csv.py`, which generates `MASTER_TASK_TRACKER.csv` by splitting
+  only on pipes outside code spans (`--check` fails when stale). The markdown remains the
+  source of truth.
+- Remaining not-`DONE` and all genuine: `GRX-SEC-002` (`READY`), `GRX-CONTACT-012`/`013`
+  (`BACKLOG`, design-first), `GRX-CONTACT-014` (`BLOCKED`).
+- Landed in commits `b07878d`, `000b30c`.
+
+## 2026-08-17 — v0.2.0-rc2 UAT release, deploy hardening, and marketing rollback
+
+- **`GRX-INFRA-003`** — hardened `scripts/deploy_vps.sh`: it now exits non-zero when the
+  post-deploy health check fails (it previously printed a warning and still reported success),
+  and takes a fresh database backup immediately before `alembic upgrade head` rather than
+  relying on a cron backup up to 24h stale. Documented a restore procedure at
+  `OVH_VPS_DEPLOYMENT.md` §8a and **rehearsed it against a real dump** — restored into a
+  scratch database and compared against source (60 tables, `accounts` 75=75, `users` 79=79,
+  matching `alembic_version`), then dropped the scratch database. Known remaining defect:
+  `docker image prune -f` still runs before the health check, discarding the rollback image.
+- **`GRX-CHORE-001`** — added `.claude-flow/` to `.gitignore`.
+- Tagged **`v0.2.0-rc2`**, which routes to UAT only (`deploy-uat.yml` matches `*-rc*`;
+  `deploy-production.yml` excludes `!*rc*`). Updated `RELEASE_NOTES.md`, correcting a stale
+  reference to a `v0.2.0-rc1` tag that was never created, and added a Known Issues section
+  covering the 7 open Dependabot alerts and the prune-before-health-check ordering.
+- Removed all contributions from one contributor from `main` at the product owner's
+  direction (`4e67eec`): the marketing FAQ section was reverted to its `v0.1.0-rc2` state
+  byte-for-byte and the associated backend lint edits dropped. The `/docs` help centre was
+  deliberately preserved — it is unrelated work.
+- **`GRX-FAQ-UAT-REBASE`** (`520dfaf`) — corrected three false claims on the public
+  marketing FAQ that had reached `main` via PR #7 (`eff1628`) while the branch carried a
+  `CHANGES_REQUESTED` verdict: "every single database table is keyed with a tenant account
+  ID" (11 tables have no `account_id`), a "14-day free trial" with no backend
+  implementation, and in-panel cancellation that does not exist. Also fixed a WCAG 2.2 AA
+  SC 2.4.7 failure (`outline: none` with no replacement focus indicator) and added
+  `prefers-reduced-motion` handling. **Process finding**: a GitHub merge does not consult
+  the `pr_reviews/` verdict, so an approved-looking PR can bypass a blocking review.
+- **`GRX-LINT-RUFF-002`** (`4b22f53`) and `f5f3812` — restored backend ruff compliance and
+  stopped Prettier style-checking `src/content/docs/generated-docs.json`, which is emitted
+  by the docs compiler on every build and had been failing frontend CI repeatedly.
+- **`GRX-AGENT-DEV-001`** (`a936228`) — added tool-neutral developer and reviewer playbooks
+  at `.agents/skills/growixa-developer/` and `.agents/skills/growixa-reviewer/`.
+
+## 2026-08-17 — GRX-DOCS-001: Customer Help Center (`/docs`) & In-App Contextual Help
+
+- Added a customer-facing help centre at `/docs` (20 markdown articles compiled to a JSON
+  manifest by `scripts/compile-docs.js`, 10 supporting components) plus contextual help
+  entry points in the dashboard.
+- Independently reviewed across two rounds with product-owner sign-off; handed off in
+  `pr_reviews/feature-FRONTEND-GRX-DOCS-001.md`. Landed in commit `89624bd`.
+
+## 2026-08-17 — GRX-CONTACT-016: Deleted Contacts View & Contact Restoration
+
+- Added a dedicated Deleted view for soft-deleted contacts with single and bulk restore,
+  backend restore endpoints, and quota handling on restore — completing the soft-deletion
+  model established by `DEC-GRX-034` and `GRX-CONTACT-010`.
+- Independently reviewed and approved; handed off in
+  `pr_reviews/feature-BACKEND-GRX-CONTACT-016.md`. Landed in commit `95189af`.
 
 ## 2026-08-17 — GRX-INFRA-002: Unified Multi-Environment CI/CD (GitHub Actions, GHCR, Production & UAT on OVH VPS)
 

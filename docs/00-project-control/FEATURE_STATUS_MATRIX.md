@@ -3,7 +3,7 @@
 - Document ID: DOC-FEATURE-STATUS-MATRIX
 - Status: ACTIVE
 - Version: 1.2
-- Last updated: 2026-08-15
+- Last updated: 2026-08-18
 - Owner: Coding agent
 - Related documents: [FEATURE_CATALOG](../02-features/FEATURE_CATALOG.md), [MASTER_TASK_TRACKER](MASTER_TASK_TRACKER.md), [PROJECT_STATUS](PROJECT_STATUS.md)
 
@@ -31,7 +31,7 @@ criteria met, gaps noted), `DONE` (fully built and verified per its owning `GRX-
 
 | Feature ID | Feature | Status | Evidence | Notes |
 |---|---|---|---|---|
-| GRX-FEAT-006 | Contact Management | DONE | `GRX-CONTACT-001`, `GRX-CONTACT-006` | CRUD + frontend, `contacts.manage`/`contacts.view` split. |
+| GRX-FEAT-006 | Contact Management | DONE | `GRX-CONTACT-001`, `GRX-CONTACT-006`, `GRX-CONTACT-010`, `GRX-CONTACT-011`, `GRX-CONTACT-015`, `GRX-CONTACT-016` | CRUD + frontend, `contacts.manage`/`contacts.view` split. Extended with soft deletion per `DEC-GRX-034` (`deleted_at`, orthogonal to `status`, partial unique index on live rows), multi-select with a bulk toolbar, bulk delete/suppress, and a Deleted view with single and bulk restore. Hard erasure is deliberately NOT built — see `GRX-CONTACT-013` (`BACKLOG`, design-first). |
 | GRX-FEAT-007 | Contact Import | DONE | `GRX-CONTACT-004`, `GRX-CONTACT-008` | CSV upload, column mapping, per-row status, import history. |
 | GRX-FEAT-008 | Contact Tags | DONE | `GRX-CONTACT-002`, `GRX-CONTACT-007` | Tag CRUD + assignment UI. |
 | GRX-FEAT-009 | Segmentation | DONE | `GRX-CONTACT-003`, `GRX-CONTACT-007` | Rule-based dynamic segments + builder UI. |
@@ -64,6 +64,7 @@ matrix.
 | GRX-FEAT-030 | Email Validation | DONE | `GRX-SAAS-016`, `GRX-SAAS-017` | Free in-house checks (syntax, MX/A with RFC 5321 implicit-MX fallback, disposable list, role list) for all plans; platform-admin-configurable multi-vendor real-time verification (Clearout first) for paid plans, with a per-check opt-out. No SMTP mailbox probe or catch-all detection — deliberately excluded, see the task note. |
 | GRX-FEAT-010 | Suppression and Consent (post-MVP extension) | DONE | `GRX-CONTACT-005/009`, `GRX-SAAS-015` | Extends the Slice 2 entry above: whole-domain blocking, CSV import/export, working remove, and RFC 8058 `List-Unsubscribe`/`List-Unsubscribe-Post` headers on outbound campaign mail. Hashed storage and a global cross-account list are **not** built and **not** scheduled — see `OQ-017`. |
 | GRX-FEAT-023 / GRX-FEAT-028 | Analytics dashboard + platform admin overview | PARTIAL | `GRX-SAAS-014` | Customer overview (`GET /dashboard/overview`) and platform admin overview (`GET /platform/dashboard/summary`) shipped, replacing empty placeholders. Scoped to the source plan's own MVP tier: one unified view per surface. The 4 role-adaptive lenses and the "AI Next Best Actions" card are **not** built and **not** scheduled — see `GRX-FEAT-036` and `OQ-016`. No `account_daily_metrics` rollup table or Redis cache layer (accepted risk, direct SQL aggregation). |
+| GRX-FEAT-037 | Customer Help Centre & in-app contextual help | DONE | `GRX-DOCS-001` | Public help centre at `/docs` — 20 markdown articles compiled to a JSON manifest by `scripts/compile-docs.js` at `predev`/`prebuild`/`pretest`, plus contextual help entry points in the dashboard. The generated manifest is Prettier-ignored deliberately (the compiler emits its own layout, so style-checking it fails on every rebuild). Content is static and reviewed for claim accuracy: it makes no security or pricing assertion the product does not implement. |
 
 ## Summary
 
