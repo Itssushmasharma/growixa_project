@@ -10,6 +10,20 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
+## 2026-08-18 — v0.2.0-rc4 UAT release: deploy rollback safety and campaign scheduling redirect
+
+- **`GRX-INFRA-004`** — hardened `scripts/deploy_vps.sh` so `docker image prune -f` runs
+  only after the post-deploy health check passes. Failed deployments now preserve dangling
+  rollback images instead of deleting them before the new containers are proven healthy.
+  Landed in `7bd9a82`, with tracker/review docs through `ba7290c`.
+- **Campaign scheduling redirect fix** — after a successful schedule confirmation, the
+  campaign form now redirects back to `/dashboard/campaigns` so users return to the
+  all-campaigns view and can immediately see the scheduled campaign. Landed in `beb7b17`;
+  approval and review record through `84bebaa`.
+- **Tagged `v0.2.0-rc4`**:
+  - Routes to UAT only through `.github/workflows/deploy-uat.yml` (`v*-rc*` tags).
+  - Updates `RELEASE_NOTES.md` to reflect the active UAT preview tag.
+
 ## 2026-08-18 — v0.2.0-rc3 UAT release: Dependabot 7 CVE remediation & CI security audit gates
 
 - **`GRX-SEC-002`** — triaged and remediated all 7 Dependabot alerts (6 high, 1 moderate) on `main`:

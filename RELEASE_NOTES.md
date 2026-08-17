@@ -5,7 +5,7 @@
 ## 🚧 [v0.2.0] — Unreleased (In Active Development)
 
 > **Target Release Tag**: `v0.2.0`  
-> **Status**: 🟡 In Progress — preview on UAT via `v0.2.0-rc3`  
+> **Status**: 🟡 In Progress — preview on UAT via `v0.2.0-rc4`
 > **Target Release Date**: August 2026  
 
 ### 🚀 Added
@@ -23,6 +23,7 @@
 - **Backend CI was red**: ruff import ordering broke across 16 test files when the suites were reorganised into domain folders; resolved and the ordering restored.
 - **Frontend CI was red**: `generated-docs.json` formatting discrepancies resolved by appending standard trailing newline to `compile-docs.js`.
 - **Backend Linting & Formatting**: resolved E501 line-length violations in `auth/api.py` and `platform_auth/api.py`, removed unused imports in migration tests, and formatted `config.py`.
+- **Campaign scheduling redirect**: after a campaign is scheduled successfully, the dashboard now returns to `/dashboard/campaigns` so the scheduled campaign is visible in the all-campaigns workflow.
 - **Marketing FAQ removed**: the FAQ section was reverted and the marketing site restored to its `v0.1.0-rc2` state.
 
 ### 🔒 Security & Compliance
