@@ -68,6 +68,7 @@ jobs:
           uv pip install --system -e "apps/api[dev]" -e "apps/worker[dev]"
 
       - name: Run Backend Pytest
+        working-directory: apps/api
         env:
           DATABASE_URL: postgresql+asyncpg://growixa:growixa_test_secret@localhost:5432/growixa_test
           REDIS_URL: redis://localhost:6379/0
@@ -76,9 +77,12 @@ jobs:
           ENCRYPTION_KEY: n_fGvQkL3Hq5V2xQ8z9Y1w4A7e0R6u8I2o5P4s7D1f3=
           ENVIRONMENT: test
         run: |
-          cd apps/api && alembic upgrade head
-          pytest -m "not e2e"
-          cd ../worker && pytest
+          alembic upgrade head
+          pytest
+
+      - name: Run Worker Pytest
+        working-directory: apps/worker
+        run: pytest
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -88,12 +92,12 @@ jobs:
           cache-dependency-path: 'apps/web/package-lock.json'
 
       - name: Install Web Dependencies
-        run: |
-          cd apps/web && npm ci
+        working-directory: apps/web
+        run: npm ci
 
       - name: Run Frontend Tests
-        run: |
-          cd apps/web && npm run test
+        working-directory: apps/web
+        run: npm run test
 
   build-and-push:
     name: Build and Push Docker Images to GHCR
