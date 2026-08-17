@@ -16,6 +16,7 @@ This document maintains a real-time record of all parallel Git worktrees, active
 
 | Worktree Directory | Branch | Feature Delivered | Merged Commit | Merged Date |
 |---|---|---|---|---|
+| `.worktrees/grx-sec-002` | `feature/BACKEND/GRX-SEC-002` | `GRX-SEC-002` — Dependabot 7 CVE Vulnerability Triage, Package Overrides & CI Security Audit | `c84b61d` | 2026-08-18 |
 | `.worktrees/grx-docs-help-center` | `feature/FRONTEND/GRX-DOCS-001` | `GRX-DOCS-001` — Customer Help Center (`/docs`) & In-App Contextual Help (`/dashboard`) | `89624bd` | 2026-08-17 |
 | `.worktrees/grx-contact-016-restore` | `feature/BACKEND/GRX-CONTACT-016` | `GRX-CONTACT-016` — Deleted Contacts View & Contact Restoration (UI & Backend) | `95189af` | 2026-08-17 |
 | `.worktrees/grx-infra-cicd-uat-prod` | `feature/BACKEND/GRX-INFRA-002` | `GRX-INFRA-002` — Unified Multi-Environment CI/CD (GitHub Actions, GHCR, Production & UAT on OVH VPS) | `a12c8c1` | 2026-08-17 |
