@@ -8,7 +8,6 @@ This document maintains a real-time record of all parallel Git worktrees, active
 
 | Worktree Path | Branch Name | Feature / Task | Preview URL | Status | Created |
 | `.worktrees/grx-contact-016-restore` | `feature/BACKEND/GRX-CONTACT-016` | `GRX-CONTACT-016` — Deleted Contacts View & Contact Restoration (UI & Backend) | `http://localhost:3000` | 🟢 Active Dev | 2026-08-17 |
-| `.worktrees/grx-infra-ovh-deployment` | `feature/BACKEND/GRX-INFRA-001` | `GRX-INFRA-001` — OVH VPS Production Deployment Guide & Automated Scripts | `N/A (DevOps)` | 🟢 Active Dev | 2026-08-17 |
 
 ---
 
@@ -16,6 +15,7 @@ This document maintains a real-time record of all parallel Git worktrees, active
 
 | Worktree Directory | Branch | Feature Delivered | Merged Commit | Merged Date |
 |---|---|---|---|---|
+| `.worktrees/grx-infra-ovh-deployment` | `feature/BACKEND/GRX-INFRA-001` | `GRX-INFRA-001` — OVH VPS Production Deployment Guide & Automated Scripts | `79e7b8c` | 2026-08-17 |
 | `.worktrees/grx-contact-015-ui` | `feature/FRONTEND/GRX-CONTACT-015` | `GRX-CONTACT-015` — Contacts Table Bulk Actions, Multi-Select & Delete/Suppress UI | `a97bef2` | 2026-08-17 |
 | `.worktrees/grx-contact-010-deletion` | `feature/BACKEND/GRX-CONTACT-010` | `GRX-CONTACT-010` — Contact Soft Deletion & Bulk Operations API | `a8419ff` | 2026-08-17 |
 | `.worktrees/test-folder-organization` | `feature/BACKEND/test-folder-organization` | `GRX-TEST-ORG-001` — API and worker pytest suites reorganized into domain/job folders (rename-only, 62 files) | `f4d2b13` | 2026-08-17 |
