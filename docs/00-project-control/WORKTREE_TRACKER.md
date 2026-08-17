@@ -8,7 +8,7 @@ This document maintains a real-time record of all parallel Git worktrees, active
 
 | Worktree Path | Branch Name | Feature / Task | Preview URL | Status | Created |
 |---|---|---|---|---|---|
-| *(No active worktrees running)* | — | — | — | — | — |
+| `.worktrees/test-folder-organization` | `feature/BACKEND/test-folder-organization` | `GRX-TEST-ORG-001` — Reorganize API/worker test folders by domain | — | 🟢 Active | 2026-08-17 |
 
 ---
 
