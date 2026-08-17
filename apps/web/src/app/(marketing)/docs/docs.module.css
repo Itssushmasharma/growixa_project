@@ -1,0 +1,257 @@
+.docsContainer {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 40px 24px 80px;
+}
+
+/* Hero Section */
+.heroSection {
+  text-align: center;
+  padding: 48px 16px 56px;
+  background: radial-gradient(circle at center, rgba(20, 87, 230, 0.08) 0%, transparent 70%);
+  border-radius: 20px;
+  margin-bottom: 48px;
+}
+
+.heroBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: var(--color-primary-blue, #1457e6);
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 16px;
+}
+
+.heroTitle {
+  font-size: 38px;
+  font-weight: 900;
+  color: #0b1b33;
+  margin: 0 0 14px;
+  letter-spacing: -0.02em;
+}
+
+.heroSubtitle {
+  max-width: 680px;
+  margin: 0 auto 32px;
+  font-size: 16px;
+  color: #475569;
+  line-height: 1.6;
+}
+
+.heroSearchWrapper {
+  max-width: 640px;
+  margin: 0 auto 20px;
+}
+
+.quickChips {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+
+.quickLabel {
+  font-size: 12px;
+  font-weight: 700;
+  color: #64748b;
+}
+
+.chip {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #334155;
+  text-decoration: none;
+  transition: all 0.15s ease;
+}
+
+.chip:hover {
+  background: #f1f5f9;
+  border-color: var(--color-primary-blue, #1457e6);
+  color: var(--color-primary-blue, #1457e6);
+}
+
+/* Category Grid */
+.categoriesSection {
+  margin-bottom: 56px;
+}
+
+.sectionHeader {
+  margin-bottom: 28px;
+}
+
+.sectionTitle {
+  font-size: 24px;
+  font-weight: 800;
+  color: #0b1b33;
+  margin: 0 0 6px;
+}
+
+.sectionSubtitle {
+  font-size: 14px;
+  color: #64748b;
+  margin: 0;
+}
+
+.categoriesGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 24px;
+}
+
+.categoryCard {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+  display: flex;
+  flex-direction: column;
+  transition: all 0.2s ease;
+}
+
+.categoryCard:hover {
+  border-color: #cbd5e1;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(20, 87, 230, 0.08);
+}
+
+.categoryHeader {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 12px;
+}
+
+.categoryIconWrap {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+}
+
+.categoryName {
+  font-size: 17px;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0;
+}
+
+.articleCount {
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.categoryDesc {
+  font-size: 13px;
+  color: #64748b;
+  line-height: 1.5;
+  margin: 0 0 18px;
+}
+
+.categoryArticleLinks {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-top: 1px solid #f1f5f9;
+  padding-top: 14px;
+}
+
+.catLink {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+  color: #334155;
+  font-weight: 500;
+  text-decoration: none;
+  transition: color 0.15s ease;
+  line-height: 1.35;
+}
+
+.catLink:hover {
+  color: var(--color-primary-blue, #1457e6);
+  font-weight: 600;
+}
+
+.linkIcon {
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.linkTitle {
+  flex: 1;
+}
+
+/* Spotlight Card */
+.spotlightSection {
+  margin-top: 40px;
+}
+
+.spotlightCard {
+  background: linear-gradient(135deg, #0b1b33 0%, #1e3a8a 100%);
+  border-radius: 16px;
+  padding: 28px 32px;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.spotlightIcon {
+  font-size: 36px;
+}
+
+.spotlightContent {
+  flex: 1;
+  min-width: 280px;
+}
+
+.spotlightTitle {
+  font-size: 18px;
+  font-weight: 800;
+  margin: 0 0 6px;
+}
+
+.spotlightText {
+  font-size: 13.5px;
+  color: #cbd5e1;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.spotlightAction {
+  padding: 10px 20px;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #0b1b33;
+  font-weight: 700;
+  font-size: 13.5px;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: opacity 0.15s ease;
+}
+
+.spotlightAction:hover {
+  opacity: 0.9;
+}

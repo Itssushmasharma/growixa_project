@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 
+import { HelpTooltip } from "@/components/help/help-tooltip";
 import { PageHeader } from "@/components/page-header/page-header";
 import { StatCard } from "@/components/stat-card/stat-card";
 import { useToast } from "@/components/toast/toast-context";
@@ -599,6 +600,11 @@ export function ContactsPage() {
         description="Manage and engage your audience effectively."
         actions={
           <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+            <HelpTooltip
+              text="Learn how to import, segment, tag, and restore contacts."
+              docPath="/docs/contacts/contact-management"
+              docTitle="Contacts Guide"
+            />
             <button type="button" className={styles.exportButton} onClick={handleExportCsv}>
               📥 Export CSV
             </button>
