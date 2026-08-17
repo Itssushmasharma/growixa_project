@@ -2,37 +2,32 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
 
 import iconMark from "@/assets/icon/growixa-icon-mark.png";
 import { useToast } from "@/components/toast/toast-context";
 import { ApiError, apiFetch } from "@/lib/api-client";
 
-import styles from "./login.module.css";
+import styles from "../login/login.module.css";
 
-export default function LoginPage() {
-  const router = useRouter();
+export default function ForgotPasswordPage() {
   const { showToast } = useToast();
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [submittedEmail, setSubmittedEmail] = useState<string | null>(null);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSubmitting(true);
 
     try {
-      await apiFetch("/auth/login", {
+      await apiFetch("/auth/password-reset/request", {
         method: "POST",
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email }),
       });
-      router.push("/dashboard");
-      router.refresh();
+      setSubmittedEmail(email);
     } catch (err) {
-      if (err instanceof ApiError && err.status === 401) {
-        showToast("error", "Invalid email or password.");
-      } else if (err instanceof ApiError && err.status === 429) {
+      if (err instanceof ApiError && err.status === 429) {
         showToast("error", "Too many attempts. Please try again later.");
       } else {
         showToast("error", "Something went wrong. Please try again.");
@@ -40,6 +35,26 @@ export default function LoginPage() {
     } finally {
       setSubmitting(false);
     }
+  }
+
+  if (submittedEmail) {
+    return (
+      <main className={styles.page}>
+        <div className={styles.card}>
+          <div className={styles.successIcon}>✓</div>
+          <div className={styles.successTitle}>Check your email</div>
+          <p className={styles.successBody}>
+            If an account with <strong>{submittedEmail}</strong> exists, we sent a password reset
+            link. It expires in 30 minutes and can be used once.
+          </p>
+          <div className={styles.footer}>
+            <Link href="/login" className={styles.footerLink}>
+              Back to sign in
+            </Link>
+          </div>
+        </div>
+      </main>
+    );
   }
 
   return (
@@ -70,30 +85,14 @@ export default function LoginPage() {
             />
           </div>
 
-          <div className={styles.field}>
-            <label className={styles.label} htmlFor="password">
-              Password
-            </label>
-            <input
-              id="password"
-              type="password"
-              required
-              autoComplete="current-password"
-              className={styles.input}
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              placeholder="••••••••"
-            />
-          </div>
-
           <button type="submit" className={styles.submit} disabled={submitting}>
-            {submitting ? "Signing in…" : "Sign in"}
+            {submitting ? "Sending reset link…" : "Send reset link"}
           </button>
         </form>
 
         <div className={styles.footer}>
-          <Link href="/forgot-password" className={styles.footerLink}>
-            Forgot password?
+          <Link href="/login" className={styles.footerLink}>
+            Back to sign in
           </Link>
         </div>
       </div>
