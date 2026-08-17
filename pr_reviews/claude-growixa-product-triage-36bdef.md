@@ -5,7 +5,7 @@ Branch: claude/growixa-product-triage-36bdef
 Worktree: .claude/worktrees/growixa-product-triage-36bdef
 Base Commit: f789dbb4a7be4de078d9d5d5c538939c096a0f9a
 Latest Commit: 2fe4577
-Status: APPROVED — pending product-owner sign-off
+Status: APPROVED — cleared for merge
 
 ## What Changed
 
@@ -145,8 +145,14 @@ APPROVED
 (this commit)
 
 ## Human Approval
-**Required.** These are product-scope documents. `DEC-GRX-034` was approved by the product
-owner in-session on 2026-08-16; the branch as a whole still needs their explicit sign-off
-recorded here before merge.
+**GRANTED.** Signed off by Ravi Kant Yadav (product owner) — 2026-08-16. These are
+product-scope documents; `DEC-GRX-034` was approved in-session on 2026-08-16 and the
+branch as a whole is now explicitly cleared for merge to `main`.
 
-Status: APPROVED — pending product-owner sign-off
+Scope of this sign-off, recorded so it is not read more broadly later: it approves the
+triage pass, `DEC-GRX-034` (contact soft deletion), the `GRX-CONTACT-010..015` task rows,
+and the `OQ-014..028` / `T81–T89` additions. It does **not** approve `DEC-GRX-033`, which
+remains `PROPOSED` and continues to bar external-contact-acquisition work from being built
+or entered into `MASTER_TASK_TRACKER.md` until separately confirmed.
+
+Status: APPROVED — cleared for merge
