@@ -4,8 +4,8 @@ Reviewer: Codex (fresh session - same tool as developer, no other tool available
 Branch: feature/BACKEND/fix-prod-compose-port-collision
 Worktree: /Users/ravi/Projects/growixa
 Base Commit: 097363d
-Latest Commit: 58231f9
-Status: CHANGES_REQUESTED
+Latest Commit: a63084e
+Status: READY_FOR_REVIEW
 
 ## What Changed
 
@@ -41,13 +41,20 @@ The production GHCR deploy failed during migrations because Compose tried to rec
 
 1. [RESOLVED] The branch is now scoped to infra/docs/tracker/review files. The earlier stale-branch diff that would have removed the customer password-reset flow is no longer present in `git diff main..HEAD`.
 
-2. [RESOLVED IN WORKTREE / NOT YET COMMITTED] The deploy scripts now fail fast if legacy Compose project `docker` containers still exist before starting the renamed `growixa-prod` or `growixa-uat` stacks, and the runbook documents container-only removal without deleting volumes. This addresses the project-name migration risk in the working tree. It is still a blocker for approval because the fix is uncommitted; the review gate needs a stable `Reviewed Code Commit` SHA. Commit the implementation/docs/tracker changes, update `Latest Commit`, and request re-review.
+2. [RESOLVED] The deploy scripts now fail fast if legacy Compose project `docker` containers still exist before starting the renamed `growixa-prod` or `growixa-uat` stacks, and the runbook documents container-only removal without deleting volumes. Committed in `a63084e`.
+
+## Developer Response
+
+- Rebased onto current `main` so the branch no longer carries stale password-reset reversions.
+- Added legacy Compose project guards to `deploy_prod.sh` and `deploy_uat.sh`.
+- Updated OVH runbook, changelog, tracker and project status.
+- Re-ran `bash -n deploy/scripts/deploy_prod.sh deploy/scripts/deploy_uat.sh deploy/scripts/backup_db.sh`, `python3 scripts/tracker_to_csv.py --check` and `git diff --check`.
 
 ## Review Decision
-CHANGES_REQUESTED
+CHANGES_REQUESTED / APPROVED
 
 ## Reviewed Code Commit
-bb6b3334713763f9e1894760efba48c61f8ceb5c
+<sha>
 
 ## Review Record Commit
 <sha>
@@ -55,4 +62,4 @@ bb6b3334713763f9e1894760efba48c61f8ceb5c
 ## Human Approval
 Not Required
 
-Status: CHANGES_REQUESTED
+Status: READY_FOR_REVIEW
