@@ -806,6 +806,12 @@
   transition: background 0.2s ease;
 }
 
+.faqQuestionButton:focus-visible {
+  outline: 2px solid #60a5fa;
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
 .faqQuestionButton:hover {
   background: rgba(96, 165, 250, 0.04);
 }
@@ -851,14 +857,17 @@
   display: grid;
   grid-template-rows: 0fr;
   opacity: 0;
+  visibility: hidden;
   transition:
     grid-template-rows 0.45s cubic-bezier(0.22, 1, 0.36, 1),
-    opacity 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+    opacity 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+    visibility 0.35s ease;
 }
 
 .faqAnswerContainerOpen {
   grid-template-rows: 1fr;
   opacity: 1;
+  visibility: visible;
 }
 
 /* Inner wrapper needed for grid-rows animation */
@@ -888,6 +897,7 @@
 .faqItem:hover .faqAnswerContainer {
   grid-template-rows: 1fr;
   opacity: 1;
+  visibility: visible;
 }
 
 .faqItem:hover .faqAnswerText {
@@ -922,5 +932,17 @@
   .faqAnswerText {
     padding: 0 1.5rem 1.25rem;
     font-size: 0.9rem;
+  }
+}
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  .faqItem,
+  .faqChevron,
+  .faqAnswerContainer,
+  .faqAnswerText {
+    transition: none !important;
+    animation: none !important;
+    transform: none !important;
   }
 }
