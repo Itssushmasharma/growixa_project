@@ -50,6 +50,7 @@ class Settings(BaseSettings):
             val = value.strip()
             if val.startswith("[") and val.endswith("]"):
                 import json
+
                 try:
                     parsed = json.loads(val)
                     if isinstance(parsed, list):
