@@ -624,12 +624,8 @@ describe("ContactsPage", () => {
     renderContactsPage();
 
     await screen.findByText("Alice Anderson");
-    expect(
-      screen.queryByLabelText("Select all contacts on this page"),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Select all contacts on this page")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Select Alice Anderson")).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: /Purge Audience/ }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Purge Audience/ })).not.toBeInTheDocument();
   });
 });

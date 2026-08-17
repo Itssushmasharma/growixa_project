@@ -334,9 +334,7 @@ export function ContactsPage() {
         const targetIds = Array.from(selectedIds);
         let failedSuppressionCount = 0;
         if (alsoSuppress) {
-          const targetEmails = contacts
-            .filter((c) => selectedIds.has(c.id))
-            .map((c) => c.email);
+          const targetEmails = contacts.filter((c) => selectedIds.has(c.id)).map((c) => c.email);
           const results = await Promise.allSettled(
             targetEmails.map((email) =>
               apiFetch("/contacts/suppression", {
@@ -768,11 +766,7 @@ export function ContactsPage() {
           <div>
             <div className={styles.tableScrollContainer}>
               {/* Table Header Row */}
-              <div
-                className={`${styles.tableHeader} ${
-                  canManage ? styles.tableHeaderManage : ""
-                }`}
-              >
+              <div className={`${styles.tableHeader} ${canManage ? styles.tableHeaderManage : ""}`}>
                 {canManage && (
                   <div className={styles.checkboxHeader}>
                     <input
@@ -802,16 +796,9 @@ export function ContactsPage() {
                       selectedIds.has(contact.id) ? styles.rowSelected : ""
                     }`}
                   >
-                    <div
-                      className={`${styles.row} ${
-                        canManage ? styles.rowManage : ""
-                      }`}
-                    >
+                    <div className={`${styles.row} ${canManage ? styles.rowManage : ""}`}>
                       {canManage && (
-                        <div
-                          className={styles.checkboxCell}
-                          onClick={(e) => e.stopPropagation()}
-                        >
+                        <div className={styles.checkboxCell} onClick={(e) => e.stopPropagation()}>
                           <input
                             type="checkbox"
                             className={styles.checkbox}
@@ -867,7 +854,8 @@ export function ContactsPage() {
                 <div className={styles.bulkInfo}>
                   <span className={styles.bulkBadge}>{selectedIds.size} selected</span>
                   <span className={styles.bulkSelectedText}>
-                    {selectedIds.size} of {contacts.length} contact{contacts.length > 1 ? "s" : ""} selected
+                    {selectedIds.size} of {contacts.length} contact{contacts.length > 1 ? "s" : ""}{" "}
+                    selected
                   </span>
                 </div>
                 <div className={styles.bulkActions}>
@@ -1319,20 +1307,22 @@ export function ContactsPage() {
             <p className={styles.deleteConfirmText}>
               {deleteModal.mode === "SINGLE" && (
                 <>
-                  Are you sure you want to delete <strong>{deleteModal.targetContact?.email}</strong>?
-                  This contact will be removed from active lists and dynamic segments.
+                  Are you sure you want to delete{" "}
+                  <strong>{deleteModal.targetContact?.email}</strong>? This contact will be removed
+                  from active lists and dynamic segments.
                 </>
               )}
               {deleteModal.mode === "BULK" && (
                 <>
-                  Are you sure you want to delete <strong>{deleteModal.count} selected contacts</strong>?
-                  They will be removed from active lists and dynamic segments.
+                  Are you sure you want to delete{" "}
+                  <strong>{deleteModal.count} selected contacts</strong>? They will be removed from
+                  active lists and dynamic segments.
                 </>
               )}
               {deleteModal.mode === "PURGE" && (
                 <>
-                  Are you sure you want to delete <strong>all {deleteModal.count} contacts</strong> in
-                  your account? This will clear your entire audience.
+                  Are you sure you want to delete <strong>all {deleteModal.count} contacts</strong>{" "}
+                  in your account? This will clear your entire audience.
                 </>
               )}
             </p>
@@ -1373,9 +1363,7 @@ export function ContactsPage() {
                   onChange={(e) => setAlsoSuppress(e.target.checked)}
                 />
                 <div>
-                  <div className={styles.suppressOptionText}>
-                    Also add to suppression list
-                  </div>
+                  <div className={styles.suppressOptionText}>Also add to suppression list</div>
                   <div className={styles.suppressOptionSubtext}>
                     Do this if they asked not to be contacted. Prevents future emails from being
                     sent to these addresses even if re-imported.
@@ -1385,7 +1373,9 @@ export function ContactsPage() {
             )}
 
             <div className={styles.deleteNotice}>
-              ℹ️ Past campaign delivery reports and historical performance statistics will remain intact. Contacts previously added to the suppression list stay suppressed and are never un-suppressed by deletion.
+              ℹ️ Past campaign delivery reports and historical performance statistics will remain
+              intact. Contacts previously added to the suppression list stay suppressed and are
+              never un-suppressed by deletion.
             </div>
 
             <div className={styles.deleteModalFooter}>
@@ -1404,8 +1394,7 @@ export function ContactsPage() {
               <button
                 type="button"
                 disabled={
-                  deleting ||
-                  (deleteModal.mode === "PURGE" && purgeConfirmText.trim() !== "PURGE")
+                  deleting || (deleteModal.mode === "PURGE" && purgeConfirmText.trim() !== "PURGE")
                 }
                 className={styles.deleteConfirmBtn}
                 onClick={handleConfirmDelete}

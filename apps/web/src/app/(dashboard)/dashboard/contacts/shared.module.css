@@ -832,7 +832,9 @@
   color: #ffffff;
   padding: 12px 20px;
   border-radius: 14px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.28), 0 0 0 1px rgba(255, 255, 255, 0.12);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.28),
+    0 0 0 1px rgba(255, 255, 255, 0.12);
   margin-top: 12px;
   animation: slideUp 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   flex-wrap: wrap;
@@ -1082,4 +1084,3 @@
   background: #fef2f2;
   border-color: #ef4444;
 }
-
