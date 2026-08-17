@@ -4,9 +4,9 @@
 
 ## 🚧 [v0.2.0] — Unreleased (In Active Development)
 
-> **Target Release Tag**: `v0.2.0`
-> **Status**: 🟡 In Progress — preview on UAT via `v0.2.0-rc2`
-> **Target Release Date**: August 2026
+> **Target Release Tag**: `v0.2.0`  
+> **Status**: 🟡 In Progress — preview on UAT via `v0.2.0-rc3`  
+> **Target Release Date**: August 2026  
 
 ### 🚀 Added
 - **Customer Help Center (`/docs`)**: Documentation and in-app assistance at `/docs` — instant client-side search, 6 categorised guide suites, markdown viewer with step badges, callout alerts, code copy and a table of contents (`GRX-DOCS-001`).
@@ -21,14 +21,22 @@
 - **Production migrations ran without a restore point**: the deploy script now takes a fresh backup immediately before `alembic upgrade head`, instead of relying on the 02:00 cron backup which could be up to 24 hours stale (`GRX-INFRA-003`).
 - **Contact Quota Overflow**: plan quota check when restoring bulk soft-deleted contacts, preventing tier limits being exceeded.
 - **Backend CI was red**: ruff import ordering broke across 16 test files when the suites were reorganised into domain folders; resolved and the ordering restored.
-- **Frontend CI was red**: `generated-docs.json` is emitted by the docs compiler on every build in a layout prettier rejects, so `format:check` failed after each rebuild. The manifest is now excluded from formatting, as `package-lock.json` already was.
+- **Frontend CI was red**: `generated-docs.json` formatting discrepancies resolved by appending standard trailing newline to `compile-docs.js`.
+- **Backend Linting & Formatting**: resolved E501 line-length violations in `auth/api.py` and `platform_auth/api.py`, removed unused imports in migration tests, and formatted `config.py`.
 - **Marketing FAQ removed**: the FAQ section was reverted and the marketing site restored to its `v0.1.0-rc2` state.
 
 ### 🔒 Security & Compliance
+- **Dependabot 7 CVE Remediation & Triage (`GRX-SEC-002`)**:
+  - Triaged all 7 Dependabot alerts (6 high, 1 moderate) in [`docs/08-security/DEPENDABOT_TRIAGE.md`](docs/08-security/DEPENDABOT_TRIAGE.md), confirming all CVEs were isolated to dev/build tooling.
+  - Applied package overrides for `postcss@^8.5.26`, `nanoid@^3.3.18`, `js-yaml@^4.3.1`, and version-selector overrides for `brace-expansion@^1.1.0: ^1.1.18` + `brace-expansion@^5.0.0: ^5.0.9`.
+  - **`npm audit` reports 0 vulnerabilities** across all dependencies.
+  - Next.js preserved at stable `15.5.21` without requiring breaking major upgrades.
+  - Automated CI dependency security gates added to `.github/workflows/ci.yml` (`pip-audit` for backend & worker, `npm audit --audit-level=high` for frontend).
+- **Strict Zero-Secrets Hard Rule**: Enforced non-negotiable reviewer blocking gate across `AGENTS.md`, `AGENT_EXECUTION_RULES.md`, and `DEFINITION_OF_DONE.md` preventing any code approval, merge, or push with leaked credentials.
 - **Tested database restore procedure** (`docs/11-devops/OVH_VPS_DEPLOYMENT.md` §8a): `GRX-NFR-008` requires a restore procedure that is *tested*, not merely defined. The documented procedure was rehearsed against a real dump — restored into a scratch database and compared with the source (60 tables, `accounts` 75, `users` 79, `subscription_plans` 4, matching `alembic_version`). It restores to a scratch database first and promotes by rename, so a damaged database stays recoverable.
 - **Restoration Un-Suppress Safeguard**: restoring a soft-deleted contact verifies that previously suppressed addresses remain suppressed (`DEC-GRX-008`).
 - **Marketing claim accuracy**: unsupported public claims were removed from the site — a "14-day free trial" with no trial implementation, in-panel cancellation with no cancel endpoint, and an overstated tenant-isolation claim.
-- **WCAG 2.2 AA focus indicator**: a `outline: none` with no replacement left keyboard users with no visible focus indicator (SC 2.4.7), against the `GRX-NFR-003` target. Corrected before removal of the affected section.
+- **WCAG 2.2 AA focus indicator**: an `outline: none` with no replacement left keyboard users with no visible focus indicator (SC 2.4.7), against the `GRX-NFR-003` target. Corrected before removal of the affected section.
 
 ### ⚡ Infrastructure & DevOps
 - Backend and worker test suites reorganised into domain/job folders (`GRX-TEST-ORG-001`) — 62 files moved, rename-only.
@@ -36,7 +44,6 @@
 - `.claude-flow/` and `data/` added to `.gitignore` (`GRX-CHORE-001`).
 
 ### 📌 Known Issues
-- **7 Dependabot alerts (6 high, 1 moderate)** remain open on `main`. No gate in the review process inspects dependency CVEs — `ruff`, `mypy`, `pytest`, `eslint`, `tsc` and `prettier` are all blind to them — so they are invisible to CI and to reviewers. Tracked as `GRX-SEC-002`.
 - `docker image prune -f` still runs before the post-deploy health check, discarding the rollback image before the new one is confirmed healthy.
 
 ---
