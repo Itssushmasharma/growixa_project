@@ -5,7 +5,7 @@ Branch: feature/FRONTEND/GRX-FAQ-UAT-REBASE
 Worktree: none — reviewed the remote branch directly
 Base Commit: 750f71d (current main with GRX-DOCS-001 and GRX-CONTACT-016)
 Reviewed Code Commit: 2581960
-Status: APPROVED — pending product-owner sign-off
+Status: APPROVED — cleared for merge
 
 ## What Changed
 
@@ -207,4 +207,18 @@ AGENT_EXECUTION_RULES.md §Human approval that is necessary but not sufficient. 
 keyboard-tab through the FAQ to confirm the focus ring reads well against the dark
 background.
 
-Status: APPROVED — pending product-owner sign-off
+Status: APPROVED — cleared for merge
+
+---
+
+## Product Owner Sign-off
+
+- **Status: APPROVED** — signed off by Ravi Kant Yadav (product owner), 2026-08-17,
+  following the round-2 independent approval at `59b9707`.
+- **Scope**: the corrected FAQ copy, the WCAG SC 2.4.7 focus indicator, the accessibility
+  fixes (collapsed answers removed from the a11y tree, `aria-controls`/`aria-labelledby`,
+  `prefers-reduced-motion`), and the new test suite.
+- **Cleared for merge** as a fix-forward: the claims and the accessibility failure this
+  branch corrects are currently live on `main`, and therefore on the public marketing site.
+
+Status: APPROVED — cleared for merge
