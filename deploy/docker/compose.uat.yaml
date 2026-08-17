@@ -165,5 +165,8 @@ services:
 
 volumes:
   postgres_uat_data:
+    name: docker_postgres_uat_data
   redis_uat_data:
+    name: docker_redis_uat_data
   rabbitmq_uat_data:
+    name: docker_rabbitmq_uat_data

@@ -488,11 +488,19 @@ slices plus the Sprint 5 multi-tenancy retrofit are now complete.**
     `apps/web/package.json` and lockfile refresh (`npm audit` reporting 0 vulnerabilities).
     Automated dependency security audit steps (`pip-audit` for backend & worker, `npm audit` for
     frontend) were added directly to `.github/workflows/ci.yml`.
-20. **Current state and the real remaining backlog.** `main` is tagged `v0.2.0-rc2` and
-    deployed to UAT. `scripts/deploy_vps.sh` was hardened under `GRX-INFRA-003` — it now
+20. **`GRX-INFRA-005` (Production deploy port-collision hotfix)**: production GHCR Compose
+    deploys no longer publish Postgres on `127.0.0.1:5432`, avoiding the migration-time bind
+    failure seen during the `v0.2.0` rollout. `deploy_prod.sh`, `deploy_uat.sh` and
+    `backup_db.sh` use stable Compose project names (`growixa-prod`, `growixa-uat`), while
+    explicit volume names preserve the existing `docker_*` data volumes during the transition.
+    The rollout scripts fail fast if legacy Compose project `docker` containers still exist,
+    before starting renamed stacks against the same ports or volumes. Operators should access
+    production Postgres via `docker compose exec`, not a host port.
+21. **Current state and the real remaining backlog.** `main` is tagged `v0.2.0` for
+    production. `scripts/deploy_vps.sh` was hardened under `GRX-INFRA-003` — it now
     fails the deploy on an unhealthy API and backs up before migrating, with a restore
     procedure rehearsed against a real dump. All 7 Dependabot alerts triaged and resolved
-    under `GRX-SEC-002`. **Of 117 tracked tasks, 114 are `DONE` / `IN_REVIEW`.** The
+    under `GRX-SEC-002`. **Of 119 tracked tasks, 116 are `DONE` / `IN_REVIEW`.** The
     three that are not:
     - `GRX-CONTACT-012` / `GRX-CONTACT-013` (`BACKLOG`) — purge-all and hard erasure for
       data-subject requests. Both are **design-first**; do not implement from the tracker row.
@@ -500,10 +508,9 @@ slices plus the Sprint 5 multi-tenancy retrofit are now complete.**
       (retention window). This is a product decision, and may prove unnecessary entirely
       under indefinite soft delete.
 
-    Two known issues are carried deliberately rather than silently: `docker image prune -f`
-    in `deploy_vps.sh` still runs *before* the health check, discarding the rollback image
-    before the new one is confirmed; and a GitHub merge does not consult the `pr_reviews/`
-    verdict, which is how PR #7 reached `main` carrying `CHANGES_REQUESTED`.
+    One known process issue is carried deliberately rather than silently: GitHub merge does
+    not consult the `pr_reviews/` verdict, which is how PR #7 reached `main` carrying
+    `CHANGES_REQUESTED`.
 
 ## Changelog
 

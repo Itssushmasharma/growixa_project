@@ -153,7 +153,6 @@ LOG_LEVEL=info
 POSTGRES_USER=growixa
 POSTGRES_PASSWORD=${PG_PASSWORD}
 POSTGRES_DB=growixa
-POSTGRES_PORT=5432
 DATABASE_URL=postgresql+asyncpg://growixa:${PG_PASSWORD}@postgres:5432/growixa
 
 # Redis
@@ -207,18 +206,70 @@ chmod 600 /opt/growixa/.env
 
 ```bash
 cd /opt/growixa
+COMPOSE="sudo docker compose --project-name growixa-prod --env-file /opt/growixa/.env -f /opt/growixa/deploy/docker/compose.prod.yaml"
 
 # 1. Start backing data services
-docker compose up -d postgres redis rabbitmq
+$COMPOSE up -d postgres redis rabbitmq
 
 # 2. Execute database migrations
-docker compose run --rm api alembic upgrade head
+$COMPOSE run --rm api alembic upgrade head
 
 # 3. Seed initial platform administrator
-docker compose run --rm api python -m growixa_api.cli.seed_platform_admin
+$COMPOSE run --rm api python -m growixa_api.cli.seed_platform_admin
 
 # 4. Launch all application containers
-docker compose up -d --build
+$COMPOSE up -d
+```
+
+Production PostgreSQL is intentionally not published on `127.0.0.1:5432`; API and worker
+containers reach it through Docker DNS at `postgres:5432`. Use `docker compose exec`
+instead of a host port when you need database access:
+
+```bash
+sudo docker compose --project-name growixa-prod --env-file /opt/growixa/.env \
+  -f /opt/growixa/deploy/docker/compose.prod.yaml exec postgres \
+  psql -U growixa -d growixa
+```
+
+If a rollout fails with `Bind for 127.0.0.1:5432 failed: port is already allocated`, do not
+delete volumes. Identify the owner first:
+
+```bash
+sudo ss -ltnp 'sport = :5432'
+sudo docker ps --format '{{.Names}} {{.Ports}}' | grep 5432
+```
+
+Stop only a confirmed stale container or host process. After the stable project-name
+rollout, production containers should be named with the `growixa-prod-` prefix, for example
+`growixa-prod-postgres-1`; legacy `docker-*` containers should be treated as stale only
+after confirming they are not serving live traffic.
+
+The rollout scripts fail fast if any legacy Compose project named `docker` still has
+containers. This prevents the renamed `growixa-prod` / `growixa-uat` projects from racing
+against old containers on the same host ports or attaching a second Postgres process to the
+same preserved Docker volume. If the script stops on this guard, inspect first:
+
+```bash
+sudo docker ps -a --filter label=com.docker.compose.project=docker
+```
+
+After confirming those containers are the old stack for the environment you are deploying,
+remove only containers, never volumes:
+
+```bash
+# Production
+cd /opt/growixa
+sudo docker compose --project-name docker --env-file /opt/growixa/.env \
+  -f /opt/growixa/deploy/docker/compose.prod.yaml stop
+sudo docker compose --project-name docker --env-file /opt/growixa/.env \
+  -f /opt/growixa/deploy/docker/compose.prod.yaml rm -f
+
+# UAT
+cd /opt/growixa-uat
+sudo docker compose --project-name docker --env-file /opt/growixa-uat/.env \
+  -f /opt/growixa-uat/deploy/docker/compose.uat.yaml stop
+sudo docker compose --project-name docker --env-file /opt/growixa-uat/.env \
+  -f /opt/growixa-uat/deploy/docker/compose.uat.yaml rm -f
 ```
 
 ---
@@ -287,28 +338,29 @@ decide.
 
 ```bash
 BACKUP=/opt/growixa/backups/growixa_pg_YYYYMMDD_HHMMSS.sql.gz   # pick the archive
+COMPOSE="sudo docker compose --project-name growixa-prod --env-file /opt/growixa/.env -f /opt/growixa/deploy/docker/compose.prod.yaml"
 
-docker compose exec -T postgres psql -U growixa -d postgres \
+$COMPOSE exec -T postgres psql -U growixa -d postgres \
   -c "DROP DATABASE IF EXISTS growixa_restore_test;"
-docker compose exec -T postgres psql -U growixa -d postgres \
+$COMPOSE exec -T postgres psql -U growixa -d postgres \
   -c "CREATE DATABASE growixa_restore_test;"
 
-gunzip -c "$BACKUP" | docker compose exec -T postgres psql -U growixa -d growixa_restore_test
+gunzip -c "$BACKUP" | $COMPOSE exec -T postgres psql -U growixa -d growixa_restore_test
 ```
 
 ### Verify before trusting it
 
 ```bash
 # schema revision should match what the application expects
-docker compose exec -T postgres psql -U growixa -d growixa_restore_test \
+$COMPOSE exec -T postgres psql -U growixa -d growixa_restore_test \
   -tAc "SELECT version_num FROM alembic_version;"
 
 # table count and a few row counts, compared against the live database
-docker compose exec -T postgres psql -U growixa -d growixa_restore_test \
+$COMPOSE exec -T postgres psql -U growixa -d growixa_restore_test \
   -tAc "SELECT count(*) FROM information_schema.tables WHERE table_schema='public';"
 for t in accounts users contacts campaigns subscription_plans; do
   echo -n "$t: "
-  docker compose exec -T postgres psql -U growixa -d growixa_restore_test -tAc "SELECT count(*) FROM $t;"
+  $COMPOSE exec -T postgres psql -U growixa -d growixa_restore_test -tAc "SELECT count(*) FROM $t;"
 done
 ```
 
@@ -319,14 +371,14 @@ An empty or much smaller row count means the archive is bad — stop and try an 
 Stop the application first so nothing writes during the swap.
 
 ```bash
-docker compose stop api worker web
+$COMPOSE stop api worker web
 
-docker compose exec -T postgres psql -U growixa -d postgres \
+$COMPOSE exec -T postgres psql -U growixa -d postgres \
   -c "ALTER DATABASE growixa RENAME TO growixa_broken_$(date +%Y%m%d_%H%M%S);"
-docker compose exec -T postgres psql -U growixa -d postgres \
+$COMPOSE exec -T postgres psql -U growixa -d postgres \
   -c "ALTER DATABASE growixa_restore_test RENAME TO growixa;"
 
-docker compose up -d api worker web
+$COMPOSE up -d api worker web
 curl -sf http://localhost:8000/health
 ```
 

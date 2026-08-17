@@ -19,7 +19,7 @@ This skill provides step-by-step instructions, runbooks, and architectures for d
 | **Domain** | `https://growixa.iitdeveloper.com` | `https://uat.growixa.iitdeveloper.com` | `http://localhost:3000` |
 | **Web Frontend (Next.js)** | `127.0.0.1:3000` | `127.0.0.1:3001` | `3000` |
 | **API Backend (FastAPI)** | `127.0.0.1:8000` | `127.0.0.1:8001` | `8000` |
-| **PostgreSQL** | `127.0.0.1:5432` (`growixa`) | `127.0.0.1:5433` (`growixa_uat`) | `5432` |
+| **PostgreSQL** | Docker-internal `postgres:5432` (`growixa`) | `127.0.0.1:5433` (`growixa_uat`) | `5432` |
 | **RabbitMQ Broker** | `127.0.0.1:5672` / `15672` | `127.0.0.1:5673` / `15673` | `5672` / `15672` |
 | **Redis Cache** | Internal Docker Network | Internal Docker Network | `6379` |
 | **Reverse Proxy** | Host-level Caddy (`/etc/caddy/Caddyfile`) | Host-level Caddy (`/etc/caddy/Caddyfile`) | Direct localhost port access |
