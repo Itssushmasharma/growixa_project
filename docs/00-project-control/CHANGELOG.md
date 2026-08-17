@@ -21,6 +21,9 @@ from Sprint 1 onward, code). Each entry names what changed and the commit(s) it 
 - `deploy_prod.sh`, `deploy_uat.sh` and `backup_db.sh` now use stable Compose project names
   (`growixa-prod`, `growixa-uat`) while explicit volume names preserve the existing
   `docker_*` data volumes during the project-name migration.
+- `deploy_prod.sh` and `deploy_uat.sh` fail fast if legacy Compose project `docker`
+  containers still exist, with operator instructions to inspect and remove containers
+  without deleting volumes before retrying the renamed stack.
 - The OVH runbook and Growixa infra playbook now document internal-only production DB
   access and the safe triage commands for a `5432` owner on the VPS.
 

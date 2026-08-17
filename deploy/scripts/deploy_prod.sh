@@ -10,6 +10,40 @@ RELEASE_TAG="${1:-latest}"
 PROD_DIR="/opt/growixa"
 COMPOSE_FILE="${PROD_DIR}/deploy/docker/compose.prod.yaml"
 COMPOSE_PROJECT_NAME="growixa-prod"
+LEGACY_COMPOSE_PROJECT_NAME="docker"
+
+guard_legacy_compose_project() {
+    local legacy_containers
+    legacy_containers=$(sudo docker ps -a \
+        --filter "label=com.docker.compose.project=${LEGACY_COMPOSE_PROJECT_NAME}" \
+        --format "{{.Names}}" | sort || true)
+
+    if [[ -z "${legacy_containers}" ]]; then
+        return
+    fi
+
+    cat <<EOF
+❌ Legacy Docker Compose project '${LEGACY_COMPOSE_PROJECT_NAME}' still has containers:
+${legacy_containers}
+
+This deploy now uses the stable project name '${COMPOSE_PROJECT_NAME}'. Starting it while
+legacy '${LEGACY_COMPOSE_PROJECT_NAME}' containers exist can attach two Postgres containers
+to the same preserved volume or collide on API/web ports.
+
+Inspect before retrying:
+  sudo docker ps -a --filter label=com.docker.compose.project=${LEGACY_COMPOSE_PROJECT_NAME}
+  sudo ss -ltnp 'sport = :5432'
+
+After confirming the legacy containers are the old production stack and not serving live
+traffic, stop and remove only the containers, not volumes:
+  cd ${PROD_DIR}
+  sudo docker compose --project-name ${LEGACY_COMPOSE_PROJECT_NAME} --env-file ${ENV_FILE} -f ${COMPOSE_FILE} stop
+  sudo docker compose --project-name ${LEGACY_COMPOSE_PROJECT_NAME} --env-file ${ENV_FILE} -f ${COMPOSE_FILE} rm -f
+
+Then rerun this deployment.
+EOF
+    exit 1
+}
 
 echo "================================================================="
 echo "🚀 Deploying Growixa Production (${RELEASE_TAG}) to OVH VPS"
@@ -27,6 +61,8 @@ ENV_FILE="${PROD_DIR}/.env"
 export API_IMAGE="ghcr.io/iitdeveloper-git/growixa-api:${RELEASE_TAG}"
 export WORKER_IMAGE="ghcr.io/iitdeveloper-git/growixa-worker:${RELEASE_TAG}"
 export WEB_IMAGE="ghcr.io/iitdeveloper-git/growixa-web:${RELEASE_TAG}"
+
+guard_legacy_compose_project
 
 echo "📦 Pulling release images from GitHub Container Registry..."
 sudo docker compose --project-name "${COMPOSE_PROJECT_NAME}" --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" pull api worker web

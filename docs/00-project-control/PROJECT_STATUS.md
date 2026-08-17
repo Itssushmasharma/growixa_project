@@ -493,7 +493,9 @@ slices plus the Sprint 5 multi-tenancy retrofit are now complete.**
     failure seen during the `v0.2.0` rollout. `deploy_prod.sh`, `deploy_uat.sh` and
     `backup_db.sh` use stable Compose project names (`growixa-prod`, `growixa-uat`), while
     explicit volume names preserve the existing `docker_*` data volumes during the transition.
-    Operators should access production Postgres via `docker compose exec`, not a host port.
+    The rollout scripts fail fast if legacy Compose project `docker` containers still exist,
+    before starting renamed stacks against the same ports or volumes. Operators should access
+    production Postgres via `docker compose exec`, not a host port.
 21. **Current state and the real remaining backlog.** `main` is tagged `v0.2.0` for
     production. `scripts/deploy_vps.sh` was hardened under `GRX-INFRA-003` — it now
     fails the deploy on an unhealthy API and backs up before migrating, with a restore

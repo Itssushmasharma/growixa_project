@@ -244,6 +244,34 @@ rollout, production containers should be named with the `growixa-prod-` prefix, 
 `growixa-prod-postgres-1`; legacy `docker-*` containers should be treated as stale only
 after confirming they are not serving live traffic.
 
+The rollout scripts fail fast if any legacy Compose project named `docker` still has
+containers. This prevents the renamed `growixa-prod` / `growixa-uat` projects from racing
+against old containers on the same host ports or attaching a second Postgres process to the
+same preserved Docker volume. If the script stops on this guard, inspect first:
+
+```bash
+sudo docker ps -a --filter label=com.docker.compose.project=docker
+```
+
+After confirming those containers are the old stack for the environment you are deploying,
+remove only containers, never volumes:
+
+```bash
+# Production
+cd /opt/growixa
+sudo docker compose --project-name docker --env-file /opt/growixa/.env \
+  -f /opt/growixa/deploy/docker/compose.prod.yaml stop
+sudo docker compose --project-name docker --env-file /opt/growixa/.env \
+  -f /opt/growixa/deploy/docker/compose.prod.yaml rm -f
+
+# UAT
+cd /opt/growixa-uat
+sudo docker compose --project-name docker --env-file /opt/growixa-uat/.env \
+  -f /opt/growixa-uat/deploy/docker/compose.uat.yaml stop
+sudo docker compose --project-name docker --env-file /opt/growixa-uat/.env \
+  -f /opt/growixa-uat/deploy/docker/compose.uat.yaml rm -f
+```
+
 ---
 
 ## 7. Caddy Reverse Proxy & Automatic SSL
