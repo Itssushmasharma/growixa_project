@@ -1,5 +1,5 @@
 import { DOC_CATEGORIES } from "./data";
-import type { DocArticle, DocCategory, DocSearchResult } from "./types";
+import type { DocSearchResult } from "./types";
 
 export function searchDocs(query: string, maxResults = 10): DocSearchResult[] {
   const trimmed = query.trim().toLowerCase();

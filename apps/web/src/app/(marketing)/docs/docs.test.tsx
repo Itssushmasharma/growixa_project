@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 
@@ -8,7 +8,7 @@ import { DocsSidebar } from "@/components/docs/docs-sidebar";
 import { DocsToc } from "@/components/docs/docs-toc";
 import { HelpDrawer } from "@/components/help/help-drawer";
 import { HelpTooltip } from "@/components/help/help-tooltip";
-import { DOC_CATEGORIES, getArticleBySlug } from "@/lib/docs/data";
+import { DOC_CATEGORIES } from "@/lib/docs/data";
 import DocArticlePage from "./[category]/[slug]/page";
 import DocsLandingPage from "./page";
 
@@ -30,17 +30,17 @@ describe("Documentation & Help Center", () => {
     const page = await DocArticlePage({
       params: Promise.resolve({
         category: "contacts",
-        slug: "restoring-deleted-contacts",
+        slug: "contact-lifecycle",
       }),
     });
 
     render(page);
 
     expect(
-      screen.getByRole("heading", { name: /Contact Soft Deletes & Audience Restoration/ }),
+      screen.getByRole("heading", { name: /Contact Lifecycle, Statuses & Archiving/ }),
     ).toBeInTheDocument();
-    expect(screen.getByText("Quota Limit Protection")).toBeInTheDocument();
-    expect(screen.getAllByText("Restoring Deleted Contacts").length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByText("Quota Limit Guidance")).toBeInTheDocument();
+    expect(screen.getAllByText("Contact Status Breakdown").length).toBeGreaterThanOrEqual(2);
     expect(screen.getByLabelText("Breadcrumbs")).toBeInTheDocument();
     expect(screen.getByLabelText("On this page navigation")).toBeInTheDocument();
   });
@@ -53,6 +53,23 @@ describe("Documentation & Help Center", () => {
       screen.getByText("Quickstart: Launch Your First Campaign in 5 Minutes"),
     ).toBeInTheDocument();
     expect(screen.getByText("Audience & Contacts")).toBeInTheDocument();
+  });
+
+  it("renders DocsToc and navigates to section anchors", async () => {
+    const user = userEvent.setup();
+    const sections = [
+      { id: "sec-1", title: "Section 1 Title", content: "Content 1" },
+      { id: "sec-2", title: "Section 2 Title", content: "Content 2" },
+    ];
+    render(<DocsToc sections={sections} />);
+
+    expect(screen.getByText("On this page")).toBeInTheDocument();
+    expect(screen.getByText("Section 1 Title")).toBeInTheDocument();
+    expect(screen.getByText("Section 2 Title")).toBeInTheDocument();
+
+    const sec2Link = screen.getByRole("link", { name: "Section 2 Title" });
+    expect(sec2Link).toHaveAttribute("href", "#sec-2");
+    await user.click(sec2Link);
   });
 
   it("handles live search filtering in DocsSearch", async () => {

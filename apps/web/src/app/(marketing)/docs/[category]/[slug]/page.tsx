@@ -1,7 +1,7 @@
 import React from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getArticleBySlug, getAllArticles, DOC_CATEGORIES } from "@/lib/docs/data";
+import { getArticleBySlug, getAllArticles } from "@/lib/docs/data";
 import { DocsSidebar } from "@/components/docs/docs-sidebar";
 import { DocsToc } from "@/components/docs/docs-toc";
 import { DocsCallout } from "@/components/docs/docs-callout";
@@ -87,10 +87,10 @@ export default async function DocArticlePage({ params }: ArticlePageProps) {
             filters when launching your first campaign.
           </DocsCallout>
         )}
-        {cat.id === "contacts" && slug === "restoring-deleted-contacts" && (
-          <DocsCallout type="important" title="Quota Limit Protection">
-            Restoring active contacts checks your subscription quota (`max_contacts`). Upgrading
-            your plan allows unlimited audience expansion without data loss.
+        {cat.id === "contacts" && slug === "contact-lifecycle" && (
+          <DocsCallout type="note" title="Quota Limit Guidance">
+            Only active contacts count toward your subscription quota (`max_contacts`). Archiving
+            inactive contacts frees up quota without deleting historical delivery metrics.
           </DocsCallout>
         )}
 

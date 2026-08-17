@@ -28,7 +28,7 @@ export default function DocsLandingPage() {
         {/* Global Live Search */}
         <div className={styles.heroSearchWrapper}>
           <DocsSearch
-            placeholder="Search guides, SMTP, SPF, Segments, Soft Delete, AI Studio..."
+            placeholder="Search guides, SMTP, SPF, Segments, Archiving, AI Studio..."
             autoFocus
           />
         </div>
@@ -48,8 +48,8 @@ export default function DocsLandingPage() {
           <Link href="/docs/integrations/postmark-setup" className={styles.chip}>
             📨 Postmark Delivery
           </Link>
-          <Link href="/docs/contacts/restoring-deleted-contacts" className={styles.chip}>
-            🔄 Restore Contacts
+          <Link href="/docs/contacts/contact-lifecycle" className={styles.chip}>
+            🔄 Contact Lifecycle
           </Link>
         </div>
       </section>

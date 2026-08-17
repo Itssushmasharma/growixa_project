@@ -18,9 +18,9 @@ describe("Docs Data & Search Engine", () => {
   });
 
   it("finds specific article by category and slug", () => {
-    const res = getArticleBySlug("contacts", "restoring-deleted-contacts");
+    const res = getArticleBySlug("contacts", "contact-lifecycle");
     expect(res).toBeDefined();
-    expect(res?.article.title).toContain("Restoration");
+    expect(res?.article.title).toContain("Lifecycle");
     expect(res?.category.name).toBe("Audience & Contacts");
   });
 
@@ -42,10 +42,10 @@ describe("Docs Data & Search Engine", () => {
     expect(results[0]?.category.id).toBe("integrations");
   });
 
-  it("matches contact soft delete and restoration keywords", () => {
-    const results = searchDocs("restore deleted contacts");
+  it("matches contact archiving and quota lifecycle keywords", () => {
+    const results = searchDocs("archiving contacts quota");
     expect(results.length).toBeGreaterThan(0);
-    const match = results.find((r) => r.article.slug === "restoring-deleted-contacts");
+    const match = results.find((r) => r.article.slug === "contact-lifecycle");
     expect(match).toBeDefined();
   });
 
