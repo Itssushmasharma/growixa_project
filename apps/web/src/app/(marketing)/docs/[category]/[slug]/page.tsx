@@ -5,6 +5,7 @@ import { getArticleBySlug, getAllArticles, DOC_CATEGORIES } from "@/lib/docs/dat
 import { DocsSidebar } from "@/components/docs/docs-sidebar";
 import { DocsToc } from "@/components/docs/docs-toc";
 import { DocsCallout } from "@/components/docs/docs-callout";
+import { FormattedContent } from "@/components/docs/formatted-content";
 import styles from "./article.module.css";
 
 interface ArticlePageProps {
@@ -99,29 +100,7 @@ export default async function DocArticlePage({ params }: ArticlePageProps) {
             <section key={section.id} id={section.id} className={styles.docSection}>
               <h2 className={styles.sectionHeading}>{section.title}</h2>
               <div className={styles.sectionBody}>
-                {section.content.split("\n\n").map((paragraph, pIdx) => {
-                  if (
-                    paragraph.startsWith("- ") ||
-                    paragraph.startsWith("1. ") ||
-                    paragraph.startsWith("2. ") ||
-                    paragraph.startsWith("3. ")
-                  ) {
-                    const lines = paragraph.split("\n");
-                    const isOrdered = paragraph.startsWith("1. ");
-                    const ListTag = isOrdered ? "ol" : "ul";
-
-                    return (
-                      <ListTag key={pIdx} className={styles.listBlock}>
-                        {lines.map((line, lIdx) => {
-                          const cleanLine = line.replace(/^[-*]\s+|\d+\.\s+/, "");
-                          return <li key={lIdx}>{cleanLine}</li>;
-                        })}
-                      </ListTag>
-                    );
-                  }
-
-                  return <p key={pIdx}>{paragraph}</p>;
-                })}
+                <FormattedContent content={section.content} />
               </div>
             </section>
           ))}

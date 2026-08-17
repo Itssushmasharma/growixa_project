@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { FormattedContent } from "@/components/docs/formatted-content";
 import { DOC_CATEGORIES, getArticleBySlug } from "@/lib/docs/data";
 import { searchDocs } from "@/lib/docs/search";
 import type { DocArticle, DocCategory } from "@/lib/docs/types";
@@ -134,9 +135,7 @@ export function HelpDrawer({ isOpen, onClose, initialCategory, initialSlug }: He
                   <div key={section.id} className={styles.sectionBlock}>
                     <h3 className={styles.sectionTitle}>{section.title}</h3>
                     <div className={styles.sectionContent}>
-                      {section.content.split("\n\n").map((para, idx) => (
-                        <p key={idx}>{para}</p>
-                      ))}
+                      <FormattedContent content={section.content} />
                     </div>
                   </div>
                 ))}
