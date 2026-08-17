@@ -73,6 +73,11 @@ jobs:
         working-directory: apps/api
         run: pip install -e ".[dev]"
 
+      - name: Dependency security audit
+        run: |
+          pip install pip-audit
+          pip-audit apps/api
+
       - name: Lint
         working-directory: apps/api
         run: ruff check .
@@ -114,6 +119,11 @@ jobs:
         working-directory: apps/worker
         run: pip install -e ".[dev]"
 
+      - name: Dependency security audit
+        run: |
+          pip install pip-audit
+          pip-audit apps/worker
+
       - name: Lint
         working-directory: apps/worker
         run: ruff check .
@@ -146,6 +156,10 @@ jobs:
       - name: Install frontend dependencies
         working-directory: apps/web
         run: npm ci
+
+      - name: Dependency security audit
+        working-directory: apps/web
+        run: npm audit --audit-level=high
 
       - name: Lint
         working-directory: apps/web

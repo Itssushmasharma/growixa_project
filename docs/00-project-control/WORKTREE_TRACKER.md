@@ -8,7 +8,7 @@ This document maintains a real-time record of all parallel Git worktrees, active
 
 | Worktree Path | Branch Name | Feature / Task | Preview URL | Status | Created |
 |---|---|---|---|---|---|
-| *(No active worktrees running)* | — | — | — | — | — |
+| `.worktrees/grx-sec-002` | `feature/BACKEND/GRX-SEC-002` | `GRX-SEC-002` — Triage 7 Dependabot alerts & add CI security audit | — | `IN_REVIEW` | 2026-08-18 |
 
 ---
 
