@@ -36,6 +36,12 @@ interface ConsentFormState {
   source: string;
 }
 
+interface DeleteModalState {
+  mode: "SINGLE" | "BULK" | "PURGE";
+  targetContact?: Contact;
+  count?: number;
+}
+
 const EMPTY_CONSENT_FORM: ConsentFormState = {
   channel: "EMAIL",
   status: "GRANTED",
@@ -111,16 +117,10 @@ export function ContactsPage() {
 
   // Multi-select & Bulk actions state (GRX-CONTACT-015, DEC-GRX-034)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-
-  interface DeleteModalState {
-    mode: "SINGLE" | "BULK" | "PURGE";
-    targetContact?: Contact;
-    count?: number;
-  }
-
   const [deleteModal, setDeleteModal] = useState<DeleteModalState | null>(null);
   const [alsoSuppress, setAlsoSuppress] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [purgeConfirmText, setPurgeConfirmText] = useState("");
 
   useEffect(() => {
     async function load() {
@@ -146,6 +146,7 @@ export function ContactsPage() {
 
   useEffect(() => {
     setCurrentPage(1);
+    setSelectedIds(new Set());
   }, [search, statusFilter, pageSize]);
 
   const visibleContacts = useMemo(() => {
@@ -300,11 +301,16 @@ export function ContactsPage() {
     try {
       if (deleteModal.mode === "SINGLE" && deleteModal.targetContact) {
         const target = deleteModal.targetContact;
+        let suppressionFailed = false;
         if (alsoSuppress) {
-          await apiFetch("/contacts/suppression", {
-            method: "POST",
-            body: JSON.stringify({ email: target.email, reason: "MANUAL" }),
-          }).catch(() => {});
+          try {
+            await apiFetch("/contacts/suppression", {
+              method: "POST",
+              body: JSON.stringify({ email: target.email, reason: "MANUAL" }),
+            });
+          } catch {
+            suppressionFailed = true;
+          }
         }
         await apiFetch(`/contacts/${target.id}`, { method: "DELETE" });
         setContacts((prev) => prev.filter((c) => c.id !== target.id));
@@ -316,14 +322,22 @@ export function ContactsPage() {
         if (selectedContact?.id === target.id) {
           closeContactModal();
         }
-        showToast("success", `Contact ${target.email} deleted.`);
+        if (suppressionFailed) {
+          showToast(
+            "info",
+            `Contact ${target.email} deleted, but could not be added to suppression list.`,
+          );
+        } else {
+          showToast("success", `Contact ${target.email} deleted.`);
+        }
       } else if (deleteModal.mode === "BULK") {
         const targetIds = Array.from(selectedIds);
+        let failedSuppressionCount = 0;
         if (alsoSuppress) {
           const targetEmails = contacts
             .filter((c) => selectedIds.has(c.id))
             .map((c) => c.email);
-          await Promise.allSettled(
+          const results = await Promise.allSettled(
             targetEmails.map((email) =>
               apiFetch("/contacts/suppression", {
                 method: "POST",
@@ -331,6 +345,7 @@ export function ContactsPage() {
               }),
             ),
           );
+          failedSuppressionCount = results.filter((r) => r.status === "rejected").length;
         }
         await apiFetch<{ deleted_count: number }>("/contacts/bulk-delete", {
           method: "POST",
@@ -338,10 +353,17 @@ export function ContactsPage() {
         });
         setContacts((prev) => prev.filter((c) => !selectedIds.has(c.id)));
         setSelectedIds(new Set());
-        showToast(
-          "success",
-          `Deleted ${targetIds.length} contact${targetIds.length > 1 ? "s" : ""}.`,
-        );
+        if (failedSuppressionCount > 0) {
+          showToast(
+            "info",
+            `Deleted ${targetIds.length} contact${targetIds.length > 1 ? "s" : ""}, but ${failedSuppressionCount} could not be added to suppression list.`,
+          );
+        } else {
+          showToast(
+            "success",
+            `Deleted ${targetIds.length} contact${targetIds.length > 1 ? "s" : ""}.`,
+          );
+        }
       } else if (deleteModal.mode === "PURGE") {
         await apiFetch<{ deleted_count: number }>("/contacts/all", { method: "DELETE" });
         setContacts([]);
@@ -350,6 +372,7 @@ export function ContactsPage() {
       }
       setDeleteModal(null);
       setAlsoSuppress(false);
+      setPurgeConfirmText("");
     } catch (err) {
       const msg = err instanceof ApiError ? err.message : "Failed to delete contacts.";
       showToast("error", msg);
@@ -361,26 +384,48 @@ export function ContactsPage() {
   async function handleBulkSuppress() {
     if (selectedIds.size === 0) return;
     const selectedContacts = contacts.filter((c) => selectedIds.has(c.id));
-    try {
-      await Promise.all(
-        selectedContacts.map((c) =>
-          apiFetch("/contacts/suppression", {
-            method: "POST",
-            body: JSON.stringify({ email: c.email, reason: "MANUAL" }),
-          }),
-        ),
-      );
+    const results = await Promise.allSettled(
+      selectedContacts.map((c) =>
+        apiFetch("/contacts/suppression", {
+          method: "POST",
+          body: JSON.stringify({ email: c.email, reason: "MANUAL" }),
+        }),
+      ),
+    );
+    const successfulIds = new Set<string>();
+    let failedCount = 0;
+    results.forEach((res, idx) => {
+      const contact = selectedContacts[idx];
+      if (res.status === "fulfilled" && contact) {
+        successfulIds.add(contact.id);
+      } else {
+        failedCount++;
+      }
+    });
+    if (successfulIds.size > 0) {
       setContacts((prev) =>
-        prev.map((c) => (selectedIds.has(c.id) ? { ...c, is_suppressed: true } : c)),
+        prev.map((c) => (successfulIds.has(c.id) ? { ...c, is_suppressed: true } : c)),
       );
+    }
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      for (const id of successfulIds) {
+        next.delete(id);
+      }
+      return next;
+    });
+    if (failedCount === 0) {
       showToast(
         "success",
-        `Suppressed ${selectedContacts.length} contact${selectedContacts.length > 1 ? "s" : ""}.`,
+        `Suppressed ${successfulIds.size} contact${successfulIds.size > 1 ? "s" : ""}.`,
       );
-      setSelectedIds(new Set());
-    } catch (err) {
-      const msg = err instanceof ApiError ? err.message : "Failed to suppress contacts.";
-      showToast("error", msg);
+    } else if (successfulIds.size > 0) {
+      showToast(
+        "info",
+        `Suppressed ${successfulIds.size} contact${successfulIds.size > 1 ? "s" : ""}, ${failedCount} failed.`,
+      );
+    } else {
+      showToast("error", "Failed to suppress contacts.");
     }
   }
 
@@ -1292,6 +1337,33 @@ export function ContactsPage() {
               )}
             </p>
 
+            {deleteModal.mode === "PURGE" && (
+              <div style={{ marginBottom: 16 }}>
+                <label
+                  htmlFor="purge-confirm-input"
+                  style={{
+                    display: "block",
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: "#dc2626",
+                    marginBottom: 6,
+                  }}
+                >
+                  Type <strong>PURGE</strong> to confirm whole-audience deletion:
+                </label>
+                <input
+                  id="purge-confirm-input"
+                  type="text"
+                  value={purgeConfirmText}
+                  onChange={(e) => setPurgeConfirmText(e.target.value)}
+                  placeholder="PURGE"
+                  className={styles.input}
+                  style={{ borderColor: "#fca5a5" }}
+                  aria-label="Type PURGE to confirm"
+                />
+              </div>
+            )}
+
             {deleteModal.mode !== "PURGE" && (
               <label className={styles.suppressOptionRow}>
                 <input
@@ -1313,7 +1385,7 @@ export function ContactsPage() {
             )}
 
             <div className={styles.deleteNotice}>
-              ℹ️ Past campaign delivery reports and historical performance statistics will remain intact.
+              ℹ️ Past campaign delivery reports and historical performance statistics will remain intact. Contacts previously added to the suppression list stay suppressed and are never un-suppressed by deletion.
             </div>
 
             <div className={styles.deleteModalFooter}>
@@ -1324,13 +1396,17 @@ export function ContactsPage() {
                 onClick={() => {
                   setDeleteModal(null);
                   setAlsoSuppress(false);
+                  setPurgeConfirmText("");
                 }}
               >
                 Cancel
               </button>
               <button
                 type="button"
-                disabled={deleting}
+                disabled={
+                  deleting ||
+                  (deleteModal.mode === "PURGE" && purgeConfirmText.trim() !== "PURGE")
+                }
                 className={styles.deleteConfirmBtn}
                 onClick={handleConfirmDelete}
               >

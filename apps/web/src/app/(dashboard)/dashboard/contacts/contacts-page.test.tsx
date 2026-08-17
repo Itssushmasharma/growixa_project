@@ -598,7 +598,10 @@ describe("ContactsPage", () => {
     await user.click(screen.getByRole("button", { name: /Purge Audience/ }));
 
     expect(screen.getByTestId("delete-confirm-modal")).toBeInTheDocument();
-    expect(screen.getByText("Purge Entire Audience")).toBeInTheDocument();
+    // Confirm delete is disabled until PURGE is typed
+    expect(screen.getByRole("button", { name: "Confirm Delete" })).toBeDisabled();
+    await user.type(screen.getByLabelText("Type PURGE to confirm"), "PURGE");
+    expect(screen.getByRole("button", { name: "Confirm Delete" })).not.toBeDisabled();
 
     await user.click(screen.getByRole("button", { name: "Confirm Delete" }));
 

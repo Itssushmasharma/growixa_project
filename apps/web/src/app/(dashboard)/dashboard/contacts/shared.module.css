@@ -219,7 +219,17 @@
   cursor: pointer;
 }
 
-.createForm,
+.createForm {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+  padding: 16px;
+  border-radius: 12px;
+  background: #f4f6fb;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
 .editForm {
   display: flex;
   flex-direction: column;
