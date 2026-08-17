@@ -162,10 +162,37 @@ gated and account-scoped, `test_protected_routes_audit.py` passes, and the RBAC 
 
 APPROVED
 
+## Re-anchor after rebase onto `f4d2b13` (reviewer, no new review required)
+
+The branch was rebased onto `main` after `GRX-TEST-ORG-001` merged, which rewrote every
+SHA — the originally recorded `c14fd9e` **no longer exists on the branch**, so the
+§4.3 merge gate (`git diff <Reviewed Code Commit>..HEAD`) could not be evaluated at all.
+Re-anchored rather than re-reviewed, because I verified the rebase changed nothing:
+
+- Compared every file in the rebased commit `0fe2a2b` against the approved `b68d487`
+  by checksum. All identical. The only two apparent differences were
+  `test_platform_admin_monitoring.py` and `test_send_campaign.py`, which are relocations
+  into the new folder structure — compared against their pre-merge paths, both are
+  byte-identical.
+- The approval below therefore stands unchanged and applies to `0fe2a2b`.
+
+**One new finding introduced by the rebase, not present at original review:**
+
+**LOW — the new test file lands outside the structure that just merged.** `0fe2a2b` adds
+`apps/api/tests/test_contacts_deletion.py` at the **flat top level**. The rebase correctly
+relocated the pre-existing files it touches, but a newly-added file has no old path to
+follow, so it stays flat. As of `f4d2b13` the API suite is organised by domain and
+`apps/api/tests/README.md` documents `contacts/` as the home for contact tests — this file
+should be `apps/api/tests/contacts/test_contacts_deletion.py`. Purely a placement fix (a
+`git mv`, no content change), but worth doing before merge: the reorganisation convention
+is one day old, and the first exception to it is the one that teaches everyone the
+convention is optional.
+
 ## Reviewed Code Commit
 
-c14fd9e (branch HEAD at review time; `b68d487` is the code, `c14fd9e` adds only this
-handoff file)
+0fe2a2b (rebased code; originally reviewed as `b68d487` at branch HEAD `c14fd9e`, both
+rewritten by the rebase onto `f4d2b13`. Content verified identical — see re-anchor note
+above. Branch HEAD carrying this record is `7f19253`.)
 
 ## Review Record Commit
 
