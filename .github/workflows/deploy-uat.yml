@@ -184,11 +184,10 @@ jobs:
           port: ${{ secrets.OVH_VPS_SSH_PORT || 22 }}
           script: |
             set -euo pipefail
-            echo "=== Syncing Git Codebase for UAT on VPS ==="
-            cd /opt/growixa-uat
-            sudo git fetch --all --tags
-            sudo git checkout tags/${{ steps.vars.outputs.tag }} || sudo git pull origin main
+            echo "=== Authenticating with GitHub Container Registry ==="
+            echo "${{ secrets.GITHUB_TOKEN }}" | sudo docker login ghcr.io -u "${{ github.actor }}" --password-stdin
             
             echo "=== Executing UAT Rollout Script ==="
+            cd /opt/growixa-uat
             chmod +x deploy/scripts/deploy_uat.sh
             ./deploy/scripts/deploy_uat.sh ${{ steps.vars.outputs.tag }}

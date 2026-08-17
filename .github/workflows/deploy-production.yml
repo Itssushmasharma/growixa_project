@@ -176,7 +176,7 @@ jobs:
             echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
           fi
 
-      - name: Execute Deployment on OVH VPS
+      - name: Execute Production Deployment on OVH VPS
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.OVH_VPS_HOST }}
@@ -185,11 +185,10 @@ jobs:
           port: ${{ secrets.OVH_VPS_SSH_PORT || 22 }}
           script: |
             set -euo pipefail
-            echo "=== Syncing Git Codebase on VPS ==="
-            cd /opt/growixa
-            sudo git fetch --all --tags
-            sudo git checkout tags/${{ steps.vars.outputs.tag }} || sudo git pull origin main
+            echo "=== Authenticating with GitHub Container Registry ==="
+            echo "${{ secrets.GITHUB_TOKEN }}" | sudo docker login ghcr.io -u "${{ github.actor }}" --password-stdin
             
             echo "=== Executing Production Rollout Script ==="
+            cd /opt/growixa
             chmod +x deploy/scripts/deploy_prod.sh
             ./deploy/scripts/deploy_prod.sh ${{ steps.vars.outputs.tag }}
