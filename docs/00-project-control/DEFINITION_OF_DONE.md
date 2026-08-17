@@ -49,6 +49,12 @@ labeled as foundation work in the task tracker and feature status matrix — nev
 20. Test evidence (what was run, what passed) is recorded in the task entry.
 21. No critical `TODO` remains in the touched code.
 22. No unrelated regression was introduced (verified, not assumed).
+23. The `MASTER_TASK_TRACKER.md` row is set to `DONE` once the merge lands, with
+    `Completed At` and an `Evidence` cell naming the merge SHA and what was actually
+    verified — including anything in scope that was deliberately *not* fixed. This is the
+    item most often skipped, because the developer's work ends at handoff and the merging
+    agent assumes it is already done. A merged task still reading `READY` or `IN_REVIEW`
+    sends the next agent to re-implement shipped work.
 
 
 ## A feature is DONE only when it works end to end

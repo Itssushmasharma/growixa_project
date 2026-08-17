@@ -166,6 +166,14 @@ Independent `APPROVED` is necessary but not always sufficient — where `Human A
 Required`, the product owner's explicit sign-off must also be recorded in the file before
 merge. And no agent merges its own work, approved or not.
 
+**After the merge, the tracker row moves to `DONE`** — status, `Completed At`, and evidence
+naming the merge SHA. The reviewer is the last person holding the full picture of what was
+verified, so if the merging agent does not do it, say so rather than assuming someone will.
+Merged tasks left at `IN_REVIEW` or `READY` are how the next agent picks up work that is
+already shipped; this has happened more than once. Regenerate the CSV view afterwards
+(`python3 scripts/tracker_to_csv.py`) so anything reading the tracker programmatically sees
+the corrected state.
+
 ---
 
 ## 6. Reviewer failure modes

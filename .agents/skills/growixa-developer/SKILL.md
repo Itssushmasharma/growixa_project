@@ -45,6 +45,14 @@ and CI/CD.
    full, including doc and tracker updates.
 8. **Handoff** — create `pr_reviews/<branch-with-dashes>.md`, set
    `Status: READY_FOR_REVIEW`. **Never merge your own work.**
+9. **After the merge lands, set the row to `DONE`** — status, `Completed At`, and an
+   `Evidence` cell naming the merge SHA and what was actually verified. Whoever merges owns
+   this; it is not optional cleanup. A merged task left at `READY`/`IN_REVIEW` is worse than
+   no row at all, because the tracker is what every agent reads to pick up work: the next
+   one re-implements finished work, or reports it as outstanding. This has happened
+   repeatedly — `GRX-TEST-ORG-001` sat at `IN_REVIEW` after merging, and `GRX-INFRA-003`
+   and `GRX-CHORE-001` sat at `READY` for a day after shipping. If the merge revealed
+   something you did *not* fix, record that in the same cell rather than leaving it implied.
 
 Read progressively (`AGENTS.md` §5): the task, its acceptance criteria, the directly
 relevant files, the owning decision. Not the whole documentation tree.
@@ -66,6 +74,20 @@ in both places and test both.
 **`migrations/env.py` must import every module's `models.py`.**
 A new table is invisible to `alembic check` until its module is imported there. Every
 existing module does this; a new one must too.
+
+**The tracker is machine-read, so a stray `|` in a cell is a real bug.**
+Cells routinely contain a literal pipe inside a code span (`` `str | None` ``), and anything
+splitting the markdown row on `|` shifts every field after it — including `Status`. Don't
+hand-parse the table. Regenerate the CSV view and read that instead:
+
+```bash
+python3 scripts/tracker_to_csv.py
+```
+
+It splits only on pipes outside code spans and writes
+`docs/00-project-control/MASTER_TASK_TRACKER.csv` (a generated view — edit the `.md`, never
+the `.csv`). `--check` exits non-zero when the CSV is stale. Also keep rows terminated with a
+closing `|`; a missing one silently drops the last column.
 
 **RBAC lives in exactly one place.** Use the centralized `require_permission()` dependency
 from `apps/api/src/growixa_api/permissions/dependencies.py`. Do not hand-roll a check in a
