@@ -11,13 +11,13 @@ import jwt
 import pytest
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import delete, select
+from tests.conftest import grant_unlimited_plan
 
 from growixa_api.app import create_app
 from growixa_api.audit.models import AuditLog
 from growixa_api.config import get_settings
 from growixa_api.db import async_session_factory
 from growixa_api.users.models import User, UserInvitation, UserRole
-from tests.conftest import grant_unlimited_plan
 
 
 def _access_token_cookie(user_id: uuid.UUID) -> dict[str, str]:

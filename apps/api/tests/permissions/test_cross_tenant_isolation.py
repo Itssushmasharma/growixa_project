@@ -20,6 +20,7 @@ import jwt
 import pytest
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import delete
+from tests.conftest import grant_unlimited_plan
 
 from growixa_api.ai.models import AIGeneration, AIProviderConnection
 from growixa_api.app import create_app
@@ -37,7 +38,6 @@ from growixa_api.integrations.models import EmailProviderConnection, SenderIdent
 from growixa_api.social.models import SocialConnection, SocialPost, SocialPostMedia
 from growixa_api.templates.models import EmailTemplate, EmailTemplateVersion
 from growixa_api.users.models import User
-from tests.conftest import grant_unlimited_plan
 
 
 def _access_token_cookie(user_id: uuid.UUID) -> dict[str, str]:

@@ -12,6 +12,7 @@ from collections.abc import Awaitable, Callable
 import pytest
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import delete, select
+from tests.conftest import DEFAULT_TEST_PASSWORD
 
 from growixa_api.accounts.repositories import get_account_id_for_user
 from growixa_api.app import create_app
@@ -20,7 +21,6 @@ from growixa_api.audit.services import record_event
 from growixa_api.db import async_session_factory
 from growixa_api.platform_auth.models import PlatformAdmin
 from growixa_api.users.models import User
-from tests.conftest import DEFAULT_TEST_PASSWORD
 
 
 async def _get_email(user_id: uuid.UUID) -> str:
