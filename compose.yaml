@@ -167,7 +167,7 @@ services:
     restart: unless-stopped
     environment:
       NODE_ENV: ${NODE_ENV:-development}
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-/api}
       # Server-side (Node) fetches run inside this container, where "localhost" is itself,
       # not the api container — reach it by its Compose service name instead.
       API_INTERNAL_URL: http://api:8000
