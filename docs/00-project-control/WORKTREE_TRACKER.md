@@ -7,8 +7,7 @@ This document maintains a real-time record of all parallel Git worktrees, active
 ## 🟢 Active Worktrees & Preview Servers
 
 | Worktree Path | Branch Name | Feature / Task | Preview URL | Status | Created |
-|---|---|---|---|---|---|
-| — | — | — | — | — | — |
+| `.worktrees/grx-contact-016-restore` | `feature/BACKEND/GRX-CONTACT-016` | `GRX-CONTACT-016` — Deleted Contacts View & Contact Restoration (UI & Backend) | `http://localhost:3000` | 🟢 Active Dev | 2026-08-17 |
 
 ---
 
