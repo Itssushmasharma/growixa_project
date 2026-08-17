@@ -61,7 +61,11 @@ Before starting development on any new feature or task:
 - Feature-development Playbook (any agent/tool — the pick-up-to-merge sequence, the
   repo-specific traps, the exact commands CI runs, and when to stop):
   [`.agents/skills/growixa-developer/SKILL.md`](.agents/skills/growixa-developer/SKILL.md).
-  It links these rules rather than restating them — this file stays authoritative.
+- Code-review Playbook (any agent/tool — who may review, how to read a branch, the
+  Growixa-specific checks, recording a verdict, and the merge gate):
+  [`.agents/skills/growixa-reviewer/SKILL.md`](.agents/skills/growixa-reviewer/SKILL.md).
+
+  Both link these rules rather than restating them — this file stays authoritative.
 - Keep `docs/00-project-control/PROJECT_STATUS.md` and
   `docs/00-project-control/MASTER_TASK_TRACKER.md` updated as tasks progress.
 - Definition of Done:
