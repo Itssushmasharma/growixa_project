@@ -16,6 +16,7 @@ import jwt
 import pytest
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import delete
+from tests.conftest import grant_unlimited_plan
 
 from growixa_api.app import create_app
 from growixa_api.auth.encryption import encrypt_secret
@@ -32,7 +33,6 @@ from growixa_api.email_validation.providers.base import (
 )
 from growixa_api.email_validation.providers.clearout_provider import _parse_response
 from growixa_api.email_validation.services import MAX_BULK_ROWS
-from tests.conftest import grant_unlimited_plan
 
 
 def _access_token_cookie(user_id: uuid.UUID) -> dict[str, str]:

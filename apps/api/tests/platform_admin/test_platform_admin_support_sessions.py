@@ -21,6 +21,7 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from tests.conftest import DEFAULT_TEST_PASSWORD
 
 from growixa_api.app import create_app
 from growixa_api.audit.models import AuditLog
@@ -30,7 +31,6 @@ from growixa_api.contacts.models import Contact
 from growixa_api.db import async_session_factory
 from growixa_api.platform_admin.models import SupportSession
 from growixa_api.platform_auth.models import PlatformAdmin
-from tests.conftest import DEFAULT_TEST_PASSWORD
 
 
 def _customer_access_token_cookie(user_id: uuid.UUID) -> dict[str, str]:

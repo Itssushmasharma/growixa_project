@@ -10,6 +10,7 @@ from collections.abc import Awaitable, Callable
 import pytest
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import delete, select
+from tests.conftest import DEFAULT_TEST_PASSWORD
 
 from growixa_api.app import create_app
 from growixa_api.db import async_session_factory
@@ -17,7 +18,6 @@ from growixa_api.email_validation.models import PlatformEmailValidationProviderC
 from growixa_api.email_validation.providers.base import ProviderVerificationResult
 from growixa_api.platform_admin import api as platform_admin_api
 from growixa_api.platform_auth.models import PlatformAdmin
-from tests.conftest import DEFAULT_TEST_PASSWORD
 
 
 async def _get_platform_admin_email(admin_id: uuid.UUID) -> str:

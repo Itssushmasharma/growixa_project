@@ -11,12 +11,12 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
+from tests.conftest import DEFAULT_TEST_PASSWORD
 
 from growixa_api.app import create_app
 from growixa_api.billing.models import AccountSubscription, SubscriptionPlan
 from growixa_api.db import async_session_factory
 from growixa_api.platform_auth.models import PlatformAdmin
-from tests.conftest import DEFAULT_TEST_PASSWORD
 
 
 async def _get_platform_admin_email(admin_id: uuid.UUID) -> str:

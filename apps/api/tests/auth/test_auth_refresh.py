@@ -11,6 +11,7 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import delete, select
+from tests.conftest import DEFAULT_TEST_PASSWORD
 
 from growixa_api.app import create_app
 from growixa_api.audit.models import AuditLog
@@ -18,7 +19,6 @@ from growixa_api.auth.models import RefreshToken
 from growixa_api.auth.services import revoke_all_active_sessions
 from growixa_api.db import async_session_factory
 from growixa_api.users.models import User
-from tests.conftest import DEFAULT_TEST_PASSWORD
 
 
 async def _get_email(user_id: uuid.UUID) -> str:

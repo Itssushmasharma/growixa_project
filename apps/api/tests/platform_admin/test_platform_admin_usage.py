@@ -18,6 +18,7 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from tests.conftest import DEFAULT_TEST_PASSWORD
 
 from growixa_api.app import create_app
 from growixa_api.audit.models import AuditLog
@@ -26,7 +27,6 @@ from growixa_api.db import async_session_factory
 from growixa_api.integrations.models import EmailProviderConnection, SenderIdentity
 from growixa_api.platform_auth.models import PlatformAdmin
 from growixa_api.usage.models import UsageRecord
-from tests.conftest import DEFAULT_TEST_PASSWORD
 
 
 async def _get_platform_admin_email(admin_id: uuid.UUID) -> str:
