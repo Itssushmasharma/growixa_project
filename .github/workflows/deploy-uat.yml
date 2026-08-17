@@ -53,6 +53,14 @@ jobs:
           --health-timeout 5s
           --health-retries 5
 
+    env:
+      DATABASE_URL: postgresql+asyncpg://growixa:growixa_test_secret@localhost:5432/growixa_test
+      REDIS_URL: redis://localhost:6379/0
+      RABBITMQ_URL: amqp://growixa:growixa_test_secret@localhost:5672/
+      JWT_SIGNING_KEY: test-jwt-signing-secret-key-minimum-32-chars-long
+      ENCRYPTION_KEY: n_fGvQkL3Hq5V2xQ8z9Y1w4A7e0R6u8I2o5P4s7D1f3=
+      ENVIRONMENT: test
+
     steps:
       - uses: actions/checkout@v4
 
@@ -68,13 +76,6 @@ jobs:
 
       - name: Run Backend Pytest
         working-directory: apps/api
-        env:
-          DATABASE_URL: postgresql+asyncpg://growixa:growixa_test_secret@localhost:5432/growixa_test
-          REDIS_URL: redis://localhost:6379/0
-          RABBITMQ_URL: amqp://growixa:growixa_test_secret@localhost:5672/
-          JWT_SIGNING_KEY: test-jwt-signing-secret-key-minimum-32-chars-long
-          ENCRYPTION_KEY: n_fGvQkL3Hq5V2xQ8z9Y1w4A7e0R6u8I2o5P4s7D1f3=
-          ENVIRONMENT: test
         run: |
           alembic upgrade head
           pytest
