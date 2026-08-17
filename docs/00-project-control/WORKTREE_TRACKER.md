@@ -8,7 +8,6 @@ This document maintains a real-time record of all parallel Git worktrees, active
 
 | Worktree Path | Branch Name | Feature / Task | Preview URL | Status | Created |
 |---|---|---|---|---|---|
-| `.worktrees/grx-infra-cicd-uat-prod` | `feature/BACKEND/GRX-INFRA-002` | `GRX-INFRA-002` — Unified Multi-Environment CI/CD (GitHub Actions, GHCR, Production & UAT on OVH VPS) | `https://growixa.iitdeveloper.com` | 🟢 Active Dev | 2026-08-17 |
 | `.worktrees/grx-contact-016-restore` | `feature/BACKEND/GRX-CONTACT-016` | `GRX-CONTACT-016` — Deleted Contacts View & Contact Restoration (UI & Backend) | `http://localhost:3000` | 🟢 Active Dev | 2026-08-17 |
 
 ---
@@ -17,6 +16,7 @@ This document maintains a real-time record of all parallel Git worktrees, active
 
 | Worktree Directory | Branch | Feature Delivered | Merged Commit | Merged Date |
 |---|---|---|---|---|
+| `.worktrees/grx-infra-cicd-uat-prod` | `feature/BACKEND/GRX-INFRA-002` | `GRX-INFRA-002` — Unified Multi-Environment CI/CD (GitHub Actions, GHCR, Production & UAT on OVH VPS) | `a12c8c1` | 2026-08-17 |
 | `.worktrees/grx-saas-007-providers` | `feature/BACKEND/GRX-SAAS-007` | Platform Admin Provider Management Hub (`/platform/providers`) | `434a464` | 2026-08-17 |
 | `.worktrees/grx-infra-ovh-deployment` | `feature/BACKEND/GRX-INFRA-001` | `GRX-INFRA-001` — OVH VPS Production Deployment Guide & Automated Scripts | `79e7b8c` | 2026-08-17 |
 | `.worktrees/grx-contact-015-ui` | `feature/FRONTEND/GRX-CONTACT-015` | `GRX-CONTACT-015` — Contacts Table Bulk Actions, Multi-Select & Delete/Suppress UI | `a97bef2` | 2026-08-17 |
