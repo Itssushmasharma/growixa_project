@@ -231,25 +231,28 @@ async def test_exceeding_the_register_threshold_returns_429_against_real_redis()
                 json={
                     "account_name": f"Rate Limit Co {i}",
                     "full_name": "Rate Limit Owner",
-                    "email": email if i == 0 else f"{uuid.uuid4()}@example.com",
+                    "email": email,
                     "password": "Test-Password-123!",
                     "plan_slug": "starter",
                 },
             )
-            assert response.status_code == 201
-            created_account_ids.append(uuid.UUID(response.json()["account_id"]))
+            if i == 0:
+                assert response.status_code == 201
+                created_account_ids.append(uuid.UUID(response.json()["account_id"]))
+            else:
+                assert response.status_code == 409
 
         limited_response = await client.post(
             "/accounts/register",
             json={
                 "account_name": "One Too Many",
                 "full_name": "Rate Limit Owner",
-                "email": f"{uuid.uuid4()}@example.com",
+                "email": email,
                 "password": "Test-Password-123!",
                 "plan_slug": "starter",
             },
         )
-    assert limited_response.status_code == 429
+        assert limited_response.status_code == 429
 
     async for key in redis_client.scan_iter(match=f"grx:ratelimit:register:{email}:*"):
         await redis_client.delete(key)

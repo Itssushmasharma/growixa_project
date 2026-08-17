@@ -14,7 +14,7 @@ from sqlalchemy import create_engine, text
 
 from growixa_api.config import get_settings
 
-ALEMBIC_INI = Path(__file__).resolve().parent.parent / "alembic.ini"
+ALEMBIC_INI = Path(__file__).resolve().parent.parent.parent / "alembic.ini"
 
 EXPECTED_ROLES = {
     "Super Admin",

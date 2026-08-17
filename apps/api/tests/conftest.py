@@ -19,12 +19,25 @@ from growixa_api.billing.models import AccountSubscription, SubscriptionPlan
 from growixa_api.billing.repositories import create_default_free_subscription
 from growixa_api.db import async_session_factory
 from growixa_api.platform_auth.models import PlatformAdmin
+from growixa_api.redis import get_redis_client
 from growixa_api.roles.models import Role
 from growixa_api.users.models import User, UserRole
 
 # Known plaintext for any user_factory-created user whose password wasn't overridden —
 # tests that need to log in as that user (GRX-AUTH-002) use this constant directly.
 DEFAULT_TEST_PASSWORD = "Test-Password-123!"
+
+
+@pytest.fixture(autouse=True)
+async def clear_ratelimit_keys_between_tests() -> None:
+    """Ensure that rate limit counters in Redis do not leak across test cases."""
+    try:
+        client = get_redis_client()
+        keys = await client.keys("grx:ratelimit:*")
+        if keys:
+            await client.delete(*keys)
+    except Exception:
+        pass
 
 
 async def grant_unlimited_plan(account_id: uuid.UUID) -> None:
