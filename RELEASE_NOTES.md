@@ -2,11 +2,13 @@
 
 ---
 
-## 🚧 [v0.2.0] — Unreleased (In Active Development)
+## ✅ [v0.2.0] — 2026-08-18
 
-> **Target Release Tag**: `v0.2.0`  
-> **Status**: 🟡 In Progress — preview on UAT via `v0.2.0-rc4`
-> **Target Release Date**: August 2026  
+> **Release Tag**: `v0.2.0`
+> **Release Date**: August 18, 2026
+> **Platform Status**: 🟢 Production release promoted from UAT `v0.2.0-rc4`
+> **Production URL**: [https://growixa.iitdeveloper.com](https://growixa.iitdeveloper.com)
+> **UAT Staging URL**: [https://uat.growixa.iitdeveloper.com](https://uat.growixa.iitdeveloper.com)
 
 ### 🚀 Added
 - **Customer Help Center (`/docs`)**: Documentation and in-app assistance at `/docs` — instant client-side search, 6 categorised guide suites, markdown viewer with step badges, callout alerts, code copy and a table of contents (`GRX-DOCS-001`).

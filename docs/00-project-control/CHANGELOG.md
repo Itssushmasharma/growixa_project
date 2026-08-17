@@ -10,6 +10,14 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
+## 2026-08-18 — v0.2.0 production release
+
+- Promoted the validated `v0.2.0-rc4` payload to production via tag `v0.2.0`.
+- Production workflow routing verified before tagging: `.github/workflows/deploy-production.yml`
+  accepts `v*.*.*` release tags and excludes `v*.*.*-*`/`*rc*`; UAT remains on `v*-rc*`.
+- Release notes finalized for `v0.2.0` with release date, production status, production URL,
+  and UAT staging URL.
+
 ## 2026-08-18 — v0.2.0-rc4 UAT release: deploy rollback safety and campaign scheduling redirect
 
 - **`GRX-INFRA-004`** — hardened `scripts/deploy_vps.sh` so `docker image prune -f` runs
