@@ -5,7 +5,7 @@ Branch: feature/FRONTEND/GRX-FAQ-UAT-REBASE
 Worktree: none — reviewed the remote branch directly
 Base Commit: 750f71d (current main with GRX-DOCS-001 and GRX-CONTACT-016)
 Reviewed Code Commit: 2581960
-Status: READY_FOR_REVIEW (Round 2)
+Status: APPROVED — pending product-owner sign-off
 
 ## What Changed
 
@@ -141,3 +141,70 @@ npm --prefix apps/web run lint
 npm --prefix apps/web run format:check
 # All matched files use Prettier code style!
 ```
+
+---
+
+## Independent Review — Round 2
+
+Reviewer: Claude Code (did not author this branch)
+Review Date: 2026-08-17
+Reviewed Code Commit: `59b9707` (fixes in `2581960` and `ebde539`)
+Review Decision: **APPROVED**
+
+Every claim in §Developer Resolution verified against the actual code, not the summary.
+
+**Scope — fixed.** Rebased onto current `main` (`750f71d`), so the stale two-dot diff is
+gone. The branch now touches exactly three source files, all under `(marketing)/`, plus this
+handoff. All four backend files are out — `auth/api.py`, `platform_auth/api.py`, `config.py`
+and `test_migrations.py` no longer appear in the diff.
+
+**The three false claims — fixed.** Greps against the branch return **0** for
+"Every single database table", "14-day free trial" and "billing panel". The security
+sentence now reads *"Every customer-data table is keyed to your account ID … Cross-tenant
+isolation is enforced in code and covered by automated tests"* — accurate, and no weaker
+than the original. The trial guarantee is replaced with a free-tier statement, and
+cancellation with "manage your subscription at any time", neither of which promises an
+unbuilt control.
+
+**WCAG SC 2.4.7 — genuinely fixed, and I checked the part that decides it.** A
+`:focus-visible` rule alone is not enough if it loses the cascade to the `outline: none` it
+is meant to override. Source order: `outline: none` at **line 805**, and
+`.faqQuestionButton:focus-visible { outline: 2px solid #60a5fa; outline-offset: 2px; }` at
+**line 809** — later *and* higher specificity, so it wins. Keyboard users get a visible
+indicator; mouse users still get the clean look. Correct implementation of the pattern.
+
+**The remaining round-1 accessibility items — also fixed, and I only asked for the first.**
+`visibility: hidden` on the collapsed container with `visible` when open removes the
+collapsed answers from the accessibility tree, so screen readers no longer announce all five
+at once. `aria-controls`, `aria-expanded` and `aria-labelledby`/`role="region"` are all
+present, pairing the button to its panel. A `prefers-reduced-motion` block is present.
+
+**Tests.** Three added and passing, including
+`"contains verified product claims without false security or trial guarantees"` — a test
+that asserts the *absence* of the false copy. That is the right instinct: it makes the fix
+regression-proof rather than a one-time edit, and it is the thing most likely to stop this
+recurring.
+
+Independently re-run at `59b9707`: FAQ suite **3/3 passed** · `typecheck` **0 errors** ·
+`format:check` clean · `lint` 0 errors with 4 warnings, all in `contacts-page.tsx` and
+`social/post-form-page.tsx` — files this branch does not touch, inherited from `main`. The
+"0 warnings in branch files" claim is accurate.
+
+**Merge urgency.** These fixes are not a nice-to-have: the false security claim, the trial
+promise and the WCAG AA failure are **currently live on `main`** and therefore on the public
+marketing site, because `GRX-FAQ-ANIMATION` merged via PR #7 while carrying
+`CHANGES_REQUESTED`. Merging this branch is a fix-forward for production, not a new feature.
+
+## Round 2 Review Decision
+APPROVED
+
+## Round 2 Reviewed Code Commit
+59b9707
+
+## Human Approval
+**Required** — customer-facing marketing page. Independent review is `APPROVED`; per
+AGENT_EXECUTION_RULES.md §Human approval that is necessary but not sufficient. Worth a quick
+keyboard-tab through the FAQ to confirm the focus ring reads well against the dark
+background.
+
+Status: APPROVED — pending product-owner sign-off
