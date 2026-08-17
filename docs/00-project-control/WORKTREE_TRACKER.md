@@ -7,6 +7,8 @@ This document maintains a real-time record of all parallel Git worktrees, active
 ## 🟢 Active Worktrees & Preview Servers
 
 | Worktree Path | Branch Name | Feature / Task | Preview URL | Status | Created |
+|---|---|---|---|---|---|
+| `.worktrees/grx-infra-cicd-uat-prod` | `feature/BACKEND/GRX-INFRA-002` | `GRX-INFRA-002` — Unified Multi-Environment CI/CD (GitHub Actions, GHCR, Production & UAT on OVH VPS) | `https://growixa.iitdeveloper.com` | 🟢 Active Dev | 2026-08-17 |
 | `.worktrees/grx-contact-016-restore` | `feature/BACKEND/GRX-CONTACT-016` | `GRX-CONTACT-016` — Deleted Contacts View & Contact Restoration (UI & Backend) | `http://localhost:3000` | 🟢 Active Dev | 2026-08-17 |
 
 ---
