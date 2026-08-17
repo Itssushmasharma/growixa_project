@@ -40,16 +40,14 @@ _ACCESS_TOKEN_COOKIE = "access_token"
 _REFRESH_TOKEN_COOKIE = "refresh_token"
 
 
-def _set_auth_cookies(response: Response, access_token: str, refresh_token: str) -> None:
+def _set_auth_cookies(
+    response: Response, access_token: str, refresh_token: str, request: Request | None = None
+) -> None:
     settings = get_settings()
-    # Secure requires HTTPS to be sent back by the browser; local dev and the pytest suite
-    # (ASGITransport against a plain "http://test" base_url -- ENVIRONMENT=test, never used
-    # for a real deployment, see compose.yaml) both run over plain HTTP. A Secure cookie set
-    # under either would never be resent by a spec-compliant client (httpx included), so
-    # request flows that depend on the cookie coming back would silently no-op instead of
-    # exercising the real code path.
-    # SameSite=None is required for cross-domain production cookies (Netlify -> Render).
-    secure = settings.environment not in ("local", "test")
+    is_https = False
+    if request:
+        is_https = request.url.scheme == "https" or request.headers.get("x-forwarded-proto") == "https"
+    secure = is_https and settings.environment not in ("local", "test")
     samesite: Literal["lax", "none"] = "none" if secure else "lax"
     response.set_cookie(
         _ACCESS_TOKEN_COOKIE,
@@ -58,6 +56,7 @@ def _set_auth_cookies(response: Response, access_token: str, refresh_token: str)
         secure=secure,
         samesite=samesite,
         max_age=settings.access_token_ttl_minutes * 60,
+        path="/",
     )
     response.set_cookie(
         _REFRESH_TOKEN_COOKIE,
@@ -66,6 +65,7 @@ def _set_auth_cookies(response: Response, access_token: str, refresh_token: str)
         secure=secure,
         samesite=samesite,
         max_age=settings.refresh_token_ttl_days * 24 * 60 * 60,
+        path="/",
     )
 
 
@@ -96,7 +96,7 @@ async def login_route(
     except InvalidCredentialsError as exc:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid email or password") from exc
 
-    _set_auth_cookies(response, result.access_token, result.refresh_token)
+    _set_auth_cookies(response, result.access_token, result.refresh_token, request=request)
     return LoginOut.model_validate(result.user)
 
 
@@ -134,7 +134,7 @@ async def refresh_route(
             status.HTTP_401_UNAUTHORIZED, "Invalid or expired refresh token"
         ) from exc
 
-    _set_auth_cookies(response, result.access_token, result.refresh_token)
+    _set_auth_cookies(response, result.access_token, result.refresh_token, request=request)
     return LoginOut.model_validate(result.user)
 
 

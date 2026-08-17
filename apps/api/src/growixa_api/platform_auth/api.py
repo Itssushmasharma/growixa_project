@@ -23,11 +23,14 @@ router = APIRouter(prefix="/platform/auth", tags=["platform_auth"])
 _PLATFORM_ACCESS_TOKEN_COOKIE = "platform_access_token"
 
 
-def _set_platform_auth_cookie(response: Response, access_token: str) -> None:
+def _set_platform_auth_cookie(
+    response: Response, access_token: str, request: Request | None = None
+) -> None:
     settings = get_settings()
-    # Same "local"/"test" reasoning as auth/api.py's _set_auth_cookies -- see that
-    # function's comment for why ENVIRONMENT=test must be treated like "local" here too.
-    secure = settings.environment not in ("local", "test")
+    is_https = False
+    if request:
+        is_https = request.url.scheme == "https" or request.headers.get("x-forwarded-proto") == "https"
+    secure = is_https and settings.environment not in ("local", "test")
     samesite: Literal["lax", "none"] = "none" if secure else "lax"
     response.set_cookie(
         _PLATFORM_ACCESS_TOKEN_COOKIE,
@@ -36,6 +39,7 @@ def _set_platform_auth_cookie(response: Response, access_token: str) -> None:
         secure=secure,
         samesite=samesite,
         max_age=settings.access_token_ttl_minutes * 60,
+        path="/",
     )
 
 
@@ -60,7 +64,7 @@ async def platform_login_route(
     except InvalidPlatformCredentialsError as exc:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid email or password") from exc
 
-    _set_platform_auth_cookie(response, result.access_token)
+    _set_platform_auth_cookie(response, result.access_token, request=request)
     return PlatformLoginOut.model_validate(result.admin)
 
 

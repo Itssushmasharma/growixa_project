@@ -13,7 +13,15 @@ export class ApiError extends Error {
 // Paths whose own 401 is a meaningful answer (bad credentials, no/invalid refresh token),
 // never a signal to attempt a refresh-and-retry — retrying these would either recurse
 // forever (refresh calling itself) or mask a real authentication failure as a transient one.
-const NO_REFRESH_RETRY_PATHS = ["/auth/login", "/auth/refresh", "/auth/logout"];
+const NO_REFRESH_RETRY_PATHS = [
+  "/auth/login",
+  "/auth/refresh",
+  "/auth/logout",
+  "/platform/auth/login",
+  "/platform/auth/refresh",
+  "/platform/auth/logout",
+  "/platform/auth/me",
+];
 
 // Access tokens are short-lived (15 min, DEC-GRX-014) and nothing else on the frontend
 // proactively renews them, so any request can hit a stale cookie mid-session. Shared across
