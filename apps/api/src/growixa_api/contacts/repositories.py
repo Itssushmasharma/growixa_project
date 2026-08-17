@@ -62,6 +62,18 @@ async def get_contact_by_id(
     return result.scalar_one_or_none()
 
 
+async def get_contact_by_id_including_deleted(
+    session: AsyncSession, account_id: uuid.UUID, contact_id: uuid.UUID
+) -> Contact | None:
+    result = await session.execute(
+        select(Contact).where(
+            Contact.account_id == account_id,
+            Contact.id == contact_id,
+        )
+    )
+    return result.scalar_one_or_none()
+
+
 async def count_active_contacts(session: AsyncSession, account_id: uuid.UUID) -> int:
     """Feeds the plan's `max_contacts` cap check (`GRX-BILL-005`) -- archived and
     soft-deleted contacts don't count against it, only live active ones."""
@@ -77,12 +89,21 @@ async def count_active_contacts(session: AsyncSession, account_id: uuid.UUID) ->
     return result.scalar_one()
 
 
-async def list_contacts(session: AsyncSession, account_id: uuid.UUID) -> Sequence[Contact]:
-    result = await session.execute(
-        select(Contact)
-        .where(Contact.account_id == account_id, Contact.deleted_at.is_(None))
-        .order_by(Contact.created_at.desc())
-    )
+async def list_contacts(
+    session: AsyncSession,
+    account_id: uuid.UUID,
+    *,
+    include_deleted: bool = False,
+    deleted_only: bool = False,
+) -> Sequence[Contact]:
+    query = select(Contact).where(Contact.account_id == account_id)
+    if deleted_only:
+        query = query.where(Contact.deleted_at.is_not(None)).order_by(Contact.deleted_at.desc())
+    elif not include_deleted:
+        query = query.where(Contact.deleted_at.is_(None)).order_by(Contact.created_at.desc())
+    else:
+        query = query.order_by(Contact.created_at.desc())
+    result = await session.execute(query)
     return result.scalars().all()
 
 
@@ -98,6 +119,23 @@ async def soft_delete_contact(
             Contact.deleted_at.is_(None),
         )
         .values(deleted_at=func.now())
+    )
+    await session.flush()
+    return int(cast(CursorResult[Any], result).rowcount) > 0
+
+
+async def restore_contact(
+    session: AsyncSession, account_id: uuid.UUID, contact_id: uuid.UUID
+) -> bool:
+    """Restores a single soft-deleted contact by clearing deleted_at."""
+    result = await session.execute(
+        update(Contact)
+        .where(
+            Contact.account_id == account_id,
+            Contact.id == contact_id,
+            Contact.deleted_at.is_not(None),
+        )
+        .values(deleted_at=None)
     )
     await session.flush()
     return int(cast(CursorResult[Any], result).rowcount) > 0
@@ -120,6 +158,41 @@ async def bulk_soft_delete_contacts(
     )
     await session.flush()
     return int(cast(CursorResult[Any], result).rowcount)
+
+
+async def bulk_restore_contacts(
+    session: AsyncSession, account_id: uuid.UUID, contact_ids: Sequence[uuid.UUID]
+) -> int:
+    """Restores multiple soft-deleted contacts belonging to the account by clearing deleted_at."""
+    if not contact_ids:
+        return 0
+    result = await session.execute(
+        update(Contact)
+        .where(
+            Contact.account_id == account_id,
+            Contact.id.in_(contact_ids),
+            Contact.deleted_at.is_not(None),
+        )
+        .values(deleted_at=None)
+    )
+    await session.flush()
+    return int(cast(CursorResult[Any], result).rowcount)
+
+
+async def get_deleted_contacts_by_ids(
+    session: AsyncSession, account_id: uuid.UUID, contact_ids: Sequence[uuid.UUID]
+) -> Sequence[Contact]:
+    """Fetches soft-deleted contacts for the given account."""
+    if not contact_ids:
+        return []
+    result = await session.execute(
+        select(Contact).where(
+            Contact.account_id == account_id,
+            Contact.id.in_(contact_ids),
+            Contact.deleted_at.is_not(None),
+        )
+    )
+    return result.scalars().all()
 
 
 async def purge_all_contacts_in_account(session: AsyncSession, account_id: uuid.UUID) -> int:

@@ -51,6 +51,7 @@ class ContactOut(BaseModel):
     source: str | None
     created_at: datetime
     updated_at: datetime
+    deleted_at: datetime | None = None
     custom_fields: dict[str, str]
     tags: list[str] = Field(default_factory=list)
     is_suppressed: bool
@@ -195,3 +196,11 @@ class BulkDeleteContactsIn(BaseModel):
 
 class BulkDeleteContactsOut(BaseModel):
     deleted_count: int
+
+
+class BulkRestoreContactsIn(BaseModel):
+    contact_ids: list[uuid.UUID]
+
+
+class BulkRestoreContactsOut(BaseModel):
+    restored_count: int

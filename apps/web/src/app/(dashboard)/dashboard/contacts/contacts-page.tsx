@@ -122,6 +122,11 @@ export function ContactsPage() {
   const [deleting, setDeleting] = useState(false);
   const [purgeConfirmText, setPurgeConfirmText] = useState("");
 
+  // Deleted contacts & restoration state (GRX-CONTACT-016)
+  const [deletedContacts, setDeletedContacts] = useState<Contact[]>([]);
+  const [deletedLoading, setDeletedLoading] = useState(false);
+  const [restoring, setRestoring] = useState(false);
+
   useEffect(() => {
     async function load() {
       try {
@@ -149,19 +154,39 @@ export function ContactsPage() {
     setSelectedIds(new Set());
   }, [search, statusFilter, pageSize]);
 
+  useEffect(() => {
+    if (statusFilter === "DELETED") {
+      void loadDeletedContacts();
+    }
+  }, [statusFilter]);
+
+  async function loadDeletedContacts() {
+    setDeletedLoading(true);
+    try {
+      const list = await apiFetch<Contact[]>("/contacts?deleted_only=true");
+      setDeletedContacts(list);
+    } catch {
+      showToast("error", "Could not load deleted contacts.");
+    } finally {
+      setDeletedLoading(false);
+    }
+  }
+
   const visibleContacts = useMemo(() => {
     const query = search.trim().toLowerCase();
-    return contacts.filter((c) => {
+    const sourceList = statusFilter === "DELETED" ? deletedContacts : contacts;
+    return sourceList.filter((c) => {
       const matchesSearch =
         !query ||
         c.email.toLowerCase().includes(query) ||
         (c.first_name && c.first_name.toLowerCase().includes(query)) ||
         (c.last_name && c.last_name.toLowerCase().includes(query)) ||
         (c.source && c.source.toLowerCase().includes(query));
-      const matchesStatus = statusFilter === "ALL" || c.status === statusFilter;
+      const matchesStatus =
+        statusFilter === "ALL" || statusFilter === "DELETED" || c.status === statusFilter;
       return matchesSearch && matchesStatus;
     });
-  }, [contacts, search, statusFilter]);
+  }, [contacts, deletedContacts, search, statusFilter]);
 
   const totalPages = Math.ceil(visibleContacts.length / pageSize) || 1;
   const safeCurrentPage = Math.min(currentPage, totalPages);
@@ -427,6 +452,64 @@ export function ContactsPage() {
     }
   }
 
+  async function handleRestoreContact(contactId: string) {
+    setRestoring(true);
+    try {
+      const restored = await apiFetch<Contact>(`/contacts/${contactId}/restore`, {
+        method: "POST",
+      });
+      setDeletedContacts((current) => current.filter((c) => c.id !== contactId));
+      setContacts((current) => [restored, ...current]);
+      if (selectedContact?.id === contactId) {
+        setSelectedContact(null);
+      }
+      showToast("success", "Contact restored successfully.");
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 402) {
+        showToast("error", "Plan limit reached for contacts. Upgrade your plan to restore.");
+      } else if (error instanceof ApiError && error.status === 409) {
+        showToast("error", "An active contact with this email already exists.");
+      } else {
+        showToast("error", "Could not restore contact.");
+      }
+    } finally {
+      setRestoring(false);
+    }
+  }
+
+  async function handleBulkRestore() {
+    if (selectedIds.size === 0) return;
+    setRestoring(true);
+    const targetIds = Array.from(selectedIds);
+    try {
+      const res = await apiFetch<{ restored_count: number }>("/contacts/bulk-restore", {
+        method: "POST",
+        body: JSON.stringify({ contact_ids: targetIds }),
+      });
+      setDeletedContacts((current) => current.filter((c) => !selectedIds.has(c.id)));
+      const activeList = await apiFetch<Contact[]>("/contacts");
+      setContacts(activeList);
+      setSelectedIds(new Set());
+      showToast(
+        "success",
+        `Restored ${res.restored_count} contact${res.restored_count === 1 ? "" : "s"}.`,
+      );
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 402) {
+        showToast("error", "Plan limit reached for contacts. Upgrade plan to restore.");
+      } else if (error instanceof ApiError && error.status === 409) {
+        showToast(
+          "error",
+          "One or more contacts cannot be restored because active contacts with the same email exist.",
+        );
+      } else {
+        showToast("error", "Could not restore selected contacts.");
+      }
+    } finally {
+      setRestoring(false);
+    }
+  }
+
   async function openContactModal(contact: Contact) {
     setSelectedContact(contact);
     setEditForm({
@@ -638,6 +721,7 @@ export function ContactsPage() {
             { value: "ALL", label: "All Contacts", count: metrics.total },
             { value: "ACTIVE", label: "Active", count: metrics.active },
             { value: "ARCHIVED", label: "Archived", count: metrics.archived },
+            { value: "DELETED", label: "Deleted", count: deletedContacts.length },
           ].map((tab) => (
             <button
               key={tab.value}
@@ -670,10 +754,11 @@ export function ContactsPage() {
               <option value="ALL">All Statuses</option>
               <option value="ACTIVE">Active Contacts</option>
               <option value="ARCHIVED">Archived Contacts</option>
+              <option value="DELETED">Deleted Contacts</option>
             </select>
           </div>
           <div className={styles.actionGroup}>
-            {canManage && contacts.length > 0 && (
+            {canManage && statusFilter !== "DELETED" && contacts.length > 0 && (
               <button
                 type="button"
                 className={styles.dangerOutlineBtn}
@@ -816,15 +901,21 @@ export function ContactsPage() {
                         </div>
                       </div>
                       <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                        <span
-                          className={`${styles.statusBadge} ${
-                            contact.status === "ACTIVE"
-                              ? styles.statusActive
-                              : styles.statusArchived
-                          }`}
-                        >
-                          {capitalize(contact.status)}
-                        </span>
+                        {statusFilter === "DELETED" || contact.deleted_at ? (
+                          <span className={`${styles.statusBadge} ${styles.statusDeleted}`}>
+                            Deleted
+                          </span>
+                        ) : (
+                          <span
+                            className={`${styles.statusBadge} ${
+                              contact.status === "ACTIVE"
+                                ? styles.statusActive
+                                : styles.statusArchived
+                            }`}
+                          >
+                            {capitalize(contact.status)}
+                          </span>
+                        )}
                         {contact.is_suppressed && (
                           <span className={styles.suppressedBadge}>Suppressed</span>
                         )}
@@ -841,6 +932,17 @@ export function ContactsPage() {
                         >
                           View
                         </button>
+                        {canManage && (statusFilter === "DELETED" || contact.deleted_at) && (
+                          <button
+                            type="button"
+                            disabled={restoring}
+                            className={styles.restoreButton}
+                            onClick={() => handleRestoreContact(contact.id)}
+                            title="Restore this contact"
+                          >
+                            🔄 Restore
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -854,25 +956,38 @@ export function ContactsPage() {
                 <div className={styles.bulkInfo}>
                   <span className={styles.bulkBadge}>{selectedIds.size} selected</span>
                   <span className={styles.bulkSelectedText}>
-                    {selectedIds.size} of {contacts.length} contact{contacts.length > 1 ? "s" : ""}{" "}
-                    selected
+                    {selectedIds.size} of {visibleContacts.length} contact
+                    {visibleContacts.length > 1 ? "s" : ""} selected
                   </span>
                 </div>
                 <div className={styles.bulkActions}>
-                  <button
-                    type="button"
-                    className={styles.bulkBtnDanger}
-                    onClick={() => setDeleteModal({ mode: "BULK", count: selectedIds.size })}
-                  >
-                    🗑️ Delete Selected
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.bulkBtnWarning}
-                    onClick={handleBulkSuppress}
-                  >
-                    🚫 Move to Suppression
-                  </button>
+                  {statusFilter === "DELETED" ? (
+                    <button
+                      type="button"
+                      disabled={restoring}
+                      className={styles.primaryButton}
+                      onClick={handleBulkRestore}
+                    >
+                      🔄 Restore Selected
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        className={styles.bulkBtnDanger}
+                        onClick={() => setDeleteModal({ mode: "BULK", count: selectedIds.size })}
+                      >
+                        🗑️ Delete Selected
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.bulkBtnWarning}
+                        onClick={handleBulkSuppress}
+                      >
+                        🚫 Move to Suppression
+                      </button>
+                    </>
+                  )}
                   <button
                     type="button"
                     className={styles.bulkBtnSecondary}
@@ -1175,8 +1290,30 @@ export function ContactsPage() {
                 )}
               </div>
 
-              {/* Edit contact form */}
-              {canManage && (
+              {/* Deleted notice or Edit form in modal */}
+              {selectedContact.deleted_at ? (
+                <div style={{ marginTop: 20 }}>
+                  <div className={styles.deletedNoticeBox}>
+                    🗑️{" "}
+                    <div>
+                      <strong>Soft-deleted Contact:</strong> This contact was deleted and is
+                      inactive. Past campaign statistics remain intact.
+                    </div>
+                  </div>
+                  {canManage && (
+                    <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+                      <button
+                        type="button"
+                        disabled={restoring}
+                        className={styles.primaryButton}
+                        onClick={() => handleRestoreContact(selectedContact.id)}
+                      >
+                        {restoring ? "Restoring..." : "🔄 Restore Contact"}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : canManage ? (
                 <form
                   className={styles.editForm}
                   onSubmit={(e) => handleSaveEdit(e, selectedContact.id)}
@@ -1279,7 +1416,7 @@ export function ContactsPage() {
                     🗑️ Delete contact
                   </button>
                 </form>
-              )}
+              ) : null}
             </div>
           </div>
         </div>
