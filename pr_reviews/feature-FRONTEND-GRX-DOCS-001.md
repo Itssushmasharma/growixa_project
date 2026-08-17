@@ -9,7 +9,7 @@
 - **Worktree**: `.worktrees/grx-docs-help-center`
 - **Base Commit**: `39226ca`
 - **Reviewed Code Commit**: `ff9064f`
-- **Status**: `READY_FOR_REVIEW`
+- **Status**: `CHANGES_REQUESTED`
 
 ---
 
@@ -109,3 +109,97 @@ npm --prefix apps/web run format:check
 2. Verification that dynamic route `/docs/[category]/[slug]` renders article sections, breadcrumbs, TOC, callout banners, and previous/next navigation.
 3. Verification that `<HelpDrawer />` in the dashboard opens on clicking `"❓ Help"` in the topbar, supports live search, and renders articles inside the slide-over drawer.
 4. Verification that `<HelpTooltip />` renders accessible tooltip on hover and focus.
+
+---
+
+## 7. Independent Review Results
+
+Reviewer: Claude Code (different tool than developer — Google Antigravity)
+Review Date: 2026-08-17
+Reviewed Code Commit: `a6a3860` (code at `ff9064f`; `a6a3860` updates only this handoff)
+Review Decision: **CHANGES_REQUESTED**
+Risk treated as: **HIGH** — 3,229 lines of customer-facing documentation. For a docs
+feature the primary risk is not whether it renders, but whether it is *true*.
+
+### What holds up
+
+- **No XSS surface.** `formatted-content.tsx` is a hand-rolled markdown renderer, which is
+  exactly where `dangerouslySetInnerHTML` usually creeps in. Grepped `components/docs/` and
+  `components/help/`: **no `dangerouslySetInnerHTML`, no `innerHTML`** — it builds React
+  elements. Correct approach, and the thing I most expected to find wrong.
+- **Test claims are exact.** 7 unit + 7 component = **14 passed**, re-run. Full suite
+  **257 passed**, `tsc` 0 errors, `format:check` clean.
+- **`HTTP 402` is accurate** — verified against `contacts/api.py:596`
+  (`HTTP_402_PAYMENT_REQUIRED`) and `billing/services.py:138,147`. Documented status codes
+  are usually where docs drift; this one is right.
+- Sharing one registry between `/docs` and `<HelpDrawer />` is a good call — it removes the
+  duplicate-content failure mode entirely.
+
+### Findings
+
+**1. BLOCKING — the restore article documents a feature that does not exist, in
+click-by-click detail.** `data.ts:242` instructs:
+
+> "Go to **Audience > Contacts** and click the **'Deleted'** tab. Click **'🔄 Restore'** on
+> any single contact row, or select multiple contacts with checkboxes and click
+> **'🔄 Restore Selected'**."
+
+Verified against `main`: there is **no "Deleted" tab, no Restore control, and no restore
+endpoint** — greps of `contacts-page.tsx` and `contacts/api.py` return nothing. That UI
+exists only on `feature/BACKEND/GRX-CONTACT-016`, which is **unmerged and has no review
+verdict recorded**. `DEFINITION_OF_DONE.md` explicitly bans "Documentation that claims
+functionality that doesn't exist yet."
+
+This is an ordering dependency, not bad writing. Either merge `GRX-CONTACT-016` first
+(after it is actually reviewed), or gate this article until it lands.
+
+**2. BLOCKING — custom tracking domains do not exist.** `data.ts:96` tells customers to add
+
+> "**Custom Tracking Domain (CNAME)**: Point `links.yourdomain.com` to track open rates and
+> click analytics under your own branded domain."
+
+Grep for `tracking_domain` / `trackingDomain` across `apps/api/src`: **nothing**. This is
+worse than a missing feature — a customer follows the instruction, creates a real DNS
+record, and reasonably concludes their click tracking is running under their own domain
+when it is not. Remove it, or ship the feature.
+
+**3. MEDIUM — one false sentence inside an otherwise sound article.** `data.ts:96` refers to
+"the **2 DKIM keys provided in your sender settings**". No DKIM surface exists anywhere in
+the product; the only repo hit for `dkim` is unrelated marketing copy inside a template
+preset. To be clear, the *rest* of that article is fine — SPF/DKIM/DMARC records are set at
+the customer's DNS host, so documenting them is legitimate deliverability guidance. It is
+only the claim that Growixa displays the keys that is untrue.
+
+**4. LOW — 6 new lint warnings, all in this branch's own files.** `main` has 2 (pre-existing
+`no-img-element`); this branch takes it to 8. All six are `no-unused-vars`: `DOC_CATEGORIES`
+in `[slug]/page.tsx`, `waitFor`/`DocsToc`/`getArticleBySlug` in `docs.test.tsx`, and
+`DocArticle`/`DocCategory` in `search.ts`. Note §5 of this handoff reports
+`npm run lint` → "0 errors", which is literally true (they are warnings) but reads as
+clean when the branch in fact triples the warning count.
+
+`DocsToc` being imported-but-unused in the test file is the one worth a second look: it
+suggests ToC coverage was intended and never landed, so `<DocsToc />` ships untested.
+
+**5. NOTE — vendor names imply tested support.** "Connect your own mail server, SendGrid,
+Mailgun, or Amazon SES" is defensible, since Custom SMTP (`GRX-EMAIL-011`) is generic and
+all three offer SMTP. Not blocking. But naming vendors reads as "we tested these", and none
+of them are. Consider "any SMTP provider (for example SendGrid, Mailgun, Amazon SES)".
+
+### Scope of what I checked
+
+I verified the capability claims I could test mechanically — restore, tracking domains,
+DKIM, `HTTP 402`, SMTP vendors. I did **not** audit all 16 articles line by line, and I did
+not view the pages in a browser, so review-focus items 1–4 (visual rendering, drawer
+behaviour, tooltip accessibility) remain for the product owner. Given that three of the
+claims I did spot-check were wrong, a full content pass against the shipped product is
+worth doing before this goes live.
+
+## 8. Review Decision
+
+**CHANGES_REQUESTED**
+
+## 9. Human Approval
+
+**Required** — customer-facing documentation. Beyond the blockers above, the visual and
+interaction checks in §6 need the product owner's own eyes; independent review does not
+substitute for them.
