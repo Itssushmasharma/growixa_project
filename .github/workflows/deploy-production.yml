@@ -1,0 +1,188 @@
+name: deploy-production
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+*'
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Release Tag to deploy (e.g. v1.0.0)'
+        required: true
+        default: 'latest'
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  test:
+    name: Run Test Suite
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: growixa
+          POSTGRES_PASSWORD: growixa_test_secret
+          POSTGRES_DB: growixa_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      rabbitmq:
+        image: rabbitmq:3-management-alpine
+        ports:
+          - 5672:5672
+        options: >-
+          --health-cmd "rabbitmq-diagnostics -q ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install Python dependencies
+        run: |
+          pip install --upgrade pip uv
+          uv pip install --system -e "apps/api[dev]" -e "apps/worker[dev]"
+
+      - name: Run Backend Pytest
+        env:
+          DATABASE_URL: postgresql+asyncpg://growixa:growixa_test_secret@localhost:5432/growixa_test
+          REDIS_URL: redis://localhost:6379/0
+          RABBITMQ_URL: amqp://growixa:growixa_test_secret@localhost:5672/
+          JWT_SIGNING_KEY: test-jwt-signing-secret-key-minimum-32-chars-long
+          ENCRYPTION_KEY: n_fGvQkL3Hq5V2xQ8z9Y1w4A7e0R6u8I2o5P4s7D1f3=
+          ENVIRONMENT: test
+        run: |
+          cd apps/api && alembic upgrade head
+          pytest -m "not e2e"
+          cd ../worker && pytest
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: 'apps/web/package-lock.json'
+
+      - name: Install Web Dependencies
+        run: |
+          cd apps/web && npm ci
+
+      - name: Run Frontend Tests
+        run: |
+          cd apps/web && npm run test
+
+  build-and-push:
+    name: Build and Push Docker Images to GHCR
+    needs: [test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Determine Release Tag
+        id: vars
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "tag=${{ github.event.inputs.release_tag }}" >> $GITHUB_OUTPUT
+          else
+            echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push API image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./apps/api
+          file: ./apps/api/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/growixa-api:${{ steps.vars.outputs.tag }}
+            ghcr.io/${{ github.repository_owner }}/growixa-api:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push Worker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./apps/worker
+          file: ./apps/worker/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/growixa-worker:${{ steps.vars.outputs.tag }}
+            ghcr.io/${{ github.repository_owner }}/growixa-worker:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push Web image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./apps/web
+          file: ./apps/web/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/growixa-web:${{ steps.vars.outputs.tag }}
+            ghcr.io/${{ github.repository_owner }}/growixa-web:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    name: Deploy to OVH VPS (Production)
+    needs: [build-and-push]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Determine Release Tag
+        id: vars
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "tag=${{ github.event.inputs.release_tag }}" >> $GITHUB_OUTPUT
+          else
+            echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Execute Deployment on OVH VPS
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.OVH_VPS_HOST }}
+          username: ${{ secrets.OVH_VPS_USER || 'ubuntu' }}
+          key: ${{ secrets.OVH_VPS_SSH_KEY }}
+          port: ${{ secrets.OVH_VPS_SSH_PORT || 22 }}
+          script: |
+            set -euo pipefail
+            echo "=== Syncing Git Codebase on VPS ==="
+            cd /opt/growixa
+            sudo git fetch --all --tags
+            sudo git checkout tags/${{ steps.vars.outputs.tag }} || sudo git pull origin main
+            
+            echo "=== Executing Production Rollout Script ==="
+            chmod +x deploy/scripts/deploy_prod.sh
+            ./deploy/scripts/deploy_prod.sh ${{ steps.vars.outputs.tag }}

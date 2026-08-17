@@ -1,0 +1,126 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-growixa}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-growixa_dev_secret}
+      POSTGRES_DB: ${POSTGRES_DB:-growixa}
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-growixa} -d ${POSTGRES_DB:-growixa}"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis_dev_data:/data
+    ports:
+      - "127.0.0.1:6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-growixa}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-growixa_dev_secret}
+    volumes:
+      - rabbitmq_dev_data:/var/lib/rabbitmq
+    ports:
+      - "127.0.0.1:5672:5672"
+      - "127.0.0.1:15672:15672"
+    healthcheck:
+      test: ["CMD-SHELL", "rabbitmq-diagnostics -q ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ../../apps/api
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    volumes:
+      - ../../apps/api/src:/app/src
+    environment:
+      ENVIRONMENT: local
+      DATABASE_URL: postgresql+asyncpg://growixa:${POSTGRES_PASSWORD:-growixa_dev_secret}@postgres:5432/growixa
+      REDIS_URL: redis://redis:6379/0
+      RABBITMQ_URL: amqp://growixa:${RABBITMQ_PASSWORD:-growixa_dev_secret}@rabbitmq:5672/
+      JWT_SIGNING_KEY: ${JWT_SIGNING_KEY:-local-dev-jwt-signing-secret-key-minimum-32-chars-long}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-n_fGvQkL3Hq5V2xQ8z9Y1w4A7e0R6u8I2o5P4s7D1f3=}
+      FRONTEND_BASE_URL: http://localhost:3000
+      API_PUBLIC_URL: http://localhost:8000
+      CORS_ALLOWED_ORIGINS: http://localhost:3000,http://localhost:3001
+      PLATFORM_ADMIN_EMAIL: admin@growixa.com
+      PLATFORM_ADMIN_PASSWORD: password123
+      PLATFORM_ADMIN_FULL_NAME: Local Platform Admin
+    ports:
+      - "127.0.0.1:8000:8000"
+    healthcheck:
+      test: ["CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:8000/health\")'"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  worker:
+    build:
+      context: ../../apps/worker
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ../../apps/worker/src:/app/src
+    environment:
+      ENVIRONMENT: local
+      DATABASE_URL: postgresql+asyncpg://growixa:${POSTGRES_PASSWORD:-growixa_dev_secret}@postgres:5432/growixa
+      RABBITMQ_URL: amqp://growixa:${RABBITMQ_PASSWORD:-growixa_dev_secret}@rabbitmq:5672/
+      REDIS_URL: redis://redis:6379/0
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-n_fGvQkL3Hq5V2xQ8z9Y1w4A7e0R6u8I2o5P4s7D1f3=}
+
+  web:
+    build:
+      context: ../../apps/web
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    volumes:
+      - ../../apps/web/src:/app/src
+      - ../../apps/web/public:/app/public
+    environment:
+      NODE_ENV: development
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+      API_INTERNAL_URL: http://api:8000
+    ports:
+      - "127.0.0.1:3000:3000"
+
+volumes:
+  postgres_dev_data:
+  redis_dev_data:
+  rabbitmq_dev_data:

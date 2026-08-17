@@ -1,0 +1,64 @@
+# ==============================================================================
+# Growixa Production & UAT Caddy Reverse Proxy Configuration
+# Automatic SSL/TLS by Let's Encrypt / ZeroSSL
+# ==============================================================================
+
+# 1. Production Environment
+growixa.iitdeveloper.com {
+    # API Backend (FastAPI on Port 8000)
+    handle /api/* {
+        uri strip_prefix /api
+        reverse_proxy localhost:8000
+    }
+
+    # Web Frontend (Next.js SSR on Port 3000)
+    handle {
+        reverse_proxy localhost:3000
+    }
+
+    encode zstd gzip
+}
+
+# 2. UAT / Staging Environment
+uat.growixa.iitdeveloper.com {
+    # UAT API Backend (FastAPI on Port 8001)
+    handle /api/* {
+        uri strip_prefix /api
+        reverse_proxy localhost:8001
+    }
+
+    # UAT Web Frontend (Next.js SSR on Port 3001)
+    handle {
+        reverse_proxy localhost:3001
+    }
+
+    encode zstd gzip
+}
+
+# 3. VPS Host Fallback
+vps-a8199074.vps.ovh.ca {
+    handle /api/* {
+        uri strip_prefix /api
+        reverse_proxy localhost:8000
+    }
+
+    handle {
+        reverse_proxy localhost:3000
+    }
+
+    encode zstd gzip
+}
+
+# 4. HTTP Catch-All (Auto-redirects to HTTPS)
+:80 {
+    handle /api/* {
+        uri strip_prefix /api
+        reverse_proxy localhost:8000
+    }
+
+    handle {
+        reverse_proxy localhost:3000
+    }
+
+    encode zstd gzip
+}

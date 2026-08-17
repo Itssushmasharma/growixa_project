@@ -34,14 +34,30 @@ class Settings(BaseSettings):
     redis_url: str
     rabbitmq_url: str
 
-    # Origins the Next.js frontend runs on locally — needed so browser-based fetches from
+    # Origins the Next.js frontend runs on — needed so browser-based fetches from
     # apps/web can complete credentialed (cookie-based) requests.
-    # 3000 is Compose web; 3001 is worktree preview; 3100 is Playwright e2e.
-    cors_allowed_origins: list[str] = [
+    # Accepts comma-separated list or JSON array in env vars.
+    cors_allowed_origins: list[str] | str = [
         "http://localhost:3000",
         "http://localhost:3001",
         "http://localhost:3100",
     ]
+
+    @field_validator("cors_allowed_origins", mode="after")
+    @classmethod
+    def _normalize_cors_allowed_origins(cls, value: list[str] | str) -> list[str]:
+        if isinstance(value, str):
+            val = value.strip()
+            if val.startswith("[") and val.endswith("]"):
+                import json
+                try:
+                    parsed = json.loads(val)
+                    if isinstance(parsed, list):
+                        return [str(x).strip() for x in parsed if str(x).strip()]
+                except Exception:
+                    pass
+            return [origin.strip() for origin in val.split(",") if origin.strip()]
+        return value
 
     jwt_signing_key: str = "CHANGE_ME_LOCAL_DEV_ONLY"
     # Fernet symmetric key for provider-credential encryption at rest (DEC-GRX-009), e.g.
