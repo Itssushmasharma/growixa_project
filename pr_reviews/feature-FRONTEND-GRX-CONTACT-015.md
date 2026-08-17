@@ -5,7 +5,7 @@ Branch: feature/FRONTEND/GRX-CONTACT-015
 Worktree: .worktrees/grx-contact-015-ui
 Base Commit: 7f192534575bbf9da7e54c0e64f7b2c0e86bdf80
 Latest Commit: 403bca5
-Status: APPROVED — pending product-owner sign-off
+Status: APPROVED — cleared for merge (tracker row correction still required)
 
 ## What Changed
 
@@ -154,3 +154,35 @@ Purge authorisation remains open — "Purge Audience" appears in no task descrip
 `DECISIONS.md` record. The *safety* half is now genuinely done (type-to-confirm, verified
 gating). The *authorisation* half is the same decision outstanding on `GRX-CONTACT-010`,
 whose `DELETE /contacts/all` this UI calls. Independent approval does not substitute for it.
+
+---
+
+## Product Owner Sign-off
+
+- **Status: APPROVED** — signed off by Ravi Kant Yadav (product owner), 2026-08-17,
+  following the round-3 independent approval at `403bca5`.
+
+**Scope of this sign-off**, recorded explicitly so it is not read more or less broadly
+later:
+
+- It covers the delivered UI — multi-select, bulk delete, bulk suppression, single-contact
+  delete, and the **"Purge Audience"** control with its type-to-confirm safeguard. This
+  settles the purge *authorisation* question raised in round 1 and carried through rounds
+  2–3: purge is approved product scope, not just approved code.
+- Because `GRX-CONTACT-010`'s `DELETE /contacts/all` exists solely to serve this UI, the
+  same authorisation answers the equivalent open question on that branch. The
+  `GRX-CONTACT-010` handoff still needs this recorded in its own file before it merges —
+  this note is the basis for it, not a substitute.
+- It does **not** approve a deleted-contacts view or a restore control; neither is built.
+  That surface remains unbuilt and unscheduled.
+
+**Still required before merge** (unchanged by this sign-off): `MASTER_TASK_TRACKER.md`
+currently records `GRX-CONTACT-015` as delivering *"delete, deleted view, restore"*, and
+no `GRX-CONTACT-016` row exists, despite the round-3 response asserting both were done.
+Either raise `GRX-CONTACT-016` or narrow the `015` row to the delete-only scope actually
+shipped. Per the scope note above, making exactly that edit does not invalidate the
+independent approval.
+
+**Recommended follow-up, not blocking:** purge is now approved but lives only in this
+handoff. Since it is the most destructive action in the product, it is worth a short
+`DECISIONS.md` entry so the authorisation survives outside a per-branch review file.
