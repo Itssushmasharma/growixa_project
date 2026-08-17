@@ -37,17 +37,19 @@ labeled as foundation work in the task tracker and feature status matrix — nev
 8. Formatting passes.
 9. Type checking passes.
 10. Security checks pass where applicable (see [08-security/SECURITY_CHECKLIST.md](../08-security/SECURITY_CHECKLIST.md), once created).
-11. Error handling exists for realistic failure paths (not just the happy path).
-12. Structured logging exists for the operation.
-13. Audit events are recorded where the feature spec requires them.
-14. Usage metering is recorded where the feature spec requires it (see PRD §18).
-15. Documentation is updated to match what was actually built.
-16. Feature status is updated in `FEATURE_STATUS_MATRIX.md`.
-17. Project status is updated in `PROJECT_STATUS.md`.
-18. `CHANGELOG.md` is updated.
-19. Test evidence (what was run, what passed) is recorded in the task entry.
-20. No critical `TODO` remains in the touched code.
-21. No unrelated regression was introduced (verified, not assumed).
+11. **Zero Secret Leakage Verified**: No real credentials, API tokens, private keys, database passwords, or auth secrets exist in code, configs, fixtures, or docs.
+12. Error handling exists for realistic failure paths (not just the happy path).
+13. Structured logging exists for the operation.
+14. Audit events are recorded where the feature spec requires them.
+15. Usage metering is recorded where the feature spec requires it (see PRD §18).
+16. Documentation is updated to match what was actually built.
+17. Feature status is updated in `FEATURE_STATUS_MATRIX.md`.
+18. Project status is updated in `PROJECT_STATUS.md`.
+19. `CHANGELOG.md` is updated.
+20. Test evidence (what was run, what passed) is recorded in the task entry.
+21. No critical `TODO` remains in the touched code.
+22. No unrelated regression was introduced (verified, not assumed).
+
 
 ## A feature is DONE only when it works end to end
 

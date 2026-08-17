@@ -46,7 +46,12 @@ why that matters here specifically.
 - Follow the module boundaries in `docs/04-architecture/MODULE_BOUNDARIES.md` (once created).
 - Use database migrations for every schema change.
 - Add tests alongside the implementation, not as a follow-up task.
-- Protect secrets — never log provider credentials or insert them into AI prompts (GRX-AI-005).
+- **Zero Secrets Leakage (Hard Rule)**: Never hardcode or commit real credentials, API tokens,
+  private keys, database passwords, SMTP credentials, webhook secrets, live auth tokens, or
+  customer secrets into code, tests, configs, fixtures, scripts, or docs. Always use environment
+  variables (`os.environ`, `process.env`), secret managers, or encryption helpers (`encrypt_secret`).
+  Test fixtures must exclusively use obvious synthetic placeholders (`mock_token_123`, `demo-key`).
+  Never log credentials or insert them into AI prompts (GRX-AI-005).
 - Add structured logs and audit events per the feature spec.
 - Add usage-metering checks for any cost-generating operation (§33 of the PRD).
 - Handle retry and failure paths, not just the happy path.
@@ -220,7 +225,11 @@ Status:
    documentation, or dependencies after that commit — including a merge-conflict
    resolution that touches real logic — invalidates the approval: re-review is required
    before merging.
-6. Reviewers check against
+6. **Hard Blocker — Secret & Credential Leakage**: Reviewers MUST inspect all diffs for hardcoded
+   secrets, private keys, API tokens, database connection strings with live passwords, or live
+   credentials. **NEVER APPROVE, MERGE, OR PUSH CODE TO GITHUB IF ANY CREDENTIAL OR SECRET IS LEAKED.**
+   Any detected secret leak is an immediate `CRITICAL BLOCKER` resulting in `CHANGES_REQUESTED`.
+7. Reviewers check against
    [DEFINITION_OF_DONE.md](../00-project-control/DEFINITION_OF_DONE.md),
    [RBAC.md](../08-security/RBAC.md), and [THREAT_MODEL.md](../08-security/THREAT_MODEL.md)
    rather than inventing a separate checklist.
@@ -233,6 +242,7 @@ behavior changes, and high-risk changes (auth, RBAC, billing, migrations) — re
 as `Human Approval: Required` in the handoff file. Backend-only/internal changes with
 nothing to visually or product-judge may merge on independent-agent approval alone
 (`Human Approval: Not Required`).
+
 
 ### When to upgrade beyond one file per branch
 

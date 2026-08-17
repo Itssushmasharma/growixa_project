@@ -37,6 +37,20 @@ Before starting development on any new feature or task:
    Co-Authored-By: <User Name> <<User Email>>
    ```
 
+## 2.1. Zero Secrets & Credentials Leakage (Strict Hard Rule)
+
+**Non-negotiable security requirement for ALL developers and reviewers:**
+
+1. **NEVER Hardcode or Commit Secrets**: Never commit real credentials, API tokens,
+   private keys, database passwords, SMTP credentials, webhook secrets, live auth tokens,
+   or customer secrets into source code, migrations, tests, configs, scripts, or docs.
+2. **Environment & Mock Values Only**: All secrets must be loaded via environment variables
+   (`os.environ`, `process.env`) or secret stores. Test fixtures and examples must exclusively
+   use obvious fake placeholders (e.g. `mock_token_123`, `demo-key`, `http://localhost`).
+3. **Reviewer Blocking Gate**: Reviewers MUST inspect all diffs for credential leaks.
+   **NEVER APPROVE, MERGE, OR PUSH CODE TO GITHUB IF ANY CREDENTIAL OR SECRET IS LEAKED.**
+   Any detected credential leak is an immediate `CRITICAL BLOCKER` (`CHANGES_REQUESTED`).
+
 ## 3. Project Documentation Reference
 
 - Follow all standards in
@@ -56,16 +70,20 @@ before it can merge:
    branch — update the existing one across fix/re-review cycles).
 2. Prefer a **different agent/tool** as reviewer; a fresh same-tool session with no
    memory of the developer's work is an explicitly documented fallback when no other tool
-   is available. The reviewer inspects the actual branch (diff, commits, tests) — not
-   just the handoff file — and records `APPROVED` or `CHANGES_REQUESTED` plus the
-   `Reviewed Code Commit` SHA (the commit whose code was reviewed — not the commit that
-   records the verdict itself, since writing the verdict into the file is a later commit)
+   is available. The reviewer inspects the actual branch (diff, commits, tests, **secrets
+   inspection**) — not just the handoff file — and records `APPROVED` or `CHANGES_REQUESTED`
+   plus the `Reviewed Code Commit` SHA (the commit whose code was reviewed — not the commit
+   that records the verdict itself, since writing the verdict into the file is a later commit)
    in the same file.
-3. Before merge, no code/tests/config/migrations/docs/dependencies may have changed
+3. **Hard Blocker — Secret Leakage**: If any real secret, private key, API token, live
+   password, or credential leak is found in the diff, the reviewer MUST reject the PR
+   with `CHANGES_REQUESTED` and MUST NOT approve or push the branch to GitHub under any
+   circumstances.
+4. Before merge, no code/tests/config/migrations/docs/dependencies may have changed
    between `Reviewed Code Commit` and the branch's current HEAD, other than edits to the
    handoff file itself. If anything else changed, the approval is stale — re-review is
    required.
-4. UI/UX, customer-facing, or high-risk (auth/RBAC/billing/migrations) changes also need
+5. UI/UX, customer-facing, or high-risk (auth/RBAC/billing/migrations) changes also need
    the product owner's explicit approval before merge, recorded in the same file.
 
 Full template and rules: [`AGENT_EXECUTION_RULES.md` — Independent
