@@ -85,7 +85,7 @@ describe("TeamPage", () => {
     expect(screen.queryByText("Admin User")).not.toBeInTheDocument();
   });
 
-  it("sends an invitation and shows the returned token", async () => {
+  it("sends an invitation and shows an accept-invitation link", async () => {
     const user = userEvent.setup();
     mockedApiFetch.mockImplementation((path: string, init?: RequestInit) => {
       if (path === "/auth/me") return Promise.resolve(meWithPermissions(["users.manage"]));
@@ -112,7 +112,8 @@ describe("TeamPage", () => {
     await waitFor(() =>
       expect(screen.getByText(/Invitation sent to new@example.com/)).toBeInTheDocument(),
     );
-    expect(screen.getByText("raw-invite-token")).toBeInTheDocument();
+    // The fallback the admin can copy is the full accept-invitation URL, not a raw token.
+    expect(screen.getByText(/\/accept-invitation\?token=raw-invite-token/)).toBeInTheDocument();
   });
 
   it("changes a member's role via the role select", async () => {

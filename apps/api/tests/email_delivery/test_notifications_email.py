@@ -16,7 +16,11 @@ from growixa_api.auth.encryption import encrypt_secret
 from growixa_api.config import Settings
 from growixa_api.db import async_session_factory
 from growixa_api.integrations.smtp_transport import EmailSendError
-from growixa_api.notifications.email import send_password_reset_email, send_verification_email
+from growixa_api.notifications.email import (
+    send_invitation_email,
+    send_password_reset_email,
+    send_verification_email,
+)
 from growixa_api.notifications.models import PlatformEmailProviderConfig
 
 
@@ -222,4 +226,84 @@ async def test_send_failure_does_not_raise() -> None:
         # Must not raise -- registration itself must never fail because of this.
         await send_verification_email(
             to_email="new@example.com", full_name="New User", raw_token="raw-token"
+        )
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_invitation_email_noops_when_no_provider_is_configured() -> None:
+    with (
+        patch(
+            "growixa_api.notifications.email.get_settings",
+            return_value=_settings(platform_smtp_host=""),
+        ),
+        patch("growixa_api.notifications.email.smtp_send_email", new=AsyncMock()) as mock_send,
+    ):
+        await send_invitation_email(
+            to_email="invitee@example.com",
+            account_name="Acme Ltd",
+            invited_by_name="Ada Lovelace",
+            role_name="Manager",
+            raw_token="raw-invite-token",
+        )
+
+    mock_send.assert_not_called()
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_invitation_email_links_to_the_accept_page_and_names_the_account() -> None:
+    settings = _settings(
+        platform_smtp_host="smtp.example.com",
+        platform_smtp_port=587,
+        platform_smtp_username="user",
+        platform_smtp_password="pw",
+        platform_smtp_from_email="noreply@growixa.local",
+        platform_smtp_from_name="Growixa",
+        frontend_base_url="https://growixa.netlify.app",
+        invitation_ttl_days=7,
+    )
+    with (
+        patch("growixa_api.notifications.email.get_settings", return_value=settings),
+        patch("growixa_api.notifications.email.smtp_send_email", new=AsyncMock()) as mock_send,
+    ):
+        await send_invitation_email(
+            to_email="invitee@example.com",
+            account_name="Acme Ltd",
+            invited_by_name="Ada Lovelace",
+            role_name="Manager",
+            raw_token="raw-invite-token",
+        )
+
+    mock_send.assert_awaited_once()
+    kwargs = mock_send.call_args.kwargs
+    accept_url = "https://growixa.netlify.app/accept-invitation?token=raw-invite-token"
+    assert kwargs["to_email"] == "invitee@example.com"
+    assert kwargs["subject"] == "Ada Lovelace invited you to Acme Ltd on Growixa"
+    assert accept_url in kwargs["body_html"]
+    assert accept_url in kwargs["body_text"]
+    assert "Acme Ltd" in kwargs["body_text"]
+    assert "Manager" in kwargs["body_text"]
+    assert "expires in 7 days" in kwargs["body_text"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_invitation_send_failure_does_not_raise() -> None:
+    """The invitation row is already committed by the time this runs -- a relay failure
+    must degrade to the admin's out-of-band token, never surface as an error."""
+    settings = _settings(platform_smtp_host="smtp.example.com")
+    with (
+        patch("growixa_api.notifications.email.get_settings", return_value=settings),
+        patch(
+            "growixa_api.notifications.email.smtp_send_email",
+            new=AsyncMock(side_effect=EmailSendError("connection refused")),
+        ),
+    ):
+        await send_invitation_email(
+            to_email="invitee@example.com",
+            account_name="Acme Ltd",
+            invited_by_name="Ada Lovelace",
+            role_name="Manager",
+            raw_token="raw-invite-token",
         )

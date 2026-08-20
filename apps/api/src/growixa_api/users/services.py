@@ -1,8 +1,10 @@
 import uuid
+from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from growixa_api.accounts.repositories import get_account_name
 from growixa_api.audit.services import record_event
 from growixa_api.auth.security import hash_password
 from growixa_api.auth.services import revoke_all_active_sessions
@@ -51,6 +53,20 @@ class SelfActionNotAllowedError(Exception):
     lockout if it happened to be the only remaining admin."""
 
 
+@dataclass(frozen=True)
+class InvitationCreated:
+    """Everything the caller needs to both answer the request and send the invitation
+    email, resolved here rather than in the route: this function already holds the
+    session and has looked the role up, so re-fetching the account and inviter upstream
+    would just duplicate queries the service is better placed to make."""
+
+    invitation: UserInvitation
+    raw_token: str
+    account_name: str
+    invited_by_name: str
+    role_name: str
+
+
 async def invite_user(
     session: AsyncSession,
     *,
@@ -58,7 +74,7 @@ async def invite_user(
     email: str,
     role_name: str,
     invited_by_user_id: uuid.UUID,
-) -> tuple[UserInvitation, str]:
+) -> InvitationCreated:
     role = await get_role_by_name(session, role_name)
     if role is None:
         raise RoleNotFoundError
@@ -79,7 +95,18 @@ async def invite_user(
     )
     await session.commit()
 
-    return invitation, raw_token
+    inviter = await get_user_by_id(session, invited_by_user_id, account_id=account_id)
+    account_name = await get_account_name(session, account_id)
+
+    return InvitationCreated(
+        invitation=invitation,
+        raw_token=raw_token,
+        # Both fall back rather than failing: the invitation is already committed at this
+        # point, so a missing display name must not turn a successful invite into an error.
+        account_name=account_name or "your team",
+        invited_by_name=inviter.full_name if inviter is not None else "An administrator",
+        role_name=role.name,
+    )
 
 
 async def accept_invitation(

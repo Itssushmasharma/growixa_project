@@ -254,10 +254,14 @@ export function TeamPage() {
         {inviteResult && (
           <div className={styles.inviteSuccess}>
             <span>
-              ✅ Invitation created for <strong>{inviteResult.email}</strong>. Share this token to
-              complete account setup:
+              ✅ Invitation sent to <strong>{inviteResult.email}</strong>. If the email does not
+              arrive within a few minutes, share this link instead:
             </span>
-            <code>{inviteResult.token}</code>
+            <code>
+              {typeof window !== "undefined"
+                ? `${window.location.origin}/accept-invitation?token=${inviteResult.token}`
+                : `/accept-invitation?token=${inviteResult.token}`}
+            </code>
           </div>
         )}
 
