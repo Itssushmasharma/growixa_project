@@ -1,22 +1,29 @@
-# PR Review Handoff: CI Telegram Failure Notifications (`feature/INFRA/GRX-CI-TELEGRAM-FAILURES`)
+# PR Review Handoff: CI Failure Diagnostics & Release Notes in Telegram Notifications (`feature/INFRA/GRX-CI-TELEGRAM-FAILURES`)
 
 - **Branch**: `feature/INFRA/GRX-CI-TELEGRAM-FAILURES`
 - **Developer**: Google Antigravity (DevOps/Infra Agent)
-- **Reviewed Commit**: `a6d1834167e4dd3fe9dfd509f6b9c9f2ec4e5dbd`
-- **Target Components**: `.github/workflows/ci.yml`
+- **Reviewed Commit**: `5dcb15354964673898518ce52ca315024daeb0b9`
+- **Target Components**:
+  - `.github/workflows/ci.yml`
+  - `.github/workflows/deploy-uat.yml`
+  - `.github/workflows/deploy-production.yml`
 
 ---
 
 ## 🎯 Summary of Changes
-1. **Automated Telegram CI Failure Alerts (Strategy A)**: Added a lightweight `notify-on-failure` job to `.github/workflows/ci.yml` that monitors all CI test & lint stages (`backend`, `worker`, `frontend`, `e2e`).
-2. **Failure-Only Filtering (`if: failure()`)**: The job triggers strictly when any CI step fails, preventing alert spam during successful PR runs while guaranteeing immediate visibility if tests break on any PR or `main`.
-3. **Rich Contextual Alert Payload**: Uses `iitdeveloper-git/iitdeveloper-git-shared-workflows/actions/telegram-notify@main` to deliver the branch name, commit SHA, trigger actor, and direct link to the failed GitHub Actions run.
+1. **CI Failure Diagnostics**:
+   - Added a `Determine Failed Stages` step in `notify-on-failure` within `.github/workflows/ci.yml`.
+   - Accurately reports which specific pipeline stage failed (`Backend`, `Worker`, `Frontend`, or `E2E Smoke Tests`) directly in the Telegram alert message.
+2. **Release Notes in Deployment Notifications**:
+   - Added an `Extract Release Notes Summary` step to `.github/workflows/deploy-uat.yml` and `.github/workflows/deploy-production.yml`.
+   - Automatically parses and includes the top release bullets from `RELEASE_NOTES.md` into the Telegram deployment message for UAT and Production releases.
 
 ---
 
 ## 🧪 Verification
-- Verified YAML syntax validity with `python3 -c "import yaml; yaml.safe_load(...)"`.
-- Validated pre-commit hooks (branch naming, formatting, end-of-file, security keys).
+- Validated YAML parsing for all modified workflow files (`ci.yml`, `deploy-uat.yml`, `deploy-production.yml`).
+- Validated Python regex extraction logic for `RELEASE_NOTES.md`.
+- All pre-commit security & lint checks passed.
 
 ---
 
@@ -24,4 +31,4 @@
 
 - **Reviewer**: _Pending Independent Review_
 - **Verdict**: `PENDING`
-- **Reviewed Code Commit**: `a6d1834167e4dd3fe9dfd509f6b9c9f2ec4e5dbd`
+- **Reviewed Code Commit**: `5dcb15354964673898518ce52ca315024daeb0b9`
