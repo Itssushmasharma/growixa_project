@@ -51,9 +51,19 @@ const EMPTY_CONSENT_FORM: ConsentFormState = {
   source: "",
 };
 
+function decodeHtmlEntities(str: string): string {
+  if (!str || typeof str !== "string") return str;
+  return str
+    .replace(/&#039;/g, "'")
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, '"')
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">");
+}
+
 function displayName(contact: Contact): string {
   const name = [contact.first_name, contact.last_name].filter(Boolean).join(" ");
-  return name || "—";
+  return decodeHtmlEntities(name) || "—";
 }
 
 function initialsFor(contact: Contact): string {
@@ -97,6 +107,12 @@ export function ContactsPage() {
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
+  const [tagFilter, setTagFilter] = useState<string>("ALL");
+
+  const [showBulkTagModal, setShowBulkTagModal] = useState(false);
+  const [bulkTagId, setBulkTagId] = useState("");
+  const [bulkNewTagName, setBulkNewTagName] = useState("");
+  const [bulkTagging, setBulkTagging] = useState(false);
 
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
@@ -158,7 +174,7 @@ export function ContactsPage() {
   useEffect(() => {
     setCurrentPage(1);
     setSelectedIds(new Set());
-  }, [search, statusFilter, pageSize]);
+  }, [search, statusFilter, tagFilter, pageSize]);
 
   useEffect(() => {
     if (statusFilter === "DELETED") {
@@ -190,9 +206,15 @@ export function ContactsPage() {
         (c.source && c.source.toLowerCase().includes(query));
       const matchesStatus =
         statusFilter === "ALL" || statusFilter === "DELETED" || c.status === statusFilter;
-      return matchesSearch && matchesStatus;
+      const matchesTag =
+        tagFilter === "ALL" ||
+        (c.tags &&
+          c.tags.some(
+            (t) => resolveTagId(t, tags) === tagFilter || getTagInfo(t).name === tagFilter,
+          ));
+      return matchesSearch && matchesStatus && matchesTag;
     });
-  }, [contacts, deletedContacts, search, statusFilter]);
+  }, [contacts, deletedContacts, search, statusFilter, tagFilter, tags]);
 
   const totalPages = Math.ceil(visibleContacts.length / pageSize) || 1;
   const safeCurrentPage = Math.min(currentPage, totalPages);
@@ -516,14 +538,56 @@ export function ContactsPage() {
     }
   }
 
-  function decodeHtmlEntities(str: string): string {
-    if (!str || typeof str !== "string") return str;
-    return str
-      .replace(/&#039;/g, "'")
-      .replace(/&amp;/g, "&")
-      .replace(/&quot;/g, '"')
-      .replace(/&lt;/g, "<")
-      .replace(/&gt;/g, ">");
+  async function handleBulkTagSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (selectedIds.size === 0) return;
+    setBulkTagging(true);
+    try {
+      let tagToAttachId = bulkTagId;
+      if (bulkTagId === "__NEW__" && bulkNewTagName.trim()) {
+        const newTag = await apiFetch<Tag>("/contacts/tags", {
+          method: "POST",
+          body: JSON.stringify({ name: bulkNewTagName.trim() }),
+        });
+        setTags((prev) => [...prev, newTag]);
+        tagToAttachId = newTag.id;
+      }
+      if (!tagToAttachId || tagToAttachId === "__NEW__") {
+        showToast("error", "Please select or enter a tag name.");
+        return;
+      }
+
+      const targetIds = Array.from(selectedIds);
+      let successCount = 0;
+      await Promise.all(
+        targetIds.map(async (contactId) => {
+          try {
+            await apiFetch(`/contacts/${contactId}/tags`, {
+              method: "POST",
+              body: JSON.stringify({ tag_id: tagToAttachId }),
+            });
+            successCount++;
+          } catch {
+            // Ignore individual failure
+          }
+        }),
+      );
+
+      const activeList = await apiFetch<Contact[]>("/contacts");
+      setContacts(activeList);
+      setSelectedIds(new Set());
+      setShowBulkTagModal(false);
+      setBulkTagId("");
+      setBulkNewTagName("");
+      showToast(
+        "success",
+        `Applied tag to ${successCount} contact${successCount === 1 ? "" : "s"}.`,
+      );
+    } catch {
+      showToast("error", "Could not apply tag to selected contacts.");
+    } finally {
+      setBulkTagging(false);
+    }
   }
 
   async function openContactModal(contact: Contact) {
@@ -786,6 +850,21 @@ export function ContactsPage() {
               <option value="ARCHIVED">Archived Contacts</option>
               <option value="DELETED">Deleted Contacts</option>
             </select>
+            {tags.length > 0 && (
+              <select
+                value={tagFilter}
+                onChange={(e) => setTagFilter(e.target.value)}
+                className={styles.select}
+                aria-label="Filter by tag"
+              >
+                <option value="ALL">All Tags</option>
+                {tags.map((tag) => (
+                  <option key={tag.id} value={tag.id}>
+                    🏷️ {tag.name}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
           <div className={styles.actionGroup}>
             {canManage && statusFilter !== "DELETED" && contacts.length > 0 && (
@@ -1002,6 +1081,16 @@ export function ContactsPage() {
                     </button>
                   ) : (
                     <>
+                      <button
+                        type="button"
+                        className={styles.primaryButton}
+                        onClick={() => {
+                          setBulkTagId(tags[0]?.id ?? "__NEW__");
+                          setShowBulkTagModal(true);
+                        }}
+                      >
+                        🏷️ Move to Tag
+                      </button>
                       <button
                         type="button"
                         className={styles.bulkBtnDanger}
@@ -1628,6 +1717,87 @@ export function ContactsPage() {
                 {deleting ? "Deleting..." : "Confirm Delete"}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Tag Modal */}
+      {showBulkTagModal && (
+        <div
+          className={styles.modalBackdrop}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowBulkTagModal(false);
+          }}
+        >
+          <div className={styles.modalContent} style={{ maxWidth: 440 }}>
+            <div className={styles.modalHeader}>
+              <h3 className={styles.name} style={{ fontSize: 18, margin: 0 }}>
+                🏷️ Bulk Move to Tag
+              </h3>
+              <button
+                type="button"
+                className={styles.modalCloseButton}
+                onClick={() => setShowBulkTagModal(false)}
+                aria-label="Close modal"
+              >
+                Close
+              </button>
+            </div>
+            <p style={{ fontSize: 13, color: "#64748b", margin: "12px 0 16px" }}>
+              Apply a tag to <strong>{selectedIds.size}</strong> selected contact
+              {selectedIds.size > 1 ? "s" : ""}.
+            </p>
+            <form onSubmit={handleBulkTagSubmit}>
+              <div className={styles.createField} style={{ marginBottom: 14 }}>
+                <label className={styles.label} htmlFor="bulk-tag-select">
+                  Select Target Tag
+                </label>
+                <select
+                  id="bulk-tag-select"
+                  className={styles.select}
+                  style={{ width: "100%" }}
+                  value={bulkTagId}
+                  onChange={(e) => setBulkTagId(e.target.value)}
+                >
+                  {tags.map((tag) => (
+                    <option key={tag.id} value={tag.id}>
+                      🏷️ {tag.name}
+                    </option>
+                  ))}
+                  <option value="__NEW__">+ Create new tag…</option>
+                </select>
+              </div>
+
+              {bulkTagId === "__NEW__" && (
+                <div className={styles.createField} style={{ marginBottom: 14 }}>
+                  <label className={styles.label} htmlFor="bulk-new-tag-input">
+                    New Tag Name
+                  </label>
+                  <input
+                    id="bulk-new-tag-input"
+                    type="text"
+                    required
+                    className={styles.input}
+                    placeholder="e.g. VIP Customer, Webinar Lead"
+                    value={bulkNewTagName}
+                    onChange={(e) => setBulkNewTagName(e.target.value)}
+                  />
+                </div>
+              )}
+
+              <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20 }}>
+                <button
+                  type="button"
+                  className={styles.modalCloseButton}
+                  onClick={() => setShowBulkTagModal(false)}
+                >
+                  Cancel
+                </button>
+                <button type="submit" disabled={bulkTagging} className={styles.submit}>
+                  {bulkTagging ? "Applying..." : "Apply Tag"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

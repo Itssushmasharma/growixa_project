@@ -762,4 +762,42 @@ describe("ContactsPage", () => {
       expect(restoreCalled).toBe(true);
     });
   });
+
+  it("moves selected contacts to tag in bulk", async () => {
+    let bulkTagAttached = false;
+    mockedApiFetch.mockImplementation((path: string, init?: RequestInit) => {
+      if (path === "/auth/me") {
+        return Promise.resolve(meWithPermissions(["contacts.view", "contacts.manage"]));
+      }
+      if (path === "/contacts") return Promise.resolve([ACTIVE_CONTACT]);
+      if (isTagsGet(path, init)) return Promise.resolve([VIP_TAG]);
+      if (path === "/contacts/contact-1/tags" && init?.method === "POST") {
+        bulkTagAttached = true;
+        return Promise.resolve({ ...ACTIVE_CONTACT, tags: [VIP_TAG] });
+      }
+      throw new Error(`unexpected call: ${path}`);
+    });
+
+    const user = userEvent.setup();
+    renderContactsPage();
+
+    await screen.findByText("Alice Anderson");
+
+    // Select Alice
+    const checkbox = screen.getByLabelText("Select Alice Anderson");
+    await user.click(checkbox);
+
+    // Bulk bar appears with Move to Tag
+    const bulkBar = screen.getByTestId("bulk-action-bar");
+    const bulkTagBtn = within(bulkBar).getByRole("button", { name: "🏷️ Move to Tag" });
+    await user.click(bulkTagBtn);
+
+    // Modal appears
+    expect(await screen.findByText("🏷️ Bulk Move to Tag")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Apply Tag" }));
+
+    await waitFor(() => {
+      expect(bulkTagAttached).toBe(true);
+    });
+  });
 });
