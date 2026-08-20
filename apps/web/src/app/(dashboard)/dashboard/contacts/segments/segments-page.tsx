@@ -6,7 +6,7 @@ import { useToast } from "@/components/toast/toast-context";
 import { apiFetch } from "@/lib/api-client";
 
 import styles from "../shared.module.css";
-import type { Contact, MeResponse, Segment } from "../types";
+import type { Contact, CustomField, MeResponse, Segment } from "../types";
 
 const VIEW_PERMISSION = "contacts.view";
 const MANAGE_PERMISSION = "contacts.manage";
@@ -80,10 +80,22 @@ function emptyForm(): SegmentFormState {
   return { name: "", type: "DYNAMIC", rules: [emptyRule()] };
 }
 
-function ruleSummary(field: string, operator: string, value: string): string {
-  const label = field.startsWith("custom_field:")
-    ? `Custom field "${field.split(":", 2)[1]}"`
-    : (FIELD_LABELS[field] ?? field);
+function ruleSummary(
+  field: string,
+  operator: string,
+  value: string,
+  customFields: CustomField[] = [],
+): string {
+  let label = FIELD_LABELS[field] ?? field;
+  if (field.startsWith("custom_field:")) {
+    const key = field.split(":", 2)[1] ?? "";
+    const match = customFields.find((cf) => cf.key === key);
+    label = match
+      ? match.label
+      : key
+        ? key.replace(/_/g, " ").replace(/^./, (s) => s.toUpperCase())
+        : field;
+  }
   return `${label} ${operator} "${value}"`;
 }
 
@@ -94,6 +106,7 @@ export function SegmentsPage() {
   const [canView, setCanView] = useState(false);
   const [canManage, setCanManage] = useState(false);
   const [segments, setSegments] = useState<Segment[]>([]);
+  const [customFields, setCustomFields] = useState<CustomField[]>([]);
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createForm, setCreateForm] = useState<SegmentFormState>(emptyForm());
@@ -106,13 +119,15 @@ export function SegmentsPage() {
   useEffect(() => {
     async function load() {
       try {
-        const [me, segmentList] = await Promise.all([
+        const [me, segmentList, customFieldList] = await Promise.all([
           apiFetch<MeResponse>("/auth/me"),
           apiFetch<Segment[]>("/contacts/segments"),
+          apiFetch<CustomField[]>("/contacts/custom-fields").catch(() => []),
         ]);
         setCanView(me.permissions.includes(VIEW_PERMISSION));
         setCanManage(me.permissions.includes(MANAGE_PERMISSION));
         setSegments(segmentList);
+        setCustomFields(customFieldList);
       } catch {
         setLoadError("Could not load segments.");
       } finally {
@@ -306,6 +321,7 @@ export function SegmentsPage() {
                               segment.rules[0]!.field,
                               segment.rules[0]!.operator,
                               segment.rules[0]!.value,
+                              customFields,
                             )
                           : "No filter"}
                       </span>
@@ -403,6 +419,15 @@ export function SegmentsPage() {
                     <option value="first_name">First name</option>
                     <option value="last_name">Last name</option>
                     <option value="phone">Phone</option>
+                    {customFields.length > 0 && (
+                      <optgroup label="Custom Fields">
+                        {customFields.map((cf) => (
+                          <option key={cf.key} value={`custom_field:${cf.key}`}>
+                            {cf.label}
+                          </option>
+                        ))}
+                      </optgroup>
+                    )}
                   </select>
 
                   <select
@@ -499,7 +524,9 @@ export function SegmentsPage() {
                 <div>No rules configured.</div>
               ) : (
                 selectedSegment.rules.map((rule) => (
-                  <div key={rule.id}>{ruleSummary(rule.field, rule.operator, rule.value)}</div>
+                  <div key={rule.id}>
+                    {ruleSummary(rule.field, rule.operator, rule.value, customFields)}
+                  </div>
                 ))
               )}
             </div>

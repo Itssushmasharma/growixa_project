@@ -63,6 +63,7 @@ describe("SegmentsPage", () => {
         return Promise.resolve(meWithPermissions(["contacts.view", "contacts.manage"]));
       }
       if (path === "/contacts/segments") return Promise.resolve([ACTIVE_SEGMENT]);
+      if (path === "/contacts/custom-fields") return Promise.resolve([]);
       throw new Error(`unexpected path: ${path}`);
     });
 
@@ -78,6 +79,7 @@ describe("SegmentsPage", () => {
     mockedApiFetch.mockImplementation((path: string) => {
       if (path === "/auth/me") return Promise.resolve(meWithPermissions([]));
       if (path === "/contacts/segments") return Promise.resolve([]);
+      if (path === "/contacts/custom-fields") return Promise.resolve([]);
       throw new Error(`unexpected path: ${path}`);
     });
 
@@ -90,6 +92,7 @@ describe("SegmentsPage", () => {
     mockedApiFetch.mockImplementation((path: string) => {
       if (path === "/auth/me") return Promise.resolve(meWithPermissions(["contacts.view"]));
       if (path === "/contacts/segments") return Promise.resolve([ACTIVE_SEGMENT]);
+      if (path === "/contacts/custom-fields") return Promise.resolve([]);
       throw new Error(`unexpected path: ${path}`);
     });
 
@@ -108,6 +111,7 @@ describe("SegmentsPage", () => {
       if (path === "/contacts/segments" && (!init || init.method === undefined)) {
         return Promise.resolve([]);
       }
+      if (path === "/contacts/custom-fields") return Promise.resolve([]);
       if (path === "/contacts/segments" && init?.method === "POST") {
         return Promise.resolve(created);
       }
@@ -143,6 +147,7 @@ describe("SegmentsPage", () => {
         return Promise.resolve(meWithPermissions(["contacts.view", "contacts.manage"]));
       }
       if (path === "/contacts/segments") return Promise.resolve([ACTIVE_SEGMENT]);
+      if (path === "/contacts/custom-fields") return Promise.resolve([]);
       if (path === "/contacts/segments/segment-1/members") return Promise.resolve([ALICE]);
       throw new Error(`unexpected path: ${path}`);
     });

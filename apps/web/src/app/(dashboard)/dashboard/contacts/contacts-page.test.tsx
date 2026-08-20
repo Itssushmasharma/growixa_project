@@ -28,6 +28,7 @@ function meWithPermissions(permissions: string[]): MeResponse {
 }
 
 function isTagsGet(path: string, init?: RequestInit): boolean {
+  if (path === "/contacts/custom-fields" && (!init || init.method === undefined)) return true;
   return path === "/contacts/tags" && (!init || init.method === undefined);
 }
 

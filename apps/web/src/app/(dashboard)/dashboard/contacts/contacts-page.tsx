@@ -10,7 +10,7 @@ import { useToast } from "@/components/toast/toast-context";
 import { ApiError, apiFetch } from "@/lib/api-client";
 
 import styles from "./shared.module.css";
-import type { ConsentRecord, Contact, MeResponse, Tag } from "./types";
+import type { ConsentRecord, Contact, CustomField, MeResponse, Tag } from "./types";
 
 const VIEW_PERMISSION = "contacts.view";
 const MANAGE_PERMISSION = "contacts.manage";
@@ -21,6 +21,7 @@ interface ContactFormState {
   last_name: string;
   phone: string;
   source: string;
+  custom_fields: Record<string, string>;
 }
 
 const EMPTY_FORM: ContactFormState = {
@@ -29,6 +30,7 @@ const EMPTY_FORM: ContactFormState = {
   last_name: "",
   phone: "",
   source: "",
+  custom_fields: {},
 };
 
 interface ConsentFormState {
@@ -91,6 +93,7 @@ export function ContactsPage() {
   const [canManage, setCanManage] = useState(false);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
+  const [customFields, setCustomFields] = useState<CustomField[]>([]);
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
@@ -131,15 +134,17 @@ export function ContactsPage() {
   useEffect(() => {
     async function load() {
       try {
-        const [me, contactList, tagList] = await Promise.all([
+        const [me, contactList, tagList, customFieldList] = await Promise.all([
           apiFetch<MeResponse>("/auth/me"),
           apiFetch<Contact[]>("/contacts"),
           apiFetch<Tag[]>("/contacts/tags"),
+          apiFetch<CustomField[]>("/contacts/custom-fields").catch(() => []),
         ]);
         setCanView(me.permissions.includes(VIEW_PERMISSION));
         setCanManage(me.permissions.includes(MANAGE_PERMISSION));
         setContacts(contactList);
         setTags(tagList);
+        setCustomFields(customFieldList);
       } catch {
         setLoadError("Could not load contacts.");
       } finally {
@@ -519,6 +524,7 @@ export function ContactsPage() {
       last_name: contact.last_name ?? "",
       phone: contact.phone ?? "",
       source: contact.source ?? "",
+      custom_fields: contact.custom_fields ?? {},
     });
     setAttachTagId("");
     setNewTagName("");
@@ -551,6 +557,7 @@ export function ContactsPage() {
           last_name: editForm.last_name || null,
           phone: editForm.phone || null,
           source: editForm.source || null,
+          custom_fields: editForm.custom_fields,
         }),
       });
       setContacts((current) => current.map((c) => (c.id === contactId ? updated : c)));
@@ -1383,6 +1390,61 @@ export function ContactsPage() {
                       onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
                     />
                   </div>
+
+                  {/* Custom Fields Section */}
+                  {(customFields.length > 0 ||
+                    Object.keys(selectedContact.custom_fields ?? {}).length > 0) && (
+                    <div
+                      style={{
+                        marginTop: 16,
+                        paddingTop: 14,
+                        borderTop: "1px solid #e2e8f0",
+                      }}
+                    >
+                      <h4
+                        style={{
+                          margin: "0 0 10px",
+                          fontSize: 13,
+                          fontWeight: 700,
+                          color: "#334155",
+                        }}
+                      >
+                        Custom Fields
+                      </h4>
+                      {(customFields.length > 0
+                        ? customFields
+                        : Object.keys(selectedContact.custom_fields ?? {}).map((k) => ({
+                            key: k,
+                            label: k.replace(/_/g, " ").replace(/^./, (s) => s.toUpperCase()),
+                            field_type: "TEXT" as const,
+                          }))
+                      ).map((field) => (
+                        <div className={styles.createField} key={field.key}>
+                          <label
+                            className={styles.label}
+                            htmlFor={`edit-custom-${field.key}-${selectedContact.id}`}
+                          >
+                            {field.label}
+                          </label>
+                          <input
+                            id={`edit-custom-${field.key}-${selectedContact.id}`}
+                            type="text"
+                            className={styles.input}
+                            value={editForm.custom_fields?.[field.key] ?? ""}
+                            onChange={(e) =>
+                              setEditForm({
+                                ...editForm,
+                                custom_fields: {
+                                  ...editForm.custom_fields,
+                                  [field.key]: e.target.value,
+                                },
+                              })
+                            }
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  )}
 
                   <button type="submit" disabled={saving} className={styles.submit}>
                     {saving ? "Saving..." : "Save changes"}
