@@ -14,9 +14,11 @@ class InviteUserOut(BaseModel):
     id: uuid.UUID
     email: str
     expires_at: datetime
-    # Sprint 1 has no email-delivery channel yet (see AGENT_HANDOFF.md's GRX-USER-001
-    # entry) — the raw token is returned here so an admin can pass it to the invitee
-    # out-of-band. Revisit once notifications/email delivery exists.
+    # The invitee is emailed an accept link (GRX-USER-003), but that send is best-effort
+    # — it is skipped entirely when no platform email provider is configured, and a relay
+    # failure is only logged. The raw token stays in the response so the inviting admin
+    # always retains the out-of-band fallback rather than losing the invitation to a
+    # silent send failure.
     token: str
 
 

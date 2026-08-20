@@ -1,10 +1,11 @@
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from growixa_api.billing.services import PlanLimitExceededError
 from growixa_api.db import get_session
+from growixa_api.notifications.email import send_invitation_email
 from growixa_api.permissions.dependencies import get_current_account_id, require_permission
 from growixa_api.users.models import User
 from growixa_api.users.schemas import (
@@ -48,12 +49,13 @@ def _to_list_item(user: User, roles: list[str]) -> UserListItemOut:
 @router.post("/invitations", response_model=InviteUserOut, status_code=status.HTTP_201_CREATED)
 async def create_invitation_route(
     payload: InviteUserIn,
+    background_tasks: BackgroundTasks,
     actor_id: uuid.UUID = Depends(_require_manage),
     account_id: uuid.UUID = Depends(get_current_account_id),
     session: AsyncSession = Depends(get_session),
 ) -> InviteUserOut:
     try:
-        invitation, raw_token = await invite_user_service(
+        created = await invite_user_service(
             session,
             account_id=account_id,
             email=payload.email,
@@ -67,11 +69,24 @@ async def create_invitation_route(
             status.HTTP_409_CONFLICT, "A user with this email already exists"
         ) from exc
 
+    # Fire-and-forget, same contract as registration's verification email: the
+    # invitation row is already committed, and send_invitation_email swallows send
+    # failures, so a slow or unreachable SMTP relay never holds this request open and
+    # never turns a created invitation into an error response.
+    background_tasks.add_task(
+        send_invitation_email,
+        to_email=created.invitation.email,
+        account_name=created.account_name,
+        invited_by_name=created.invited_by_name,
+        role_name=created.role_name,
+        raw_token=created.raw_token,
+    )
+
     return InviteUserOut(
-        id=invitation.id,
-        email=invitation.email,
-        expires_at=invitation.expires_at,
-        token=raw_token,
+        id=created.invitation.id,
+        email=created.invitation.email,
+        expires_at=created.invitation.expires_at,
+        token=created.raw_token,
     )
 
 
