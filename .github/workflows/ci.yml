@@ -251,6 +251,19 @@ jobs:
     if: failure()
     runs-on: ubuntu-latest
     steps:
+      - name: Determine Failed Stages
+        id: diagnostics
+        run: |
+          FAILED=""
+          if [ "${{ needs.backend.result }}" = "failure" ]; then FAILED="${FAILED}• Backend (lint, format, typecheck, pytest)\n"; fi
+          if [ "${{ needs.worker.result }}" = "failure" ]; then FAILED="${FAILED}• Worker (lint, format, typecheck, tests)\n"; fi
+          if [ "${{ needs.frontend.result }}" = "failure" ]; then FAILED="${FAILED}• Frontend (eslint, prettier, tsc, vitest, build)\n"; fi
+          if [ "${{ needs.e2e.result }}" = "failure" ]; then FAILED="${FAILED}• E2E Smoke Tests (Playwright)\n"; fi
+          if [ -z "$FAILED" ]; then FAILED="• Unhandled CI Failure\n"; fi
+          echo "failed_stages<<EOF" >> $GITHUB_OUTPUT
+          echo -e "$FAILED" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
       - name: Send Telegram CI Failure Notification
         uses: iitdeveloper-git/iitdeveloper-git-shared-workflows/actions/telegram-notify@main
         with:
@@ -259,4 +272,4 @@ jobs:
           app_name: "Growixa"
           environment: "CI / Tests"
           status: "failure"
-          custom_message: "⚠️ One or more CI test/lint stages failed on ${{ github.ref_name }}."
+          custom_message: "⚠️ Failed stage(s) on ${{ github.ref_name }}:%0A${{ steps.diagnostics.outputs.failed_stages }}"
