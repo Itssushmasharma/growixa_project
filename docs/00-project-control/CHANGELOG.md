@@ -10,6 +10,11 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
+## 2026-08-20 — v0.4.0-rc1 release candidate (UAT preview)
+
+- **`v0.4.0-rc1`** — cut UAT release candidate tag containing email template personalization token insertion fix.
+- Merged `feature/FRONTEND/GRX-TEMPLATE-TOKEN-FIX` fixing visual editor token synchronization and live preview.
+
 ## 2026-08-20 — v0.3.0 production release
 
 - **`v0.3.0`** — official production release promoted from `v0.3.0-rc2`.

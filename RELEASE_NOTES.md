@@ -2,6 +2,19 @@
 
 ---
 
+## 🟡 [v0.4.0-rc1] — 2026-08-20
+
+> **Release Tag**: `v0.4.0-rc1`
+> **Release Date**: August 20, 2026
+> **Platform Status**: 🟡 Preview on UAT via `v0.4.0-rc1`
+> **UAT Staging URL**: [https://uat.growixa.iitdeveloper.com](https://uat.growixa.iitdeveloper.com)
+> **Production URL**: [https://growixa.iitdeveloper.com](https://growixa.iitdeveloper.com)
+
+### 🛠️ Fixed
+- **Email Template Personalization Token Insertion**: Fixed content synchronization in visual editor so clicking token buttons (`+ First Name`, `+ Email`, `+ Company Name`) immediately reflects in both the visual editor and live HTML preview.
+
+---
+
 ## ✅ [v0.3.0] — 2026-08-20
 
 > **Release Tag**: `v0.3.0`
