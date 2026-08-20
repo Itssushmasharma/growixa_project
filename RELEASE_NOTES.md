@@ -2,13 +2,13 @@
 
 ---
 
-## 🟡 [v0.3.0-rc2] — 2026-08-20
+## ✅ [v0.3.0] — 2026-08-20
 
-> **Release Tag**: `v0.3.0-rc2`
+> **Release Tag**: `v0.3.0`
 > **Release Date**: August 20, 2026
-> **Platform Status**: 🟡 Preview on UAT via `v0.3.0-rc2`
-> **UAT Staging URL**: [https://uat.growixa.iitdeveloper.com](https://uat.growixa.iitdeveloper.com)
+> **Platform Status**: 🟢 Production release promoted from UAT `v0.3.0-rc2`
 > **Production URL**: [https://growixa.iitdeveloper.com](https://growixa.iitdeveloper.com)
+> **UAT Staging URL**: [https://uat.growixa.iitdeveloper.com](https://uat.growixa.iitdeveloper.com)
 
 ### 🚀 Added
 - **Site Favicon & Apple Touch Icon**: High-resolution 512×512 PNG brand favicon and Apple Touch Icon (`/icon.png`, `/apple-icon.png`) automatically linked across the application.
