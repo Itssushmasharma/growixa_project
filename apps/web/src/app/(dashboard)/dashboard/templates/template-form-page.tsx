@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { type FormEvent, useEffect, useState } from "react";
+import { type FormEvent, useEffect, useRef, useState } from "react";
 
 import { useToast } from "@/components/toast/toast-context";
 import { apiFetch } from "@/lib/api-client";
@@ -39,6 +39,7 @@ export function TemplateFormPage({ mode, templateId }: TemplateFormPageProps) {
   const [canManage, setCanManage] = useState(false);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [submitting, setSubmitting] = useState(false);
+  const visualEditorRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -120,6 +121,16 @@ export function TemplateFormPage({ mode, templateId }: TemplateFormPageProps) {
   }
 
   const [editorMode, setEditorMode] = useState<"visual" | "html">("visual");
+
+  useEffect(() => {
+    const visualEditor = visualEditorRef.current;
+    if (!visualEditor || editorMode !== "visual") return;
+
+    const nextHtml = form.body_html || "<p>Click to start editing content visually…</p>";
+    if (visualEditor.innerHTML !== nextHtml) {
+      visualEditor.innerHTML = nextHtml;
+    }
+  }, [editorMode, form.body_html]);
 
   function handleFormatHtml() {
     if (!form.body_html.trim()) return;
@@ -311,6 +322,7 @@ export function TemplateFormPage({ mode, templateId }: TemplateFormPageProps) {
             {editorMode === "visual" ? (
               <div className={styles.visualEditorContainer}>
                 <div
+                  ref={visualEditorRef}
                   role="textbox"
                   aria-label="Visual Editor"
                   className={styles.visualEditable}
@@ -319,9 +331,6 @@ export function TemplateFormPage({ mode, templateId }: TemplateFormPageProps) {
                   onInput={(e) =>
                     setForm({ ...form, body_html: (e.target as HTMLDivElement).innerHTML })
                   }
-                  dangerouslySetInnerHTML={{
-                    __html: form.body_html || "<p>Click to start editing content visually…</p>",
-                  }}
                 />
               </div>
             ) : null}

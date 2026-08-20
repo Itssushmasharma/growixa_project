@@ -166,6 +166,27 @@ describe("TemplateFormPage", () => {
     );
   });
 
+  it("inserts personalization tokens into the visual editor and preview", async () => {
+    const user = userEvent.setup();
+    mockedApiFetch.mockImplementation((path: string) => {
+      if (path === "/auth/me")
+        return Promise.resolve(meWithPermissions(["campaigns.view", "campaigns.manage"]));
+      throw new Error(`unexpected path: ${path}`);
+    });
+
+    renderFormPage({ mode: "create" });
+    await screen.findByRole("heading", { name: "New template" });
+
+    await user.click(screen.getByRole("button", { name: "+ First Name" }));
+
+    expect(screen.getByRole("textbox", { name: "Visual Editor" })).toHaveTextContent(
+      "{{first_name}}",
+    );
+
+    const frame = screen.getByTitle("Template preview") as HTMLIFrameElement;
+    expect(frame.srcdoc).toBe("{{first_name}}");
+  });
+
   it("formats the HTML body when Format is clicked", async () => {
     const user = userEvent.setup();
     mockedApiFetch.mockImplementation((path: string) => {
