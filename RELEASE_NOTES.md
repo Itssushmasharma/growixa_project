@@ -10,8 +10,12 @@
 > **UAT Staging URL**: [https://uat.growixa.iitdeveloper.com](https://uat.growixa.iitdeveloper.com)
 > **Production URL**: [https://growixa.iitdeveloper.com](https://growixa.iitdeveloper.com)
 
-### 🛠️ Fixed
+### 🛠️ Fixed & Improved
 - **Email Template Personalization Token Insertion**: Fixed content synchronization in visual editor so clicking token buttons (`+ First Name`, `+ Email`, `+ Company Name`) immediately reflects in both the visual editor and live HTML preview.
+- **AI Assistant Real Brand Voice Integration (`GRX-BUG-002`)**: Brand Voice slide-over drawer now fetches live profile data from `GET /brand/profile` to display real brand voice, core tone, required facts, and guardrails.
+- **AI Assistant Quick Starters (`GRX-BUG-003`)**: Updated starter cards with clean parameter loading (channel, prompt, tone, length) without clobbering selected campaign or audience context.
+- **AI Assistant Multi-Variation Rendering (`GRX-BUG-004`)**: Removed the 3-item display limit so all generated variations (1 to 7) are rendered; replaced static timestamps with real relative time.
+- **Quality & Dead Code Cleanup (`GRX-QA-001`)**: Removed dead `.notificationButton`/`.notificationBadge` styles from `history-page.module.css` and removed obsolete `QualityMetrics` types.
 
 ---
 
