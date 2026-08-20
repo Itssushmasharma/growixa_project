@@ -15,13 +15,6 @@ export type ApprovalStatus = "PENDING_APPROVAL" | "APPROVED" | "DISCARDED";
 
 export type AIGenerationStatus = "COMPLETE" | "FAILED";
 
-export interface QualityMetrics {
-  brand_match_percent: number;
-  readability: "Excellent" | "Good" | "Fair";
-  spam_risk: "Low" | "Medium" | "High";
-  is_best_match?: boolean;
-}
-
 export interface AIGeneration {
   id: string;
   capability: AICapability;
@@ -46,7 +39,6 @@ export interface AIGeneration {
   linked_entity_id: string | null;
   created_at: string;
   approval_status?: ApprovalStatus;
-  metrics?: QualityMetrics;
 }
 
 export interface SuggestedPrompt {

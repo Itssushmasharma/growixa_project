@@ -51,12 +51,6 @@ const SAMPLE_GENERATION: AIGeneration = {
   linked_entity_id: null,
   created_at: "2026-08-13T00:00:00Z",
   approval_status: "PENDING_APPROVAL",
-  metrics: {
-    brand_match_percent: 94,
-    readability: "Excellent",
-    spam_risk: "Low",
-    is_best_match: true,
-  },
 };
 
 function mockLoad(permissions: string[], generations: AIGeneration[] = []) {
