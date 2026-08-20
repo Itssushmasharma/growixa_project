@@ -51,12 +51,6 @@ const SAMPLE_GENERATION: AIGeneration = {
   linked_entity_id: null,
   created_at: "2026-08-13T00:00:00Z",
   approval_status: "PENDING_APPROVAL",
-  metrics: {
-    brand_match_percent: 94,
-    readability: "Excellent",
-    spam_risk: "Low",
-    is_best_match: true,
-  },
 };
 
 function mockLoad(permissions: string[], generations: AIGeneration[] = []) {
@@ -71,6 +65,14 @@ function mockLoad(permissions: string[], generations: AIGeneration[] = []) {
       return Promise.resolve({
         period_ai_used: 245,
         plan: { max_monthly_ai_runs: 500, name: "Growth" },
+      });
+    if (path === "/brand/profile")
+      return Promise.resolve({
+        id: "brand-1",
+        company_id: "company-1",
+        brand_voice: "Confident, modern, helpful, approachable, outcome-driven.",
+        forbidden_claims: ["No guaranteed results"],
+        required_facts: ["Free 14-day trial"],
       });
     throw new Error(`unexpected path: ${path}`);
   });
@@ -105,16 +107,16 @@ describe("HistoryPage (Growixa AI Marketing Copilot)", () => {
 
     expect(await screen.findByText("AI Assistant")).toBeInTheDocument();
     expect(screen.getByText("Create with AI")).toBeInTheDocument();
-    expect(screen.getByText("Suggested for you")).toBeInTheDocument();
+    expect(screen.getByText("Quick Starters")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Generate 3 Variations/i })).toBeInTheDocument();
   });
 
-  it("populates prompt and context when clicking a Suggested for you card", async () => {
+  it("populates prompt and context when clicking a Quick Starter card", async () => {
     const user = userEvent.setup();
     mockLoad(["ai.view", "ai.manage"], []);
 
     renderHistoryPage();
-    await screen.findByText("Suggested for you");
+    await screen.findByText("Quick Starters");
 
     const reEngageSuggestion = screen.getByText(/for inactive customers/i);
     await user.click(reEngageSuggestion);
@@ -134,7 +136,9 @@ describe("HistoryPage (Growixa AI Marketing Copilot)", () => {
 
     await user.click(brandVoiceBtn);
     expect(screen.getByText("Active Brand Voice")).toBeInTheDocument();
-    expect(screen.getByText(/Core Tone & Personality/i)).toBeInTheDocument();
+    expect(
+      await screen.findByText("Confident, modern, helpful, approachable, outcome-driven."),
+    ).toBeInTheDocument();
 
     const closeBtn = screen.getByText("✕");
     await user.click(closeBtn);
@@ -174,6 +178,7 @@ describe("HistoryPage (Growixa AI Marketing Copilot)", () => {
           period_ai_used: 10,
           plan: { max_monthly_ai_runs: 500, name: "Growth" },
         });
+      if (path === "/brand/profile") return Promise.resolve(null);
       if (path.startsWith("/ai/generate/")) {
         return Promise.resolve({
           id: `gen-${Math.random()}`,
@@ -201,5 +206,59 @@ describe("HistoryPage (Growixa AI Marketing Copilot)", () => {
         screen.getAllByText(/Generated special discount offer/i).length,
       ).toBeGreaterThanOrEqual(1);
     });
+  });
+
+  it("shows an honest empty state in the Brand Voice drawer when no profile is configured (GRX-BUG-002)", async () => {
+    const user = userEvent.setup();
+    mockedApiFetch.mockImplementation((path: string) => {
+      if (path === "/auth/me") return Promise.resolve(meWithPermissions(["ai.view", "ai.manage"]));
+      if (path === "/ai/generations") return Promise.resolve([]);
+      if (path === "/campaigns") return Promise.resolve([]);
+      if (path === "/contacts/segments") return Promise.resolve([]);
+      if (path === "/billing/subscription")
+        return Promise.resolve({
+          period_ai_used: 0,
+          plan: { max_monthly_ai_runs: 500, name: "Growth" },
+        });
+      if (path === "/brand/profile") return Promise.resolve(null);
+      throw new Error(`unexpected path: ${path}`);
+    });
+
+    renderHistoryPage();
+    const brandVoiceBtn = await screen.findByRole("button", { name: /Brand Voice/i });
+    await user.click(brandVoiceBtn);
+
+    expect(
+      await screen.findByText(/Not set yet — add your brand voice in Settings/i),
+    ).toBeInTheDocument();
+  });
+
+  it("does not silently change campaign/audience selection when clicking a Quick Starter (GRX-BUG-003)", async () => {
+    const user = userEvent.setup();
+    mockLoad(["ai.view", "ai.manage"], []);
+
+    renderHistoryPage();
+    await screen.findByText("Quick Starters");
+
+    const campaignSelect = screen.getByLabelText("Campaign") as HTMLSelectElement;
+    const beforeValue = campaignSelect.value;
+
+    const reEngageSuggestion = screen.getByText(/for inactive customers/i);
+    await user.click(reEngageSuggestion);
+
+    expect(campaignSelect.value).toBe(beforeValue);
+  });
+
+  it("renders all generated variations, not just the first 3 (GRX-BUG-004)", async () => {
+    const sevenGenerations: AIGeneration[] = Array.from({ length: 7 }, (_, i) => ({
+      ...SAMPLE_GENERATION,
+      id: `gen-${i + 1}`,
+      output: { text: `Variation text number ${i + 1}` },
+    }));
+    mockLoad(["ai.view", "ai.manage"], sevenGenerations);
+
+    renderHistoryPage();
+
+    expect(await screen.findByText("Variation 7")).toBeInTheDocument();
   });
 });

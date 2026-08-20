@@ -15,13 +15,6 @@ export type ApprovalStatus = "PENDING_APPROVAL" | "APPROVED" | "DISCARDED";
 
 export type AIGenerationStatus = "COMPLETE" | "FAILED";
 
-export interface QualityMetrics {
-  brand_match_percent: number;
-  readability: "Excellent" | "Good" | "Fair";
-  spam_risk: "Low" | "Medium" | "High";
-  is_best_match?: boolean;
-}
-
 export interface AIGeneration {
   id: string;
   capability: AICapability;
@@ -46,7 +39,6 @@ export interface AIGeneration {
   linked_entity_id: string | null;
   created_at: string;
   approval_status?: ApprovalStatus;
-  metrics?: QualityMetrics;
 }
 
 export interface SuggestedPrompt {
@@ -56,8 +48,6 @@ export interface SuggestedPrompt {
   channel: StudioChannel;
   tag: string;
   tagColor: "purple" | "blue" | "green" | "orange";
-  campaign?: string;
-  audience?: string;
   prompt: string;
   tone: string;
   length: string;
@@ -79,4 +69,13 @@ export interface SubscriptionUsageInfo {
   period_ai_used: number;
   max_monthly_ai_runs: number;
   plan_name: string;
+}
+
+// Matches apps/api/src/growixa_api/brand/schemas.py's BrandProfileOut (GET /brand/profile).
+export interface BrandProfile {
+  id: string;
+  company_id: string;
+  brand_voice: string | null;
+  forbidden_claims: string[];
+  required_facts: string[];
 }
