@@ -20,16 +20,62 @@ const BASE_TARGET_OPTIONS = [
   { value: "source", label: "Source" },
 ];
 
-function guessTarget(header: string): string {
+function guessTarget(header: string, customFields: CustomField[] = []): string {
   const normalized = header
     .trim()
     .toLowerCase()
     .replace(/[\s-]+/g, "_");
-  if (normalized === "email" || normalized === "email_address") return "email";
-  if (normalized === "first_name" || normalized === "firstname") return "first_name";
-  if (normalized === "last_name" || normalized === "lastname") return "last_name";
-  if (normalized === "phone" || normalized === "phone_number") return "phone";
-  if (normalized === "source") return "source";
+
+  if (
+    normalized === "email" ||
+    normalized === "email_address" ||
+    normalized === "email_primary" ||
+    normalized === "emails"
+  ) {
+    return "email";
+  }
+  if (
+    normalized === "first_name" ||
+    normalized === "firstname" ||
+    normalized === "first" ||
+    normalized === "business_name" ||
+    normalized === "company_name" ||
+    normalized === "name"
+  ) {
+    return "first_name";
+  }
+  if (normalized === "last_name" || normalized === "lastname" || normalized === "last") {
+    return "last_name";
+  }
+  if (
+    normalized === "phone" ||
+    normalized === "phone_number" ||
+    normalized === "phone_primary" ||
+    normalized === "phones_all"
+  ) {
+    return "phone";
+  }
+  if (normalized === "source") {
+    return "source";
+  }
+
+  // Check matching custom fields by key or label
+  const match = customFields.find((f) => {
+    const keyNorm = f.key
+      .trim()
+      .toLowerCase()
+      .replace(/[\s-]+/g, "_");
+    const labelNorm = f.label
+      .trim()
+      .toLowerCase()
+      .replace(/[\s-]+/g, "_");
+    return keyNorm === normalized || labelNorm === normalized;
+  });
+
+  if (match) {
+    return `custom_field:${match.key}`;
+  }
+
   return "";
 }
 
@@ -146,7 +192,11 @@ export function ImportsPage() {
       const text = await readFileAsText(selected);
       const parsedHeaders = parseHeaderLine(text);
       setHeaders(parsedHeaders);
-      setMapping(Object.fromEntries(parsedHeaders.map((header) => [header, guessTarget(header)])));
+      setMapping(
+        Object.fromEntries(
+          parsedHeaders.map((header) => [header, guessTarget(header, customFields)]),
+        ),
+      );
     } catch {
       showToast("error", "Could not read that file.");
       setHeaders([]);
@@ -213,6 +263,46 @@ export function ImportsPage() {
       }
     } finally {
       setUploading(false);
+    }
+  }
+
+  async function handleAutoCreateMissingCustomFields() {
+    const unmappedHeaders = headers.filter((h) => !mapping[h]);
+    if (unmappedHeaders.length === 0) return;
+
+    try {
+      for (const header of unmappedHeaders) {
+        const key = header
+          .trim()
+          .toLowerCase()
+          .replace(/[\s-]+/g, "_");
+        const label = header.trim().replace(/^./, (str) => str.toUpperCase());
+        try {
+          await apiFetch<CustomField>("/contacts/custom-fields", {
+            method: "POST",
+            body: JSON.stringify({ key, label, field_type: "TEXT" }),
+          });
+        } catch {
+          // Ignore if key already exists
+        }
+      }
+
+      const updatedList = await apiFetch<CustomField[]>("/contacts/custom-fields");
+      setCustomFields(updatedList);
+
+      setMapping((prev) => {
+        const next = { ...prev };
+        for (const header of headers) {
+          if (!next[header]) {
+            next[header] = guessTarget(header, updatedList);
+          }
+        }
+        return next;
+      });
+
+      showToast("success", "Auto-created and mapped custom fields!");
+    } catch {
+      showToast("error", "Could not auto-create custom fields.");
     }
   }
 
@@ -377,9 +467,37 @@ export function ImportsPage() {
 
             {headers.length > 0 && (
               <div style={{ marginTop: 20 }}>
-                <h4 style={{ margin: "0 0 10px", fontSize: 14, fontWeight: 700 }}>
-                  Map CSV Columns to Contact Fields
-                </h4>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    marginBottom: 10,
+                  }}
+                >
+                  <h4 style={{ margin: 0, fontSize: 14, fontWeight: 700 }}>
+                    Map CSV Columns to Contact Fields
+                  </h4>
+                  {headers.some((h) => !mapping[h]) && (
+                    <button
+                      type="button"
+                      onClick={handleAutoCreateMissingCustomFields}
+                      style={{
+                        fontSize: 12,
+                        background: "#e0e7ff",
+                        color: "#4338ca",
+                        border: "1px solid #c7d2fe",
+                        padding: "4px 10px",
+                        borderRadius: 6,
+                        cursor: "pointer",
+                        fontWeight: 600,
+                      }}
+                    >
+                      ✨ Auto-create & Map Custom Fields (
+                      {headers.filter((h) => !mapping[h]).length})
+                    </button>
+                  )}
+                </div>
                 <div className={styles.mappingGrid}>
                   {headers.map((header) => (
                     <div className={styles.mappingRow} key={header}>

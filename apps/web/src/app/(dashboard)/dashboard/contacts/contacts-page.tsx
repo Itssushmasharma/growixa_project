@@ -10,7 +10,7 @@ import { useToast } from "@/components/toast/toast-context";
 import { ApiError, apiFetch } from "@/lib/api-client";
 
 import styles from "./shared.module.css";
-import type { ConsentRecord, Contact, MeResponse, Tag } from "./types";
+import type { ConsentRecord, Contact, ContactList, CustomField, MeResponse, Tag } from "./types";
 
 const VIEW_PERMISSION = "contacts.view";
 const MANAGE_PERMISSION = "contacts.manage";
@@ -21,6 +21,7 @@ interface ContactFormState {
   last_name: string;
   phone: string;
   source: string;
+  custom_fields: Record<string, string>;
 }
 
 const EMPTY_FORM: ContactFormState = {
@@ -29,6 +30,7 @@ const EMPTY_FORM: ContactFormState = {
   last_name: "",
   phone: "",
   source: "",
+  custom_fields: {},
 };
 
 interface ConsentFormState {
@@ -49,9 +51,19 @@ const EMPTY_CONSENT_FORM: ConsentFormState = {
   source: "",
 };
 
+function decodeHtmlEntities(str: string): string {
+  if (!str || typeof str !== "string") return str;
+  return str
+    .replace(/&#039;/g, "'")
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, '"')
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">");
+}
+
 function displayName(contact: Contact): string {
   const name = [contact.first_name, contact.last_name].filter(Boolean).join(" ");
-  return name || "—";
+  return decodeHtmlEntities(name) || "—";
 }
 
 function initialsFor(contact: Contact): string {
@@ -91,9 +103,22 @@ export function ContactsPage() {
   const [canManage, setCanManage] = useState(false);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
+  const [customFields, setCustomFields] = useState<CustomField[]>([]);
+  const [contactLists, setContactLists] = useState<ContactList[]>([]);
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
+  const [tagFilter, setTagFilter] = useState<string>("ALL");
+
+  const [showBulkTagModal, setShowBulkTagModal] = useState(false);
+  const [bulkTagId, setBulkTagId] = useState("");
+  const [bulkNewTagName, setBulkNewTagName] = useState("");
+  const [bulkTagging, setBulkTagging] = useState(false);
+
+  const [showBulkListModal, setShowBulkListModal] = useState(false);
+  const [bulkListId, setBulkListId] = useState("");
+  const [bulkNewListName, setBulkNewListName] = useState("");
+  const [bulkListing, setBulkListing] = useState(false);
 
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
@@ -131,15 +156,19 @@ export function ContactsPage() {
   useEffect(() => {
     async function load() {
       try {
-        const [me, contactList, tagList] = await Promise.all([
+        const [me, contactList, tagList, customFieldList, listCollection] = await Promise.all([
           apiFetch<MeResponse>("/auth/me"),
           apiFetch<Contact[]>("/contacts"),
           apiFetch<Tag[]>("/contacts/tags"),
+          apiFetch<CustomField[]>("/contacts/custom-fields").catch(() => []),
+          apiFetch<ContactList[]>("/contacts/lists").catch(() => []),
         ]);
         setCanView(me.permissions.includes(VIEW_PERMISSION));
         setCanManage(me.permissions.includes(MANAGE_PERMISSION));
         setContacts(contactList);
         setTags(tagList);
+        setCustomFields(customFieldList);
+        setContactLists(listCollection);
       } catch {
         setLoadError("Could not load contacts.");
       } finally {
@@ -153,7 +182,7 @@ export function ContactsPage() {
   useEffect(() => {
     setCurrentPage(1);
     setSelectedIds(new Set());
-  }, [search, statusFilter, pageSize]);
+  }, [search, statusFilter, tagFilter, pageSize]);
 
   useEffect(() => {
     if (statusFilter === "DELETED") {
@@ -185,9 +214,15 @@ export function ContactsPage() {
         (c.source && c.source.toLowerCase().includes(query));
       const matchesStatus =
         statusFilter === "ALL" || statusFilter === "DELETED" || c.status === statusFilter;
-      return matchesSearch && matchesStatus;
+      const matchesTag =
+        tagFilter === "ALL" ||
+        (c.tags &&
+          c.tags.some(
+            (t) => resolveTagId(t, tags) === tagFilter || getTagInfo(t).name === tagFilter,
+          ));
+      return matchesSearch && matchesStatus && matchesTag;
     });
-  }, [contacts, deletedContacts, search, statusFilter]);
+  }, [contacts, deletedContacts, search, statusFilter, tagFilter, tags]);
 
   const totalPages = Math.ceil(visibleContacts.length / pageSize) || 1;
   const safeCurrentPage = Math.min(currentPage, totalPages);
@@ -511,14 +546,124 @@ export function ContactsPage() {
     }
   }
 
+  async function handleBulkTagSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (selectedIds.size === 0) return;
+    setBulkTagging(true);
+    try {
+      let tagToAttachId = bulkTagId;
+      if (bulkTagId === "__NEW__" && bulkNewTagName.trim()) {
+        const newTag = await apiFetch<Tag>("/contacts/tags", {
+          method: "POST",
+          body: JSON.stringify({ name: bulkNewTagName.trim() }),
+        });
+        setTags((prev) => [...prev, newTag]);
+        tagToAttachId = newTag.id;
+      }
+      if (!tagToAttachId || tagToAttachId === "__NEW__") {
+        showToast("error", "Please select or enter a tag name.");
+        return;
+      }
+
+      const targetIds = Array.from(selectedIds);
+      let successCount = 0;
+      await Promise.all(
+        targetIds.map(async (contactId) => {
+          try {
+            await apiFetch(`/contacts/${contactId}/tags`, {
+              method: "POST",
+              body: JSON.stringify({ tag_id: tagToAttachId }),
+            });
+            successCount++;
+          } catch {
+            // Ignore individual failure
+          }
+        }),
+      );
+
+      const activeList = await apiFetch<Contact[]>("/contacts");
+      setContacts(activeList);
+      setSelectedIds(new Set());
+      setShowBulkTagModal(false);
+      setBulkTagId("");
+      setBulkNewTagName("");
+      showToast(
+        "success",
+        `Applied tag to ${successCount} contact${successCount === 1 ? "" : "s"}.`,
+      );
+    } catch {
+      showToast("error", "Could not apply tag to selected contacts.");
+    } finally {
+      setBulkTagging(false);
+    }
+  }
+
+  async function handleBulkAddToListSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (selectedIds.size === 0) return;
+    setBulkListing(true);
+    try {
+      let listToTargetId = bulkListId;
+      if (bulkListId === "__NEW__" && bulkNewListName.trim()) {
+        const newList = await apiFetch<ContactList>("/contacts/lists", {
+          method: "POST",
+          body: JSON.stringify({ name: bulkNewListName.trim(), description: null }),
+        });
+        setContactLists((prev) => [...prev, newList]);
+        listToTargetId = newList.id;
+      }
+      if (!listToTargetId || listToTargetId === "__NEW__") {
+        showToast("error", "Please select or enter a list name.");
+        return;
+      }
+
+      const targetIds = Array.from(selectedIds);
+      let successCount = 0;
+      await Promise.all(
+        targetIds.map(async (contactId) => {
+          try {
+            await apiFetch(`/contacts/lists/${listToTargetId}/members`, {
+              method: "POST",
+              body: JSON.stringify({ contact_id: contactId }),
+            });
+            successCount++;
+          } catch {
+            // Ignore error
+          }
+        }),
+      );
+
+      setSelectedIds(new Set());
+      setShowBulkListModal(false);
+      setBulkListId("");
+      setBulkNewListName("");
+      showToast(
+        "success",
+        `Added ${successCount} contact${successCount === 1 ? "" : "s"} to list.`,
+      );
+    } catch {
+      showToast("error", "Could not add contacts to list.");
+    } finally {
+      setBulkListing(false);
+    }
+  }
+
   async function openContactModal(contact: Contact) {
     setSelectedContact(contact);
+    const cleanedCustomFields: Record<string, string> = {};
+    if (contact.custom_fields) {
+      for (const [k, v] of Object.entries(contact.custom_fields)) {
+        cleanedCustomFields[k] = decodeHtmlEntities(v);
+      }
+    }
+
     setEditForm({
-      email: contact.email,
-      first_name: contact.first_name ?? "",
-      last_name: contact.last_name ?? "",
-      phone: contact.phone ?? "",
-      source: contact.source ?? "",
+      email: decodeHtmlEntities(contact.email),
+      first_name: decodeHtmlEntities(contact.first_name ?? ""),
+      last_name: decodeHtmlEntities(contact.last_name ?? ""),
+      phone: decodeHtmlEntities(contact.phone ?? ""),
+      source: decodeHtmlEntities(contact.source ?? ""),
+      custom_fields: cleanedCustomFields,
     });
     setAttachTagId("");
     setNewTagName("");
@@ -551,6 +696,7 @@ export function ContactsPage() {
           last_name: editForm.last_name || null,
           phone: editForm.phone || null,
           source: editForm.source || null,
+          custom_fields: editForm.custom_fields,
         }),
       });
       setContacts((current) => current.map((c) => (c.id === contactId ? updated : c)));
@@ -762,6 +908,21 @@ export function ContactsPage() {
               <option value="ARCHIVED">Archived Contacts</option>
               <option value="DELETED">Deleted Contacts</option>
             </select>
+            {tags.length > 0 && (
+              <select
+                value={tagFilter}
+                onChange={(e) => setTagFilter(e.target.value)}
+                className={styles.select}
+                aria-label="Filter by tag"
+              >
+                <option value="ALL">All Tags</option>
+                {tags.map((tag) => (
+                  <option key={tag.id} value={tag.id}>
+                    🏷️ {tag.name}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
           <div className={styles.actionGroup}>
             {canManage && statusFilter !== "DELETED" && contacts.length > 0 && (
@@ -980,6 +1141,26 @@ export function ContactsPage() {
                     <>
                       <button
                         type="button"
+                        className={styles.primaryButton}
+                        onClick={() => {
+                          setBulkListId(contactLists[0]?.id ?? "__NEW__");
+                          setShowBulkListModal(true);
+                        }}
+                      >
+                        📋 Add to List
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.primaryButton}
+                        onClick={() => {
+                          setBulkTagId(tags[0]?.id ?? "__NEW__");
+                          setShowBulkTagModal(true);
+                        }}
+                      >
+                        🏷️ Move to Tag
+                      </button>
+                      <button
+                        type="button"
                         className={styles.bulkBtnDanger}
                         onClick={() => setDeleteModal({ mode: "BULK", count: selectedIds.size })}
                       >
@@ -1132,10 +1313,10 @@ export function ContactsPage() {
 
               {/* Tag management */}
               <div className={styles.tagList}>
-                {selectedContact.tags.map((tagItem) => {
+                {selectedContact.tags.map((tagItem, idx) => {
                   const tag = getTagInfo(tagItem);
                   return (
-                    <span key={tag.id} className={styles.tagChip}>
+                    <span key={tag.id || tag.name || `tag-${idx}`} className={styles.tagChip}>
                       <span>{tag.name}</span>
                       {canManage && (
                         <button
@@ -1325,64 +1506,123 @@ export function ContactsPage() {
                   onSubmit={(e) => handleSaveEdit(e, selectedContact.id)}
                   style={{ marginTop: 20 }}
                 >
-                  <div className={styles.createField}>
-                    <label className={styles.label} htmlFor={`edit-email-${selectedContact.id}`}>
-                      Email
-                    </label>
-                    <input
-                      id={`edit-email-${selectedContact.id}`}
-                      type="email"
-                      required
-                      className={styles.input}
-                      value={editForm.email}
-                      onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
-                    />
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                    <div className={styles.createField} style={{ gridColumn: "1 / -1" }}>
+                      <label className={styles.label} htmlFor={`edit-email-${selectedContact.id}`}>
+                        Email
+                      </label>
+                      <input
+                        id={`edit-email-${selectedContact.id}`}
+                        type="email"
+                        required
+                        className={styles.input}
+                        value={editForm.email}
+                        onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                      />
+                    </div>
+
+                    <div className={styles.createField}>
+                      <label
+                        className={styles.label}
+                        htmlFor={`edit-first-name-${selectedContact.id}`}
+                      >
+                        First name
+                      </label>
+                      <input
+                        id={`edit-first-name-${selectedContact.id}`}
+                        type="text"
+                        className={styles.input}
+                        value={editForm.first_name}
+                        onChange={(e) => setEditForm({ ...editForm, first_name: e.target.value })}
+                      />
+                    </div>
+
+                    <div className={styles.createField}>
+                      <label
+                        className={styles.label}
+                        htmlFor={`edit-last-name-${selectedContact.id}`}
+                      >
+                        Last name
+                      </label>
+                      <input
+                        id={`edit-last-name-${selectedContact.id}`}
+                        type="text"
+                        className={styles.input}
+                        value={editForm.last_name}
+                        onChange={(e) => setEditForm({ ...editForm, last_name: e.target.value })}
+                      />
+                    </div>
+
+                    <div className={styles.createField}>
+                      <label className={styles.label} htmlFor={`edit-phone-${selectedContact.id}`}>
+                        Phone
+                      </label>
+                      <input
+                        id={`edit-phone-${selectedContact.id}`}
+                        type="text"
+                        className={styles.input}
+                        value={editForm.phone}
+                        onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                      />
+                    </div>
                   </div>
 
-                  <div className={styles.createField}>
-                    <label
-                      className={styles.label}
-                      htmlFor={`edit-first-name-${selectedContact.id}`}
+                  {/* Custom Fields Section */}
+                  {(customFields.length > 0 ||
+                    Object.keys(selectedContact.custom_fields ?? {}).length > 0) && (
+                    <div
+                      style={{
+                        marginTop: 16,
+                        paddingTop: 14,
+                        borderTop: "1px solid #e2e8f0",
+                      }}
                     >
-                      First name
-                    </label>
-                    <input
-                      id={`edit-first-name-${selectedContact.id}`}
-                      type="text"
-                      className={styles.input}
-                      value={editForm.first_name}
-                      onChange={(e) => setEditForm({ ...editForm, first_name: e.target.value })}
-                    />
-                  </div>
-
-                  <div className={styles.createField}>
-                    <label
-                      className={styles.label}
-                      htmlFor={`edit-last-name-${selectedContact.id}`}
-                    >
-                      Last name
-                    </label>
-                    <input
-                      id={`edit-last-name-${selectedContact.id}`}
-                      type="text"
-                      className={styles.input}
-                      value={editForm.last_name}
-                      onChange={(e) => setEditForm({ ...editForm, last_name: e.target.value })}
-                    />
-                  </div>
-
-                  <div className={styles.createField}>
-                    <label className={styles.label} htmlFor={`edit-phone-${selectedContact.id}`}>
-                      Phone
-                    </label>
-                    <input
-                      id={`edit-phone-${selectedContact.id}`}
-                      type="text"
-                      className={styles.input}
-                      value={editForm.phone}
-                      onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
-                    />
-                  </div>
+                      <h4
+                        style={{
+                          margin: "0 0 10px",
+                          fontSize: 13,
+                          fontWeight: 700,
+                          color: "#334155",
+                        }}
+                      >
+                        Custom Fields
+                      </h4>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                        {(customFields.length > 0
+                          ? customFields
+                          : Object.keys(selectedContact.custom_fields ?? {}).map((k) => ({
+                              key: k,
+                              label: k.replace(/_/g, " ").replace(/^./, (s) => s.toUpperCase()),
+                              field_type: "TEXT" as const,
+                            }))
+                        ).map((field) => (
+                          <div className={styles.createField} key={field.key}>
+                            <label
+                              className={styles.label}
+                              htmlFor={`edit-custom-${field.key}-${selectedContact.id}`}
+                            >
+                              {field.label}
+                            </label>
+                            <input
+                              id={`edit-custom-${field.key}-${selectedContact.id}`}
+                              type="text"
+                              className={styles.input}
+                              value={editForm.custom_fields?.[field.key] ?? ""}
+                              onChange={(e) =>
+                                setEditForm({
+                                  ...editForm,
+                                  custom_fields: {
+                                    ...editForm.custom_fields,
+                                    [field.key]: e.target.value,
+                                  },
+                                })
+                              }
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   <button type="submit" disabled={saving} className={styles.submit}>
                     {saving ? "Saving..." : "Save changes"}
@@ -1545,6 +1785,168 @@ export function ContactsPage() {
                 {deleting ? "Deleting..." : "Confirm Delete"}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Tag Modal */}
+      {showBulkTagModal && (
+        <div
+          className={styles.modalBackdrop}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowBulkTagModal(false);
+          }}
+        >
+          <div className={styles.modalContent} style={{ maxWidth: 440 }}>
+            <div className={styles.modalHeader}>
+              <h3 className={styles.name} style={{ fontSize: 18, margin: 0 }}>
+                🏷️ Bulk Move to Tag
+              </h3>
+              <button
+                type="button"
+                className={styles.modalCloseButton}
+                onClick={() => setShowBulkTagModal(false)}
+                aria-label="Close modal"
+              >
+                Close
+              </button>
+            </div>
+            <p style={{ fontSize: 13, color: "#64748b", margin: "12px 0 16px" }}>
+              Apply a tag to <strong>{selectedIds.size}</strong> selected contact
+              {selectedIds.size > 1 ? "s" : ""}.
+            </p>
+            <form onSubmit={handleBulkTagSubmit}>
+              <div className={styles.createField} style={{ marginBottom: 14 }}>
+                <label className={styles.label} htmlFor="bulk-tag-select">
+                  Select Target Tag
+                </label>
+                <select
+                  id="bulk-tag-select"
+                  className={styles.select}
+                  style={{ width: "100%" }}
+                  value={bulkTagId}
+                  onChange={(e) => setBulkTagId(e.target.value)}
+                >
+                  {tags.map((tag) => (
+                    <option key={tag.id} value={tag.id}>
+                      🏷️ {tag.name}
+                    </option>
+                  ))}
+                  <option value="__NEW__">+ Create new tag…</option>
+                </select>
+              </div>
+
+              {bulkTagId === "__NEW__" && (
+                <div className={styles.createField} style={{ marginBottom: 14 }}>
+                  <label className={styles.label} htmlFor="bulk-new-tag-input">
+                    New Tag Name
+                  </label>
+                  <input
+                    id="bulk-new-tag-input"
+                    type="text"
+                    required
+                    className={styles.input}
+                    placeholder="e.g. VIP Customer, Webinar Lead"
+                    value={bulkNewTagName}
+                    onChange={(e) => setBulkNewTagName(e.target.value)}
+                  />
+                </div>
+              )}
+
+              <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20 }}>
+                <button
+                  type="button"
+                  className={styles.modalCloseButton}
+                  onClick={() => setShowBulkTagModal(false)}
+                >
+                  Cancel
+                </button>
+                <button type="submit" disabled={bulkTagging} className={styles.submit}>
+                  {bulkTagging ? "Applying..." : "Apply Tag"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Add to List Modal */}
+      {showBulkListModal && (
+        <div
+          className={styles.modalBackdrop}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowBulkListModal(false);
+          }}
+        >
+          <div className={styles.modalContent} style={{ maxWidth: 440 }}>
+            <div className={styles.modalHeader}>
+              <h3 className={styles.name} style={{ fontSize: 18, margin: 0 }}>
+                📋 Bulk Add to List
+              </h3>
+              <button
+                type="button"
+                className={styles.modalCloseButton}
+                onClick={() => setShowBulkListModal(false)}
+                aria-label="Close modal"
+              >
+                Close
+              </button>
+            </div>
+            <p style={{ fontSize: 13, color: "#64748b", margin: "12px 0 16px" }}>
+              Add <strong>{selectedIds.size}</strong> selected contact
+              {selectedIds.size > 1 ? "s" : ""} to a list.
+            </p>
+            <form onSubmit={handleBulkAddToListSubmit}>
+              <div className={styles.createField} style={{ marginBottom: 14 }}>
+                <label className={styles.label} htmlFor="bulk-list-select">
+                  Select Target List
+                </label>
+                <select
+                  id="bulk-list-select"
+                  className={styles.select}
+                  style={{ width: "100%" }}
+                  value={bulkListId}
+                  onChange={(e) => setBulkListId(e.target.value)}
+                >
+                  {contactLists.map((list) => (
+                    <option key={list.id} value={list.id}>
+                      📋 {list.name} ({list.member_count} members)
+                    </option>
+                  ))}
+                  <option value="__NEW__">+ Create new list…</option>
+                </select>
+              </div>
+
+              {bulkListId === "__NEW__" && (
+                <div className={styles.createField} style={{ marginBottom: 14 }}>
+                  <label className={styles.label} htmlFor="bulk-new-list-input">
+                    New List Name
+                  </label>
+                  <input
+                    id="bulk-new-list-input"
+                    type="text"
+                    required
+                    className={styles.input}
+                    placeholder="e.g. UAE Business Directory 2026"
+                    value={bulkNewListName}
+                    onChange={(e) => setBulkNewListName(e.target.value)}
+                  />
+                </div>
+              )}
+
+              <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20 }}>
+                <button
+                  type="button"
+                  className={styles.modalCloseButton}
+                  onClick={() => setShowBulkListModal(false)}
+                >
+                  Cancel
+                </button>
+                <button type="submit" disabled={bulkListing} className={styles.submit}>
+                  {bulkListing ? "Adding..." : "Add to List"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
