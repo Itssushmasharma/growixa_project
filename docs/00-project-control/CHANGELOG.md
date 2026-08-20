@@ -12,11 +12,8 @@ from Sprint 1 onward, code). Each entry names what changed and the commit(s) it 
 
 ## 2026-08-20 — v0.4.0-rc1 release candidate (UAT preview)
 
-- **`v0.4.0-rc1`** — cut UAT release candidate tag containing team invitation email flow, template token insertion fix, real Brand Voice API integration, Quick Starters UX fix, and multi-variation rendering.
-- Merged `feature/SHARED/GRX-USER-003` adding `/accept-invitation` flow and shared branded email HTML layout (`notifications/layout.py`).
+- **`v0.4.0-rc1`** — cut UAT release candidate tag containing email template personalization token insertion fix.
 - Merged `feature/FRONTEND/GRX-TEMPLATE-TOKEN-FIX` fixing visual editor token synchronization and live preview.
-- Merged `feature/FRONTEND/GRX-QA-001` removing dead notification badge CSS styles and unused `QualityMetrics` types.
-- Merged `feature/FRONTEND/GRX-BUG-002-004` delivering real `GET /brand/profile` integration in Brand Voice drawer (`GRX-BUG-002`), honest Quick Starters parameter loading (`GRX-BUG-003`), and full 1-7 variation rendering with relative timestamps (`GRX-BUG-004`).
 
 ## 2026-08-20 — v0.3.0 production release
 
