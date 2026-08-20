@@ -1313,10 +1313,10 @@ export function ContactsPage() {
 
               {/* Tag management */}
               <div className={styles.tagList}>
-                {selectedContact.tags.map((tagItem) => {
+                {selectedContact.tags.map((tagItem, idx) => {
                   const tag = getTagInfo(tagItem);
                   return (
-                    <span key={tag.id} className={styles.tagChip}>
+                    <span key={tag.id || tag.name || `tag-${idx}`} className={styles.tagChip}>
                       <span>{tag.name}</span>
                       {canManage && (
                         <button
