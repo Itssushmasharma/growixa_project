@@ -48,8 +48,6 @@ export interface SuggestedPrompt {
   channel: StudioChannel;
   tag: string;
   tagColor: "purple" | "blue" | "green" | "orange";
-  campaign?: string;
-  audience?: string;
   prompt: string;
   tone: string;
   length: string;
@@ -71,4 +69,13 @@ export interface SubscriptionUsageInfo {
   period_ai_used: number;
   max_monthly_ai_runs: number;
   plan_name: string;
+}
+
+// Matches apps/api/src/growixa_api/brand/schemas.py's BrandProfileOut (GET /brand/profile).
+export interface BrandProfile {
+  id: string;
+  company_id: string;
+  brand_voice: string | null;
+  forbidden_claims: string[];
+  required_facts: string[];
 }
