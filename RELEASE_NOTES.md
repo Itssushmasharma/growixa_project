@@ -11,7 +11,6 @@
 > **Production URL**: [https://growixa.iitdeveloper.com](https://growixa.iitdeveloper.com)
 
 ### 🚀 Added
-- **Customer Forgot-Password & Reset Flow**: Full transactional reset email pipeline, generic security responses, and dedicated `/forgot-password` and `/reset-password?token=...` pages with single-use 30-minute token expiration.
 - **Campaign Scheduling Redirect**: Returning to the all-campaigns overview immediately upon successfully scheduling a campaign.
 
 ### 🛠️ Fixed & Hardened
@@ -30,6 +29,7 @@
 > **UAT Staging URL**: [https://uat.growixa.iitdeveloper.com](https://uat.growixa.iitdeveloper.com)
 
 ### 🚀 Added
+- **Customer Forgot-Password & Reset Flow**: Full transactional reset email pipeline, generic security responses, and dedicated `/forgot-password` and `/reset-password?token=...` pages with single-use 30-minute token expiration.
 - **Customer Help Center (`/docs`)**: Documentation and in-app assistance at `/docs` — instant client-side search, 6 categorised guide suites, markdown viewer with step badges, callout alerts, code copy and a table of contents (`GRX-DOCS-001`).
 - **Git-backed docs architecture**: Articles are authored as markdown under `apps/web/src/content/docs/` and compiled to a manifest by `scripts/compile-docs.js` on `predev`/`prebuild`/`pretest`, so documentation is reviewed as source rather than embedded in TypeScript.
 - **In-App Contextual Help Drawer**: Slide-over `<HelpDrawer />` across dashboard navigation for reading guides without losing context.
