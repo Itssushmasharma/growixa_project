@@ -10,7 +10,14 @@
 > **UAT Staging URL**: [https://uat.growixa.iitdeveloper.com](https://uat.growixa.iitdeveloper.com)
 > **Production URL**: [https://growixa.iitdeveloper.com](https://growixa.iitdeveloper.com)
 
+### 🚀 Added
+- **CSV Import Smart Auto-Matching & 1-Click Custom Fields Creation**: Auto-maps common B2B headers (`company`, `city`, `address`, `website`, `category`, `linkedin`, `phone_primary`, etc.) against existing schema; provides a 1-click button to automatically create and map missing custom fields.
+- **Custom Fields in Contact Detail Modal & Segment Builder**: View, edit, and filter custom fields in a 2-column grid inside the contact detail modal and segment rule builder with automatic HTML entity decoding.
+- **Bulk Move to Tag & Bulk Add to List**: Added **`🏷️ Move to Tag`** and **`📋 Add to List`** buttons to the contacts floating bulk action toolbar for 1-click batch categorization into existing or newly created tags and lists.
+- **Filter Contacts by Tag**: Added quick tag filter dropdown in the contacts table toolbar.
+
 ### 🛠️ Fixed & Improved
+- **Telegram Release & Deployment Notifications (`GRX-TELEGRAM-NOTIFY`)**: Integrated automated Telegram group notifications into `deploy-production.yml` and `deploy-uat.yml` using the central `iitdeveloper-git-shared-workflows` action.
 - **Email Template Personalization Token Insertion**: Fixed content synchronization in visual editor so clicking token buttons (`+ First Name`, `+ Email`, `+ Company Name`) immediately reflects in both the visual editor and live HTML preview.
 - **AI Assistant Real Brand Voice Integration (`GRX-BUG-002`)**: Brand Voice slide-over drawer now fetches live profile data from `GET /brand/profile` to display real brand voice, core tone, required facts, and guardrails.
 - **AI Assistant Quick Starters (`GRX-BUG-003`)**: Updated starter cards with clean parameter loading (channel, prompt, tone, length) without clobbering selected campaign or audience context.
