@@ -8,7 +8,7 @@ This document maintains a real-time record of all parallel Git worktrees, active
 
 | Worktree Path | Branch Name | Feature / Task | Preview URL | Status | Created |
 |---|---|---|---|---|---|
-| `.worktrees/grx-sec-002` | `feature/BACKEND/GRX-SEC-002` | `GRX-SEC-002` — Triage 7 Dependabot alerts & add CI security audit | — | `IN_REVIEW` | 2026-08-18 |
+| — | — | — | — | — | — |
 
 ---
 
@@ -16,6 +16,9 @@ This document maintains a real-time record of all parallel Git worktrees, active
 
 | Worktree Directory | Branch | Feature Delivered | Merged Commit | Merged Date |
 |---|---|---|---|---|
+| `.worktrees/grx-web-favicon` | `feature/FRONTEND/add-web-favicon` | Site Favicon & Apple Touch Icon (512x512 PNG) | `b7e7584` | 2026-08-20 |
+| `.worktrees/password-forgot-reset-flow` | `feature/FRONTEND/password-forgot-reset-flow` | Customer Forgot-Password & Reset Flow with transactional SMTP email delivery | `e970a4a` | 2026-08-20 |
+| `.worktrees/campaign-schedule-redirect` | `feature/FRONTEND/campaign-schedule-redirect` | Campaign Scheduling Redirect to all-campaigns overview | `e970a4a` | 2026-08-20 |
 | `.worktrees/grx-sec-002` | `feature/BACKEND/GRX-SEC-002` | `GRX-SEC-002` — Dependabot 7 CVE Vulnerability Triage, Package Overrides & CI Security Audit | `c84b61d` | 2026-08-18 |
 | `.worktrees/grx-docs-help-center` | `feature/FRONTEND/GRX-DOCS-001` | `GRX-DOCS-001` — Customer Help Center (`/docs`) & In-App Contextual Help (`/dashboard`) | `89624bd` | 2026-08-17 |
 | `.worktrees/grx-contact-016-restore` | `feature/BACKEND/GRX-CONTACT-016` | `GRX-CONTACT-016` — Deleted Contacts View & Contact Restoration (UI & Backend) | `95189af` | 2026-08-17 |
