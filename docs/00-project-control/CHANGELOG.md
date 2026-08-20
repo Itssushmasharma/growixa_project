@@ -10,9 +10,9 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
-## 2026-08-20 — v0.4.0-rc1 release candidate (UAT preview)
+## 2026-08-20 — v0.4.0-rc2 release candidate (UAT preview)
 
-- **`v0.4.0-rc1`** — cut UAT release candidate tag containing smart CSV import auto-matching, custom fields modal editor & segment builder, bulk move to tag, bulk add to list, template token insertion fix, and Telegram release notification integration.
+- **`v0.4.0-rc2`** — cut UAT release candidate tag containing smart CSV import auto-matching, custom fields modal editor & segment builder, bulk move to tag, bulk add to list, template token insertion fix, and Telegram release notification integration.
 - Merged `feature/FRONTEND/GRX-CSV-AUTO-MATCH-FIX` adding B2B column auto-mapping, 1-click custom fields generation in CSV imports, custom fields in contact detail modal & segment rules, `🏷️ Move to Tag` and `📋 Add to List` floating bulk actions, and tag filter dropdown.
 - Merged `feature/FRONTEND/GRX-TEMPLATE-TOKEN-FIX` fixing visual editor token synchronization and live preview.
 - Merged `feature/INFRA/GRX-TELEGRAM-NOTIFY` integrating automated Telegram release notifications for UAT and Production via central `iitdeveloper-git-shared-workflows` action.

@@ -2,11 +2,11 @@
 
 ---
 
-## 🟡 [v0.4.0-rc1] — 2026-08-20
+## 🟡 [v0.4.0-rc2] — 2026-08-20
 
-> **Release Tag**: `v0.4.0-rc1`
+> **Release Tag**: `v0.4.0-rc2`
 > **Release Date**: August 20, 2026
-> **Platform Status**: 🟡 Preview on UAT via `v0.4.0-rc1`
+> **Platform Status**: 🟡 Preview on UAT via `v0.4.0-rc2`
 > **UAT Staging URL**: [https://uat.growixa.iitdeveloper.com](https://uat.growixa.iitdeveloper.com)
 > **Production URL**: [https://growixa.iitdeveloper.com](https://growixa.iitdeveloper.com)
 
