@@ -10,13 +10,10 @@
 > **UAT Staging URL**: [https://uat.growixa.iitdeveloper.com](https://uat.growixa.iitdeveloper.com)
 > **Production URL**: [https://growixa.iitdeveloper.com](https://growixa.iitdeveloper.com)
 
-### 🚀 Added
-- **Campaign Scheduling Redirect**: Returning to the all-campaigns overview immediately upon successfully scheduling a campaign.
-
-### 🛠️ Fixed & Hardened
-- **Production CI/CD Deploy Workflow**: Corrected image tag argument passing, file synchronization, and project isolation in `.github/workflows/deploy-production.yml`.
+### 🛠️ Fixed & Hardened (Infrastructure & CI/CD)
+- **Production CI/CD Deploy Workflow**: Corrected image tag argument passing, automated deployment file synchronization, and project isolation in `.github/workflows/deploy-production.yml`.
 - **Database Backup & Retention**: Standardized backup scripts to use the stable `growixa-prod` project name.
-- **Postgres Port Conflict Elimination (`GRX-INFRA-005`)**: Production PostgreSQL is Docker-network internal, preventing host port 5432 collisions during rollout migrations.
+- **Postgres Port Conflict Elimination (`GRX-INFRA-005`)**: Production PostgreSQL is Docker-network internal, eliminating host port 5432 collisions during rollout migrations.
 
 ---
 
