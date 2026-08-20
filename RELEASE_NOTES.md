@@ -2,13 +2,13 @@
 
 ---
 
-## 🟡 [v0.4.0-rc2] — 2026-08-20
+## 🟢 [v0.4.0] — 2026-08-20
 
-> **Release Tag**: `v0.4.0-rc2`
+> **Release Tag**: `v0.4.0`
 > **Release Date**: August 20, 2026
-> **Platform Status**: 🟡 Preview on UAT via `v0.4.0-rc2`
-> **UAT Staging URL**: [https://uat.growixa.iitdeveloper.com](https://uat.growixa.iitdeveloper.com)
+> **Platform Status**: 🟢 Promoted to Production
 > **Production URL**: [https://growixa.iitdeveloper.com](https://growixa.iitdeveloper.com)
+> **UAT Staging URL**: [https://uat.growixa.iitdeveloper.com](https://uat.growixa.iitdeveloper.com)
 
 ### 🚀 Added
 - **CSV Import Smart Auto-Matching & 1-Click Custom Fields Creation**: Auto-maps common B2B headers (`company`, `city`, `address`, `website`, `category`, `linkedin`, `phone_primary`, etc.) against existing schema; provides a 1-click button to automatically create and map missing custom fields.
