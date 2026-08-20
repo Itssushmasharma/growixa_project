@@ -108,6 +108,12 @@ jobs:
   # needs no service containers; independent job, runs in parallel with backend/frontend.
   worker:
     runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql+asyncpg://growixa:ci_pg_password@localhost:5432/growixa_test
+      REDIS_URL: redis://localhost:6379/1
+      RABBITMQ_URL: amqp://guest:ci_mq_password@localhost:5672/
+      ENCRYPTION_KEY: U640ORbquCvIAZca0r5qqd173t669iSoJ3gSuoGGSr0=
+      API_PUBLIC_URL: http://localhost:8000
     steps:
       - uses: actions/checkout@v4
 

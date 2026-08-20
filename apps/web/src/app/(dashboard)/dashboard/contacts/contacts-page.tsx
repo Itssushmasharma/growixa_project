@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { type FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 
 import { HelpTooltip } from "@/components/help/help-tooltip";
 import { PageHeader } from "@/components/page-header/page-header";
@@ -150,7 +150,6 @@ export function ContactsPage() {
 
   // Deleted contacts & restoration state (GRX-CONTACT-016)
   const [deletedContacts, setDeletedContacts] = useState<Contact[]>([]);
-  const [deletedLoading, setDeletedLoading] = useState(false);
   const [restoring, setRestoring] = useState(false);
 
   useEffect(() => {
@@ -184,23 +183,20 @@ export function ContactsPage() {
     setSelectedIds(new Set());
   }, [search, statusFilter, tagFilter, pageSize]);
 
-  useEffect(() => {
-    if (statusFilter === "DELETED") {
-      void loadDeletedContacts();
-    }
-  }, [statusFilter]);
-
-  async function loadDeletedContacts() {
-    setDeletedLoading(true);
+  const loadDeletedContacts = useCallback(async () => {
     try {
       const list = await apiFetch<Contact[]>("/contacts?deleted_only=true");
       setDeletedContacts(list);
     } catch {
       showToast("error", "Could not load deleted contacts.");
-    } finally {
-      setDeletedLoading(false);
     }
-  }
+  }, [showToast]);
+
+  useEffect(() => {
+    if (statusFilter === "DELETED") {
+      void loadDeletedContacts();
+    }
+  }, [statusFilter, loadDeletedContacts]);
 
   const visibleContacts = useMemo(() => {
     const query = search.trim().toLowerCase();
