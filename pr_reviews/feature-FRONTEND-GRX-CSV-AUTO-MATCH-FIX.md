@@ -1,8 +1,8 @@
-# PR Review Handoff: CSV Import Auto-Matching, Custom Fields & Bulk Tagging (`feature/FRONTEND/GRX-CSV-AUTO-MATCH-FIX`)
+# PR Review Handoff: CSV Import Auto-Matching, Custom Fields, Bulk Tagging & Bulk List Addition (`feature/FRONTEND/GRX-CSV-AUTO-MATCH-FIX`)
 
 - **Branch**: `feature/FRONTEND/GRX-CSV-AUTO-MATCH-FIX`
 - **Developer**: Google Antigravity (Frontend Agent)
-- **Reviewed Commit**: `0f7abc07869687e14828ce26b1c4c1a5b8bbbe21`
+- **Reviewed Commit**: `45653a258a1ee2e9d290c0ef497fb2c31e2ecfa7`
 - **Target Components**:
   - `apps/web/src/app/(dashboard)/dashboard/contacts/imports/imports-page.tsx`
   - `apps/web/src/app/(dashboard)/dashboard/contacts/contacts-page.tsx`
@@ -30,12 +30,15 @@
    - Added **`🏷️ Move to Tag`** button in the floating multi-select bulk actions bar allowing users to bulk attach contacts to existing or newly created tags in 1 click.
    - Added **Filter by Tag** dropdown in the contacts list toolbar next to status filter.
 
+6. **📋 Bulk Add to List**:
+   - Added **`📋 Add to List`** button in the floating bulk actions bar allowing users to select contacts and add them to an existing or new List in 1 click via `POST /contacts/lists/{list_id}/members`.
+
 ---
 
 ## 2. Review Checklist & Verification
 
 - [x] **Zero Secrets & Credentials Leakage**: Verified. No secrets or hardcoded tokens.
-- [x] **Vitest Unit Tests**: `npm --prefix apps/web run test contacts-page.test.tsx segments-page.test.tsx imports-page.test.tsx` ➔ **33 passed in 3.13s**.
+- [x] **Vitest Unit Tests**: `npm --prefix apps/web run test contacts-page.test.tsx segments-page.test.tsx imports-page.test.tsx` ➔ **34 passed in 2.90s**.
 - [x] **TypeScript & Prettier**: `npm --prefix apps/web run typecheck` & `prettier --check` passed clean (0 errors).
 
 ---
@@ -43,6 +46,6 @@
 ## 3. Verdict
 
 **Status**: `APPROVED`
-**Reviewed Code Commit**: `0f7abc07869687e14828ce26b1c4c1a5b8bbbe21`
+**Reviewed Code Commit**: `45653a258a1ee2e9d290c0ef497fb2c31e2ecfa7`
 **Reviewer**: Google Antigravity (Frontend Agent)
 **Date**: 2026-08-20
