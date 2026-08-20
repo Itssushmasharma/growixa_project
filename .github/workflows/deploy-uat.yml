@@ -182,6 +182,17 @@ jobs:
             echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
           fi
 
+      - name: Ensure target directory permissions on VPS (UAT)
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.OVH_VPS_HOST }}
+          username: ${{ secrets.OVH_VPS_USER || 'ubuntu' }}
+          key: ${{ secrets.OVH_VPS_SSH_KEY }}
+          port: ${{ secrets.OVH_VPS_SSH_PORT || 22 }}
+          script: |
+            sudo mkdir -p /opt/growixa-uat
+            sudo chown -R ${{ secrets.OVH_VPS_USER || 'ubuntu' }}:${{ secrets.OVH_VPS_USER || 'ubuntu' }} /opt/growixa-uat
+
       - name: Sync deploy files to OVH VPS (UAT)
         uses: appleboy/scp-action@v0.1.7
         with:
