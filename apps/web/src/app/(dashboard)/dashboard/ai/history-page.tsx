@@ -12,6 +12,7 @@ import styles from "./history-page.module.css";
 import type {
   AICapability,
   AIGeneration,
+  BrandProfile,
   CampaignSummary,
   MeResponse,
   SegmentSummary,
@@ -53,8 +54,6 @@ const DEFAULT_SUGGESTIONS: SuggestedPrompt[] = [
     channel: "Email",
     tag: "High Impact",
     tagColor: "purple",
-    campaign: "Summer Sale 2025",
-    audience: "Inactive Customers",
     prompt:
       "Write a high-converting re-engagement email with a 20% discount offer to win back inactive leads.",
     tone: "Friendly",
@@ -67,8 +66,6 @@ const DEFAULT_SUGGESTIONS: SuggestedPrompt[] = [
     channel: "Social Post",
     tag: "Engagement Booster",
     tagColor: "blue",
-    campaign: "Summer Sale 2025",
-    audience: "All Contacts",
     prompt:
       "Announce our Summer Sale with high-engagement founder storytelling and 3 key benefits.",
     tone: "Bold",
@@ -81,8 +78,6 @@ const DEFAULT_SUGGESTIONS: SuggestedPrompt[] = [
     channel: "Email",
     tag: "Improve Open Rate",
     tagColor: "green",
-    campaign: "Product Launch Q3",
-    audience: "VIP Customers",
     prompt: "5 curiosity-driven subject lines for announcing our biggest feature release.",
     tone: "Persuasive",
     length: "Short & Punchy",
@@ -94,8 +89,6 @@ const DEFAULT_SUGGESTIONS: SuggestedPrompt[] = [
     channel: "Email",
     tag: "AI Analysis",
     tagColor: "orange",
-    campaign: "General",
-    audience: "All Contacts",
     prompt: "Rewrite our welcome email with clearer value props and high urgency.",
     tone: "Conversational",
     length: "Short & Punchy",
@@ -150,6 +143,8 @@ export function HistoryPage() {
 
   // Brand Voice Drawer State
   const [isBrandDrawerOpen, setIsBrandDrawerOpen] = useState(false);
+  const [brandProfile, setBrandProfile] = useState<BrandProfile | null>(null);
+  const [brandProfileLoading, setBrandProfileLoading] = useState(true);
 
   // Generations History
   const [generations, setGenerations] = useState<AIGeneration[]>([]);
@@ -199,6 +194,16 @@ export function HistoryPage() {
             }
           } catch {
             // Fallback to default segments list
+          }
+
+          // Fetch the account's real brand profile for the Brand Voice drawer
+          try {
+            const profile = await apiFetch<BrandProfile | null>("/brand/profile");
+            setBrandProfile(profile);
+          } catch {
+            // Leave brandProfile null -- drawer shows its own empty state
+          } finally {
+            setBrandProfileLoading(false);
           }
         }
       } catch {
@@ -284,11 +289,13 @@ export function HistoryPage() {
 
   // Handle Suggestion Click
   function handleSelectSuggestion(sug: SuggestedPrompt) {
+    // Only apply fields this starter template can genuinely set (channel, prompt text,
+    // tone, length). It deliberately does not touch campaign/audience selection: these
+    // are example templates, not tied to this account's real campaigns/segments, and
+    // matching by name against them was silently doing nothing whenever no name
+    // happened to match (GRX-BUG-003) -- leaving the current selection untouched is
+    // honest instead of silently failing.
     setSelectedChannel(sug.channel);
-    const matchedCamp = campaigns.find((c) => c.name === sug.campaign);
-    if (matchedCamp) setSelectedCampaignId(matchedCamp.id);
-    const matchedSeg = segments.find((s) => s.name === sug.audience);
-    if (matchedSeg) setSelectedAudienceId(matchedSeg.id);
     setPromptText(sug.prompt);
     setSelectedTone(sug.tone);
     setSelectedLength(sug.length);
@@ -611,22 +618,15 @@ export function HistoryPage() {
           {/* =====================================================================
               Top: "Suggested for you" Card
               ===================================================================== */}
-          <section className={styles.suggestedCard} aria-label="Suggested for you">
+          <section className={styles.suggestedCard} aria-label="Quick starters">
             <div className={styles.suggestedHeader}>
               <div className={styles.suggestedTitleRow}>
                 <span>✨</span>
-                <h3 className={styles.suggestedTitle}>Suggested for you</h3>
+                <h3 className={styles.suggestedTitle}>Quick Starters</h3>
                 <span className={styles.suggestedSub}>
-                  Smart suggestions based on your activity
+                  Ready-to-use prompt templates to get you started
                 </span>
               </div>
-              <button
-                type="button"
-                className={styles.refreshBtn}
-                onClick={() => showToast("info", "Refreshed AI suggestions")}
-              >
-                🔄 Refresh
-              </button>
             </div>
 
             {/* 4 Suggestions Grid */}
@@ -768,12 +768,14 @@ export function HistoryPage() {
                       </div>
                     </div>
                   </div>
-                  <span className={styles.groupTime}>Just now</span>
+                  <span className={styles.groupTime}>
+                    {formatRelativeTime(visibleGenerations[0]?.created_at)}
+                  </span>
                 </div>
 
                 {/* Side-by-Side Variations Grid */}
                 <div className={styles.variationsGrid}>
-                  {visibleGenerations.slice(0, 3).map((item, idx) => {
+                  {visibleGenerations.map((item, idx) => {
                     const outputText = item.output?.text || "";
 
                     return (
@@ -884,31 +886,39 @@ export function HistoryPage() {
               </span>
             </div>
 
-            <div className={styles.brandVoiceField}>
-              <span className={styles.brandFieldLabel}>Core Tone & Personality</span>
-              <span className={styles.brandFieldValue}>
-                Confident, modern, helpful, approachable, outcome-driven.
-              </span>
-            </div>
+            {brandProfileLoading ? (
+              <div className={styles.brandVoiceField}>
+                <span className={styles.brandFieldValue}>Loading brand profile…</span>
+              </div>
+            ) : (
+              <>
+                <div className={styles.brandVoiceField}>
+                  <span className={styles.brandFieldLabel}>Brand Voice</span>
+                  <span className={styles.brandFieldValue}>
+                    {brandProfile?.brand_voice ||
+                      "Not set yet — add your brand voice in Settings so every generation uses it automatically."}
+                  </span>
+                </div>
 
-            <div className={styles.brandVoiceField}>
-              <span className={styles.brandFieldLabel}>Target Audience</span>
-              <span className={styles.brandFieldValue}>
-                SMB Marketers, Founders, Growth Leaders, Agency Owners.
-              </span>
-            </div>
+                <div className={styles.brandVoiceField}>
+                  <span className={styles.brandFieldLabel}>Required Facts</span>
+                  <span className={styles.brandFieldValue}>
+                    {brandProfile?.required_facts?.length
+                      ? brandProfile.required_facts.join(" • ")
+                      : "None set."}
+                  </span>
+                </div>
 
-            <div className={styles.brandVoiceField}>
-              <span className={styles.brandFieldLabel}>Guardrails & Avoid List</span>
-              <span className={styles.brandFieldValue}>
-                Avoid exaggerated claims, spammy hype words, and generic buzzwords.
-              </span>
-            </div>
-
-            <div className={styles.brandVoiceField}>
-              <span className={styles.brandFieldLabel}>CTA Style</span>
-              <span className={styles.brandFieldValue}>Concise, high-intent, action-oriented.</span>
-            </div>
+                <div className={styles.brandVoiceField}>
+                  <span className={styles.brandFieldLabel}>Forbidden Claims</span>
+                  <span className={styles.brandFieldValue}>
+                    {brandProfile?.forbidden_claims?.length
+                      ? brandProfile.forbidden_claims.join(" • ")
+                      : "None set."}
+                  </span>
+                </div>
+              </>
+            )}
 
             <Link
               href="/dashboard/company-settings"
@@ -922,6 +932,21 @@ export function HistoryPage() {
       )}
     </div>
   );
+}
+
+function formatRelativeTime(isoTimestamp: string | undefined): string {
+  if (!isoTimestamp) return "";
+  const then = new Date(isoTimestamp).getTime();
+  if (Number.isNaN(then)) return "";
+  const diffSeconds = Math.max(0, Math.round((Date.now() - then) / 1000));
+  if (diffSeconds < 60) return "Just now";
+  const diffMinutes = Math.round(diffSeconds / 60);
+  if (diffMinutes < 60) return `${diffMinutes}m ago`;
+  const diffHours = Math.round(diffMinutes / 60);
+  if (diffHours < 24) return `${diffHours}h ago`;
+  const diffDays = Math.round(diffHours / 24);
+  if (diffDays < 30) return `${diffDays}d ago`;
+  return new Date(isoTimestamp).toLocaleDateString();
 }
 
 function parseAIError(error: unknown): string {
