@@ -28,7 +28,11 @@ function meWithPermissions(permissions: string[]): MeResponse {
 }
 
 function isTagsGet(path: string, init?: RequestInit): boolean {
-  if (path === "/contacts/custom-fields" && (!init || init.method === undefined)) return true;
+  if (
+    (path === "/contacts/custom-fields" || path === "/contacts/lists") &&
+    (!init || init.method === undefined)
+  )
+    return true;
   return path === "/contacts/tags" && (!init || init.method === undefined);
 }
 
@@ -798,6 +802,63 @@ describe("ContactsPage", () => {
 
     await waitFor(() => {
       expect(bulkTagAttached).toBe(true);
+    });
+  });
+
+  it("adds selected contacts to a list in bulk", async () => {
+    let bulkListAttached = false;
+    mockedApiFetch.mockImplementation((path: string, init?: RequestInit) => {
+      if (path === "/auth/me") {
+        return Promise.resolve(meWithPermissions(["contacts.view", "contacts.manage"]));
+      }
+      if (path === "/contacts") return Promise.resolve([ACTIVE_CONTACT]);
+      if (path === "/contacts/lists" && (!init || init.method === undefined)) {
+        return Promise.resolve([
+          {
+            id: "list-1",
+            name: "Newsletter",
+            description: null,
+            member_count: 0,
+            created_at: "2026-07-01T00:00:00Z",
+            updated_at: "2026-07-01T00:00:00Z",
+          },
+        ]);
+      }
+      if (isTagsGet(path, init)) return Promise.resolve([]);
+      if (path === "/contacts/lists/list-1/members" && init?.method === "POST") {
+        bulkListAttached = true;
+        return Promise.resolve({
+          id: "list-1",
+          name: "Newsletter",
+          description: null,
+          member_count: 1,
+          created_at: "2026-07-01T00:00:00Z",
+          updated_at: "2026-07-01T00:00:00Z",
+        });
+      }
+      throw new Error(`unexpected call: ${path}`);
+    });
+
+    const user = userEvent.setup();
+    renderContactsPage();
+
+    await screen.findByText("Alice Anderson");
+
+    // Select Alice
+    const checkbox = screen.getByLabelText("Select Alice Anderson");
+    await user.click(checkbox);
+
+    // Bulk bar appears with Add to List
+    const bulkBar = screen.getByTestId("bulk-action-bar");
+    const bulkListBtn = within(bulkBar).getByRole("button", { name: "📋 Add to List" });
+    await user.click(bulkListBtn);
+
+    // Modal appears
+    expect(await screen.findByText("📋 Bulk Add to List")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Add to List" }));
+
+    await waitFor(() => {
+      expect(bulkListAttached).toBe(true);
     });
   });
 });

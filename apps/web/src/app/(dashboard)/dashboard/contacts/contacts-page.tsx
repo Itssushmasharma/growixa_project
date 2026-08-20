@@ -10,7 +10,7 @@ import { useToast } from "@/components/toast/toast-context";
 import { ApiError, apiFetch } from "@/lib/api-client";
 
 import styles from "./shared.module.css";
-import type { ConsentRecord, Contact, CustomField, MeResponse, Tag } from "./types";
+import type { ConsentRecord, Contact, ContactList, CustomField, MeResponse, Tag } from "./types";
 
 const VIEW_PERMISSION = "contacts.view";
 const MANAGE_PERMISSION = "contacts.manage";
@@ -104,6 +104,7 @@ export function ContactsPage() {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
   const [customFields, setCustomFields] = useState<CustomField[]>([]);
+  const [contactLists, setContactLists] = useState<ContactList[]>([]);
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
@@ -113,6 +114,11 @@ export function ContactsPage() {
   const [bulkTagId, setBulkTagId] = useState("");
   const [bulkNewTagName, setBulkNewTagName] = useState("");
   const [bulkTagging, setBulkTagging] = useState(false);
+
+  const [showBulkListModal, setShowBulkListModal] = useState(false);
+  const [bulkListId, setBulkListId] = useState("");
+  const [bulkNewListName, setBulkNewListName] = useState("");
+  const [bulkListing, setBulkListing] = useState(false);
 
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
@@ -150,17 +156,19 @@ export function ContactsPage() {
   useEffect(() => {
     async function load() {
       try {
-        const [me, contactList, tagList, customFieldList] = await Promise.all([
+        const [me, contactList, tagList, customFieldList, listCollection] = await Promise.all([
           apiFetch<MeResponse>("/auth/me"),
           apiFetch<Contact[]>("/contacts"),
           apiFetch<Tag[]>("/contacts/tags"),
           apiFetch<CustomField[]>("/contacts/custom-fields").catch(() => []),
+          apiFetch<ContactList[]>("/contacts/lists").catch(() => []),
         ]);
         setCanView(me.permissions.includes(VIEW_PERMISSION));
         setCanManage(me.permissions.includes(MANAGE_PERMISSION));
         setContacts(contactList);
         setTags(tagList);
         setCustomFields(customFieldList);
+        setContactLists(listCollection);
       } catch {
         setLoadError("Could not load contacts.");
       } finally {
@@ -587,6 +595,56 @@ export function ContactsPage() {
       showToast("error", "Could not apply tag to selected contacts.");
     } finally {
       setBulkTagging(false);
+    }
+  }
+
+  async function handleBulkAddToListSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (selectedIds.size === 0) return;
+    setBulkListing(true);
+    try {
+      let listToTargetId = bulkListId;
+      if (bulkListId === "__NEW__" && bulkNewListName.trim()) {
+        const newList = await apiFetch<ContactList>("/contacts/lists", {
+          method: "POST",
+          body: JSON.stringify({ name: bulkNewListName.trim(), description: null }),
+        });
+        setContactLists((prev) => [...prev, newList]);
+        listToTargetId = newList.id;
+      }
+      if (!listToTargetId || listToTargetId === "__NEW__") {
+        showToast("error", "Please select or enter a list name.");
+        return;
+      }
+
+      const targetIds = Array.from(selectedIds);
+      let successCount = 0;
+      await Promise.all(
+        targetIds.map(async (contactId) => {
+          try {
+            await apiFetch(`/contacts/lists/${listToTargetId}/members`, {
+              method: "POST",
+              body: JSON.stringify({ contact_id: contactId }),
+            });
+            successCount++;
+          } catch {
+            // Ignore error
+          }
+        }),
+      );
+
+      setSelectedIds(new Set());
+      setShowBulkListModal(false);
+      setBulkListId("");
+      setBulkNewListName("");
+      showToast(
+        "success",
+        `Added ${successCount} contact${successCount === 1 ? "" : "s"} to list.`,
+      );
+    } catch {
+      showToast("error", "Could not add contacts to list.");
+    } finally {
+      setBulkListing(false);
     }
   }
 
@@ -1081,6 +1139,16 @@ export function ContactsPage() {
                     </button>
                   ) : (
                     <>
+                      <button
+                        type="button"
+                        className={styles.primaryButton}
+                        onClick={() => {
+                          setBulkListId(contactLists[0]?.id ?? "__NEW__");
+                          setShowBulkListModal(true);
+                        }}
+                      >
+                        📋 Add to List
+                      </button>
                       <button
                         type="button"
                         className={styles.primaryButton}
@@ -1795,6 +1863,87 @@ export function ContactsPage() {
                 </button>
                 <button type="submit" disabled={bulkTagging} className={styles.submit}>
                   {bulkTagging ? "Applying..." : "Apply Tag"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Add to List Modal */}
+      {showBulkListModal && (
+        <div
+          className={styles.modalBackdrop}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowBulkListModal(false);
+          }}
+        >
+          <div className={styles.modalContent} style={{ maxWidth: 440 }}>
+            <div className={styles.modalHeader}>
+              <h3 className={styles.name} style={{ fontSize: 18, margin: 0 }}>
+                📋 Bulk Add to List
+              </h3>
+              <button
+                type="button"
+                className={styles.modalCloseButton}
+                onClick={() => setShowBulkListModal(false)}
+                aria-label="Close modal"
+              >
+                Close
+              </button>
+            </div>
+            <p style={{ fontSize: 13, color: "#64748b", margin: "12px 0 16px" }}>
+              Add <strong>{selectedIds.size}</strong> selected contact
+              {selectedIds.size > 1 ? "s" : ""} to a list.
+            </p>
+            <form onSubmit={handleBulkAddToListSubmit}>
+              <div className={styles.createField} style={{ marginBottom: 14 }}>
+                <label className={styles.label} htmlFor="bulk-list-select">
+                  Select Target List
+                </label>
+                <select
+                  id="bulk-list-select"
+                  className={styles.select}
+                  style={{ width: "100%" }}
+                  value={bulkListId}
+                  onChange={(e) => setBulkListId(e.target.value)}
+                >
+                  {contactLists.map((list) => (
+                    <option key={list.id} value={list.id}>
+                      📋 {list.name} ({list.member_count} members)
+                    </option>
+                  ))}
+                  <option value="__NEW__">+ Create new list…</option>
+                </select>
+              </div>
+
+              {bulkListId === "__NEW__" && (
+                <div className={styles.createField} style={{ marginBottom: 14 }}>
+                  <label className={styles.label} htmlFor="bulk-new-list-input">
+                    New List Name
+                  </label>
+                  <input
+                    id="bulk-new-list-input"
+                    type="text"
+                    required
+                    className={styles.input}
+                    placeholder="e.g. UAE Business Directory 2026"
+                    value={bulkNewListName}
+                    onChange={(e) => setBulkNewListName(e.target.value)}
+                  />
+                </div>
+              )}
+
+              <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20 }}>
+                <button
+                  type="button"
+                  className={styles.modalCloseButton}
+                  onClick={() => setShowBulkListModal(false)}
+                >
+                  Cancel
+                </button>
+                <button type="submit" disabled={bulkListing} className={styles.submit}>
+                  {bulkListing ? "Adding..." : "Add to List"}
                 </button>
               </div>
             </form>
