@@ -225,8 +225,15 @@ jobs:
             chmod +x deploy/scripts/deploy_uat.sh
             ./deploy/scripts/deploy_uat.sh "${{ steps.vars.outputs.tag }}"
 
+  notify-success:
+    name: Notify Deployment Success
+    needs: [deploy]
+    if: success()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
       - name: Extract Release Notes Summary
-        if: always()
         id: notes
         run: |
           python3 - << 'PYEOF' >> $GITHUB_OUTPUT
@@ -249,15 +256,14 @@ jobs:
           PYEOF
 
       - name: Send Telegram Release Notification
-        if: always()
         uses: iitdeveloper-git/iitdeveloper-git-shared-workflows/actions/telegram-notify@main
         with:
           bot_token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           chat_id: ${{ secrets.TELEGRAM_CHAT_ID }}
           app_name: "Growixa"
           environment: "UAT / Staging"
-          status: ${{ job.status }}
-          release_tag: ${{ steps.vars.outputs.tag }}
+          status: "success"
+          release_tag: ${{ github.ref_name }}
           app_url: "https://uat.growixa.iitdeveloper.com"
           custom_message: ${{ steps.notes.outputs.summary }}
 
