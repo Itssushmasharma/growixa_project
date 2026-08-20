@@ -1,6 +1,13 @@
 repos:
   - repo: local
     hooks:
+      - id: check-branch-name
+        name: check branch name & forbid main commit
+        entry: ./scripts/check_branch_name.sh
+        language: script
+        pass_filenames: false
+        always_run: true
+
       - id: api-ruff-check
         name: api - ruff check
         entry: bash -c 'cd apps/api && source .venv/bin/activate && ruff check .'
