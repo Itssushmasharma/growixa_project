@@ -166,7 +166,14 @@ jobs:
     name: Deploy to OVH VPS (Production)
     needs: [build-and-push]
     runs-on: ubuntu-latest
+  
+    concurrency:
+      group: growixa-production-deployment
+      cancel-in-progress: false
+  
     steps:
+      - uses: actions/checkout@v4
+  
       - name: Determine Release Tag
         id: vars
         run: |
@@ -175,7 +182,18 @@ jobs:
           else
             echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
           fi
-
+  
+      - name: Sync deploy files to OVH VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.OVH_VPS_HOST }}
+          username: ${{ secrets.OVH_VPS_USER || 'ubuntu' }}
+          key: ${{ secrets.OVH_VPS_SSH_KEY }}
+          port: ${{ secrets.OVH_VPS_SSH_PORT || 22 }}
+          source: "deploy/"
+          target: "/opt/growixa/"
+          strip_components: 0
+  
       - name: Execute Production Deployment on OVH VPS
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -185,10 +203,10 @@ jobs:
           port: ${{ secrets.OVH_VPS_SSH_PORT || 22 }}
           script: |
             set -euo pipefail
-            echo "=== Authenticating with GitHub Container Registry ==="
-            echo "${{ secrets.GITHUB_TOKEN }}" | sudo docker login ghcr.io -u "${{ github.actor }}" --password-stdin
-            
-            echo "=== Executing Production Rollout Script ==="
+  
+            echo "${{ secrets.GITHUB_TOKEN }}" | sudo docker login ghcr.io \
+              -u "${{ github.actor }}" --password-stdin
+  
             cd /opt/growixa
             chmod +x deploy/scripts/deploy_prod.sh
-            ./deploy/scripts/deploy_prod.sh ${{ steps.vars.outputs.tag }}
+            ./deploy/scripts/deploy_prod.sh "${{ steps.vars.outputs.tag }}"
