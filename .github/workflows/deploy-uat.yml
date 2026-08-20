@@ -222,6 +222,29 @@ jobs:
             chmod +x deploy/scripts/deploy_uat.sh
             ./deploy/scripts/deploy_uat.sh "${{ steps.vars.outputs.tag }}"
 
+      - name: Extract Release Notes Summary
+        if: always()
+        id: notes
+        run: |
+          python3 - << 'PYEOF' >> $GITHUB_OUTPUT
+          import re
+          try:
+              content = open('RELEASE_NOTES.md').read()
+              matches = re.findall(r'^##\s+.*?(?=^##\s+|\Z)', content, flags=re.MULTILINE | re.DOTALL)
+              if matches:
+                  bullets = [line.strip() for line in matches[0].split('\n') if line.strip().startswith('- ')]
+                  summary = "\n".join(bullets[:5])
+                  if len(summary) > 600:
+                      summary = summary[:597] + "..."
+              else:
+                  summary = ""
+          except Exception:
+              summary = ""
+          print("summary<<EOF")
+          print(summary)
+          print("EOF")
+          PYEOF
+
       - name: Send Telegram Release Notification
         if: always()
         uses: iitdeveloper-git/iitdeveloper-git-shared-workflows/actions/telegram-notify@main
@@ -233,3 +256,4 @@ jobs:
           status: ${{ job.status }}
           release_tag: ${{ steps.vars.outputs.tag }}
           app_url: "https://uat.growixa.iitdeveloper.com"
+          custom_message: ${{ steps.notes.outputs.summary }}
