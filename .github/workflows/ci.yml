@@ -243,3 +243,20 @@ jobs:
       - name: Tear down the Compose stack
         if: always()
         run: docker compose down -v
+
+  # Telegram alert triggered ONLY if any CI job fails (Backend, Worker, Frontend, or E2E)
+  notify-on-failure:
+    name: Telegram Failure Alert
+    needs: [backend, worker, frontend, e2e]
+    if: failure()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Telegram CI Failure Notification
+        uses: iitdeveloper-git/iitdeveloper-git-shared-workflows/actions/telegram-notify@main
+        with:
+          bot_token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          chat_id: ${{ secrets.TELEGRAM_CHAT_ID }}
+          app_name: "Growixa"
+          environment: "CI / Tests"
+          status: "failure"
+          custom_message: "⚠️ One or more CI test/lint stages failed on ${{ github.ref_name }}."
