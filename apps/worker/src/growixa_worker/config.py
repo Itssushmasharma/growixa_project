@@ -15,11 +15,9 @@ class Settings(BaseSettings):
 
     environment: str = "local"
     log_level: str = "info"
-    rabbitmq_url: str = "amqp://guest:guest@localhost:5672/"
-    database_url: str = (
-        "postgresql+asyncpg://growixa:growixa_test_secret@localhost:5432/growixa_test"
-    )
-    redis_url: str = "redis://localhost:6379/0"
+    rabbitmq_url: str = "amqp://guest:local_dev_mq_pw@localhost:5672/"
+    database_url: str = "postgresql+asyncpg://growixa:local_dev_pg_pw@localhost:5433/growixa_test"
+    redis_url: str = "redis://localhost:6379/1"
     # Fernet key for decrypting SMTP credentials written by growixa_api's integrations
     # module (DEC-GRX-009) — must match that service's `encryption_key` setting exactly,
     # since both apps encrypt/decrypt the same `email_provider_connections` rows. Same
