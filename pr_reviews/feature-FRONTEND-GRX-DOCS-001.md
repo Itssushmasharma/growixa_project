@@ -274,4 +274,3 @@ npm --prefix apps/web run format:check
 - **Status**: **APPROVED** ✅
 - **Signed off by**: Ravi Kant Yadav (product owner) — 2026-08-17
 - **Note**: Customer Help Center and In-App Contextual Help verified and cleared for merge to `main`.
-

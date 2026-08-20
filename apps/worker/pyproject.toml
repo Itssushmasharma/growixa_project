@@ -64,13 +64,10 @@ addopts = "--cov=growixa_worker --cov-report=term-missing"
 # !! CRITICAL: always target the isolated test DB, never the live dev `growixa` database.
 # Tests run fixture teardowns that DELETE rows. Without this, running pytest wipes dev data.
 env = [
-    "ENVIRONMENT=test",
-    "LOG_LEVEL=warning",
-    "DATABASE_URL=postgresql+asyncpg://growixa:ci_pg_password@localhost:5432/growixa_test",
-    "REDIS_URL=redis://localhost:6379/1",
-    "RABBITMQ_URL=amqp://guest:ci_mq_password@localhost:5672/",
-    "ENCRYPTION_KEY=U640ORbquCvIAZca0r5qqd173t669iSoJ3gSuoGGSr0=",
-    "API_PUBLIC_URL=http://localhost:8000",
+    "D:ENVIRONMENT=test",
+    "D:LOG_LEVEL=warning",
+    "D:ENCRYPTION_KEY=U640ORbquCvIAZca0r5qqd173t669iSoJ3gSuoGGSr0=",
+    "D:API_PUBLIC_URL=http://localhost:8000",
 ]
 markers = [
     "integration: exercises a real backing service (RabbitMQ) — not a pure unit test; run alone via -m integration or exclude via -m 'not integration'",

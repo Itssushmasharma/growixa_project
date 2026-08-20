@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "growixa-bug-002-004",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": ["-c", "cd .worktrees/grx-bug-002-004/apps/web && npm run dev -- -p 3003"],
+      "port": 3003
+    }
+  ]
+}

@@ -1,8 +1,8 @@
 # Dependabot Security Triage & Remediation Record
 
-**Task ID**: `GRX-SEC-002`  
-**Date**: 2026-08-18  
-**Scope**: Triage of 7 Dependabot vulnerability alerts on `main` (6 High, 1 Moderate)  
+**Task ID**: `GRX-SEC-002`
+**Date**: 2026-08-18
+**Scope**: Triage of 7 Dependabot vulnerability alerts on `main` (6 High, 1 Moderate)
 **Status**: All 7 alerts triaged, remediated, verified clean (`0 vulnerabilities` via `npm audit` and `pip-audit`), and automated dependency security gates added to CI.
 
 ---

@@ -78,5 +78,3 @@
 - **Status**: **APPROVED** ✅
 - **Signed off by**: Ravi Kant Yadav (product owner) — 2026-08-16
 - **Note**: Visual appearance, USD/INR switcher, and credit pack display confirmed. Cleared for merge to `main`.
-
-

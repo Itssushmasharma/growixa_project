@@ -45,6 +45,9 @@ jobs:
           --health-retries 5
       rabbitmq:
         image: rabbitmq:3-management-alpine
+        env:
+          RABBITMQ_DEFAULT_USER: growixa
+          RABBITMQ_DEFAULT_PASS: growixa_test_secret
         ports:
           - 5672:5672
         options: >-
@@ -257,3 +260,21 @@ jobs:
           release_tag: ${{ steps.vars.outputs.tag }}
           app_url: "https://uat.growixa.iitdeveloper.com"
           custom_message: ${{ steps.notes.outputs.summary }}
+
+  notify-failure:
+    name: Notify Deployment Failure
+    needs: [test, build-and-push, deploy]
+    if: failure()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Telegram Failure Notification
+        uses: iitdeveloper-git/iitdeveloper-git-shared-workflows/actions/telegram-notify@main
+        with:
+          bot_token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          chat_id: ${{ secrets.TELEGRAM_CHAT_ID }}
+          app_name: "Growixa"
+          environment: "UAT / Staging"
+          status: "failure"
+          release_tag: ${{ github.ref_name }}
+          app_url: "https://uat.growixa.iitdeveloper.com"
+          custom_message: "❌ UAT deployment pipeline failed during release rollout."

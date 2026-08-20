@@ -100,4 +100,3 @@ Verified against the actual code diff (`git diff main...feature/BACKEND/GRX-SEC-
 - **Status**: **APPROVED** ✅
 - **Signed off by**: Ravi Kant Yadav (product owner) — 2026-08-18
 - **Note**: Dependabot alert remediation and CI security audit gates verified and cleared for merge to `main`.
-

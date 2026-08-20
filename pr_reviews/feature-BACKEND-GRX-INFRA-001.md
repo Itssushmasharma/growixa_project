@@ -75,4 +75,3 @@ Verified against the actual code diff (`git diff main...feature/BACKEND/GRX-INFR
 - **Status**: **APPROVED** ✅
 - **Signed off by**: Ravi Kant Yadav (product owner) — 2026-08-17
 - **Note**: Production deployment runbook and scripts verified and cleared for merge to `main`.
-

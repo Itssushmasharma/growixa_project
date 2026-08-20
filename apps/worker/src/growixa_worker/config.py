@@ -15,14 +15,11 @@ class Settings(BaseSettings):
 
     environment: str = "local"
     log_level: str = "info"
-    rabbitmq_url: str
-    database_url: str
-    # Backs the dispatch handler's post-success idempotency marker (GRX-SCHED-003) — a
-    # fast-path guard against reprocessing a scheduled-campaign dispatch job redelivered
-    # after a worker restart. Same instance growixa_api already runs; the DB-level
-    # CampaignVersion-existence check in handle_send_campaign remains the authoritative
-    # guard regardless, so this is an optimization, not a correctness requirement.
-    redis_url: str
+    rabbitmq_url: str = "amqp://guest:guest@localhost:5672/"
+    database_url: str = (
+        "postgresql+asyncpg://growixa:growixa_test_secret@localhost:5432/growixa_test"
+    )
+    redis_url: str = "redis://localhost:6379/0"
     # Fernet key for decrypting SMTP credentials written by growixa_api's integrations
     # module (DEC-GRX-009) — must match that service's `encryption_key` setting exactly,
     # since both apps encrypt/decrypt the same `email_provider_connections` rows. Same
@@ -43,4 +40,4 @@ class Settings(BaseSettings):
 
 @lru_cache
 def get_settings() -> Settings:
-    return Settings()  # type: ignore[call-arg]
+    return Settings()
