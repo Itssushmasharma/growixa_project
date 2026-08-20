@@ -165,7 +165,14 @@ jobs:
     name: Deploy to OVH VPS (UAT Environment)
     needs: [build-and-push]
     runs-on: ubuntu-latest
+
+    concurrency:
+      group: growixa-uat-deployment
+      cancel-in-progress: false
+
     steps:
+      - uses: actions/checkout@v4
+
       - name: Determine Release Tag
         id: vars
         run: |
@@ -174,6 +181,17 @@ jobs:
           else
             echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
           fi
+
+      - name: Sync deploy files to OVH VPS (UAT)
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.OVH_VPS_HOST }}
+          username: ${{ secrets.OVH_VPS_USER || 'ubuntu' }}
+          key: ${{ secrets.OVH_VPS_SSH_KEY }}
+          port: ${{ secrets.OVH_VPS_SSH_PORT || 22 }}
+          source: "deploy/"
+          target: "/opt/growixa-uat/"
+          strip_components: 0
 
       - name: Execute UAT Deployment on OVH VPS
         uses: appleboy/ssh-action@v1.0.3
@@ -185,9 +203,10 @@ jobs:
           script: |
             set -euo pipefail
             echo "=== Authenticating with GitHub Container Registry ==="
-            echo "${{ secrets.GITHUB_TOKEN }}" | sudo docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+            echo "${{ secrets.GITHUB_TOKEN }}" | sudo docker login ghcr.io \
+              -u "${{ github.actor }}" --password-stdin
             
             echo "=== Executing UAT Rollout Script ==="
             cd /opt/growixa-uat
             chmod +x deploy/scripts/deploy_uat.sh
-            ./deploy/scripts/deploy_uat.sh ${{ steps.vars.outputs.tag }}
+            ./deploy/scripts/deploy_uat.sh "${{ steps.vars.outputs.tag }}"
