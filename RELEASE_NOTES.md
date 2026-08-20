@@ -2,6 +2,25 @@
 
 ---
 
+## 🟡 [v0.3.0-rc1] — 2026-08-20
+
+> **Release Tag**: `v0.3.0-rc1`
+> **Release Date**: August 20, 2026
+> **Platform Status**: 🟡 Preview on UAT via `v0.3.0-rc1`
+> **UAT Staging URL**: [https://uat.growixa.iitdeveloper.com](https://uat.growixa.iitdeveloper.com)
+> **Production URL**: [https://growixa.iitdeveloper.com](https://growixa.iitdeveloper.com)
+
+### 🚀 Added
+- **Customer Forgot-Password & Reset Flow**: Full transactional reset email pipeline, generic security responses, and dedicated `/forgot-password` and `/reset-password?token=...` pages with single-use 30-minute token expiration.
+- **Campaign Scheduling Redirect**: Returning to the all-campaigns overview immediately upon successfully scheduling a campaign.
+
+### 🛠️ Fixed & Hardened
+- **Production CI/CD Deploy Workflow**: Corrected image tag argument passing, file synchronization, and project isolation in `.github/workflows/deploy-production.yml`.
+- **Database Backup & Retention**: Standardized backup scripts to use the stable `growixa-prod` project name.
+- **Postgres Port Conflict Elimination (`GRX-INFRA-005`)**: Production PostgreSQL is Docker-network internal, preventing host port 5432 collisions during rollout migrations.
+
+---
+
 ## ✅ [v0.2.0] — 2026-08-18
 
 > **Release Tag**: `v0.2.0`

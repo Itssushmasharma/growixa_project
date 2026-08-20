@@ -10,6 +10,13 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
+## 2026-08-20 — v0.3.0-rc1 release candidate (UAT preview)
+
+- **`v0.3.0-rc1`** — cut UAT release candidate tag containing customer forgot-password / reset flow, campaign schedule redirect, and production deploy workflow hardening.
+- Merged `feature/FRONTEND/password-forgot-reset-flow` delivering `/forgot-password` and `/reset-password?token=...` with transactional SMTP reset email delivery.
+- Merged `feature/FRONTEND/campaign-schedule-redirect` returning to `/dashboard/campaigns` after scheduling.
+- Fixed `.github/workflows/deploy-production.yml` script argument passing and deploy file synchronization.
+
 ## 2026-08-18 — GRX-INFRA-005 production deploy port-collision hotfix
 
 - **`GRX-INFRA-005`** — fixed the GHCR Compose production deploy path after `v0.2.0`
