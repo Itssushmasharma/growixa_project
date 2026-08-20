@@ -516,15 +516,32 @@ export function ContactsPage() {
     }
   }
 
+  function decodeHtmlEntities(str: string): string {
+    if (!str || typeof str !== "string") return str;
+    return str
+      .replace(/&#039;/g, "'")
+      .replace(/&amp;/g, "&")
+      .replace(/&quot;/g, '"')
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">");
+  }
+
   async function openContactModal(contact: Contact) {
     setSelectedContact(contact);
+    const cleanedCustomFields: Record<string, string> = {};
+    if (contact.custom_fields) {
+      for (const [k, v] of Object.entries(contact.custom_fields)) {
+        cleanedCustomFields[k] = decodeHtmlEntities(v);
+      }
+    }
+
     setEditForm({
-      email: contact.email,
-      first_name: contact.first_name ?? "",
-      last_name: contact.last_name ?? "",
-      phone: contact.phone ?? "",
-      source: contact.source ?? "",
-      custom_fields: contact.custom_fields ?? {},
+      email: decodeHtmlEntities(contact.email),
+      first_name: decodeHtmlEntities(contact.first_name ?? ""),
+      last_name: decodeHtmlEntities(contact.last_name ?? ""),
+      phone: decodeHtmlEntities(contact.phone ?? ""),
+      source: decodeHtmlEntities(contact.source ?? ""),
+      custom_fields: cleanedCustomFields,
     });
     setAttachTagId("");
     setNewTagName("");
@@ -1332,63 +1349,65 @@ export function ContactsPage() {
                   onSubmit={(e) => handleSaveEdit(e, selectedContact.id)}
                   style={{ marginTop: 20 }}
                 >
-                  <div className={styles.createField}>
-                    <label className={styles.label} htmlFor={`edit-email-${selectedContact.id}`}>
-                      Email
-                    </label>
-                    <input
-                      id={`edit-email-${selectedContact.id}`}
-                      type="email"
-                      required
-                      className={styles.input}
-                      value={editForm.email}
-                      onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
-                    />
-                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                    <div className={styles.createField} style={{ gridColumn: "1 / -1" }}>
+                      <label className={styles.label} htmlFor={`edit-email-${selectedContact.id}`}>
+                        Email
+                      </label>
+                      <input
+                        id={`edit-email-${selectedContact.id}`}
+                        type="email"
+                        required
+                        className={styles.input}
+                        value={editForm.email}
+                        onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                      />
+                    </div>
 
-                  <div className={styles.createField}>
-                    <label
-                      className={styles.label}
-                      htmlFor={`edit-first-name-${selectedContact.id}`}
-                    >
-                      First name
-                    </label>
-                    <input
-                      id={`edit-first-name-${selectedContact.id}`}
-                      type="text"
-                      className={styles.input}
-                      value={editForm.first_name}
-                      onChange={(e) => setEditForm({ ...editForm, first_name: e.target.value })}
-                    />
-                  </div>
+                    <div className={styles.createField}>
+                      <label
+                        className={styles.label}
+                        htmlFor={`edit-first-name-${selectedContact.id}`}
+                      >
+                        First name
+                      </label>
+                      <input
+                        id={`edit-first-name-${selectedContact.id}`}
+                        type="text"
+                        className={styles.input}
+                        value={editForm.first_name}
+                        onChange={(e) => setEditForm({ ...editForm, first_name: e.target.value })}
+                      />
+                    </div>
 
-                  <div className={styles.createField}>
-                    <label
-                      className={styles.label}
-                      htmlFor={`edit-last-name-${selectedContact.id}`}
-                    >
-                      Last name
-                    </label>
-                    <input
-                      id={`edit-last-name-${selectedContact.id}`}
-                      type="text"
-                      className={styles.input}
-                      value={editForm.last_name}
-                      onChange={(e) => setEditForm({ ...editForm, last_name: e.target.value })}
-                    />
-                  </div>
+                    <div className={styles.createField}>
+                      <label
+                        className={styles.label}
+                        htmlFor={`edit-last-name-${selectedContact.id}`}
+                      >
+                        Last name
+                      </label>
+                      <input
+                        id={`edit-last-name-${selectedContact.id}`}
+                        type="text"
+                        className={styles.input}
+                        value={editForm.last_name}
+                        onChange={(e) => setEditForm({ ...editForm, last_name: e.target.value })}
+                      />
+                    </div>
 
-                  <div className={styles.createField}>
-                    <label className={styles.label} htmlFor={`edit-phone-${selectedContact.id}`}>
-                      Phone
-                    </label>
-                    <input
-                      id={`edit-phone-${selectedContact.id}`}
-                      type="text"
-                      className={styles.input}
-                      value={editForm.phone}
-                      onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
-                    />
+                    <div className={styles.createField}>
+                      <label className={styles.label} htmlFor={`edit-phone-${selectedContact.id}`}>
+                        Phone
+                      </label>
+                      <input
+                        id={`edit-phone-${selectedContact.id}`}
+                        type="text"
+                        className={styles.input}
+                        value={editForm.phone}
+                        onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                      />
+                    </div>
                   </div>
 
                   {/* Custom Fields Section */}
@@ -1411,38 +1430,40 @@ export function ContactsPage() {
                       >
                         Custom Fields
                       </h4>
-                      {(customFields.length > 0
-                        ? customFields
-                        : Object.keys(selectedContact.custom_fields ?? {}).map((k) => ({
-                            key: k,
-                            label: k.replace(/_/g, " ").replace(/^./, (s) => s.toUpperCase()),
-                            field_type: "TEXT" as const,
-                          }))
-                      ).map((field) => (
-                        <div className={styles.createField} key={field.key}>
-                          <label
-                            className={styles.label}
-                            htmlFor={`edit-custom-${field.key}-${selectedContact.id}`}
-                          >
-                            {field.label}
-                          </label>
-                          <input
-                            id={`edit-custom-${field.key}-${selectedContact.id}`}
-                            type="text"
-                            className={styles.input}
-                            value={editForm.custom_fields?.[field.key] ?? ""}
-                            onChange={(e) =>
-                              setEditForm({
-                                ...editForm,
-                                custom_fields: {
-                                  ...editForm.custom_fields,
-                                  [field.key]: e.target.value,
-                                },
-                              })
-                            }
-                          />
-                        </div>
-                      ))}
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                        {(customFields.length > 0
+                          ? customFields
+                          : Object.keys(selectedContact.custom_fields ?? {}).map((k) => ({
+                              key: k,
+                              label: k.replace(/_/g, " ").replace(/^./, (s) => s.toUpperCase()),
+                              field_type: "TEXT" as const,
+                            }))
+                        ).map((field) => (
+                          <div className={styles.createField} key={field.key}>
+                            <label
+                              className={styles.label}
+                              htmlFor={`edit-custom-${field.key}-${selectedContact.id}`}
+                            >
+                              {field.label}
+                            </label>
+                            <input
+                              id={`edit-custom-${field.key}-${selectedContact.id}`}
+                              type="text"
+                              className={styles.input}
+                              value={editForm.custom_fields?.[field.key] ?? ""}
+                              onChange={(e) =>
+                                setEditForm({
+                                  ...editForm,
+                                  custom_fields: {
+                                    ...editForm.custom_fields,
+                                    [field.key]: e.target.value,
+                                  },
+                                })
+                              }
+                            />
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
 
