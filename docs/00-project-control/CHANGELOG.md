@@ -10,12 +10,13 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
-## 2026-08-20 — v0.3.0-rc2 release candidate (UAT preview)
+## 2026-08-20 — v0.3.0 production release
 
-- **`v0.3.0-rc2`** — cut UAT release candidate tag containing site favicon/apple-touch-icon, pre-commit branch protection tooling, and automated deployment directory synchronization.
-- Merged `feature/FRONTEND/add-web-favicon` delivering `/icon.png` and `/apple-icon.png` (512x512 PNG).
+- **`v0.3.0`** — official production release promoted from `v0.3.0-rc2`.
+- Merged `feature/FRONTEND/add-web-favicon` delivering brand `/icon.png` and `/apple-icon.png` (512x512 PNG).
 - Merged `chore/DEVOPS/pre-commit-branch-guard` enforcing branch naming standards and preventing direct commits to `main`.
 - Hardened `.github/workflows/deploy-production.yml` and `deploy-uat.yml` with automated directory permission checks and SCP synchronization.
+- Isolated production PostgreSQL inside Docker network (`GRX-INFRA-005`), eliminating host port 5432 collision risks.
 
 ## 2026-08-18 — GRX-INFRA-005 production deploy port-collision hotfix
 
