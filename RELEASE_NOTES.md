@@ -10,9 +10,6 @@
 > **UAT Staging URL**: [https://uat.growixa.iitdeveloper.com](https://uat.growixa.iitdeveloper.com)
 > **Production URL**: [https://growixa.iitdeveloper.com](https://growixa.iitdeveloper.com)
 
-### 🚀 Added
-- **Team Invitation Email Flow & Accept Invitation Page (`GRX-USER-003`)**: Added dedicated `/accept-invitation` flow with secure token resolution and password setting; added shared branded email HTML layout (`notifications/layout.py`) used across verification, password reset, and team invitation emails.
-
 ### 🛠️ Fixed & Improved
 - **Email Template Personalization Token Insertion**: Fixed content synchronization in visual editor so clicking token buttons (`+ First Name`, `+ Email`, `+ Company Name`) immediately reflects in both the visual editor and live HTML preview.
 - **AI Assistant Real Brand Voice Integration (`GRX-BUG-002`)**: Brand Voice slide-over drawer now fetches live profile data from `GET /brand/profile` to display real brand voice, core tone, required facts, and guardrails.

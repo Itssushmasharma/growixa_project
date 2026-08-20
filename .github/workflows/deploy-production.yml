@@ -166,14 +166,14 @@ jobs:
     name: Deploy to OVH VPS (Production)
     needs: [build-and-push]
     runs-on: ubuntu-latest
-  
+
     concurrency:
       group: growixa-production-deployment
       cancel-in-progress: false
-  
+
     steps:
       - uses: actions/checkout@v4
-  
+
       - name: Determine Release Tag
         id: vars
         run: |
@@ -182,7 +182,7 @@ jobs:
           else
             echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
           fi
-  
+
       - name: Ensure target directory permissions on VPS (Production)
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -204,7 +204,7 @@ jobs:
           source: "deploy/"
           target: "/opt/growixa/"
           strip_components: 0
-  
+
       - name: Execute Production Deployment on OVH VPS
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -214,10 +214,22 @@ jobs:
           port: ${{ secrets.OVH_VPS_SSH_PORT || 22 }}
           script: |
             set -euo pipefail
-  
+
             echo "${{ secrets.GITHUB_TOKEN }}" | sudo docker login ghcr.io \
               -u "${{ github.actor }}" --password-stdin
-  
+
             cd /opt/growixa
             chmod +x deploy/scripts/deploy_prod.sh
             ./deploy/scripts/deploy_prod.sh "${{ steps.vars.outputs.tag }}"
+
+      - name: Send Telegram Release Notification
+        if: always()
+        uses: iitdeveloper-git/iitdeveloper-git-shared-workflows/actions/telegram-notify@main
+        with:
+          bot_token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          chat_id: ${{ secrets.TELEGRAM_CHAT_ID }}
+          app_name: "Growixa"
+          environment: "Production"
+          status: ${{ job.status }}
+          release_tag: ${{ steps.vars.outputs.tag }}
+          app_url: "https://growixa.iitdeveloper.com"
