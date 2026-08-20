@@ -27,13 +27,13 @@ jobs:
       postgres:
         image: postgres:16-alpine
         env:
-          POSTGRES_USER: ${{ env.POSTGRES_USER }}
-          POSTGRES_PASSWORD: ${{ env.POSTGRES_PASSWORD }}
-          POSTGRES_DB: ${{ env.POSTGRES_DB }}
+          POSTGRES_USER: growixa
+          POSTGRES_PASSWORD: ci_pg_password
+          POSTGRES_DB: growixa
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U ${{ env.POSTGRES_USER }} -d ${{ env.POSTGRES_DB }}"
+          --health-cmd "pg_isready -U growixa -d growixa"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
@@ -49,8 +49,8 @@ jobs:
       rabbitmq:
         image: rabbitmq:3-management-alpine
         env:
-          RABBITMQ_DEFAULT_USER: ${{ env.RABBITMQ_USER }}
-          RABBITMQ_DEFAULT_PASS: ${{ env.RABBITMQ_PASSWORD }}
+          RABBITMQ_DEFAULT_USER: guest
+          RABBITMQ_DEFAULT_PASS: ci_mq_password
         ports:
           - 5672:5672
         options: >-
@@ -59,9 +59,9 @@ jobs:
           --health-timeout 10s
           --health-retries 10
     env:
-      DATABASE_URL: postgresql+asyncpg://${{ env.POSTGRES_USER }}:${{ env.POSTGRES_PASSWORD }}@localhost:5432/${{ env.POSTGRES_DB }}
+      DATABASE_URL: postgresql+asyncpg://growixa:ci_pg_password@localhost:5432/growixa
       REDIS_URL: redis://localhost:6379/0
-      RABBITMQ_URL: amqp://${{ env.RABBITMQ_USER }}:${{ env.RABBITMQ_PASSWORD }}@localhost:5672/
+      RABBITMQ_URL: amqp://guest:ci_mq_password@localhost:5672/
     steps:
       - uses: actions/checkout@v4
 
