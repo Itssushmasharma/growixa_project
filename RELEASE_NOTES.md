@@ -2,16 +2,20 @@
 
 ---
 
-## 🟡 [v0.3.0-rc1] — 2026-08-20
+## 🟡 [v0.3.0-rc2] — 2026-08-20
 
-> **Release Tag**: `v0.3.0-rc1`
+> **Release Tag**: `v0.3.0-rc2`
 > **Release Date**: August 20, 2026
-> **Platform Status**: 🟡 Preview on UAT via `v0.3.0-rc1`
+> **Platform Status**: 🟡 Preview on UAT via `v0.3.0-rc2`
 > **UAT Staging URL**: [https://uat.growixa.iitdeveloper.com](https://uat.growixa.iitdeveloper.com)
 > **Production URL**: [https://growixa.iitdeveloper.com](https://growixa.iitdeveloper.com)
 
+### 🚀 Added
+- **Site Favicon & Apple Touch Icon**: High-resolution 512×512 PNG brand favicon and Apple Touch Icon (`/icon.png`, `/apple-icon.png`) automatically linked across the application.
+
 ### 🛠️ Fixed & Hardened (Infrastructure & CI/CD)
-- **Production CI/CD Deploy Workflow**: Corrected image tag argument passing, automated deployment file synchronization, and project isolation in `.github/workflows/deploy-production.yml`.
+- **Production & UAT Deploy Workflows**: Added automated permission pre-checks, directory synchronization, and project isolation in `.github/workflows/deploy-production.yml` and `deploy-uat.yml`.
+- **Pre-commit Branch Protection Hook**: Enforced branch naming conventions and main commit prevention (`scripts/check_branch_name.sh`, `make init-hooks`).
 - **Database Backup & Retention**: Standardized backup scripts to use the stable `growixa-prod` project name.
 - **Postgres Port Conflict Elimination (`GRX-INFRA-005`)**: Production PostgreSQL is Docker-network internal, eliminating host port 5432 collisions during rollout migrations.
 
@@ -70,12 +74,12 @@
 
 ## ✅ [v0.1.0] — 2026-08-17 (Initial Public Release)
 
-> **Release Tag**: `v0.1.0`  
-> **Release Date**: August 17, 2026  
-> **Platform Status**: 🟢 **Production & UAT Staging Live**  
-> **Production URL**: [https://growixa.iitdeveloper.com](https://growixa.iitdeveloper.com)  
-> **UAT Staging URL**: [https://uat.growixa.iitdeveloper.com](https://uat.growixa.iitdeveloper.com)  
-> **Platform Admin Portal**: [https://growixa.iitdeveloper.com/platform/login](https://growixa.iitdeveloper.com/platform/login)  
+> **Release Tag**: `v0.1.0`
+> **Release Date**: August 17, 2026
+> **Platform Status**: 🟢 **Production & UAT Staging Live**
+> **Production URL**: [https://growixa.iitdeveloper.com](https://growixa.iitdeveloper.com)
+> **UAT Staging URL**: [https://uat.growixa.iitdeveloper.com](https://uat.growixa.iitdeveloper.com)
+> **Platform Admin Portal**: [https://growixa.iitdeveloper.com/platform/login](https://growixa.iitdeveloper.com/platform/login)
 
 ### 🚀 Added (New Features & Capabilities)
 - **Self-Service Multi-Tenant SaaS**: Customer registration, email token verification, session management (`/register`, `/verify-email`).
