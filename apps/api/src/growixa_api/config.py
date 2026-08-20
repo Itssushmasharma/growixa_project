@@ -30,9 +30,9 @@ class Settings(BaseSettings):
     environment: str = "local"
     log_level: str = "info"
 
-    database_url: str
-    redis_url: str
-    rabbitmq_url: str
+    database_url: str = "postgresql+asyncpg://growixa:local_dev_pg_pw@localhost:5433/growixa_test"
+    redis_url: str = "redis://localhost:6379/1"
+    rabbitmq_url: str = "amqp://guest:local_dev_mq_pw@localhost:5672/"
 
     # Origins the Next.js frontend runs on — needed so browser-based fetches from
     # apps/web can complete credentialed (cookie-based) requests.
@@ -169,4 +169,4 @@ class Settings(BaseSettings):
 
 @lru_cache
 def get_settings() -> Settings:
-    return Settings()  # type: ignore[call-arg]
+    return Settings()

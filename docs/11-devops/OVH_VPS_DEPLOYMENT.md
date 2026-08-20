@@ -32,7 +32,7 @@ flowchart TB
 
     subgraph Host["OVH VPS (149.56.101.2) — UFW: Ports 22, 80, 443 Only"]
         Caddy["Caddy Reverse Proxy<br/>Auto-TLS / Let's Encrypt<br/>(Ports 80 & 443)"]
-        
+
         subgraph Docker["Private Docker Network (growixa-net)"]
             Web["Next.js Web Frontend<br/>(Port 3000)"]
             API["FastAPI Modular Monolith API<br/>(Port 8000)"]

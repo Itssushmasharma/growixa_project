@@ -171,4 +171,3 @@ red backend job through no fault of its own.
 - **Status**: **APPROVED** ✅
 - **Signed off by**: Ravi Kant Yadav (product owner) — 2026-08-17
 - **Note**: Platform Admin Provider Management Hub verified and cleared for merge to `main`.
-

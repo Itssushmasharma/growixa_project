@@ -196,4 +196,3 @@ correct. No new issues introduced.
   screens. Finding 1 was resolved by dropping the fabricated revenue card and all invented
   trends and keeping only genuinely derived metrics — worth a look at the live pages to
   confirm the thinner KPI decks still read well.
-
