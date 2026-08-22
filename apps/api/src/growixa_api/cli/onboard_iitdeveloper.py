@@ -292,17 +292,42 @@ async def onboard_account(target_email: str) -> None:
                 cb.remaining_credits = max(cb.remaining_credits, balance)
 
         # 8. Ensure Email Provider Connection & Sender Identities
-        epc_stmt = select(EmailProviderConnection).where(
+        #
+        # Priority rule: if the user has already configured a real SMTP connection via
+        # the UI (smtp_host != the onboarding placeholder), prefer that one so test-send
+        # and campaign-send always use the user-supplied credentials, not the placeholder.
+        all_epc_stmt = select(EmailProviderConnection).where(
             EmailProviderConnection.account_id == account.id,
             EmailProviderConnection.is_active,
         )
-        epc = (await session.execute(epc_stmt)).scalars().first()
-        if epc is None:
+        all_epcs = (await session.execute(all_epc_stmt)).scalars().all()
+
+        PLACEHOLDER_HOST = "smtp.iitdeveloper.com"
+        # Prefer any real user-configured connection over the placeholder.
+        real_epcs = [e for e in all_epcs if e.smtp_host != PLACEHOLDER_HOST]
+        placeholder_epcs = [e for e in all_epcs if e.smtp_host == PLACEHOLDER_HOST]
+
+        if real_epcs:
+            # User has already configured their own SMTP — use it.
+            epc = real_epcs[0]
+            # Deactivate the placeholder so it is no longer returned by list endpoints.
+            for ph in placeholder_epcs:
+                ph.is_active = False
+                print(f"[~] Deactivated placeholder SMTP connection: {ph.smtp_host}")
+            print(f"[✓] Using real user-configured SMTP: {epc.smtp_host}:{epc.smtp_port}")
+        elif placeholder_epcs:
+            epc = placeholder_epcs[0]
+            print(
+                f"[~] Only placeholder SMTP found: {epc.smtp_host}"
+                " — configure real SMTP via Settings > Integrations"
+            )
+        else:
+            # No connection at all — create the placeholder so sender identities can be seeded.
             epc = EmailProviderConnection(
                 id=uuid.uuid4(),
                 account_id=account.id,
                 provider="CUSTOM_SMTP",
-                smtp_host="smtp.iitdeveloper.com",
+                smtp_host=PLACEHOLDER_HOST,
                 smtp_port=587,
                 smtp_username="info@iitdeveloper.com",
                 smtp_password_encrypted=encrypt_secret("placeholder_smtp_pw"),
@@ -312,6 +337,7 @@ async def onboard_account(target_email: str) -> None:
             )
             session.add(epc)
             await session.flush()
+            print("[+] Created placeholder SMTP connection (replace via Settings > Integrations)")
 
         for from_name, from_email in [
             ("IITDeveloper Team", "info@iitdeveloper.com"),
@@ -336,6 +362,10 @@ async def onboard_account(target_email: str) -> None:
                         updated_at=now,
                     )
                 )
+            elif si.email_provider_connection_id != epc.id:
+                # Reassign to the preferred (real) connection if it changed.
+                si.email_provider_connection_id = epc.id
+                print(f"[~] Reassigned sender identity {from_email} -> {epc.smtp_host}")
 
         await session.commit()
         print("\n[✓] Successfully onboarded IITDeveloper profile, users & assets!")
