@@ -44,7 +44,7 @@ describe("RegisterPage", () => {
 
     expect(screen.getByRole("link", { name: "Sign up with Google" })).toHaveAttribute(
       "href",
-      "/api/auth/oauth/google",
+      "http://localhost:8000/auth/oauth/google",
     );
 
     const proRadio = screen.getByRole("radio", { name: /Pro/ });

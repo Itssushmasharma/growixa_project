@@ -1,9 +1,15 @@
 export function getApiUrl(): string {
-  if (typeof window !== "undefined") {
-    // In the browser: use relative /api path for same-origin HTTPS proxying unless explicitly overridden
-    return process.env.NEXT_PUBLIC_API_URL ?? "/api";
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL;
   }
-  return process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+  if (typeof window !== "undefined") {
+    if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
+      return "http://localhost:8000";
+    }
+    // In production / VPS: use relative /api path for same-origin HTTPS proxying via Caddy
+    return "/api";
+  }
+  return "http://localhost:8000";
 }
 
 export function getServerApiUrl(): string {

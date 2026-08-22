@@ -54,7 +54,7 @@ describe("LoginPage", () => {
     );
     expect(screen.getByRole("link", { name: "Continue with Google" })).toHaveAttribute(
       "href",
-      "/api/auth/oauth/google",
+      "http://localhost:8000/auth/oauth/google",
     );
   });
 
