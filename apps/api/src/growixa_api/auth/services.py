@@ -1,13 +1,19 @@
+import json
+import secrets
 import uuid
 from datetime import UTC, datetime, timedelta
 
+from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from growixa_api.accounts.models import Account
 from growixa_api.audit.services import record_event
+from growixa_api.auth.oauth import get_oauth_provider
 from growixa_api.auth.repositories import (
+    create_oauth_identity,
     create_password_reset_token,
     create_refresh_token,
+    get_oauth_identity_by_provider_uid,
     get_password_reset_token_by_hash,
     get_refresh_token_by_hash,
     list_active_refresh_tokens_for_user,
@@ -19,9 +25,11 @@ from growixa_api.auth.tokens import (
     hash_token,
     refresh_token_expiry,
 )
+from growixa_api.billing.repositories import create_default_free_subscription
 from growixa_api.config import get_settings
-from growixa_api.users.models import User
-from growixa_api.users.repositories import get_user_by_email
+from growixa_api.roles.repositories import get_role_by_name
+from growixa_api.users.models import User, UserRole
+from growixa_api.users.repositories import create_user, get_user_by_email
 
 
 class InvalidCredentialsError(Exception):
@@ -37,6 +45,14 @@ class InvalidRefreshTokenError(Exception):
 
 class InvalidPasswordResetTokenError(Exception):
     """Missing, unknown, expired, or already-used password reset token."""
+
+
+class OAuthStateInvalidError(Exception):
+    """Missing, expired, or mismatched OAuth state parameter."""
+
+
+class OAuthEmailUnverifiedError(Exception):
+    """The OAuth provider did not confirm email ownership."""
 
 
 class LoginResult:
@@ -65,6 +81,7 @@ async def login(
         and user.status == "ACTIVE"
         and account is not None
         and account.status == "ACTIVE"
+        and user.password_hash is not None
         and verify_password(password, user.password_hash)
     )
 
@@ -306,3 +323,193 @@ async def complete_password_reset(
         metadata={},
     )
     await session.commit()
+
+
+_OAUTH_STATE_KEY_PREFIX = "grx:auth:oauth_state:"
+
+
+async def create_oauth_authorize_url(
+    redis_client: Redis,
+    provider_name: str,
+    *,
+    redirect_uri: str,
+    redirect_target: str | None = None,
+) -> str:
+    """Generates a cryptographically random single-use state token stored in Redis
+    with a short TTL to defend against CSRF attacks, and returns the provider consent URL."""
+    provider = get_oauth_provider(provider_name)
+    state = secrets.token_urlsafe(32)
+    state_payload = {
+        "provider": provider.provider_name,
+        "redirect_target": redirect_target,
+    }
+    settings = get_settings()
+    ttl = settings.google_oauth_state_ttl_seconds
+    await redis_client.set(
+        f"{_OAUTH_STATE_KEY_PREFIX}{state}",
+        json.dumps(state_payload),
+        ex=ttl,
+    )
+    return provider.get_authorize_url(state=state, redirect_uri=redirect_uri)
+
+
+async def complete_oauth_callback(
+    session: AsyncSession,
+    redis_client: Redis,
+    provider_name: str,
+    *,
+    code: str,
+    state: str,
+    redirect_uri: str,
+    user_agent: str | None,
+    ip_address: str | None,
+) -> tuple[LoginResult, str | None]:
+    """Validates the OAuth callback, exchanges code for user profile, links or provisions
+    the account/user, emits audit events, and issues standard HttpOnly session cookies."""
+    # 1. Validate and consume state token (atomic single-use)
+    state_key = f"{_OAUTH_STATE_KEY_PREFIX}{state}"
+    raw_state_data = await redis_client.get(state_key)
+    if not raw_state_data:
+        raise OAuthStateInvalidError("OAuth state is missing or expired")
+    await redis_client.delete(state_key)
+
+    try:
+        state_data = json.loads(raw_state_data)
+    except (json.JSONDecodeError, TypeError) as exc:
+        raise OAuthStateInvalidError("Invalid OAuth state payload") from exc
+
+    if state_data.get("provider") != provider_name.lower():
+        raise OAuthStateInvalidError("OAuth state provider mismatch")
+
+    redirect_target = state_data.get("redirect_target")
+
+    # 2. Exchange code for user profile
+    provider = get_oauth_provider(provider_name)
+    profile = await provider.exchange_code_and_get_profile(code, redirect_uri)
+
+    if not profile.is_email_verified:
+        raise OAuthEmailUnverifiedError(
+            f"Email {profile.email} is not verified by {provider.provider_name}"
+        )
+
+    # 3. Resolve user:
+    # A. Existing OAuth Identity
+    identity = await get_oauth_identity_by_provider_uid(
+        session, provider=provider.provider_name, provider_user_id=profile.provider_user_id
+    )
+
+    user: User | None = None
+    if identity is not None:
+        user = await session.get(User, identity.user_id)
+        if user is not None and user.email != profile.email:
+            # Update email if provider reports change
+            identity.email = profile.email
+
+    # B. If no OAuth identity, match by verified email
+    if user is None:
+        user = await get_user_by_email(session, profile.email)
+        if user is not None:
+            # Link this OAuth provider to the existing user
+            await create_oauth_identity(
+                session,
+                account_id=user.account_id,
+                user_id=user.id,
+                provider=provider.provider_name,
+                provider_user_id=profile.provider_user_id,
+                email=profile.email,
+                avatar_url=profile.avatar_url,
+            )
+
+    # C. New User -> Self-service registration
+    if user is None:
+        account_name = f"{profile.full_name or 'My'}'s Workspace"
+        account = Account(name=account_name, selected_plan_slug="free", status="ACTIVE")
+        session.add(account)
+        await session.flush()
+
+        role = await get_role_by_name(session, "Super Admin")
+        assert role is not None
+
+        user = await create_user(
+            session,
+            account_id=account.id,
+            email=profile.email,
+            password_hash=None,
+            full_name=profile.full_name or profile.email.split("@")[0],
+            status="ACTIVE",
+        )
+        session.add(UserRole(account_id=account.id, user_id=user.id, role_id=role.id))
+        await session.flush()
+
+        await create_default_free_subscription(session, account.id)
+
+        await create_oauth_identity(
+            session,
+            account_id=account.id,
+            user_id=user.id,
+            provider=provider.provider_name,
+            provider_user_id=profile.provider_user_id,
+            email=profile.email,
+            avatar_url=profile.avatar_url,
+        )
+
+        await record_event(
+            session,
+            account_id=account.id,
+            actor_user_id=user.id,
+            action="account.registered",
+            entity_type="account",
+            entity_id=account.id,
+            metadata={"email": profile.email, "provider": provider.provider_name},
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
+
+    # 4. Check account and user status
+    user_account = await session.get(Account, user.account_id)
+    if user.status != "ACTIVE" or user_account is None or user_account.status != "ACTIVE":
+        await record_event(
+            session,
+            account_id=user.account_id,
+            actor_user_id=None,
+            action="user.login_failed",
+            entity_type="user",
+            entity_id=user.id,
+            metadata={"email": profile.email, "provider": provider.provider_name},
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
+        await session.commit()
+        raise InvalidCredentialsError
+
+    # 5. Issue session tokens
+    user.last_login_at = datetime.now(UTC)
+    access_token = create_access_token(user.id)
+    raw_refresh_token = generate_token()
+    await create_refresh_token(
+        session,
+        account_id=user.account_id,
+        user_id=user.id,
+        token_hash=hash_token(raw_refresh_token),
+        expires_at=refresh_token_expiry(),
+        user_agent=user_agent,
+        ip_address=ip_address,
+    )
+
+    await record_event(
+        session,
+        account_id=user.account_id,
+        actor_user_id=user.id,
+        action="user.login",
+        entity_type="user",
+        entity_id=user.id,
+        metadata={"provider": provider.provider_name},
+        ip_address=ip_address,
+        user_agent=user_agent,
+    )
+    await session.commit()
+
+    return (
+        LoginResult(user=user, access_token=access_token, refresh_token=raw_refresh_token),
+        redirect_target,
+    )

@@ -6,6 +6,8 @@ import { useSearchParams } from "next/navigation";
 import { type FormEvent, Suspense, useState } from "react";
 
 import iconMark from "@/assets/icon/growixa-icon-mark.png";
+import { AuthDivider } from "@/components/auth/auth-divider";
+import { GoogleButton } from "@/components/auth/google-button";
 import { useToast } from "@/components/toast/toast-context";
 import { ApiError, apiFetch } from "@/lib/api-client";
 
@@ -107,6 +109,10 @@ function RegisterContent() {
             <div className={styles.brandCaption}>BY IITDEVELOPER</div>
           </div>
         </div>
+
+        <GoogleButton label="Sign up with Google" />
+
+        <AuthDivider text="or create account" />
 
         <form onSubmit={handleSubmit}>
           <div className={styles.field}>

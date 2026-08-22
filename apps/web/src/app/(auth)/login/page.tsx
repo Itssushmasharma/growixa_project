@@ -2,21 +2,43 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { type FormEvent, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { type FormEvent, Suspense, useEffect, useState } from "react";
 
 import iconMark from "@/assets/icon/growixa-icon-mark.png";
+import { AuthDivider } from "@/components/auth/auth-divider";
+import { GoogleButton } from "@/components/auth/google-button";
 import { useToast } from "@/components/toast/toast-context";
 import { ApiError, apiFetch } from "@/lib/api-client";
 
 import styles from "./login.module.css";
 
 export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginContent />
+    </Suspense>
+  );
+}
+
+function LoginContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { showToast } = useToast();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    const oauthError = searchParams.get("oauth_error");
+    if (oauthError) {
+      if (oauthError === "OAuthEmailUnverifiedError") {
+        showToast("error", "Your Google account email is not verified.");
+      } else {
+        showToast("error", "Google sign-in was interrupted or failed. Please try again.");
+      }
+    }
+  }, [searchParams, showToast]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -52,6 +74,10 @@ export default function LoginPage() {
             <div className={styles.brandCaption}>BY IITDEVELOPER</div>
           </div>
         </div>
+
+        <GoogleButton label="Continue with Google" />
+
+        <AuthDivider text="or" />
 
         <form onSubmit={handleSubmit}>
           <div className={styles.field}>
@@ -94,6 +120,10 @@ export default function LoginPage() {
         <div className={styles.footer}>
           <Link href="/forgot-password" className={styles.footerLink}>
             Forgot password?
+          </Link>
+          {" · "}
+          <Link href="/register" className={styles.footerLink}>
+            Create account
           </Link>
         </div>
       </div>
