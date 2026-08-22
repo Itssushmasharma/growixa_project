@@ -264,6 +264,23 @@ async def get_field_values_for_contact(
     return {key: value for key, value in result.all() if value is not None}
 
 
+async def get_all_field_values_for_account(
+    session: AsyncSession, account_id: uuid.UUID
+) -> dict[uuid.UUID, dict[str, str]]:
+    result = await session.execute(
+        select(ContactFieldValue.contact_id, ContactCustomField.key, ContactFieldValue.value)
+        .join(ContactCustomField, ContactCustomField.id == ContactFieldValue.field_id)
+        .where(ContactFieldValue.account_id == account_id)
+    )
+    out: dict[uuid.UUID, dict[str, str]] = {}
+    for contact_id, key, value in result.all():
+        if value is not None:
+            if contact_id not in out:
+                out[contact_id] = {}
+            out[contact_id][key] = value
+    return out
+
+
 async def upsert_field_value(
     session: AsyncSession,
     *,
@@ -325,6 +342,22 @@ async def get_tag_names_for_contact(session: AsyncSession, contact_id: uuid.UUID
         .where(ContactTag.contact_id == contact_id)
     )
     return [row[0] for row in result.all()]
+
+
+async def get_all_tag_names_for_account(
+    session: AsyncSession, account_id: uuid.UUID
+) -> dict[uuid.UUID, list[str]]:
+    result = await session.execute(
+        select(ContactTag.contact_id, Tag.name)
+        .join(Tag, Tag.id == ContactTag.tag_id)
+        .where(ContactTag.account_id == account_id)
+    )
+    out: dict[uuid.UUID, list[str]] = {}
+    for contact_id, tag_name in result.all():
+        if contact_id not in out:
+            out[contact_id] = []
+        out[contact_id].append(tag_name)
+    return out
 
 
 async def is_tag_attached(
@@ -397,6 +430,21 @@ async def count_list_members(session: AsyncSession, list_id: uuid.UUID) -> int:
         .where(ContactListMember.list_id == list_id, Contact.deleted_at.is_(None))
     )
     return result.scalar_one()
+
+
+async def get_all_list_member_counts_for_account(
+    session: AsyncSession, account_id: uuid.UUID
+) -> dict[uuid.UUID, int]:
+    result = await session.execute(
+        select(ContactListMember.list_id, func.count(ContactListMember.contact_id))
+        .join(Contact, Contact.id == ContactListMember.contact_id)
+        .where(
+            ContactListMember.account_id == account_id,
+            Contact.deleted_at.is_(None),
+        )
+        .group_by(ContactListMember.list_id)
+    )
+    return {row[0]: row[1] for row in result.all()}
 
 
 async def is_list_member(
@@ -742,6 +790,15 @@ async def list_suppression_entries(
 
 async def is_email_suppressed(session: AsyncSession, account_id: uuid.UUID, email: str) -> bool:
     return await get_suppression_by_email(session, account_id, email) is not None
+
+
+async def get_all_suppressed_emails_for_account(
+    session: AsyncSession, account_id: uuid.UUID
+) -> set[str]:
+    result = await session.execute(
+        select(SuppressionEntry.email).where(SuppressionEntry.account_id == account_id)
+    )
+    return {email.lower() for email in result.scalars().all() if email is not None}
 
 
 async def create_suppression_entry(

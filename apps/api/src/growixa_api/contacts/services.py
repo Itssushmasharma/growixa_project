@@ -36,6 +36,10 @@ from growixa_api.contacts.repositories import (
     create_contact,
     detach_tag,
     evaluate_segment_rules,
+    get_all_field_values_for_account,
+    get_all_list_member_counts_for_account,
+    get_all_suppressed_emails_for_account,
+    get_all_tag_names_for_account,
     get_contact_by_email,
     get_contact_by_id,
     get_contact_by_id_including_deleted,
@@ -346,7 +350,22 @@ async def list_contacts_with_fields(
     contacts = await list_contacts_rows(
         session, account_id, include_deleted=include_deleted, deleted_only=deleted_only
     )
-    return [await _snapshot(session, account_id, contact) for contact in contacts]
+    if not contacts:
+        return []
+
+    field_values_map = await get_all_field_values_for_account(session, account_id)
+    tags_map = await get_all_tag_names_for_account(session, account_id)
+    suppressed_emails = await get_all_suppressed_emails_for_account(session, account_id)
+
+    return [
+        (
+            contact,
+            field_values_map.get(contact.id, {}),
+            tags_map.get(contact.id, []),
+            contact.email.lower() in suppressed_emails,
+        )
+        for contact in contacts
+    ]
 
 
 async def list_custom_fields(
@@ -445,7 +464,10 @@ async def list_lists_with_counts(
     session: AsyncSession, account_id: uuid.UUID
 ) -> list[tuple[ContactList, int]]:
     lists = await list_contact_lists_rows(session, account_id)
-    return [(cl, await count_list_members(session, cl.id)) for cl in lists]
+    if not lists:
+        return []
+    counts_map = await get_all_list_member_counts_for_account(session, account_id)
+    return [(cl, counts_map.get(cl.id, 0)) for cl in lists]
 
 
 async def get_list_with_count(

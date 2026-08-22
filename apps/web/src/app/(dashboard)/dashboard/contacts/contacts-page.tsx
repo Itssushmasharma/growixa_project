@@ -805,7 +805,33 @@ export function ContactsPage() {
   }
 
   if (loading) {
-    return <div className={styles.card}>Loading contacts…</div>;
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+        <PageHeader
+          icon="👥"
+          title="Contacts"
+          description="Manage and engage your audience effectively."
+        />
+        <div
+          className={styles.card}
+          style={{ padding: "48px", textAlign: "center", color: "var(--muted-text)" }}
+        >
+          <div
+            style={{
+              display: "inline-block",
+              width: "24px",
+              height: "24px",
+              border: "3px solid rgba(255,255,255,0.15)",
+              borderTopColor: "var(--primary-500)",
+              borderRadius: "50%",
+              animation: "spin 0.8s linear infinite",
+              marginBottom: "12px",
+            }}
+          />
+          <div>Loading contacts…</div>
+        </div>
+      </div>
+    );
   }
 
   if (loadError) {
