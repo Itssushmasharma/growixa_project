@@ -2,13 +2,13 @@
 
 ---
 
-## 🟡 [v0.4.4-rc1] — 2026-08-23
+## 🟢 [v0.4.4] — 2026-08-23
 
-> **Release Tag**: `v0.4.4-rc1`
+> **Release Tag**: `v0.4.4`
 > **Release Date**: August 23, 2026
-> **Platform Status**: 🟡 Preview on UAT via `v0.4.4-rc1`
-> **UAT Staging URL**: [https://uat.growixa.iitdeveloper.com](https://uat.growixa.iitdeveloper.com)
+> **Platform Status**: 🟢 Promoted to Production
 > **Production URL**: [https://growixa.iitdeveloper.com](https://growixa.iitdeveloper.com)
+> **UAT Staging URL**: [https://uat.growixa.iitdeveloper.com](https://uat.growixa.iitdeveloper.com)
 
 ### 🚀 Added & Redesigned
 - **Luminous Split-Screen & Unified Canvas Auth Redesign (`GRX-AUTH-007`)**: Complete visual and architectural overhaul of customer authentication pages (`/login` and `/register`).
@@ -19,17 +19,6 @@
   - **Redirect Security Hardening**: Sanitized relative-only path redirection preventing open redirect vulnerabilities across email/password and Google SSO flows.
   - **Full Test Suite Validation**: 287 passing unit tests across 51 test suites.
 
----
-
-## 🟡 [v0.4.3-rc1] — 2026-08-22
-
-> **Release Tag**: `v0.4.3-rc1`
-> **Release Date**: August 22, 2026
-> **Platform Status**: 🟡 Preview on UAT via `v0.4.3-rc1`
-> **UAT Staging URL**: [https://uat.growixa.iitdeveloper.com](https://uat.growixa.iitdeveloper.com)
-> **Production URL**: [https://growixa.iitdeveloper.com](https://growixa.iitdeveloper.com)
-
-### 🚀 Added
 - **Google OAuth 2.0 & SSO Authentication (`GRX-AUTH-006`)**: Added 1-click Google Sign-In and Registration on `/login` and `/register` with Redis-backed CSRF state protection, OpenID Connect profile exchange, `oauth_identities` linking table, and seamless HttpOnly JWT session issuance.
 - **Contact List Members API (`GET /contacts/lists/{list_id}/members`)**: Added dedicated backend endpoint returning active members of a contact list with strict multi-tenant account scoping.
 - **Live Search in Segments & Lists Modals**: Added instant 0ms client-side search filtering across `first_name`, `last_name`, `email`, and `phone` in both the "View Segment Members" modal and "Manage List" modal, with dynamic counter feedback (`Matching Contacts (X of Y)`) and 1-click search clear.

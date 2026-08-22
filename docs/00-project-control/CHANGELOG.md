@@ -10,13 +10,19 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
-## 2026-08-23 — v0.4.4-rc1 release candidate (UAT preview)
+## 2026-08-23 — v0.4.4 production release
 
-- **`v0.4.4-rc1`** — cut UAT release candidate tag containing the luminous split-screen authentication redesign (`GRX-AUTH-007`), unified continuous background canvas, interactive 3D floating metric cards, scaled accessible auth card shell, and official brand logo integration.
-- **`feat(auth)`** — delivered split-screen authentication architecture (`apps/web/src/components/auth/`) with `<AuthSplitLayout>`, `<AuthShowcase>`, `<AuthCard>`, and `<GoogleAuthButton>`, ensuring zero layout shift across `/login` and `/register`.
-- **`style(auth)`** — unified full-page background canvas with animated cyan-to-purple wave ribbons, 3D floating metric cards (`4.82x Growth`, `99.4% Delivered`), and 56px CTA button.
+- **`v0.4.4`** — official production release promoted from `v0.4.4-rc1` and `v0.4.3-rc1`.
+- **`feat(auth)`** — delivered split-screen authentication architecture (`apps/web/src/components/auth/`) with `<AuthSplitLayout>`, `<AuthShowcase>`, `<AuthCard>`, and `<GoogleAuthButton>`, ensuring zero layout shift across `/login` and `/register` (`GRX-AUTH-007`).
+- **`feat(auth)`** — delivered Google OAuth 2.0 / SSO integration (`GRX-AUTH-006`) with generic `OAuthProvider` Protocol, `oauth_identities` table, single-use Redis CSRF tokens, and `<GoogleButton />` component on `/login` and `/register`.
+- **`style(auth)`** — unified full-page background canvas with animated cyan-to-purple wave ribbons, 3D floating metric cards (`4.82x Growth`, `99.4% Delivered`), scaled auth card, and 56px CTA button.
+- **`feat(contacts)`** — added `GET /contacts/lists/{list_id}/members` API endpoint and live instant search filtering in both Segments and Lists modals across name, email, and phone (`GRX-CONTACTS-LIST-MEMBERS-SEARCH`).
+- **`feat(contacts)`** — added guarded segment deletion (`list_active_campaigns_referencing_segment`) blocking deletion when referenced by active campaigns (`DRAFT`, `SCHEDULED`, `DISPATCHING`, `SENDING`) with `409 Conflict`, and clean unlinking on terminal campaigns (`SENT`, `CANCELLED`, `FAILED`).
+- **`feat(contacts)`** — added dynamic segment rule editing (`replace_segment_rules`) and real-time membership re-evaluation (`refresh_saved_segment_members`) with full multi-tenant account isolation.
+- **`feat(contacts, worker)`** — synchronized recipient evaluation rules across API (`repositories.py`) and worker (`recipients.py`) adding support for `first_name`, `last_name`, `phone`, and tag `contains` operators across all 9 field types.
 - **`sec(auth)`** — hardened open-redirect validation enforcing strict relative URLs (`startsWith("/") && !startsWith("//")`) on login and registration redirect paths.
 - **`test(web)`** — updated auth test suites with 100% pass rate across 51 test suites (287 unit tests).
+- **`docs(decisions)`** — recorded `DEC-GRX-036` covering channel-agnostic personalization tokens architecture.
 
 ## 2026-08-22 — v0.4.3-rc1 release candidate (UAT preview)
 
