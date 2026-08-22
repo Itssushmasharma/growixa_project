@@ -269,3 +269,104 @@ local — this should come back quickly.
 **Required** before merge regardless of the re-review outcome — this carries a schema
 migration on a tenant table and changes how customer sending credentials are replaced and
 removed.
+
+---
+
+## Independent Review — Round 2
+
+Reviewer: Claude Code (did not author this branch)
+Review Date: 2026-08-22
+Reviewed Code Commit: `3b06b30` (handoff updated in `bc0814e`)
+Review Decision: **APPROVED**
+
+Both blockers are resolved, and every claim below was checked against the diff rather than
+the round-2 summary.
+
+**Blocker 1 — `replacing_connection_id` now fails loudly.** The condition was inverted to
+`if old_conn is None or not old_conn.is_active: raise EmailProviderConnectionNotFoundError`,
+and `api.py` maps it to a **404** with a distinct message ("Email provider connection to
+replace not found") so it is not confused with the identity 404 on the same router. Because
+`get_email_provider_connection` is account-scoped, another account's id returns `None` and
+therefore 404 — the small isolation gap I raised is closed by the same change.
+`test_replacing_invalid_connection_id_returns_404` covers it.
+
+**Blocker 2 — resolved by making the contract true rather than documenting the mismatch.**
+`delete_email_provider_connection` now issues a real `delete()`, and
+`list_email_provider_connections` filters `is_active`. So `DELETE` really deletes, `204`
+means gone, and the list reflects it. That is the stronger of the two options I offered and
+it removes the undocumented dependency on `GRX-EMAIL-015` filtering client-side.
+
+I checked the blast radius of the list filter, since narrowing a shared query is where this
+kind of fix usually breaks something else. There are exactly three callers and all are
+correct under the new behaviour: the route (should show only live connections), `services.py:65`
+`list_connections` (same), and `services.py:87`, which uses it to find the active POSTMARK
+row to deactivate — actives are all it ever wanted, and its now-redundant `and c.is_active`
+filter is harmless.
+
+The hard delete is safe **because** of the guard: `sender_identities.email_provider_connection_id`
+is `NOT NULL` with no `ondelete`, so the 409 is what stands between this and an FK violation.
+`test_guarded_delete_email_provider_connection` pins the whole contract — 409 naming the
+blocking identity, 204 for an unreferenced one, and an assertion that it is then absent from
+the list.
+
+**F3 — migration collision fixed properly.** The backfill now names POSTMARK rows
+`'Postmark'` and CUSTOM_SMTP rows by `smtp_host`, then de-duplicates with a `ROW_NUMBER()
+OVER (PARTITION BY account_id, name ORDER BY created_at)` pass appending ` (2)`, ` (3)` to
+collisions among active rows before the unique index is created. The abort case I raised
+cannot occur.
+
+**F4 — the `MissingGreenlet` comment is restored**, now on the `session.refresh` in
+`api.py` where the call actually lives.
+
+Gates re-run independently at `3b06b30`, again in an isolated worktree: `ruff check` **All
+checks passed** · `ruff format --check` **294 files already formatted** · `mypy`
+**Success, 292 source files**. Ten tests in `test_integrations.py` covering single-active
+POSTMARK, multiple named CUSTOM_SMTP, the guarded delete, the invalid-replacement 404, the
+reassignment-narrowing regression, the PATCH endpoint, account isolation and permission
+gating.
+
+### Still open, deliberately
+
+**F5 stands.** `DEC-GRX-035` is now `APPROVED` (product owner, 2026-08-17), and its new
+point 9 makes multi-SMTP **ungated by plan tier** — that is a *pricing* decision and does
+not touch point 4, which still requires an SPF alignment check before an identity may be
+bound to a connection. `PATCH /integrations/sender-identities/{id}` ships here without that
+check, so until `GRX-EMAIL-014` lands the product permits unaligned binding. Correctly
+scoped out; worth sequencing 014 close behind rather than leaving the window open.
+
+**F6 (`name` accepts `""`)** is unaddressed and remains cosmetic.
+
+**Minor, non-blocking:** `docs/04-architecture/BILLING_SYSTEM_ARCHITECTURE.md` picks up a
+reformat of its embedded Python examples — unrelated to multi-SMTP, harmless.
+
+### The evidence gap has not changed, and it still matters most here
+
+**I could not run `pytest` or `alembic upgrade head`** — Docker is unavailable on this
+machine, so the test database is unreachable and the migration was verified by reading
+only. That limitation is unchanged from round 1 and is more consequential than usual: this
+branch alters a tenant table, and the round-2 fixes include **new SQL** (the `ROW_NUMBER()`
+de-duplication) that has never been executed. Approving the code is not the same as
+certifying the migration runs.
+
+**Before merge, on a machine with the stack up:** `pytest tests/integrations` must pass, and
+`alembic upgrade head` must be run against production-shaped data — ideally a restore of the
+production database, since the de-duplication path only exercises on real duplicate names.
+`scripts/deploy_vps.sh` now takes a pre-migration backup, which is the safety net if this
+goes wrong on deploy.
+
+## Round 2 Review Decision
+
+**APPROVED**
+
+## Round 2 Reviewed Code Commit
+
+`3b06b30`
+
+## Human Approval
+
+**Required** — schema migration on a tenant table plus changes to how customer sending
+credentials are replaced and permanently removed. Note the delete is now genuinely
+destructive: a connection with no bound identities is erased, not deactivated, so its
+credential history does not survive. That is consistent with `DEC-GRX-035` point 7 and is
+guarded, but it is a product decision worth confirming explicitly rather than inheriting
+from a code review.
