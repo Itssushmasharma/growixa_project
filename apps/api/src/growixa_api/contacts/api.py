@@ -91,6 +91,7 @@ from growixa_api.contacts.services import list_contact_import_rows as list_impor
 from growixa_api.contacts.services import list_contact_imports as list_imports_service
 from growixa_api.contacts.services import list_contacts_with_fields as list_contacts_service
 from growixa_api.contacts.services import list_custom_fields as list_custom_fields_service
+from growixa_api.contacts.services import list_list_members as list_list_members_service
 from growixa_api.contacts.services import list_lists_with_counts as list_lists_service
 from growixa_api.contacts.services import list_segment_members as list_segment_members_service
 from growixa_api.contacts.services import list_segments_with_details as list_segments_service
@@ -257,6 +258,24 @@ async def get_list_route(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "List not found") from exc
 
     return _list_to_out(contact_list, count)
+
+
+@router.get("/lists/{list_id}/members", response_model=list[ContactOut])
+async def list_list_members_route(
+    list_id: uuid.UUID,
+    _actor_id: uuid.UUID = Depends(_require_view),
+    account_id: uuid.UUID = Depends(get_current_account_id),
+    session: AsyncSession = Depends(get_session),
+) -> list[ContactOut]:
+    try:
+        snapshots = await list_list_members_service(session, account_id, list_id)
+    except ContactListNotFoundError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "List not found") from exc
+
+    return [
+        _to_out(contact, fields, tags, suppressed)
+        for contact, fields, tags, suppressed in snapshots
+    ]
 
 
 @router.post("/lists/{list_id}/members", response_model=ContactListOut)

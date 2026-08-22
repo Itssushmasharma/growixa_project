@@ -140,6 +140,9 @@ describe("ListsPage", () => {
         return Promise.resolve([{ ...VIP_LIST, member_count: 0 }]);
       }
       if (path === "/contacts") return Promise.resolve([ALICE]);
+      if (path === "/contacts/lists/list-1/members" && (!init || init.method === undefined)) {
+        return Promise.resolve([]);
+      }
       if (path === "/contacts/lists/list-1/members" && init?.method === "POST") {
         return Promise.resolve({ ...VIP_LIST, member_count: 1 });
       }
@@ -155,5 +158,51 @@ describe("ListsPage", () => {
     await user.click(screen.getByRole("button", { name: "Add to list" }));
 
     await waitFor(() => expect(screen.getByText("1 members")).toBeInTheDocument());
+  });
+
+  it("fetches list members on modal open and filters with live search", async () => {
+    const BOB: Contact = {
+      ...ALICE,
+      id: "contact-2",
+      email: "bob@example.com",
+      first_name: "Bob",
+      last_name: "Jones",
+    };
+
+    mockedApiFetch.mockImplementation((path: string) => {
+      if (path === "/auth/me") {
+        return Promise.resolve(meWithPermissions(["contacts.view", "contacts.manage"]));
+      }
+      if (path === "/contacts/lists") return Promise.resolve([VIP_LIST]);
+      if (path === "/contacts") return Promise.resolve([ALICE, BOB]);
+      if (path === "/contacts/lists/list-1/members") return Promise.resolve([ALICE, BOB]);
+      throw new Error(`unexpected path: ${path}`);
+    });
+
+    const user = userEvent.setup();
+    renderListsPage();
+
+    await screen.findByText("VIP customers");
+    await user.click(screen.getByRole("button", { name: "Manage" }));
+
+    await waitFor(() => expect(screen.getByText("alice@example.com")).toBeInTheDocument());
+    expect(screen.getByText("bob@example.com")).toBeInTheDocument();
+    expect(screen.getByText("Current Members (2)")).toBeInTheDocument();
+
+    const searchInput = screen.getByLabelText("Search current members");
+    await user.type(searchInput, "Bob");
+
+    expect(screen.queryByText("alice@example.com")).not.toBeInTheDocument();
+    expect(screen.getByText("bob@example.com")).toBeInTheDocument();
+    expect(screen.getByText("Current Members (1 of 2)")).toBeInTheDocument();
+
+    await user.clear(searchInput);
+    await user.type(searchInput, "nonexistent");
+
+    expect(screen.getByText(/No members match/)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Clear search" }));
+
+    expect(screen.getByText("alice@example.com")).toBeInTheDocument();
+    expect(screen.getByText("bob@example.com")).toBeInTheDocument();
   });
 });

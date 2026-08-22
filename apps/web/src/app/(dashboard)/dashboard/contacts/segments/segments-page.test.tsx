@@ -224,4 +224,50 @@ describe("SegmentsPage", () => {
       expect(screen.getByText("No segments yet.")).toBeInTheDocument();
     });
   });
+
+  it("filters segment members with live search and allows clearing", async () => {
+    const BOB: Contact = {
+      ...ALICE,
+      id: "contact-2",
+      email: "bob@example.com",
+      first_name: "Bob",
+      last_name: "Jones",
+    };
+
+    mockedApiFetch.mockImplementation((path: string) => {
+      if (path === "/auth/me") {
+        return Promise.resolve(meWithPermissions(["contacts.view", "contacts.manage"]));
+      }
+      if (path === "/contacts/segments") return Promise.resolve([ACTIVE_SEGMENT]);
+      if (path === "/contacts/custom-fields") return Promise.resolve([]);
+      if (path === "/contacts/segments/segment-1/members") return Promise.resolve([ALICE, BOB]);
+      throw new Error(`unexpected path: ${path}`);
+    });
+
+    const user = userEvent.setup();
+    renderSegmentsPage();
+
+    await screen.findByText("Active customers");
+    await user.click(screen.getByRole("button", { name: "View members" }));
+
+    await waitFor(() => expect(screen.getByText("alice@example.com")).toBeInTheDocument());
+    expect(screen.getByText("bob@example.com")).toBeInTheDocument();
+    expect(screen.getByText("Matching Contacts (2)")).toBeInTheDocument();
+
+    const searchInput = screen.getByLabelText("Search matching contacts");
+    await user.type(searchInput, "Bob");
+
+    expect(screen.queryByText("alice@example.com")).not.toBeInTheDocument();
+    expect(screen.getByText("bob@example.com")).toBeInTheDocument();
+    expect(screen.getByText("Matching Contacts (1 of 2)")).toBeInTheDocument();
+
+    await user.clear(searchInput);
+    await user.type(searchInput, "nonexistent");
+
+    expect(screen.getByText(/No contacts match/)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Clear search" }));
+
+    expect(screen.getByText("alice@example.com")).toBeInTheDocument();
+    expect(screen.getByText("bob@example.com")).toBeInTheDocument();
+  });
 });
