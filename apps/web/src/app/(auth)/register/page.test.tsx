@@ -37,18 +37,18 @@ beforeEach(() => {
 });
 
 describe("RegisterPage", () => {
-  it("renders Google signup button and defaults plan selection", () => {
-    mockSearchParams = new URLSearchParams("plan=pro");
-
+  it("renders Google OAuth button, showcase, and form inputs", () => {
     renderRegisterPage();
 
-    expect(screen.getByRole("link", { name: "Sign up with Google" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Continue with Google" })).toHaveAttribute(
       "href",
       "http://localhost:8000/auth/oauth/google",
     );
-
-    const proRadio = screen.getByRole("radio", { name: /Pro/ });
-    expect(proRadio).toBeChecked();
+    expect(screen.getByText("AI-Powered Growth")).toBeInTheDocument();
+    expect(screen.getByLabelText("Company name")).toBeInTheDocument();
+    expect(screen.getByLabelText("Your name")).toBeInTheDocument();
+    expect(screen.getByLabelText("Work email")).toBeInTheDocument();
+    expect(screen.getByLabelText("Password")).toBeInTheDocument();
   });
 
   it("submits the form and shows the check-your-email confirmation", async () => {
@@ -67,7 +67,7 @@ describe("RegisterPage", () => {
     await user.type(screen.getByLabelText("Your name"), "Ada Owner");
     await user.type(screen.getByLabelText("Work email"), "ada@acme.example");
     await user.type(screen.getByLabelText("Password"), "Test-Password-123!");
-    await user.click(screen.getByRole("button", { name: "Create account" }));
+    await user.click(screen.getByRole("button", { name: /Create your account/ }));
 
     expect(await screen.findByText("Check your email")).toBeInTheDocument();
     expect(screen.getByText("ada@acme.example")).toBeInTheDocument();
@@ -97,7 +97,7 @@ describe("RegisterPage", () => {
     await user.type(screen.getByLabelText("Your name"), "Ada Owner");
     await user.type(screen.getByLabelText("Work email"), "ada@acme.example");
     await user.type(screen.getByLabelText("Password"), "Test-Password-123!");
-    await user.click(screen.getByRole("button", { name: "Create account" }));
+    await user.click(screen.getByRole("button", { name: /Create your account/ }));
 
     await waitFor(() =>
       expect(screen.getByText("An account with this email already exists.")).toBeInTheDocument(),
