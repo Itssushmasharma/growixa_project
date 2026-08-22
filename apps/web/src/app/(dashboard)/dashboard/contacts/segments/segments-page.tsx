@@ -478,21 +478,23 @@ export function SegmentsPage() {
                       />
                     </div>
                     <div className={styles.segmentCardFooter}>
-                      <span className={styles.typeBadge}>
-                        {segment.type === "DYNAMIC" ? "Dynamic" : "Saved"}
-                      </span>
-                      <span className={styles.countBadge}>{segment.member_count} members</span>
-                      <span className={styles.segmentCardMetaText} style={{ fontSize: 12 }}>
-                        {segment.rules.length > 0
-                          ? ruleSummary(
-                              segment.rules[0]!.field,
-                              segment.rules[0]!.operator,
-                              segment.rules[0]!.value,
-                              customFields,
-                            )
-                          : "No filter"}
-                      </span>
-                      <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                      <div className={styles.segmentCardBadges}>
+                        <span className={styles.typeBadge}>
+                          {segment.type === "DYNAMIC" ? "Dynamic" : "Saved"}
+                        </span>
+                        <span className={styles.countBadge}>{segment.member_count} members</span>
+                        <span className={styles.segmentCardMetaText}>
+                          {segment.rules.length > 0
+                            ? ruleSummary(
+                                segment.rules[0]!.field,
+                                segment.rules[0]!.operator,
+                                segment.rules[0]!.value,
+                                customFields,
+                              )
+                            : "No filter"}
+                        </span>
+                      </div>
+                      <div className={styles.segmentCardActions}>
                         <button
                           type="button"
                           className={styles.viewButton}
