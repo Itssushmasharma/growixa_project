@@ -8,6 +8,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from growixa_api.audit.services import record_event
 from growixa_api.billing.services import check_plan_limit
+from growixa_api.contacts.constants import (
+    CUSTOM_FIELD_RULE_OPERATORS,
+    SEGMENT_RULE_FIELD_OPERATORS,
+)
 from growixa_api.contacts.models import (
     ConsentRecord,
     Contact,
@@ -21,8 +25,6 @@ from growixa_api.contacts.models import (
     Tag,
 )
 from growixa_api.contacts.repositories import (
-    CUSTOM_FIELD_RULE_OPERATORS,
-    SEGMENT_RULE_FIELD_OPERATORS,
     add_import_row,
     add_list_member,
     add_segment_members,
@@ -34,6 +36,7 @@ from growixa_api.contacts.repositories import (
     count_list_members,
     count_saved_segment_members,
     create_contact,
+    delete_segment_row,
     detach_tag,
     evaluate_segment_rules,
     get_all_field_values_for_account,
@@ -55,6 +58,7 @@ from growixa_api.contacts.repositories import (
     get_tag_by_name,
     get_tag_names_for_contact,
     is_email_suppressed,
+    list_active_campaigns_referencing_segment,
     list_consent_records,
     list_import_rows,
     list_imports,
@@ -62,8 +66,12 @@ from growixa_api.contacts.repositories import (
     list_segment_rules,
     list_suppression_entries,
     purge_all_contacts_in_account,
+    refresh_saved_segment_members,
     remove_list_member,
+    replace_segment_rules,
     soft_delete_contact,
+    unlink_historical_campaigns_referencing_segment,
+    update_segment_row,
     upsert_field_value,
 )
 from growixa_api.contacts.repositories import add_segment_rule as add_segment_rule_row
@@ -128,6 +136,15 @@ class ContactListNotFoundError(Exception):
 
 class SegmentNotFoundError(Exception):
     pass
+
+
+class SegmentInUseByActiveCampaignsError(Exception):
+    def __init__(self, campaign_details: Sequence[str]) -> None:
+        self.campaign_details = campaign_details
+        joined = ", ".join(campaign_details)
+        super().__init__(
+            f"Cannot delete segment because it is targeted by active campaigns: {joined}"
+        )
 
 
 class InvalidSegmentRuleError(Exception):
@@ -649,6 +666,102 @@ async def list_segment_members(
         contacts = await evaluate_segment_rules(session, account_id, rules)
 
     return [await _snapshot(session, account_id, contact) for contact in contacts]
+
+
+async def update_segment_service(
+    session: AsyncSession,
+    *,
+    account_id: uuid.UUID,
+    actor_id: uuid.UUID,
+    segment_id: uuid.UUID,
+    name: str,
+    type_: str,
+    rules: Sequence[tuple[str, str, str]],
+) -> SegmentDetail:
+    segment = await get_segment_by_id(session, account_id, segment_id)
+    if segment is None:
+        raise SegmentNotFoundError
+
+    for field, operator, value in rules:
+        await _validate_segment_rule(
+            session, account_id=account_id, field=field, operator=operator, value=value
+        )
+
+    updated_segment = await update_segment_row(
+        session,
+        account_id=account_id,
+        segment_id=segment_id,
+        name=name,
+        type_=type_,
+    )
+    if updated_segment is None:
+        raise SegmentNotFoundError
+
+    new_rules = await replace_segment_rules(
+        session,
+        account_id=account_id,
+        segment_id=segment_id,
+        rules=rules,
+    )
+
+    if type_ == "SAVED":
+        await refresh_saved_segment_members(
+            session,
+            account_id=account_id,
+            segment_id=segment_id,
+            rules=new_rules,
+        )
+
+    await record_event(
+        session,
+        account_id=account_id,
+        actor_user_id=actor_id,
+        action="segment.updated",
+        entity_type="segment",
+        entity_id=segment_id,
+        metadata={"name": name, "type": type_, "rule_count": len(new_rules)},
+    )
+    await session.commit()
+    await session.refresh(updated_segment)
+
+    count = await _segment_member_count(session, account_id, updated_segment, new_rules)
+    return updated_segment, new_rules, count
+
+
+async def delete_segment_service(
+    session: AsyncSession,
+    *,
+    account_id: uuid.UUID,
+    actor_id: uuid.UUID,
+    segment_id: uuid.UUID,
+) -> None:
+    segment = await get_segment_by_id(session, account_id, segment_id)
+    if segment is None:
+        raise SegmentNotFoundError
+
+    active_campaigns = await list_active_campaigns_referencing_segment(
+        session, account_id, segment_id
+    )
+    if active_campaigns:
+        campaign_details = [f"'{c.name}' ({c.status})" for c in active_campaigns]
+        raise SegmentInUseByActiveCampaignsError(campaign_details)
+
+    # Unlink any historical/completed campaigns
+    await unlink_historical_campaigns_referencing_segment(session, account_id, segment_id)
+
+    # Delete segment and associated rules / saved members
+    await delete_segment_row(session, account_id, segment_id)
+
+    await record_event(
+        session,
+        account_id=account_id,
+        actor_user_id=actor_id,
+        action="segment.deleted",
+        entity_type="segment",
+        entity_id=segment_id,
+        metadata={"name": segment.name},
+    )
+    await session.commit()
 
 
 async def remove_contact_from_list(

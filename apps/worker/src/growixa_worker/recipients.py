@@ -27,17 +27,32 @@ def _build_rule_condition(field: str, operator: str, value: str) -> ColumnElemen
         return Contact.status == value
     if field == "email":
         return Contact.email == value if operator == "equals" else Contact.email.ilike(f"%{value}%")
+    if field == "first_name":
+        return (
+            Contact.first_name == value
+            if operator == "equals"
+            else Contact.first_name.ilike(f"%{value}%")
+        )
+    if field == "last_name":
+        return (
+            Contact.last_name == value
+            if operator == "equals"
+            else Contact.last_name.ilike(f"%{value}%")
+        )
+    if field == "phone":
+        return Contact.phone == value if operator == "equals" else Contact.phone.ilike(f"%{value}%")
     if field == "source":
         return Contact.source == value
-    if field == "created_at":
-        parsed = datetime.fromisoformat(value)
-        return Contact.created_at < parsed if operator == "before" else Contact.created_at > parsed
     if field == "tag":
+        tag_condition = Tag.name == value if operator == "equals" else Tag.name.ilike(f"%{value}%")
         return Contact.id.in_(
             select(ContactTag.contact_id)
             .join(Tag, Tag.id == ContactTag.tag_id)
-            .where(Tag.name == value)
+            .where(tag_condition)
         )
+    if field == "created_at":
+        parsed = datetime.fromisoformat(value)
+        return Contact.created_at < parsed if operator == "before" else Contact.created_at > parsed
     if field.startswith("custom_field:"):
         key = field.split(":", 1)[1]
         subquery = (

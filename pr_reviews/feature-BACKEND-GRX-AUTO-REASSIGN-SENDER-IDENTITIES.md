@@ -42,4 +42,3 @@ Automatically reassigns existing Sender Identities in an account to the newly cr
 - [x] Reviewed Code Commit: cd83f3f
 - [x] Approved
 - [x] Merged
-

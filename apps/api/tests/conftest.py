@@ -14,6 +14,7 @@ from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from growixa_api.accounts.models import Account
+from growixa_api.audit.models import AuditLog
 from growixa_api.auth.security import hash_password
 from growixa_api.billing.models import AccountSubscription, SubscriptionPlan
 from growixa_api.billing.repositories import create_default_free_subscription
@@ -169,8 +170,10 @@ async def user_factory() -> AsyncGenerator[Callable[..., Awaitable[uuid.UUID]], 
 
     async with async_session_factory() as session:
         for user_id in created_ids:
+            await session.execute(delete(AuditLog).where(AuditLog.actor_user_id == user_id))
             await session.execute(delete(User).where(User.id == user_id))
         await session.commit()
+
         for account_id in auto_created_account_ids:
             await session.execute(delete(Account).where(Account.id == account_id))
         await session.commit()
