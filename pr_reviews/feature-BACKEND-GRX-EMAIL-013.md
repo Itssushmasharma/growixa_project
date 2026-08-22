@@ -370,3 +370,26 @@ destructive: a connection with no bound identities is erased, not deactivated, s
 credential history does not survive. That is consistent with `DEC-GRX-035` point 7 and is
 guarded, but it is a product decision worth confirming explicitly rather than inheriting
 from a code review.
+
+---
+
+## Product Owner Sign-off
+
+- **Status: APPROVED** — signed off by Ravi Kant Yadav (product owner), 2026-08-22,
+  following the round-2 independent approval at `3b06b30`.
+- **Scope confirmed**, including the point the round-2 review asked to be decided
+  explicitly rather than inherited: **deleting a connection is now genuinely destructive.**
+  A connection with no bound sender identities is erased rather than deactivated, so its
+  credential history does not survive. This matches `DEC-GRX-035` point 7 and is guarded by
+  the 409 that blocks deletion while any identity still references it.
+- `DEC-GRX-035` itself is `APPROVED` (product owner, 2026-08-17), including point 9 —
+  multi-SMTP is ungated by plan tier at launch.
+
+**Carried into merge, not resolved by this sign-off** — the round-2 evidence gap stands:
+`pytest tests/integrations` and `alembic upgrade head` could not be run at review time
+because Docker was unavailable, and the round-2 de-duplication SQL in the migration has
+never been executed anywhere. Run both against production-shaped data before deploying.
+`scripts/deploy_vps.sh` takes a pre-migration backup, which is the safety net if the
+migration fails on deploy.
+
+Status: APPROVED — cleared for merge
