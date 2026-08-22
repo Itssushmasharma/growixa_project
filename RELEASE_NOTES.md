@@ -11,6 +11,7 @@
 > **Production URL**: [https://growixa.iitdeveloper.com](https://growixa.iitdeveloper.com)
 
 ### 🚀 Added
+- **Google OAuth 2.0 & SSO Authentication (`GRX-AUTH-006`)**: Added 1-click Google Sign-In and Registration on `/login` and `/register` with Redis-backed CSRF state protection, OpenID Connect profile exchange, `oauth_identities` linking table, and seamless HttpOnly JWT session issuance.
 - **Contact List Members API (`GET /contacts/lists/{list_id}/members`)**: Added dedicated backend endpoint returning active members of a contact list with strict multi-tenant account scoping.
 - **Live Search in Segments & Lists Modals**: Added instant 0ms client-side search filtering across `first_name`, `last_name`, `email`, and `phone` in both the "View Segment Members" modal and "Manage List" modal, with dynamic counter feedback (`Matching Contacts (X of Y)`) and 1-click search clear.
 - **Guarded Segment Deletion & Lifecycle Protection**: Automatically prevents deletion of segments targeted by active campaigns (`DRAFT`, `SCHEDULED`, `DISPATCHING`, `SENDING`) with a helpful `409 Conflict` naming the blocking campaigns; cleanly unlinks completed campaigns (`SENT`, `CANCELLED`, `FAILED`).
