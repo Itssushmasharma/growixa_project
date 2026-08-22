@@ -230,8 +230,11 @@ class _MeteredOperation:
     plan_limit_attr: str
     credit_type: str
 
+
 _METERED_OPERATIONS = {
-    "email": _MeteredOperation("period_email_used", "max_monthly_emails", "EMAIL_SENDS"),
+    "email": _MeteredOperation(
+        "period_email_used", "max_monthly_emails", "EMAIL_SENDS"
+    ),
     "ai_run": _MeteredOperation("period_ai_used", "max_monthly_ai_runs", "AI_RUNS"),
 }
 
@@ -246,12 +249,18 @@ _STATUSES_HONORING_PLAN_LIMITS = frozenset({"ACTIVE", "PAST_DUE", "CANCELED"})
 
 
 async def check_and_consume_quota(
-    session: AsyncSession, *, account_id: UUID, operation: Literal["email", "ai_run"], qty: int = 1
+    session: AsyncSession,
+    *,
+    account_id: UUID,
+    operation: Literal["email", "ai_run"],
+    qty: int = 1,
 ) -> None:
     spec = _METERED_OPERATIONS[operation]
 
     # 1. Lock the subscription row & read the running monthly counter + plan limit
-    subscription, plan = await get_locked_account_subscription_with_plan(session, account_id)
+    subscription, plan = await get_locked_account_subscription_with_plan(
+        session, account_id
+    )
     limit = (
         getattr(plan, spec.plan_limit_attr)
         if subscription.status in _STATUSES_HONORING_PLAN_LIMITS
@@ -286,7 +295,11 @@ async def check_and_consume_quota(
               AND remaining_credits >= :needed
             RETURNING remaining_credits
         """),
-        {"needed": needed_extra, "account_id": account_id, "credit_type": spec.credit_type},
+        {
+            "needed": needed_extra,
+            "account_id": account_id,
+            "credit_type": spec.credit_type,
+        },
     )
 
     if result.first() is not None:
@@ -355,9 +368,13 @@ class ResolvedAIProvider:
 ```python
 resolved = await get_effective_ai_provider(session, account_id)
 if resolved.source == "PLATFORM_DEFAULT":
-    await check_and_consume_quota(session, account_id=account_id, operation="ai_run", qty=1)
+    await check_and_consume_quota(
+        session, account_id=account_id, operation="ai_run", qty=1
+    )
 # else: ACCOUNT_BYO -- no quota check, unlimited by design
-result = await capability_module.run(capability_input, resolved.provider, resolved.model)
+result = await capability_module.run(
+    capability_input, resolved.provider, resolved.model
+)
 ```
 
 Quota is checked **before** the provider call (a flat "1 generation = 1 credit," not
@@ -383,7 +400,12 @@ second, simpler function handles these:
 
 ```python
 async def check_plan_limit(
-    session: AsyncSession, *, account_id: UUID, limit_attr: str, current_count: int, resource: str
+    session: AsyncSession,
+    *,
+    account_id: UUID,
+    limit_attr: str,
+    current_count: int,
+    resource: str,
 ) -> None:
     subscription = await get_account_subscription(session, account_id)
     plan = await session.get(SubscriptionPlan, subscription.plan_id)

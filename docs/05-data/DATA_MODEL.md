@@ -269,23 +269,29 @@ Module ownership follows [MODULE_BOUNDARIES.md](../04-architecture/MODULE_BOUNDA
   added alongside it per [DEC-GRX-016](../00-project-control/DECISIONS.md) — both via
   SMTP relay, so they share one schema.
 - Primary key: `id` (UUID)
-- Required fields: `provider` (`POSTMARK` or `CUSTOM_SMTP` — kept as an enum column
-  rather than a free string, per DEC-GRX-015's original framing, so a further provider
-  is a data migration, not a schema rewrite), `smtp_host`, `smtp_port`, `smtp_username`
-  (Postmark server token, or the Custom SMTP account's username), `smtp_password_encrypted`
-  (the same token/password, encrypted at rest per
-  [DEC-GRX-009](../00-project-control/DECISIONS.md) — for Postmark, stored twice under
+- Required fields: `name` (required label, e.g. "Transactional — GoCheapWeb", unique among
+  active connections per account per [DEC-GRX-035](../00-project-control/DECISIONS.md)),
+  `provider` (`POSTMARK` or `CUSTOM_SMTP` — kept as an enum column rather than a free string,
+  per DEC-GRX-015's original framing, so a further provider is a data migration, not a schema
+  rewrite), `smtp_host`, `smtp_port`, `smtp_username` (Postmark server token, or the Custom
+  SMTP account's username), `smtp_password_encrypted` (the same token/password, encrypted at
+  rest per [DEC-GRX-009](../00-project-control/DECISIONS.md) — for Postmark, stored twice under
   different field names because its SMTP auth uses the token as both), `is_active`
   (boolean, default `true`)
 - Audit fields: `created_by_user_id`, `created_at`, `updated_at`
-- One active connection **per provider**, not one globally (revised by
-  [DEC-GRX-016](../00-project-control/DECISIONS.md) — previously "singleton by
-  convention," app-enforced only, matching `company_profile`'s pattern): a
-  `ux_email_provider_connections_active_per_provider` partial unique index on
-  `(provider) WHERE is_active` makes this a real DB constraint. A new connection for a
-  given provider deactivates that provider's previous one and is created fresh rather
-  than overwriting in place, so the credential history isn't silently lost — a
-  different provider's active connection is untouched.
+- Multi-SMTP & Active Connection Constraints (revised by
+  [DEC-GRX-035](../00-project-control/DECISIONS.md), amending DEC-GRX-016):
+  - `CUSTOM_SMTP`: multiple active connections are allowed per account, enabling distinct
+    relays (e.g. transactional, marketing, support) routed per sender identity.
+  - `POSTMARK`: single active connection per account DB-enforced by partial unique index
+    `ux_email_provider_connections_active_postmark` on `(account_id, provider) WHERE (is_active AND provider = 'POSTMARK')`.
+  - Connection Names: unique among active connections per account via partial unique index
+    `ux_email_provider_connections_active_account_name` on `(account_id, name) WHERE is_active`.
+- Guarded Delete: deleting a connection is blocked if referenced by any `sender_identities`
+  (`sender_identities.email_provider_connection_id` is `NOT NULL` without cascade).
+- Narrowed Auto-Reassignment: replacing a connection (`replacing_connection_id`) only reassigns
+  identities that pointed at that specific connection being replaced; adding a new relay leaves
+  other existing identities untouched.
 - Webhooks: only Postmark connections' `webhook_username`/`webhook_password_encrypted`
   are ever consulted (by `POST /webhooks/postmark`) — Custom SMTP has no webhook route
   at all, since plain SMTP has no bounce/complaint/open/click callback mechanism.

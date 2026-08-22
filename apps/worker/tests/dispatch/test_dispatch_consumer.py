@@ -88,6 +88,7 @@ async def _create_dispatching_campaign(session: AsyncSession) -> uuid.UUID:
     connection = EmailProviderConnection(
         id=uuid.uuid4(),
         account_id=_ACCOUNT_ID,
+        name="Dispatch Postmark",
         provider="POSTMARK",
         smtp_host="smtp.postmarkapp.com",
         smtp_port=587,

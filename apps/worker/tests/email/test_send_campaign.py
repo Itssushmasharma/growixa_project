@@ -59,6 +59,7 @@ async def _create_sender_identity(session: AsyncSession) -> uuid.UUID:
     connection = EmailProviderConnection(
         id=uuid.uuid4(),
         account_id=_ACCOUNT_ID,
+        name="Worker Postmark",
         provider="POSTMARK",
         smtp_host="smtp.postmarkapp.com",
         smtp_port=587,

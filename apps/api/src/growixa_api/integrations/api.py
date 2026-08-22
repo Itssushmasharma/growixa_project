@@ -11,16 +11,20 @@ from growixa_api.integrations.schemas import (
     SenderIdentityIn,
     SenderIdentityOut,
     SenderIdentityStatusIn,
+    SenderIdentityUpdateIn,
 )
 from growixa_api.integrations.services import (
+    ConnectionReferencedBySenderIdentitiesError,
     EmailProviderConnectionNotFoundError,
     InvalidVerificationStatusError,
     SenderIdentityNotFoundError,
     create_connection,
     create_identity,
+    delete_connection,
     list_connections,
     list_identities,
     test_email_provider_connection,
+    update_identity_connection,
     update_identity_verification_status,
 )
 from growixa_api.integrations.smtp_transport import EmailSendError
@@ -69,11 +73,43 @@ async def create_email_provider_connection_route(
     account_id: uuid.UUID = Depends(get_current_account_id),
     session: AsyncSession = Depends(get_session),
 ) -> EmailProviderConnectionOut:
-    connection, webhook_password = await create_connection(session, account_id, payload, actor_id)
-    await session.commit()
+    try:
+        connection, webhook_password = await create_connection(
+            session, account_id, payload, actor_id
+        )
+        await session.commit()
+    except EmailProviderConnectionNotFoundError as exc:
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND, "Email provider connection to replace not found"
+        ) from exc
     out = EmailProviderConnectionOut.model_validate(connection)
     # Shown once, in this response only — see EmailProviderConnectionOut's docstring.
     return out.model_copy(update={"webhook_password": webhook_password})
+
+
+@router.delete(
+    "/email-providers/{connection_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def delete_email_provider_connection_route(
+    connection_id: uuid.UUID,
+    _actor_id: uuid.UUID = Depends(_require_manage),
+    account_id: uuid.UUID = Depends(get_current_account_id),
+    session: AsyncSession = Depends(get_session),
+) -> None:
+    """Guarded delete (DEC-GRX-035 point 7): deletes a connection if no sender identities
+    reference it. Returns 409 naming the blocking identities if any still point to it."""
+    try:
+        await delete_connection(session, account_id, connection_id)
+        await session.commit()
+    except EmailProviderConnectionNotFoundError as exc:
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND, "Email provider connection not found"
+        ) from exc
+    except ConnectionReferencedBySenderIdentitiesError as exc:
+        blocking_emails = ", ".join(i.from_email for i in exc.identities)
+        detail = f"Cannot delete connection: referenced by sender identities ({blocking_emails})"
+        raise HTTPException(status.HTTP_409_CONFLICT, detail) from exc
 
 
 @router.get("/sender-identities", response_model=list[SenderIdentityOut])
@@ -104,6 +140,30 @@ async def create_sender_identity_route(
             status.HTTP_404_NOT_FOUND, "Email provider connection not found"
         ) from exc
     await session.commit()
+    return SenderIdentityOut.model_validate(identity)
+
+
+@router.patch("/sender-identities/{identity_id}", response_model=SenderIdentityOut)
+async def update_sender_identity_route(
+    identity_id: uuid.UUID,
+    payload: SenderIdentityUpdateIn,
+    _actor_id: uuid.UUID = Depends(_require_manage),
+    account_id: uuid.UUID = Depends(get_current_account_id),
+    session: AsyncSession = Depends(get_session),
+) -> SenderIdentityOut:
+    try:
+        identity = await update_identity_connection(session, account_id, identity_id, payload)
+        await session.commit()
+        # updated_at's server-side onupdate expires the attribute after an UPDATE commit;
+        # a synchronous read of it afterward in the response model triggers an un-awaited
+        # lazy reload and raises MissingGreenlet. Refresh explicitly while inside an awaited call.
+        await session.refresh(identity)
+    except SenderIdentityNotFoundError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Sender identity not found") from exc
+    except EmailProviderConnectionNotFoundError as exc:
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND, "Email provider connection not found"
+        ) from exc
     return SenderIdentityOut.model_validate(identity)
 
 

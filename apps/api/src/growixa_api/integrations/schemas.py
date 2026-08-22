@@ -11,11 +11,13 @@ EmailProvider = Literal["POSTMARK", "CUSTOM_SMTP"]
 
 
 class EmailProviderConnectionIn(BaseModel):
+    name: str
     provider: EmailProvider
     smtp_host: str
     smtp_port: int
     smtp_username: str
     smtp_password: str
+    replacing_connection_id: uuid.UUID | None = None
 
 
 class EmailProviderConnectionTestIn(BaseModel):
@@ -33,6 +35,7 @@ class EmailProviderConnectionOut(BaseModel):
     model_config = {"from_attributes": True}
 
     id: uuid.UUID
+    name: str
     provider: EmailProvider
     smtp_host: str
     smtp_port: int
@@ -51,6 +54,12 @@ class SenderIdentityIn(BaseModel):
     email_provider_connection_id: uuid.UUID
     from_email: str
     from_name: str
+    reply_to_email: str | None = None
+
+
+class SenderIdentityUpdateIn(BaseModel):
+    email_provider_connection_id: uuid.UUID | None = None
+    from_name: str | None = None
     reply_to_email: str | None = None
 
 

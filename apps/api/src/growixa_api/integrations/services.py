@@ -1,6 +1,7 @@
 import secrets
 import uuid
 from collections.abc import Sequence
+from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,17 +11,22 @@ from growixa_api.integrations.repositories import (
     create_email_provider_connection,
     create_sender_identity,
     deactivate_active_email_provider_connections,
+    deactivate_email_provider_connection,
+    delete_email_provider_connection,
     get_active_email_provider_connection,
     get_email_provider_connection,
     get_sender_identity,
     list_email_provider_connections,
     list_sender_identities,
+    list_sender_identities_referencing_connection,
     reassign_sender_identities_for_account,
+    update_sender_identity,
 )
 from growixa_api.integrations.schemas import (
     EmailProviderConnectionIn,
     EmailProviderConnectionTestIn,
     SenderIdentityIn,
+    SenderIdentityUpdateIn,
 )
 from growixa_api.integrations.smtp_transport import test_connection
 
@@ -37,6 +43,14 @@ class SenderIdentityNotFoundError(Exception):
 
 class InvalidVerificationStatusError(Exception):
     pass
+
+
+class ConnectionReferencedBySenderIdentitiesError(Exception):
+    def __init__(self, identities: Sequence[SenderIdentity]) -> None:
+        self.identities = identities
+        super().__init__(
+            f"Cannot delete connection: referenced by {len(identities)} sender identities"
+        )
 
 
 async def get_active_connection(
@@ -57,30 +71,43 @@ async def create_connection(
     data: EmailProviderConnectionIn,
     actor_id: uuid.UUID,
 ) -> tuple[EmailProviderConnection, str]:
-    """Deactivates any existing active connection **for this same account and
-    provider** and creates a new row rather than overwriting in place, so the
-    credential history isn't silently lost (per DATA_MODEL.md's singleton-by-convention
-    note) — since GRX-EMAIL-011, "singleton" means one active connection per provider,
-    not one globally, and since GRX-SAAS-001 that's scoped per account too, so a
-    different account's or a different provider's active connection is left untouched.
+    """Creates a new active email provider connection (DEC-GRX-035).
 
-    Also generates this connection's webhook Basic Auth credentials (THREAT_MODEL.md's
-    T14) — the plaintext password is returned once, alongside the row, for the API
-    layer to include in this one response; it is never persisted or retrievable again.
-
-    Automatically reassigns existing sender identities in this account to the newly
-    created active connection so sends and test-sends use the updated credentials.
+    - POSTMARK: preserves single-active-connection rule per account; deactivates any existing
+      active POSTMARK connection and reassigns its identities to the new connection.
+    - CUSTOM_SMTP: multiple active connections are allowed.
+      If replacing_connection_id is specified (e.g. replacing a specific relay), deactivates
+      only that connection and reassigns ONLY the identities that referenced it.
+      If replacing_connection_id is None (adding an additional relay), no existing connection
+      is deactivated and no existing identities are reassigned.
     """
-    existing_connections = await list_email_provider_connections(session, account_id)
-    old_ids = [c.id for c in existing_connections if c.provider == data.provider]
+    reassign_old_ids: list[uuid.UUID] | None = None
 
-    await deactivate_active_email_provider_connections(session, account_id, data.provider)
+    if data.provider == "POSTMARK":
+        existing_connections = await list_email_provider_connections(session, account_id)
+        old_ids = [c.id for c in existing_connections if c.provider == "POSTMARK" and c.is_active]
+        await deactivate_active_email_provider_connections(session, account_id, "POSTMARK")
+        if old_ids:
+            reassign_old_ids = old_ids
+    else:
+        if data.replacing_connection_id is not None:
+            old_conn = await get_email_provider_connection(
+                session, account_id, data.replacing_connection_id
+            )
+            if old_conn is None or not old_conn.is_active:
+                raise EmailProviderConnectionNotFoundError
+            await deactivate_email_provider_connection(
+                session, account_id, data.replacing_connection_id
+            )
+            reassign_old_ids = [data.replacing_connection_id]
+
     webhook_username = secrets.token_urlsafe(12)
     webhook_password = secrets.token_urlsafe(24)
     connection = await create_email_provider_connection(
         session,
         {
             "account_id": account_id,
+            "name": data.name,
             "provider": data.provider,
             "smtp_host": data.smtp_host,
             "smtp_port": data.smtp_port,
@@ -93,14 +120,35 @@ async def create_connection(
         },
     )
 
-    await reassign_sender_identities_for_account(
-        session,
-        account_id,
-        connection.id,
-        old_connection_ids=old_ids if old_ids else None,
-    )
+    if reassign_old_ids:
+        await reassign_sender_identities_for_account(
+            session,
+            account_id,
+            connection.id,
+            old_connection_ids=reassign_old_ids,
+        )
 
     return connection, webhook_password
+
+
+async def delete_connection(
+    session: AsyncSession,
+    account_id: uuid.UUID,
+    connection_id: uuid.UUID,
+) -> None:
+    """Guarded delete (DEC-GRX-035 point 7): refuses deletion if any sender identities
+    still reference this connection, returning the blocking identities."""
+    connection = await get_email_provider_connection(session, account_id, connection_id)
+    if connection is None:
+        raise EmailProviderConnectionNotFoundError
+
+    referencing_identities = await list_sender_identities_referencing_connection(
+        session, account_id, connection_id
+    )
+    if referencing_identities:
+        raise ConnectionReferencedBySenderIdentitiesError(referencing_identities)
+
+    await delete_email_provider_connection(session, account_id, connection_id)
 
 
 async def test_email_provider_connection(data: EmailProviderConnectionTestIn) -> None:
@@ -144,6 +192,36 @@ async def create_identity(
     )
 
 
+async def update_identity_connection(
+    session: AsyncSession,
+    account_id: uuid.UUID,
+    identity_id: uuid.UUID,
+    payload: SenderIdentityUpdateIn,
+) -> SenderIdentity:
+    identity = await get_sender_identity(session, account_id, identity_id)
+    if identity is None:
+        raise SenderIdentityNotFoundError
+
+    fields: dict[str, Any] = {}
+    if payload.email_provider_connection_id is not None:
+        target_conn = await get_email_provider_connection(
+            session, account_id, payload.email_provider_connection_id
+        )
+        if target_conn is None:
+            raise EmailProviderConnectionNotFoundError
+        fields["email_provider_connection_id"] = payload.email_provider_connection_id
+
+    if payload.from_name is not None:
+        fields["from_name"] = payload.from_name
+    if payload.reply_to_email is not None:
+        fields["reply_to_email"] = payload.reply_to_email
+
+    updated = await update_sender_identity(session, account_id, identity_id, fields)
+    if updated is None:
+        raise SenderIdentityNotFoundError
+    return updated
+
+
 async def update_identity_verification_status(
     session: AsyncSession,
     account_id: uuid.UUID,
@@ -157,9 +235,5 @@ async def update_identity_verification_status(
         raise SenderIdentityNotFoundError
     identity.verification_status = status
     await session.commit()
-    # `updated_at`'s server-side onupdate expires the attribute after an UPDATE commit;
-    # a synchronous read of it afterward (e.g. in the API layer's response model) would
-    # trigger an un-awaited lazy reload and raise MissingGreenlet. Refresh explicitly
-    # while still inside an awaited call.
     await session.refresh(identity)
     return identity

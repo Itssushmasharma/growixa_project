@@ -166,7 +166,9 @@ def prompt_user_if_missing(args: argparse.Namespace) -> tuple[str, str, str, str
     email = args.email
     if not email:
         while not email:
-            email = input("[*] Enter Customer Account Email (e.g. info@iitdeveloper.com): ").strip()
+            email = input(
+                "[*] Enter Customer Account Email (e.g. info@iitdeveloper.com): "
+            ).strip()
 
     password = args.password
     if not password:
@@ -189,7 +191,9 @@ def prompt_user_if_missing(args: argparse.Namespace) -> tuple[str, str, str, str
     return base_url.rstrip("/"), email, password, full_name, company_name
 
 
-def run_onboarding(base_url: str, email: str, password: str, full_name: str, company_name: str) -> None:
+def run_onboarding(
+    base_url: str, email: str, password: str, full_name: str, company_name: str
+) -> None:
     print(f"[*] Target API Endpoint: {base_url}")
     print(f"[*] Target Account User: {email}")
     print(f"[*] Target Company Name: {company_name}")
@@ -203,7 +207,9 @@ def run_onboarding(base_url: str, email: str, password: str, full_name: str, com
     if login_resp.status_code == 200:
         print("[+] Logged in successfully with existing account!")
     elif login_resp.status_code in (401, 404):
-        print("[*] User not registered yet. Creating new tenant account via /accounts/register...")
+        print(
+            "[*] User not registered yet. Creating new tenant account via /accounts/register..."
+        )
         reg_resp = client.post(
             "/accounts/register",
             json={
@@ -225,9 +231,13 @@ def run_onboarding(base_url: str, email: str, password: str, full_name: str, com
                 else:
                     print(f"[!] Email verification warning: {ver_resp.status_code}")
             # Log in with the newly created account
-            login_resp = client.post("/auth/login", json={"email": email, "password": password})
+            login_resp = client.post(
+                "/auth/login", json={"email": email, "password": password}
+            )
             if login_resp.status_code != 200:
-                print(f"[!] Login failed after registration: {login_resp.status_code} {login_resp.text}")
+                print(
+                    f"[!] Login failed after registration: {login_resp.status_code} {login_resp.text}"
+                )
                 sys.exit(1)
             print("[+] Logged in with newly created account!")
         elif reg_resp.status_code == 409:
@@ -246,9 +256,13 @@ def run_onboarding(base_url: str, email: str, password: str, full_name: str, com
     company_payload["name"] = company_name
     comp_resp = client.put("/company/profile", json=company_payload)
     if comp_resp.status_code == 200:
-        print(f"[+] Company Profile updated: {comp_resp.json().get('name')} ({comp_resp.json().get('website')})")
+        print(
+            f"[+] Company Profile updated: {comp_resp.json().get('name')} ({comp_resp.json().get('website')})"
+        )
     else:
-        print(f"[!] Failed to update Company Profile: {comp_resp.status_code} {comp_resp.text}")
+        print(
+            f"[!] Failed to update Company Profile: {comp_resp.status_code} {comp_resp.text}"
+        )
 
     # Step 3: Update Brand Profile & Voice
     print("\n[3/5] Updating Brand Voice & Guardrails...")
@@ -256,13 +270,17 @@ def run_onboarding(base_url: str, email: str, password: str, full_name: str, com
     if brand_resp.status_code == 200:
         print("[+] Brand Profile & Voice updated successfully!")
     else:
-        print(f"[!] Failed to update Brand Profile: {brand_resp.status_code} {brand_resp.text}")
+        print(
+            f"[!] Failed to update Brand Profile: {brand_resp.status_code} {brand_resp.text}"
+        )
 
     # Step 4: Create Branded Email Templates
     print("\n[4/5] Setting up Branded Email Templates...")
     existing_templates = client.get("/templates")
     existing_names = (
-        {t.get("name") for t in existing_templates.json()} if existing_templates.status_code == 200 else set()
+        {t.get("name") for t in existing_templates.json()}
+        if existing_templates.status_code == 200
+        else set()
     )
 
     for tmpl in TEMPLATES_DATA:
@@ -281,7 +299,9 @@ def run_onboarding(base_url: str, email: str, password: str, full_name: str, com
         if t_resp.status_code == 201:
             print(f"[+] Created Template: {tmpl['name']}")
         else:
-            print(f"[!] Failed to create template '{tmpl['name']}': {t_resp.status_code} {t_resp.text}")
+            print(
+                f"[!] Failed to create template '{tmpl['name']}': {t_resp.status_code} {t_resp.text}"
+            )
 
     # Step 5: Finished
     print("\n" + "=" * 65)
@@ -290,23 +310,37 @@ def run_onboarding(base_url: str, email: str, password: str, full_name: str, com
     print(f"  • API URL:      {base_url}")
     print(f"  • Account:      {company_name}")
     print(f"  • User Email:   {email}")
-    print(f"  • Company Info: https://iitdeveloper.com")
-    print(f"  • Brand Voice:  Configured & Active")
-    print(f"  • Templates:    2 Branded Templates Ready")
+    print("  • Company Info: https://iitdeveloper.com")
+    print("  • Brand Voice:  Configured & Active")
+    print("  • Templates:    2 Branded Templates Ready")
     print("=" * 65)
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Onboard a customer tenant via Growixa REST API")
-    parser.add_argument("--api", default=None, help="API Base URL (e.g. http://localhost:8000 or https://api.prod.com)")
+    parser = argparse.ArgumentParser(
+        description="Onboard a customer tenant via Growixa REST API"
+    )
+    parser.add_argument(
+        "--api",
+        default=None,
+        help="API Base URL (e.g. http://localhost:8000 or https://api.prod.com)",
+    )
     parser.add_argument("--email", default=None, help="User email")
     parser.add_argument("--password", default=None, help="User password")
     parser.add_argument("--name", default=None, help="User full name")
-    parser.add_argument("--company", default=None, help="Company Name (default: IITDeveloper)")
+    parser.add_argument(
+        "--company", default=None, help="Company Name (default: IITDeveloper)"
+    )
 
     args = parser.parse_args()
     base_url, email, password, full_name, company_name = prompt_user_if_missing(args)
-    run_onboarding(base_url=base_url, email=email, password=password, full_name=full_name, company_name=company_name)
+    run_onboarding(
+        base_url=base_url,
+        email=email,
+        password=password,
+        full_name=full_name,
+        company_name=company_name,
+    )
 
 
 if __name__ == "__main__":

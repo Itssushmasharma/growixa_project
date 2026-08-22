@@ -154,6 +154,7 @@ class EmailProviderConnection(Base):
     # already-account-verified sender_identity_id) -- declared only so tests can
     # construct a real row against the NOT NULL DB column.
     account_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    name: Mapped[str] = mapped_column(Text, nullable=False)
     provider: Mapped[str] = mapped_column(Text, nullable=False)
     smtp_host: Mapped[str] = mapped_column(Text, nullable=False)
     smtp_port: Mapped[int] = mapped_column(Integer, nullable=False)
