@@ -66,6 +66,7 @@ async def _create_campaign_referencing_template(
     async with async_session_factory() as session:
         connection = EmailProviderConnection(
             account_id=account_id,
+            name="Template Postmark",
             provider="POSTMARK",
             smtp_host="smtp.postmarkapp.com",
             smtp_port=587,

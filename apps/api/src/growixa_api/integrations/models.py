@@ -16,14 +16,19 @@ class EmailProviderConnection(Base):
             "provider IN ('POSTMARK', 'CUSTOM_SMTP')",
             name="ck_email_provider_connections_provider",
         ),
-        # DB-enforced "one active connection per provider per account" (GRX-EMAIL-011 /
-        # DEC-GRX-016, composite since GRX-SAAS-001) — a partial unique index, not just
-        # the app-level deactivate-then-create convention DATA_MODEL.md describes for
-        # e.g. company_profile.
+        # POSTMARK keeps its single-active-connection rule per account (DEC-GRX-035 point 1).
         Index(
-            "ux_email_provider_connections_active_per_provider",
+            "ux_email_provider_connections_active_postmark",
             "account_id",
             "provider",
+            unique=True,
+            postgresql_where=text("is_active AND provider = 'POSTMARK'"),
+        ),
+        # Connection names are unique among active connections per account (DEC-GRX-035 point 2).
+        Index(
+            "ux_email_provider_connections_active_account_name",
+            "account_id",
+            "name",
             unique=True,
             postgresql_where=text("is_active"),
         ),
@@ -36,6 +41,7 @@ class EmailProviderConnection(Base):
         nullable=False,
         index=True,
     )
+    name: Mapped[str] = mapped_column(Text, nullable=False)
     provider: Mapped[str] = mapped_column(Text, nullable=False)
     smtp_host: Mapped[str] = mapped_column(Text, nullable=False)
     smtp_port: Mapped[int] = mapped_column(Integer, nullable=False)

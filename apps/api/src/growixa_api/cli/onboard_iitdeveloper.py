@@ -326,6 +326,7 @@ async def onboard_account(target_email: str) -> None:
             epc = EmailProviderConnection(
                 id=uuid.uuid4(),
                 account_id=account.id,
+                name="Primary SMTP",
                 provider="CUSTOM_SMTP",
                 smtp_host=PLACEHOLDER_HOST,
                 smtp_port=587,

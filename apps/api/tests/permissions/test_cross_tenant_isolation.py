@@ -524,6 +524,7 @@ async def test_admin_gets_404_not_403_on_another_accounts_campaign(
             connection_response = await client_b.post(
                 "/integrations/email-provider",
                 json={
+                    "name": "Account B Postmark",
                     "provider": "POSTMARK",
                     "smtp_host": "smtp.postmarkapp.com",
                     "smtp_port": 587,
@@ -596,6 +597,7 @@ async def test_two_accounts_can_each_independently_activate_the_same_provider(
             response_a = await client_a.post(
                 "/integrations/email-provider",
                 json={
+                    "name": "Account A Postmark",
                     "provider": "POSTMARK",
                     "smtp_host": "smtp.postmarkapp.com",
                     "smtp_port": 587,
@@ -610,6 +612,7 @@ async def test_two_accounts_can_each_independently_activate_the_same_provider(
             response_b = await client_b.post(
                 "/integrations/email-provider",
                 json={
+                    "name": "Account B Postmark",
                     "provider": "POSTMARK",
                     "smtp_host": "smtp.postmarkapp.com",
                     "smtp_port": 587,
@@ -658,6 +661,7 @@ async def test_postmark_webhook_only_updates_the_matching_accounts_own_delivery(
                 await client_a.post(
                     "/integrations/email-provider",
                     json={
+                        "name": "Account A Postmark",
                         "provider": "POSTMARK",
                         "smtp_host": "smtp.postmarkapp.com",
                         "smtp_port": 587,
@@ -683,6 +687,7 @@ async def test_postmark_webhook_only_updates_the_matching_accounts_own_delivery(
                 await client_b.post(
                     "/integrations/email-provider",
                     json={
+                        "name": "Account B Postmark",
                         "provider": "POSTMARK",
                         "smtp_host": "smtp.postmarkapp.com",
                         "smtp_port": 587,

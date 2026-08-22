@@ -113,6 +113,60 @@ async def get_sender_identity(
     return result.scalar_one_or_none()
 
 
+async def list_sender_identities_referencing_connection(
+    session: AsyncSession, account_id: uuid.UUID, connection_id: uuid.UUID
+) -> Sequence[SenderIdentity]:
+    result = await session.execute(
+        select(SenderIdentity).where(
+            SenderIdentity.account_id == account_id,
+            SenderIdentity.email_provider_connection_id == connection_id,
+        )
+    )
+    return result.scalars().all()
+
+
+async def deactivate_email_provider_connection(
+    session: AsyncSession, account_id: uuid.UUID, connection_id: uuid.UUID
+) -> None:
+    await session.execute(
+        update(EmailProviderConnection)
+        .where(
+            EmailProviderConnection.account_id == account_id,
+            EmailProviderConnection.id == connection_id,
+            EmailProviderConnection.is_active.is_(True),
+        )
+        .values(is_active=False)
+    )
+
+
+async def delete_email_provider_connection(
+    session: AsyncSession, account_id: uuid.UUID, connection_id: uuid.UUID
+) -> None:
+    await session.execute(
+        update(EmailProviderConnection)
+        .where(
+            EmailProviderConnection.account_id == account_id,
+            EmailProviderConnection.id == connection_id,
+        )
+        .values(is_active=False)
+    )
+
+
+async def update_sender_identity(
+    session: AsyncSession,
+    account_id: uuid.UUID,
+    identity_id: uuid.UUID,
+    fields: dict[str, Any],
+) -> SenderIdentity | None:
+    identity = await get_sender_identity(session, account_id, identity_id)
+    if identity is None:
+        return None
+    for key, value in fields.items():
+        setattr(identity, key, value)
+    await session.flush()
+    return identity
+
+
 async def reassign_sender_identities_for_account(
     session: AsyncSession,
     account_id: uuid.UUID,

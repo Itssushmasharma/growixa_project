@@ -106,7 +106,9 @@ def main() -> int:
     csv_text = render(header, rows)
 
     if args.check:
-        current = TRACKER_CSV.read_text(encoding="utf-8") if TRACKER_CSV.exists() else None
+        current = (
+            TRACKER_CSV.read_text(encoding="utf-8") if TRACKER_CSV.exists() else None
+        )
         if current != csv_text:
             print(
                 f"{TRACKER_CSV.relative_to(REPO_ROOT)} is out of date -- "

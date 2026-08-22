@@ -586,6 +586,7 @@ async def main() -> int:
         if sender is None:
             conn = EmailProviderConnection(
                 account_id=account_id,
+                name="Demo Postmark",
                 provider="POSTMARK",
                 smtp_host="smtp.postmarkapp.com",
                 smtp_port=587,
