@@ -73,8 +73,20 @@ export function ListsPage() {
   const [selectedList, setSelectedList] = useState<ContactList | null>(null);
   const [listMembers, setListMembers] = useState<Contact[]>([]);
   const [listMembersLoading, setListMembersLoading] = useState(false);
+  const [memberSearch, setMemberSearch] = useState("");
   const [addContactId, setAddContactId] = useState("");
   const [memberActionPending, setMemberActionPending] = useState(false);
+
+  const filteredMembers = useMemo(() => {
+    if (!memberSearch.trim()) return listMembers;
+    const q = memberSearch.trim().toLowerCase();
+    return listMembers.filter((c) => {
+      const fullName = [c.first_name, c.last_name].filter(Boolean).join(" ").toLowerCase();
+      const email = (c.email || "").toLowerCase();
+      const phone = (c.phone || "").toLowerCase();
+      return fullName.includes(q) || email.includes(q) || phone.includes(q);
+    });
+  }, [listMembers, memberSearch]);
 
   useEffect(() => {
     async function load() {
@@ -135,6 +147,7 @@ export function ListsPage() {
 
   async function openManageModal(list: ContactList) {
     setSelectedList(list);
+    setMemberSearch("");
     setAddContactId("");
     setListMembersLoading(true);
     try {
@@ -149,6 +162,7 @@ export function ListsPage() {
 
   function closeManageModal() {
     setSelectedList(null);
+    setMemberSearch("");
     setListMembers([]);
   }
 
@@ -451,14 +465,71 @@ export function ListsPage() {
               </div>
             )}
 
-            <h4 style={{ fontSize: 14, fontWeight: 700, margin: "0 0 10px" }}>Current Members</h4>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                margin: "0 0 12px",
+                gap: 12,
+                flexWrap: "wrap",
+              }}
+            >
+              <h4 style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>
+                Current Members ({filteredMembers.length}
+                {memberSearch.trim() ? ` of ${listMembers.length}` : ""})
+              </h4>
+              <input
+                type="text"
+                placeholder="🔍 Search name, email, phone…"
+                value={memberSearch}
+                onChange={(e) => setMemberSearch(e.target.value)}
+                className={styles.input}
+                style={{ maxWidth: 240, padding: "6px 12px", fontSize: 12 }}
+                aria-label="Search current members"
+              />
+            </div>
+
             {listMembersLoading ? (
               <div className={styles.description}>Loading list members…</div>
             ) : listMembers.length === 0 ? (
               <div className={styles.description}>No members in this list yet.</div>
+            ) : filteredMembers.length === 0 ? (
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  padding: "24px 16px",
+                  background: "#f8fafc",
+                  borderRadius: 10,
+                  gap: 8,
+                }}
+              >
+                <div className={styles.description}>
+                  No members match &ldquo;{memberSearch}&rdquo;
+                </div>
+                <button
+                  type="button"
+                  className={styles.viewButton}
+                  onClick={() => setMemberSearch("")}
+                  style={{ fontSize: 12 }}
+                >
+                  Clear search
+                </button>
+              </div>
             ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {listMembers.map((member) => (
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 8,
+                  maxHeight: 340,
+                  overflowY: "auto",
+                }}
+              >
+                {filteredMembers.map((member) => (
                   <div
                     key={member.id}
                     style={{
@@ -475,18 +546,34 @@ export function ListsPage() {
                         {[member.first_name, member.last_name].filter(Boolean).join(" ") ||
                           "No name"}
                       </div>
-                      <div className={styles.email}>{member.email}</div>
+                      <div className={styles.email}>
+                        {member.email}
+                        {member.phone ? ` · ${member.phone}` : ""}
+                      </div>
                     </div>
-                    {canManage && (
-                      <button
-                        type="button"
-                        disabled={memberActionPending}
-                        className={styles.viewButton}
-                        onClick={() => handleRemoveMember(selectedList.id, member.id)}
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <span
+                        className={styles.statusActive}
+                        style={{
+                          padding: "2px 8px",
+                          borderRadius: 999,
+                          fontSize: 11,
+                          fontWeight: 700,
+                        }}
                       >
-                        Remove
-                      </button>
-                    )}
+                        {member.status}
+                      </span>
+                      {canManage && (
+                        <button
+                          type="button"
+                          disabled={memberActionPending}
+                          className={styles.viewButton}
+                          onClick={() => handleRemoveMember(selectedList.id, member.id)}
+                        >
+                          Remove
+                        </button>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>

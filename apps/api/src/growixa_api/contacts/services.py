@@ -62,6 +62,7 @@ from growixa_api.contacts.repositories import (
     list_consent_records,
     list_import_rows,
     list_imports,
+    list_members_for_contact_list,
     list_saved_segment_members,
     list_segment_rules,
     list_suppression_entries,
@@ -495,6 +496,16 @@ async def get_list_with_count(
         raise ContactListNotFoundError
     count = await count_list_members(session, list_id)
     return contact_list, count
+
+
+async def list_list_members(
+    session: AsyncSession, account_id: uuid.UUID, list_id: uuid.UUID
+) -> list[ContactSnapshot]:
+    contact_list = await get_contact_list_by_id(session, account_id, list_id)
+    if contact_list is None:
+        raise ContactListNotFoundError
+    contacts = await list_members_for_contact_list(session, account_id=account_id, list_id=list_id)
+    return [await _snapshot(session, account_id, contact) for contact in contacts]
 
 
 async def create_list(

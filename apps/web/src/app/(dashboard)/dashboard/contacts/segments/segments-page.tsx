@@ -175,6 +175,18 @@ export function SegmentsPage() {
   const [selectedSegment, setSelectedSegment] = useState<Segment | null>(null);
   const [members, setMembers] = useState<Contact[]>([]);
   const [membersLoading, setMembersLoading] = useState(false);
+  const [memberSearch, setMemberSearch] = useState("");
+
+  const filteredMembers = useMemo(() => {
+    if (!memberSearch.trim()) return members;
+    const q = memberSearch.trim().toLowerCase();
+    return members.filter((c) => {
+      const fullName = [c.first_name, c.last_name].filter(Boolean).join(" ").toLowerCase();
+      const email = (c.email || "").toLowerCase();
+      const phone = (c.phone || "").toLowerCase();
+      return fullName.includes(q) || email.includes(q) || phone.includes(q);
+    });
+  }, [members, memberSearch]);
 
   useEffect(() => {
     async function load() {
@@ -366,6 +378,7 @@ export function SegmentsPage() {
 
   async function openMemberModal(segment: Segment) {
     setSelectedSegment(segment);
+    setMemberSearch("");
     setMembersLoading(true);
     try {
       const result = await apiFetch<Contact[]>(`/contacts/segments/${segment.id}/members`);
@@ -379,6 +392,8 @@ export function SegmentsPage() {
 
   function closeMemberModal() {
     setSelectedSegment(null);
+    setMemberSearch("");
+    setMembers([]);
   }
 
   if (loading) {
@@ -964,9 +979,30 @@ export function SegmentsPage() {
               )}
             </div>
 
-            <h4 style={{ fontSize: 14, fontWeight: 700, margin: "20px 0 10px" }}>
-              Matching Contacts ({members.length})
-            </h4>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                margin: "20px 0 12px",
+                gap: 12,
+                flexWrap: "wrap",
+              }}
+            >
+              <h4 style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>
+                Matching Contacts ({filteredMembers.length}
+                {memberSearch.trim() ? ` of ${members.length}` : ""})
+              </h4>
+              <input
+                type="text"
+                placeholder="🔍 Search name, email, phone…"
+                value={memberSearch}
+                onChange={(e) => setMemberSearch(e.target.value)}
+                className={styles.input}
+                style={{ maxWidth: 240, padding: "6px 12px", fontSize: 12 }}
+                aria-label="Search matching contacts"
+              />
+            </div>
 
             {membersLoading ? (
               <div className={styles.description}>Loading matching contacts…</div>
@@ -974,9 +1010,42 @@ export function SegmentsPage() {
               <div className={styles.description}>
                 No contacts match this segment rule currently.
               </div>
+            ) : filteredMembers.length === 0 ? (
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  padding: "24px 16px",
+                  background: "#f8fafc",
+                  borderRadius: 10,
+                  gap: 8,
+                }}
+              >
+                <div className={styles.description}>
+                  No contacts match &ldquo;{memberSearch}&rdquo;
+                </div>
+                <button
+                  type="button"
+                  className={styles.viewButton}
+                  onClick={() => setMemberSearch("")}
+                  style={{ fontSize: 12 }}
+                >
+                  Clear search
+                </button>
+              </div>
             ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {members.map((contact) => (
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 8,
+                  maxHeight: 340,
+                  overflowY: "auto",
+                }}
+              >
+                {filteredMembers.map((contact) => (
                   <div
                     key={contact.id}
                     style={{
@@ -993,7 +1062,10 @@ export function SegmentsPage() {
                         {[contact.first_name, contact.last_name].filter(Boolean).join(" ") ||
                           "No name"}
                       </div>
-                      <div className={styles.email}>{contact.email}</div>
+                      <div className={styles.email}>
+                        {contact.email}
+                        {contact.phone ? ` · ${contact.phone}` : ""}
+                      </div>
                     </div>
                     <span
                       className={styles.statusActive}

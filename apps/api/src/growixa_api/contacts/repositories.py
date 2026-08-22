@@ -484,6 +484,22 @@ async def remove_list_member(
         await session.delete(existing)
 
 
+async def list_members_for_contact_list(
+    session: AsyncSession, *, account_id: uuid.UUID, list_id: uuid.UUID
+) -> Sequence[Contact]:
+    result = await session.execute(
+        select(Contact)
+        .join(ContactListMember, ContactListMember.contact_id == Contact.id)
+        .where(
+            ContactListMember.account_id == account_id,
+            ContactListMember.list_id == list_id,
+            Contact.deleted_at.is_(None),
+        )
+        .order_by(Contact.created_at.desc())
+    )
+    return result.scalars().all()
+
+
 # Field -> allowed operators for segment rules. `custom_field:<key>` fields are validated
 # separately (the key must exist in contact_custom_fields) but share the equals/contains
 # operator set. Kept intentionally small — see DATA_MODEL.md §Slice 2 entities: all rules

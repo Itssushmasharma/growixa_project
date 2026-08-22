@@ -248,3 +248,102 @@ async def test_viewer_has_no_access_to_tags_or_lists(
 
     assert tags_response.status_code == 403
     assert lists_response.status_code == 403
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_manager_can_get_list_members(
+    user_factory: Callable[..., Awaitable[uuid.UUID]],
+) -> None:
+    manager_id = await user_factory(full_name="Test Manager", role_name="Marketing Manager")
+    email = f"{uuid.uuid4()}@example.com"
+
+    transport = ASGITransport(app=create_app())
+    contact_id: uuid.UUID | None = None
+    list_id: uuid.UUID | None = None
+    try:
+        async with AsyncClient(
+            transport=transport, base_url="http://test", cookies=_access_token_cookie(manager_id)
+        ) as client:
+            contact_resp = await client.post(
+                "/contacts", json={"email": email, "first_name": "Alice", "last_name": "Smith"}
+            )
+            assert contact_resp.status_code == 201
+            contact_id = uuid.UUID(contact_resp.json()["id"])
+
+            list_resp = await client.post("/contacts/lists", json={"name": "VIP Customers"})
+            assert list_resp.status_code == 201
+            list_id = uuid.UUID(list_resp.json()["id"])
+
+            add_resp = await client.post(
+                f"/contacts/lists/{list_id}/members", json={"contact_id": str(contact_id)}
+            )
+            assert add_resp.status_code == 200
+
+            members_resp = await client.get(f"/contacts/lists/{list_id}/members")
+            assert members_resp.status_code == 200
+            members_data = members_resp.json()
+            assert len(members_data) == 1
+            assert members_data[0]["id"] == str(contact_id)
+            assert members_data[0]["email"] == email
+            assert members_data[0]["first_name"] == "Alice"
+            assert members_data[0]["last_name"] == "Smith"
+    finally:
+        if contact_id is not None:
+            await _cleanup_contact(contact_id)
+        if list_id is not None:
+            await _cleanup_list(list_id)
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_get_list_members_for_nonexistent_list_returns_404(
+    user_factory: Callable[..., Awaitable[uuid.UUID]],
+) -> None:
+    manager_id = await user_factory(full_name="Test Manager", role_name="Marketing Manager")
+
+    transport = ASGITransport(app=create_app())
+    async with AsyncClient(
+        transport=transport, base_url="http://test", cookies=_access_token_cookie(manager_id)
+    ) as client:
+        resp = await client.get(f"/contacts/lists/{uuid.uuid4()}/members")
+        assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_get_list_members_cross_account_isolation(
+    user_factory: Callable[..., Awaitable[uuid.UUID]],
+) -> None:
+    manager_a = await user_factory(full_name="Manager A", role_name="Marketing Manager")
+    manager_b = await user_factory(full_name="Manager B", role_name="Marketing Manager")
+
+    email = f"{uuid.uuid4()}@example.com"
+    transport = ASGITransport(app=create_app())
+    contact_id: uuid.UUID | None = None
+    list_id: uuid.UUID | None = None
+    try:
+        async with AsyncClient(
+            transport=transport, base_url="http://test", cookies=_access_token_cookie(manager_a)
+        ) as client_a:
+            contact_resp = await client_a.post("/contacts", json={"email": email})
+            contact_id = uuid.UUID(contact_resp.json()["id"])
+
+            list_resp = await client_a.post("/contacts/lists", json={"name": "Account A List"})
+            list_id = uuid.UUID(list_resp.json()["id"])
+
+            await client_a.post(
+                f"/contacts/lists/{list_id}/members", json={"contact_id": str(contact_id)}
+            )
+
+        async with AsyncClient(
+            transport=transport, base_url="http://test", cookies=_access_token_cookie(manager_b)
+        ) as client_b:
+            # Manager B from another account cannot access Account A's list members
+            foreign_resp = await client_b.get(f"/contacts/lists/{list_id}/members")
+            assert foreign_resp.status_code == 404
+    finally:
+        if contact_id is not None:
+            await _cleanup_contact(contact_id)
+        if list_id is not None:
+            await _cleanup_list(list_id)
