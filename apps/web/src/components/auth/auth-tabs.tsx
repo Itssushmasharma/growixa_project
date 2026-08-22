@@ -22,7 +22,8 @@ export function AuthTabs({ activeTab }: AuthTabsProps) {
         aria-selected={activeTab === "login"}
         className={`${styles.tab} ${activeTab === "login" ? styles.tabActive : ""}`}
       >
-        Login
+        <span>Login</span>
+        {activeTab === "login" && <span className={styles.tabIndicator} />}
       </Link>
       <Link
         href={`/register${query}`}
@@ -30,7 +31,8 @@ export function AuthTabs({ activeTab }: AuthTabsProps) {
         aria-selected={activeTab === "register"}
         className={`${styles.tab} ${activeTab === "register" ? styles.tabActive : ""}`}
       >
-        Sign up
+        <span>Sign up</span>
+        {activeTab === "register" && <span className={styles.tabIndicator} />}
       </Link>
     </div>
   );
