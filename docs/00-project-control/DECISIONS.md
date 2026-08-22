@@ -2,8 +2,8 @@
 
 - Document ID: DOC-DECISIONS
 - Status: ACTIVE
-- Version: 1.5
-- Last updated: 2026-08-16
+- Version: 1.6
+- Last updated: 2026-08-17
 - Owner: Product owner (Ravi) via coding agent
 - Related documents: [OPEN_QUESTIONS](OPEN_QUESTIONS.md), [ASSUMPTIONS](ASSUMPTIONS.md), [ROADMAP](../01-product/ROADMAP.md)
 
@@ -1669,3 +1669,99 @@ opt-outs.
 - Related: `GRX-CONTACT-010` (implements this), `GRX-CONTACT-013` (hard erasure),
   `DEC-GRX-008` (suppression non-deletable), `GRX-BILL-005` (contact quota), `OQ-008`.
 - Supersedes: none.
+
+## DEC-GRX-035: Multiple active Custom SMTP connections, routed per sender identity, gated on SPF alignment
+
+- Status: **PROPOSED** — requires the product owner's confirmation. Amends `DEC-GRX-016`;
+  nothing may be built while this is `PROPOSED`.
+- Date: 2026-08-17
+- Context: A customer wants several SMTP relays on one account — e.g. a transactional relay,
+  a marketing relay, and a support relay on different providers. `DEC-GRX-016` deliberately
+  allowed only **one active connection per provider per account**, DB-enforced by the
+  partial unique index `ux_email_provider_connections_active_per_provider` on
+  `(account_id, provider) WHERE is_active`. Lifting that is a change to an `APPROVED`
+  decision and a database constraint, so it needs its own decision rather than a quiet
+  index drop.
+
+### What already exists (verified 2026-08-17, not assumed)
+
+Most of the routing is built, which makes this much smaller than it first appears:
+
+- `sender_identities.email_provider_connection_id` is a real FK — identities already point
+  at a specific connection.
+- The worker already routes on it: `send_campaign.py:113` does
+  `session.get(EmailProviderConnection, identity.email_provider_connection_id)`. It does
+  **not** resolve "the account's active connection". Per-identity routing works today.
+- `dnspython>=2.6` is already a dependency (added by `GRX-SAAS-016`), so the SPF check
+  below needs no new package.
+
+The only true blocker is the unique index. The feature is therefore: relax one constraint,
+add a name, add a guardrail, expose it in the UI.
+
+### Proposed decision
+
+1. **Multiple active `CUSTOM_SMTP` connections per account are allowed.** The partial
+   unique index is narrowed so it no longer caps `CUSTOM_SMTP` at one active row per
+   account. `POSTMARK` keeps its single-active-connection rule — it is a platform-managed
+   provider with one credential set, and nothing asks for several.
+2. **Connections gain a required, account-unique `name`** (e.g. "Transactional — GoCheapWeb",
+   "Marketing — SES"). Without a label, a list of hosts is unusable in a selector. Default
+   it to the host on migration so existing rows stay valid.
+3. **Routing stays per sender identity.** No campaign-level relay picker: a campaign chooses
+   a sender identity, and the identity's connection determines the relay. One routing
+   concept, not two. This matches how Brevo assigns senders to dedicated IP pools rather
+   than choosing transport per send.
+4. **Assignment is gated on an SPF alignment check.** Before an identity may be bound to a
+   connection, resolve the identity's domain SPF record and check whether the connection's
+   host is authorised to send for it. A failing check **warns and requires explicit
+   override**, recorded in the audit event — it does not silently proceed. Rationale: this
+   is the whole risk of multi-relay routing. Sending `hello@brandA.com` through a relay
+   that `brandA.com` does not authorise produces SPF failure and DMARC rejection, and the
+   damage is invisible until deliverability collapses.
+5. **No automatic failover between relays.** If an identity's connection fails, the send
+   fails and surfaces the error. Silently retrying through another relay is precisely the
+   misalignment in point 4, arrived at by accident instead of by configuration.
+6. **No silent fallback to "an active connection of that provider."** Once several are
+   active, that phrase has no single referent. An identity pointing at an inactive
+   connection is an error to surface, not a condition to paper over.
+7. **Deleting a connection is blocked while any sender identity references it.**
+   `sender_identities.email_provider_connection_id` is `NOT NULL` with no `ondelete`, so an
+   unguarded delete either raises an FK violation or orphans identities — the same failure
+   class as the bug that prompted this work. The API returns a clear error naming the
+   identities that must be reassigned first.
+8. **`create_connection`'s auto-reassignment must narrow.** It currently reassigns *every*
+   identity of that provider to the newest connection, which was correct when only one
+   could be active. Under this decision it must reassign only identities that pointed at
+   **the specific connection being replaced**. Left as-is, adding a marketing relay would
+   silently repoint every transactional identity to it — destroying the routing this
+   decision exists to create.
+
+### Deliberately out of scope
+
+- **A `sending_domains` entity.** Brevo makes the domain a first-class object because
+  authentication lives there, and that is the right long-term shape — a persisted
+  verification status, periodic re-checks, a domains page. This decision uses a live
+  per-assignment SPF check instead, which delivers the guardrail without a new entity and
+  new UI. Revisit when customers need managed domain verification rather than a warning.
+- **DKIM verification.** The customer's own relay signs the message, and Growixa does not
+  know their selector, so DKIM alignment cannot be checked reliably from here. SPF is what
+  is verifiable without the customer telling us more.
+- **Plan gating.** Multi-relay routing is a deliverability capability, not table stakes —
+  Brevo gates its equivalent at Enterprise. Whether this is Pro/Enterprise-only is a
+  pricing decision, deferred to `OQ-013`'s owner rather than settled here.
+
+### Consequences
+
+1. One migration: add `name`, narrow the partial unique index. No backfill beyond
+   defaulting `name` to the existing host.
+2. `DEC-GRX-016`'s "one active connection per provider" is amended for `CUSTOM_SMTP` only
+   and stands unchanged for `POSTMARK`.
+3. New/changed endpoints: `PATCH` a sender identity's connection, `DELETE` a connection
+   (guarded per point 7). Both gated on the existing `integrations.manage` — no new
+   permission code.
+4. `DATA_MODEL.md`'s singleton-by-convention note needs updating; it currently describes
+   the rule this decision changes.
+
+- Related: `DEC-GRX-016` (amended), `DEC-GRX-015`, `GRX-EMAIL-011`/`012`,
+  `THREAT_MODEL.md` T14 (webhook credentials per connection).
+- Supersedes: none. Amends `DEC-GRX-016` in part.
