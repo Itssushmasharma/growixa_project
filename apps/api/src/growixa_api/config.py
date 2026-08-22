@@ -130,6 +130,11 @@ class Settings(BaseSettings):
     # flow must be restarted — see THREAT_MODEL.md T44.
     instagram_oauth_state_ttl_seconds: int = 600
 
+    # GRX-AUTH-006: Google OAuth 2.0 / SSO credentials & state TTL
+    google_client_id: str = ""
+    google_client_secret: str = ""
+    google_oauth_state_ttl_seconds: int = 600
+
     # Slice 5 media storage (DEC-GRX-024): Supabase Storage, called directly via its
     # REST API (growixa_api.files.storage_client) — no SDK, matching this codebase's
     # existing thin-provider-wrapper convention. The bucket is public-read by

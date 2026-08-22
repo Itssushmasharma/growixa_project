@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from growixa_api.auth.models import PasswordResetToken, RefreshToken
+from growixa_api.users.models import OAuthIdentity
 
 
 async def create_refresh_token(
@@ -72,3 +73,50 @@ async def get_password_reset_token_by_hash(
         select(PasswordResetToken).where(PasswordResetToken.token_hash == token_hash)
     )
     return result.scalar_one_or_none()
+
+
+async def get_oauth_identity_by_provider_uid(
+    session: AsyncSession, provider: str, provider_user_id: str
+) -> OAuthIdentity | None:
+    result = await session.execute(
+        select(OAuthIdentity).where(
+            OAuthIdentity.provider == provider,
+            OAuthIdentity.provider_user_id == provider_user_id,
+        )
+    )
+    return result.scalar_one_or_none()
+
+
+async def get_oauth_identity_for_user_and_provider(
+    session: AsyncSession, user_id: uuid.UUID, provider: str
+) -> OAuthIdentity | None:
+    result = await session.execute(
+        select(OAuthIdentity).where(
+            OAuthIdentity.user_id == user_id,
+            OAuthIdentity.provider == provider,
+        )
+    )
+    return result.scalar_one_or_none()
+
+
+async def create_oauth_identity(
+    session: AsyncSession,
+    *,
+    account_id: uuid.UUID,
+    user_id: uuid.UUID,
+    provider: str,
+    provider_user_id: str,
+    email: str,
+    avatar_url: str | None = None,
+) -> OAuthIdentity:
+    identity = OAuthIdentity(
+        account_id=account_id,
+        user_id=user_id,
+        provider=provider,
+        provider_user_id=provider_user_id,
+        email=email,
+        avatar_url=avatar_url,
+    )
+    session.add(identity)
+    await session.flush()
+    return identity

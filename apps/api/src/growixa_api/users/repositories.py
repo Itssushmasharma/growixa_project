@@ -98,10 +98,11 @@ async def create_user(
     *,
     account_id: uuid.UUID,
     email: str,
-    password_hash: str,
+    password_hash: str | None = None,
     full_name: str,
     status: str = "ACTIVE",
 ) -> User:
+
     user = User(
         account_id=account_id,
         email=email,

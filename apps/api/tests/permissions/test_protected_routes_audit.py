@@ -77,6 +77,8 @@ PUBLIC_ROUTE_PATHS = {
     "/accounts/support-session-status",
     "/billing/razorpay",
     "/dashboard/overview",
+    "/auth/oauth/{provider}",
+    "/auth/oauth/{provider}/callback",
 }
 
 

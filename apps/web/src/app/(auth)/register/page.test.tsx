@@ -37,10 +37,15 @@ beforeEach(() => {
 });
 
 describe("RegisterPage", () => {
-  it("defaults the plan selection from the ?plan= query param", () => {
+  it("renders Google signup button and defaults plan selection", () => {
     mockSearchParams = new URLSearchParams("plan=pro");
 
     renderRegisterPage();
+
+    expect(screen.getByRole("link", { name: "Sign up with Google" })).toHaveAttribute(
+      "href",
+      "http://localhost:8000/auth/oauth/google",
+    );
 
     const proRadio = screen.getByRole("radio", { name: /Pro/ });
     expect(proRadio).toBeChecked();

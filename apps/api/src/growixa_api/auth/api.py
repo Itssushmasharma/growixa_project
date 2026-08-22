@@ -1,10 +1,21 @@
 import uuid
 from typing import Literal
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, Response, status
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    HTTPException,
+    Query,
+    Request,
+    Response,
+    status,
+)
+from fastapi.responses import RedirectResponse
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from growixa_api.auth.oauth import OAuthConfigurationError, OAuthError
 from growixa_api.auth.rate_limit import RateLimitExceededError, enforce_rate_limit
 from growixa_api.auth.schemas import (
     LoginIn,
@@ -18,8 +29,14 @@ from growixa_api.auth.services import (
     InvalidCredentialsError,
     InvalidPasswordResetTokenError,
     InvalidRefreshTokenError,
+    OAuthEmailUnverifiedError,
+    OAuthStateInvalidError,
 )
+from growixa_api.auth.services import complete_oauth_callback as complete_oauth_callback_service
 from growixa_api.auth.services import complete_password_reset as complete_password_reset_service
+from growixa_api.auth.services import (
+    create_oauth_authorize_url as create_oauth_authorize_url_service,
+)
 from growixa_api.auth.services import login as login_service
 from growixa_api.auth.services import logout as logout_service
 from growixa_api.auth.services import logout_all as logout_all_service
@@ -225,3 +242,87 @@ async def password_reset_complete_route(
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST, "Invalid or expired password reset token"
         ) from exc
+
+
+@router.get("/oauth/{provider}")
+async def oauth_authorize_route(
+    provider: str,
+    request: Request,
+    redirect_target: str | None = Query(default=None),
+    redis_client: Redis = Depends(get_redis),
+) -> RedirectResponse:
+    settings = get_settings()
+    redirect_uri = f"{settings.api_public_url}/auth/oauth/{provider}/callback"
+    try:
+        auth_url = await create_oauth_authorize_url_service(
+            redis_client,
+            provider,
+            redirect_uri=redirect_uri,
+            redirect_target=redirect_target,
+        )
+        return RedirectResponse(url=auth_url, status_code=status.HTTP_307_TEMPORARY_REDIRECT)
+    except OAuthConfigurationError as exc:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, str(exc)) from exc
+    except OAuthError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
+
+
+@router.get("/oauth/{provider}/callback")
+async def oauth_callback_route(
+    provider: str,
+    request: Request,
+    response: Response,
+    code: str | None = Query(default=None),
+    state: str | None = Query(default=None),
+    error: str | None = Query(default=None),
+    error_description: str | None = Query(default=None),
+    session: AsyncSession = Depends(get_session),
+    redis_client: Redis = Depends(get_redis),
+) -> RedirectResponse:
+    settings = get_settings()
+    login_url = f"{settings.frontend_base_url}/login"
+
+    if error or not code or not state:
+        err_msg = error or error_description or "missing_code_or_state"
+        return RedirectResponse(
+            url=f"{login_url}?oauth_error={err_msg}",
+            status_code=status.HTTP_307_TEMPORARY_REDIRECT,
+        )
+
+    redirect_uri = f"{settings.api_public_url}/auth/oauth/{provider}/callback"
+
+    try:
+        result, redirect_target = await complete_oauth_callback_service(
+            session,
+            redis_client,
+            provider,
+            code=code,
+            state=state,
+            redirect_uri=redirect_uri,
+            user_agent=request.headers.get("user-agent"),
+            ip_address=request.client.host if request.client else None,
+        )
+    except (
+        OAuthStateInvalidError,
+        OAuthEmailUnverifiedError,
+        OAuthError,
+        InvalidCredentialsError,
+    ) as exc:
+        return RedirectResponse(
+            url=f"{login_url}?oauth_error={type(exc).__name__}",
+            status_code=status.HTTP_307_TEMPORARY_REDIRECT,
+        )
+
+    target_path = (
+        redirect_target if redirect_target and redirect_target.startswith("/") else "/dashboard"
+    )
+    dest_url = f"{settings.frontend_base_url}{target_path}"
+
+    redirect_resp = RedirectResponse(url=dest_url, status_code=status.HTTP_307_TEMPORARY_REDIRECT)
+    _set_auth_cookies(
+        redirect_resp,
+        access_token=result.access_token,
+        refresh_token=result.refresh_token,
+        request=request,
+    )
+    return redirect_resp
