@@ -2,7 +2,7 @@
 
 - Document ID: DOC-DECISIONS
 - Status: ACTIVE
-- Version: 1.6
+- Version: 1.7
 - Last updated: 2026-08-17
 - Owner: Product owner (Ravi) via coding agent
 - Related documents: [OPEN_QUESTIONS](OPEN_QUESTIONS.md), [ASSUMPTIONS](ASSUMPTIONS.md), [ROADMAP](../01-product/ROADMAP.md)
@@ -1672,8 +1672,8 @@ opt-outs.
 
 ## DEC-GRX-035: Multiple active Custom SMTP connections, routed per sender identity, gated on SPF alignment
 
-- Status: **PROPOSED** — requires the product owner's confirmation. Amends `DEC-GRX-016`;
-  nothing may be built while this is `PROPOSED`.
+- Status: **APPROVED** — confirmed by the product owner 2026-08-17, including the
+  plan-availability decision in point 9. Amends `DEC-GRX-016`.
 - Date: 2026-08-17
 - Context: A customer wants several SMTP relays on one account — e.g. a transactional relay,
   a marketing relay, and a support relay on different providers. `DEC-GRX-016` deliberately
@@ -1735,6 +1735,16 @@ add a name, add a guardrail, expose it in the UI.
    **the specific connection being replaced**. Left as-is, adding a marketing relay would
    silently repoint every transactional identity to it — destroying the routing this
    decision exists to create.
+9. **Available on every subscription plan initially — no tier gating.** Confirmed by the
+   product owner 2026-08-17. Multi-SMTP is a deliverability capability that Brevo gates at
+   Enterprise, so gating it later is defensible, but withholding it at launch would mean
+   the cheapest customers — the ones most likely to already own an SMTP relay and least
+   able to pay per email — are the ones locked out of the capability that makes Growixa
+   cheaper than Brevo. Gating is deliberately left as a **future** option rather than a
+   never: revisit alongside `OQ-013`'s plan-tier work if multi-relay usage turns out to
+   concentrate in larger accounts. Nothing in this decision's schema or API design
+   presumes ungated access, so adding a tier check later is a service-layer change, not a
+   migration.
 
 ### Deliberately out of scope
 
@@ -1746,9 +1756,8 @@ add a name, add a guardrail, expose it in the UI.
 - **DKIM verification.** The customer's own relay signs the message, and Growixa does not
   know their selector, so DKIM alignment cannot be checked reliably from here. SPF is what
   is verifiable without the customer telling us more.
-- **Plan gating.** Multi-relay routing is a deliverability capability, not table stakes —
-  Brevo gates its equivalent at Enterprise. Whether this is Pro/Enterprise-only is a
-  pricing decision, deferred to `OQ-013`'s owner rather than settled here.
+- **Tier gating at launch** — decided against in point 9, not left open. Revisit later if
+  usage data justifies it.
 
 ### Consequences
 
