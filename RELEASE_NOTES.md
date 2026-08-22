@@ -2,6 +2,22 @@
 
 ---
 
+## 🟡 [v0.4.3-rc1] — 2026-08-22
+
+> **Release Tag**: `v0.4.3-rc1`
+> **Release Date**: August 22, 2026
+> **Platform Status**: 🟡 Preview on UAT via `v0.4.3-rc1`
+> **UAT Staging URL**: [https://uat.growixa.iitdeveloper.com](https://uat.growixa.iitdeveloper.com)
+> **Production URL**: [https://growixa.iitdeveloper.com](https://growixa.iitdeveloper.com)
+
+### 🚀 Added
+- **Guarded Segment Deletion & Lifecycle Protection**: Automatically prevents deletion of segments targeted by active campaigns (`DRAFT`, `SCHEDULED`, `DISPATCHING`, `SENDING`) with a helpful `409 Conflict` naming the blocking campaigns; cleanly unlinks completed campaigns (`SENT`, `CANCELLED`, `FAILED`).
+- **Dynamic Segment Editing & Rule Re-evaluation**: Edit segment name, description, and rules with real-time membership recalculation across standard and custom fields.
+- **API & Worker Recipient Resolution Parity**: Added full support for `first_name`, `last_name`, `phone`, and tag `contains` operator across both API segment evaluator and worker recipient loader, guaranteeing preview and send agreement.
+- **Architecture Decision DEC-GRX-036**: Defined channel-agnostic personalization tokens architecture covering recipient and account token scopes without template injection risks.
+
+---
+
 ## 🟢 [v0.4.0] — 2026-08-20
 
 > **Release Tag**: `v0.4.0`
