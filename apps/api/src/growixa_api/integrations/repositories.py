@@ -111,3 +111,22 @@ async def get_sender_identity(
         )
     )
     return result.scalar_one_or_none()
+
+
+async def reassign_sender_identities_for_account(
+    session: AsyncSession,
+    account_id: uuid.UUID,
+    new_connection_id: uuid.UUID,
+    old_connection_ids: Sequence[uuid.UUID] | None = None,
+) -> None:
+    """Reassigns sender identities in this account to the newly active connection.
+    If old_connection_ids is provided, reassigns only identities referencing those connections;
+    otherwise reassigns all identities in the account."""
+    stmt = (
+        update(SenderIdentity)
+        .where(SenderIdentity.account_id == account_id)
+        .values(email_provider_connection_id=new_connection_id)
+    )
+    if old_connection_ids:
+        stmt = stmt.where(SenderIdentity.email_provider_connection_id.in_(old_connection_ids))
+    await session.execute(stmt)

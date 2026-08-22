@@ -15,6 +15,7 @@ from growixa_api.integrations.repositories import (
     get_sender_identity,
     list_email_provider_connections,
     list_sender_identities,
+    reassign_sender_identities_for_account,
 )
 from growixa_api.integrations.schemas import (
     EmailProviderConnectionIn,
@@ -66,7 +67,13 @@ async def create_connection(
     Also generates this connection's webhook Basic Auth credentials (THREAT_MODEL.md's
     T14) — the plaintext password is returned once, alongside the row, for the API
     layer to include in this one response; it is never persisted or retrievable again.
+
+    Automatically reassigns existing sender identities in this account to the newly
+    created active connection so sends and test-sends use the updated credentials.
     """
+    existing_connections = await list_email_provider_connections(session, account_id)
+    old_ids = [c.id for c in existing_connections if c.provider == data.provider]
+
     await deactivate_active_email_provider_connections(session, account_id, data.provider)
     webhook_username = secrets.token_urlsafe(12)
     webhook_password = secrets.token_urlsafe(24)
@@ -85,6 +92,14 @@ async def create_connection(
             "created_by_user_id": actor_id,
         },
     )
+
+    await reassign_sender_identities_for_account(
+        session,
+        account_id,
+        connection.id,
+        old_connection_ids=old_ids if old_ids else None,
+    )
+
     return connection, webhook_password
 
 

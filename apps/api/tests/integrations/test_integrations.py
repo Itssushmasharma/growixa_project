@@ -306,12 +306,59 @@ async def test_sender_identity_status_update_rejects_invalid_status(
                 },
             )
             identity_id = identity_response.json()["id"]
-
             response = await client.patch(
                 f"/integrations/sender-identities/{identity_id}/status",
                 json={"verification_status": "NOT_A_REAL_STATUS"},
             )
 
         assert response.status_code == 400
+    finally:
+        await _cleanup(super_admin_id)
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_create_connection_reassigns_existing_sender_identities(
+    user_factory: Callable[..., Awaitable[uuid.UUID]],
+) -> None:
+    super_admin_id = await user_factory(full_name="Test Super Admin", role_name="Super Admin")
+    try:
+        cookies = _access_token_cookie(super_admin_id)
+        transport = ASGITransport(app=create_app())
+        async with AsyncClient(
+            transport=transport, base_url="http://test", cookies=cookies
+        ) as client:
+            # 1. Create first connection
+            first_conn = await client.post("/integrations/email-provider", json=CUSTOM_SMTP_PAYLOAD)
+            first_id = first_conn.json()["id"]
+
+            # 2. Create sender identity pointing to first connection
+            identity_res = await client.post(
+                "/integrations/sender-identities",
+                json={
+                    "email_provider_connection_id": first_id,
+                    "from_email": "sender@growixa.local",
+                    "from_name": "Growixa Sender",
+                },
+            )
+            identity_id = identity_res.json()["id"]
+            assert identity_res.json()["email_provider_connection_id"] == first_id
+
+            # 3. Create second (updated) connection via UI endpoint
+            second_payload = {
+                **CUSTOM_SMTP_PAYLOAD,
+                "smtp_host": "smtp.newprovider.com",
+                "smtp_port": 465,
+            }
+            second_conn = await client.post("/integrations/email-provider", json=second_payload)
+            second_id = second_conn.json()["id"]
+            assert second_id != first_id
+
+            # 4. Fetch sender identities and assert auto-reassigned to second connection
+            list_res = await client.get("/integrations/sender-identities")
+            identities = list_res.json()
+            matching = [i for i in identities if i["id"] == identity_id]
+            assert len(matching) == 1
+            assert matching[0]["email_provider_connection_id"] == second_id
     finally:
         await _cleanup(super_admin_id)
