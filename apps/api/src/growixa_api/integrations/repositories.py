@@ -2,7 +2,7 @@ import uuid
 from collections.abc import Sequence
 from typing import Any
 
-from sqlalchemy import select, update
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from growixa_api.integrations.models import EmailProviderConnection, SenderIdentity
@@ -57,8 +57,11 @@ async def list_email_provider_connections(
 ) -> Sequence[EmailProviderConnection]:
     result = await session.execute(
         select(EmailProviderConnection)
-        .where(EmailProviderConnection.account_id == account_id)
-        .order_by(EmailProviderConnection.provider)
+        .where(
+            EmailProviderConnection.account_id == account_id,
+            EmailProviderConnection.is_active.is_(True),
+        )
+        .order_by(EmailProviderConnection.created_at)
     )
     return result.scalars().all()
 
@@ -143,12 +146,10 @@ async def delete_email_provider_connection(
     session: AsyncSession, account_id: uuid.UUID, connection_id: uuid.UUID
 ) -> None:
     await session.execute(
-        update(EmailProviderConnection)
-        .where(
+        delete(EmailProviderConnection).where(
             EmailProviderConnection.account_id == account_id,
             EmailProviderConnection.id == connection_id,
         )
-        .values(is_active=False)
     )
 
 

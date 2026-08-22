@@ -73,8 +73,15 @@ async def create_email_provider_connection_route(
     account_id: uuid.UUID = Depends(get_current_account_id),
     session: AsyncSession = Depends(get_session),
 ) -> EmailProviderConnectionOut:
-    connection, webhook_password = await create_connection(session, account_id, payload, actor_id)
-    await session.commit()
+    try:
+        connection, webhook_password = await create_connection(
+            session, account_id, payload, actor_id
+        )
+        await session.commit()
+    except EmailProviderConnectionNotFoundError as exc:
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND, "Email provider connection to replace not found"
+        ) from exc
     out = EmailProviderConnectionOut.model_validate(connection)
     # Shown once, in this response only — see EmailProviderConnectionOut's docstring.
     return out.model_copy(update={"webhook_password": webhook_password})
@@ -147,6 +154,9 @@ async def update_sender_identity_route(
     try:
         identity = await update_identity_connection(session, account_id, identity_id, payload)
         await session.commit()
+        # updated_at's server-side onupdate expires the attribute after an UPDATE commit;
+        # a synchronous read of it afterward in the response model triggers an un-awaited
+        # lazy reload and raises MissingGreenlet. Refresh explicitly while inside an awaited call.
         await session.refresh(identity)
     except SenderIdentityNotFoundError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Sender identity not found") from exc

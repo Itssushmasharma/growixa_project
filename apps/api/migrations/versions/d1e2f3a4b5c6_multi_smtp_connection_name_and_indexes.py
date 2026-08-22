@@ -25,8 +25,31 @@ def upgrade() -> None:
         "email_provider_connections",
         sa.Column("name", sa.Text(), nullable=True),
     )
-    # Default name to smtp_host for existing rows
-    op.execute(sa.text("UPDATE email_provider_connections SET name = smtp_host WHERE name IS NULL"))
+    # Default name: "Postmark" for Postmark rows, smtp_host for Custom SMTP rows
+    op.execute(
+        sa.text(
+            "UPDATE email_provider_connections "
+            "SET name = CASE WHEN provider = 'POSTMARK' THEN 'Postmark' ELSE smtp_host END "
+            "WHERE name IS NULL"
+        )
+    )
+    # Disambiguate duplicate active names within an account if any exist
+    op.execute(
+        sa.text(
+            "WITH numbered AS ("
+            "    SELECT id, "
+            "           ROW_NUMBER() OVER ("
+            "               PARTITION BY account_id, name ORDER BY created_at"
+            "           ) AS rn "
+            "    FROM email_provider_connections "
+            "    WHERE is_active"
+            ") "
+            "UPDATE email_provider_connections e "
+            "SET name = e.name || ' (' || numbered.rn || ')' "
+            "FROM numbered "
+            "WHERE e.id = numbered.id AND numbered.rn > 1"
+        )
+    )
     op.alter_column(
         "email_provider_connections",
         "name",

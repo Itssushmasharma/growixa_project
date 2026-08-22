@@ -94,11 +94,12 @@ async def create_connection(
             old_conn = await get_email_provider_connection(
                 session, account_id, data.replacing_connection_id
             )
-            if old_conn is not None and old_conn.is_active:
-                await deactivate_email_provider_connection(
-                    session, account_id, data.replacing_connection_id
-                )
-                reassign_old_ids = [data.replacing_connection_id]
+            if old_conn is None or not old_conn.is_active:
+                raise EmailProviderConnectionNotFoundError
+            await deactivate_email_provider_connection(
+                session, account_id, data.replacing_connection_id
+            )
+            reassign_old_ids = [data.replacing_connection_id]
 
     webhook_username = secrets.token_urlsafe(12)
     webhook_password = secrets.token_urlsafe(24)

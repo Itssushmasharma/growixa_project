@@ -299,6 +299,37 @@ async def test_guarded_delete_email_provider_connection(
 
             del_unref_resp = await client.delete(f"/integrations/email-providers/{unref_conn_id}")
             assert del_unref_resp.status_code == 204
+
+            # Verify it is removed from list_email_provider_connections
+            list_resp = await client.get("/integrations/email-providers")
+            assert not any(c["id"] == unref_conn_id for c in list_resp.json())
+    finally:
+        await _cleanup(super_admin_id)
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_replacing_invalid_connection_id_returns_404(
+    user_factory: Callable[..., Awaitable[uuid.UUID]],
+) -> None:
+    """Proves supplying a non-existent or inactive replacing_connection_id returns 404."""
+    super_admin_id = await user_factory(full_name="Test Super Admin", role_name="Super Admin")
+    try:
+        cookies = _access_token_cookie(super_admin_id)
+        transport = ASGITransport(app=create_app())
+        async with AsyncClient(
+            transport=transport, base_url="http://test", cookies=cookies
+        ) as client:
+            resp = await client.post(
+                "/integrations/email-provider",
+                json={
+                    **CUSTOM_SMTP_PAYLOAD,
+                    "name": "Orphaned Replacement",
+                    "replacing_connection_id": str(uuid.uuid4()),
+                },
+            )
+            assert resp.status_code == 404
+            assert "not found" in resp.json()["detail"].lower()
     finally:
         await _cleanup(super_admin_id)
 
