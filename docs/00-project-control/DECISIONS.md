@@ -2,7 +2,7 @@
 
 - Document ID: DOC-DECISIONS
 - Status: ACTIVE
-- Version: 1.7
+- Version: 1.8
 - Last updated: 2026-08-17
 - Owner: Product owner (Ravi) via coding agent
 - Related documents: [OPEN_QUESTIONS](OPEN_QUESTIONS.md), [ASSUMPTIONS](ASSUMPTIONS.md), [ROADMAP](../01-product/ROADMAP.md)
@@ -1774,3 +1774,85 @@ add a name, add a guardrail, expose it in the UI.
 - Related: `DEC-GRX-016` (amended), `DEC-GRX-015`, `GRX-EMAIL-011`/`012`,
   `THREAT_MODEL.md` T14 (webhook credentials per connection).
 - Supersedes: none. Amends `DEC-GRX-016` in part.
+
+## DEC-GRX-036: Personalization tokens — one channel-agnostic renderer, two token scopes, no template engine
+
+- Status: **PROPOSED** — requires the product owner's confirmation.
+- Date: 2026-08-17
+- Context: `MVP_SCOPE.md` §C promises "personalization variables". The template editor
+  advertises an "Insert Personalization Token" control offering `{{first_name}}`,
+  `{{last_name}}`, `{{company_name}}`. **No substitution exists anywhere** — verified in
+  both send paths; `send_campaign.py`'s own comment states "no merge-tag infrastructure
+  exists yet", and `publish_social_post.py` has none either. Tokens are delivered to
+  recipients as literal text. This is promised MVP scope, advertised in the UI, and unbuilt
+  — and unlike the other placeholder UI found this week, its output reaches **the
+  customer's own customers**, damaging their reputation rather than ours.
+
+### Two token scopes — this is what "works for any campaign" means
+
+The product owner asked for personalization across **any campaign type**, not email only.
+That requires separating two kinds of token, because they have different availability:
+
+| Scope | Source | Example tokens | Available on |
+|---|---|---|---|
+| **Recipient** | the `contacts` row + its custom field values | `{{first_name}}`, `{{last_name}}`, `{{school_name}}` | per-recipient channels only — email, later SMS and Telegram bot DM |
+| **Account / sender** | `company_profile`, the sending `sender_identity` | `{{company_name}}`, `{{website_url}}`, `{{sender_name}}` | **every** channel, including broadcast |
+
+Broadcast channels (an Instagram post, a Telegram channel post) have **no individual
+recipient**, so recipient tokens cannot resolve there and must be rejected at save time
+rather than silently rendering blank. Account/sender tokens work everywhere, which is what
+makes "personalization for any campaign" meaningful rather than email-only.
+
+This also resolves the `{{company_name}}` button, which today resolves to nothing:
+`contacts` has no company column, but `company_profile.name` does exist. It is an
+**account-scope** token that was never wired, not a missing contact field.
+
+### Proposed decision
+
+1. **One shared renderer, not one per channel.** A channel-agnostic module owns tokenising,
+   resolution, escaping, and validation. Email and social both call it; SMS and Telegram
+   call the same one later. Both the API (test-send, preview) and the worker (real send)
+   use it — the worker resolves data independently of the API, so a renderer living inside
+   either one would have to be duplicated.
+2. **No template engine — restricted substitution only.** Jinja2, Mako and similar are
+   **rejected**: templates are user-supplied content, and a full engine on user input is a
+   server-side template injection surface (arbitrary attribute access, sandbox escapes).
+   The renderer recognises a fixed token grammar via a bounded pattern and nothing else. No
+   expressions, no logic, no loops, no attribute traversal.
+3. **Allowlist, never "all contact data".** Recipient scope exposes `first_name`,
+   `last_name`, `email`, `phone`, plus that account's custom fields. Internal columns are
+   never exposed — `id`, `account_id`, `created_by_user_id`, `status`, `deleted_at`,
+   timestamps, and specifically **`source`**, which can contain acquisition provenance that
+   must never render into a message to the person it describes.
+4. **Custom fields may be excluded per field.** Custom fields are user-named and can hold
+   internal commentary ("budget estimate", "notes"). A per-field "usable in personalization"
+   flag prevents an internal note rendering to the recipient. Default for new fields is a
+   product-owner call; the safer default is opt-in.
+5. **A `default` filter is required, not optional.** `{{first_name | default:"there"}}`.
+   Missing values are highly visible in outbound — "Hi ," — and cold campaigns are exactly
+   where they occur. This is the only filter in scope; no others, per point 2.
+6. **Values are HTML-escaped in HTML bodies.** Contact values arrive from CSV import and are
+   untrusted (`GRX-AI-007`'s framing applies). Escaping is on by default with no opt-out in
+   this decision.
+7. **Unknown tokens block the send, they do not render.** A typo (`{{shcool_name}}`) fails
+   validation at save and at send with a clear message naming the token. Rendering it
+   literally is the current bug; rendering it blank silently corrupts copy at scale.
+8. **A pre-send preview is part of the feature, not a follow-up.** Render against a real
+   recipient, and report how many recipients are missing a value for each token used.
+   Discovering that 40 of 300 rendered blank *after* sending is the expensive way to learn,
+   and this is the check that makes bulk personalization trustworthy.
+
+### Consequences
+
+1. New shared module; email and social send paths call it. `MVP_SCOPE.md` §C's
+   "personalization variables" becomes genuinely satisfied rather than nominally.
+2. Custom fields gain a "usable in personalization" flag — one migration.
+3. The template editor's token control must be driven by the **real** available tokens for
+   that account and channel, not a hardcoded list of three.
+4. Until this ships, the advertised token buttons are actively misleading and are removed
+   or disabled (`GRX-BUG-005`, filed separately and not blocked by this decision).
+
+- Related: `MVP_SCOPE.md` §C, `GRX-AI-007` (untrusted external content), `DEC-GRX-011`
+  (no DONE without evidence), `GRX-FEAT-SMS-001` and `GRX-FEAT-034` (future channels that
+  reuse the same renderer).
+- Supersedes: none.

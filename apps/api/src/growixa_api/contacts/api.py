@@ -55,10 +55,13 @@ from growixa_api.contacts.services import (
     DuplicateTagNameError,
     InvalidColumnMappingError,
     InvalidSegmentRuleError,
+    SegmentInUseByActiveCampaignsError,
     SegmentNotFoundError,
     SuppressionEntryNotFoundError,
     TagNotFoundError,
     UnknownCustomFieldError,
+    delete_segment_service,
+    update_segment_service,
 )
 from growixa_api.contacts.services import add_contact_to_list as add_contact_to_list_service
 from growixa_api.contacts.services import attach_tag_to_contact as attach_tag_service
@@ -367,6 +370,52 @@ async def list_segment_members_route(
         _to_out(contact, fields, tags, suppressed)
         for contact, fields, tags, suppressed in snapshots
     ]
+
+
+@router.put("/segments/{segment_id}", response_model=SegmentOut)
+async def update_segment_route(
+    segment_id: uuid.UUID,
+    payload: SegmentIn,
+    actor_id: uuid.UUID = Depends(_require_manage),
+    account_id: uuid.UUID = Depends(get_current_account_id),
+    session: AsyncSession = Depends(get_session),
+) -> SegmentOut:
+    try:
+        segment, rules, count = await update_segment_service(
+            session,
+            account_id=account_id,
+            actor_id=actor_id,
+            segment_id=segment_id,
+            name=payload.name,
+            type_=payload.type,
+            rules=[(r.field, r.operator, r.value) for r in payload.rules],
+        )
+    except SegmentNotFoundError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Segment not found") from exc
+    except InvalidSegmentRuleError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
+
+    return _segment_to_out(segment, rules, count)
+
+
+@router.delete("/segments/{segment_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_segment_route(
+    segment_id: uuid.UUID,
+    actor_id: uuid.UUID = Depends(_require_manage),
+    account_id: uuid.UUID = Depends(get_current_account_id),
+    session: AsyncSession = Depends(get_session),
+) -> None:
+    try:
+        await delete_segment_service(
+            session,
+            account_id=account_id,
+            actor_id=actor_id,
+            segment_id=segment_id,
+        )
+    except SegmentNotFoundError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Segment not found") from exc
+    except SegmentInUseByActiveCampaignsError as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
 
 
 def _import_to_out(contact_import: ContactImport) -> ContactImportOut:

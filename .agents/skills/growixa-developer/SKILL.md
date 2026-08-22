@@ -118,7 +118,16 @@ domain) WHERE domain IS NOT NULL`. Reach for one before inventing a new uniquene
 **Don't build UI for capabilities that don't exist.** Established practice (`DEC-GRX-016`):
 no provider cards, tabs, or buttons for backends that aren't implemented.
 
+**Centralize constants and enums — never scatter raw magic strings.**
+Define shared fields, rule operators, statuses, and options in a dedicated `constants.py`
+using `StrEnum` on the backend (e.g. `SegmentRuleField`, `SegmentRuleOperator`), and `as const`
+or typed definitions in `types.ts` on the frontend. Never duplicate raw string literals
+across repository queries, services, route handlers, tests, and UI components. Centralizing
+constants ensures that adding, renaming, or expanding values is handled in a single source of
+truth without missed references or typo bugs.
+
 ---
+
 
 ## 3. Tests and checks
 

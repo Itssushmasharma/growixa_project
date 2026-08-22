@@ -19,6 +19,24 @@ export interface ContactList {
   updated_at: string;
 }
 
+export const SEGMENT_RULE_FIELDS = {
+  STATUS: "status",
+  EMAIL: "email",
+  FIRST_NAME: "first_name",
+  LAST_NAME: "last_name",
+  PHONE: "phone",
+  SOURCE: "source",
+  TAG: "tag",
+  CREATED_AT: "created_at",
+} as const;
+
+export const SEGMENT_RULE_OPERATORS = {
+  EQUALS: "equals",
+  CONTAINS: "contains",
+  BEFORE: "before",
+  AFTER: "after",
+} as const;
+
 export interface SegmentRule {
   id: string;
   field: string;

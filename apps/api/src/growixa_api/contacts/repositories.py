@@ -3,9 +3,14 @@ from collections.abc import Sequence
 from datetime import datetime
 from typing import Any, cast
 
-from sqlalchemy import ColumnElement, CursorResult, Select, and_, func, select, update
+from sqlalchemy import ColumnElement, CursorResult, Select, and_, delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from growixa_api.campaigns.models import Campaign
+from growixa_api.contacts.constants import (
+    SegmentRuleField,
+    SegmentRuleOperator,
+)
 from growixa_api.contacts.models import (
     ConsentRecord,
     Contact,
@@ -483,16 +488,6 @@ async def remove_list_member(
 # separately (the key must exist in contact_custom_fields) but share the equals/contains
 # operator set. Kept intentionally small — see DATA_MODEL.md §Slice 2 entities: all rules
 # on a segment are AND-combined only, no OR/grouping in Slice 2.
-SEGMENT_RULE_FIELD_OPERATORS: dict[str, set[str]] = {
-    "status": {"equals"},
-    "email": {"equals", "contains"},
-    "source": {"equals"},
-    "tag": {"equals"},
-    "created_at": {"before", "after"},
-}
-CUSTOM_FIELD_RULE_OPERATORS = {"equals", "contains"}
-
-
 def build_rule_condition(field: str, operator: str, value: str) -> ColumnElement[bool]:
     """Translate one validated (field, operator, value) triple into a SQLAlchemy
     boolean expression over `Contact`. Callers must validate field/operator combinations
@@ -503,21 +498,53 @@ def build_rule_condition(field: str, operator: str, value: str) -> ColumnElement
     query (see `_matching_contacts_query`), so a same-named tag/field key in another
     account can never leak a contact into these results.
     """
-    if field == "status":
+    if field == SegmentRuleField.STATUS:
         return Contact.status == value
-    if field == "email":
-        return Contact.email == value if operator == "equals" else Contact.email.ilike(f"%{value}%")
-    if field == "source":
+    if field == SegmentRuleField.EMAIL:
+        return (
+            Contact.email == value
+            if operator == SegmentRuleOperator.EQUALS
+            else Contact.email.ilike(f"%{value}%")
+        )
+    if field == SegmentRuleField.FIRST_NAME:
+        return (
+            Contact.first_name == value
+            if operator == SegmentRuleOperator.EQUALS
+            else Contact.first_name.ilike(f"%{value}%")
+        )
+    if field == SegmentRuleField.LAST_NAME:
+        return (
+            Contact.last_name == value
+            if operator == SegmentRuleOperator.EQUALS
+            else Contact.last_name.ilike(f"%{value}%")
+        )
+    if field == SegmentRuleField.PHONE:
+        return (
+            Contact.phone == value
+            if operator == SegmentRuleOperator.EQUALS
+            else Contact.phone.ilike(f"%{value}%")
+        )
+    if field == SegmentRuleField.SOURCE:
         return Contact.source == value
-    if field == "tag":
+    if field == SegmentRuleField.TAG:
+        tag_condition = (
+            Tag.name == value
+            if operator == SegmentRuleOperator.EQUALS
+            else Tag.name.ilike(f"%{value}%")
+        )
         return Contact.id.in_(
             select(ContactTag.contact_id)
             .join(Tag, Tag.id == ContactTag.tag_id)
-            .where(Tag.name == value)
+            .where(tag_condition)
         )
-    if field == "created_at":
+    if field == SegmentRuleField.CREATED_AT:
         parsed = datetime.fromisoformat(value)
-        return Contact.created_at < parsed if operator == "before" else Contact.created_at > parsed
+        return (
+            Contact.created_at < parsed
+            if operator == SegmentRuleOperator.BEFORE
+            else Contact.created_at > parsed
+        )
+
     if field.startswith("custom_field:"):
         key = field.split(":", 1)[1]
         subquery = (
@@ -657,6 +684,128 @@ async def list_saved_segment_members(
         .where(SegmentMember.segment_id == segment_id, Contact.deleted_at.is_(None))
     )
     return result.scalars().all()
+
+
+async def list_active_campaigns_referencing_segment(
+    session: AsyncSession, account_id: uuid.UUID, segment_id: uuid.UUID
+) -> Sequence[Campaign]:
+    """Returns any active/scheduled/dispatching/draft campaigns referencing this segment."""
+    result = await session.execute(
+        select(Campaign).where(
+            Campaign.account_id == account_id,
+            Campaign.recipient_segment_id == segment_id,
+            Campaign.status.in_(["DRAFT", "SCHEDULED", "DISPATCHING", "SENDING"]),
+        )
+    )
+    return result.scalars().all()
+
+
+async def unlink_historical_campaigns_referencing_segment(
+    session: AsyncSession, account_id: uuid.UUID, segment_id: uuid.UUID
+) -> None:
+    """Unlinks historical/completed campaigns (SENT, CANCELLED, FAILED) by setting
+    recipient_segment_id = NULL."""
+    await session.execute(
+        update(Campaign)
+        .where(
+            Campaign.account_id == account_id,
+            Campaign.recipient_segment_id == segment_id,
+        )
+        .values(recipient_segment_id=None)
+    )
+
+
+async def delete_segment_row(
+    session: AsyncSession, account_id: uuid.UUID, segment_id: uuid.UUID
+) -> None:
+    """Deletes segment, its rules, and saved members."""
+    await session.execute(
+        delete(SegmentRule).where(
+            SegmentRule.account_id == account_id,
+            SegmentRule.segment_id == segment_id,
+        )
+    )
+    await session.execute(
+        delete(SegmentMember).where(
+            SegmentMember.account_id == account_id,
+            SegmentMember.segment_id == segment_id,
+        )
+    )
+    await session.execute(
+        delete(Segment).where(
+            Segment.account_id == account_id,
+            Segment.id == segment_id,
+        )
+    )
+
+
+async def update_segment_row(
+    session: AsyncSession,
+    *,
+    account_id: uuid.UUID,
+    segment_id: uuid.UUID,
+    name: str,
+    type_: str,
+) -> Segment | None:
+    segment = await get_segment_by_id(session, account_id, segment_id)
+    if segment is None:
+        return None
+    segment.name = name
+    segment.type = type_
+    await session.flush()
+    return segment
+
+
+async def replace_segment_rules(
+    session: AsyncSession,
+    *,
+    account_id: uuid.UUID,
+    segment_id: uuid.UUID,
+    rules: Sequence[tuple[str, str, str]],
+) -> Sequence[SegmentRule]:
+    await session.execute(
+        delete(SegmentRule).where(
+            SegmentRule.account_id == account_id,
+            SegmentRule.segment_id == segment_id,
+        )
+    )
+    new_rules = [
+        SegmentRule(
+            account_id=account_id,
+            segment_id=segment_id,
+            field=f,
+            operator=o,
+            value=v,
+        )
+        for f, o, v in rules
+    ]
+    session.add_all(new_rules)
+    await session.flush()
+    return new_rules
+
+
+async def refresh_saved_segment_members(
+    session: AsyncSession,
+    *,
+    account_id: uuid.UUID,
+    segment_id: uuid.UUID,
+    rules: Sequence[SegmentRule],
+) -> int:
+    await session.execute(
+        delete(SegmentMember).where(
+            SegmentMember.account_id == account_id,
+            SegmentMember.segment_id == segment_id,
+        )
+    )
+    matching_contacts = await evaluate_segment_rules(session, account_id, rules)
+    if matching_contacts:
+        await add_segment_members(
+            session,
+            account_id=account_id,
+            segment_id=segment_id,
+            contact_ids=[c.id for c in matching_contacts],
+        )
+    return len(matching_contacts)
 
 
 async def create_import(

@@ -160,4 +160,68 @@ describe("SegmentsPage", () => {
 
     await waitFor(() => expect(screen.getByText("alice@example.com")).toBeInTheDocument());
   });
+
+  it("edits a segment name and rules via the edit modal", async () => {
+    const updated: Segment = { ...ACTIVE_SEGMENT, name: "Renamed segment" };
+    mockedApiFetch.mockImplementation((path: string, init?: RequestInit) => {
+      if (path === "/auth/me") {
+        return Promise.resolve(meWithPermissions(["contacts.view", "contacts.manage"]));
+      }
+      if (path === "/contacts/segments" && (!init || init.method === undefined)) {
+        return Promise.resolve([ACTIVE_SEGMENT]);
+      }
+      if (path === "/contacts/custom-fields") return Promise.resolve([]);
+      if (path === "/contacts/segments/segment-1" && init?.method === "PUT") {
+        return Promise.resolve(updated);
+      }
+      throw new Error(`unexpected call: ${path}`);
+    });
+
+    const user = userEvent.setup();
+    renderSegmentsPage();
+
+    await screen.findByText("Active customers");
+    await user.click(screen.getByRole("button", { name: "✏️ Edit" }));
+
+    expect(screen.getByText("Edit Segment")).toBeInTheDocument();
+    const nameInput = screen.getByLabelText("Name");
+    await user.clear(nameInput);
+    await user.type(nameInput, "Renamed segment");
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Renamed segment")).toBeInTheDocument();
+    });
+  });
+
+  it("deletes a segment via the delete confirmation modal", async () => {
+    mockedApiFetch.mockImplementation((path: string, init?: RequestInit) => {
+      if (path === "/auth/me") {
+        return Promise.resolve(meWithPermissions(["contacts.view", "contacts.manage"]));
+      }
+      if (path === "/contacts/segments" && (!init || init.method === undefined)) {
+        return Promise.resolve([ACTIVE_SEGMENT]);
+      }
+      if (path === "/contacts/custom-fields") return Promise.resolve([]);
+      if (path === "/contacts/segments/segment-1" && init?.method === "DELETE") {
+        return Promise.resolve(undefined);
+      }
+      throw new Error(`unexpected call: ${path}`);
+    });
+
+    const user = userEvent.setup();
+    renderSegmentsPage();
+
+    await screen.findByText("Active customers");
+    await user.click(screen.getByRole("button", { name: "🗑️ Delete" }));
+
+    expect(screen.getByText("Delete Segment")).toBeInTheDocument();
+    expect(screen.getByText(/Are you sure you want to delete the segment/)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Confirm Delete" }));
+
+    await waitFor(() => {
+      expect(screen.queryByText("Active customers")).not.toBeInTheDocument();
+      expect(screen.getByText("No segments yet.")).toBeInTheDocument();
+    });
+  });
 });
