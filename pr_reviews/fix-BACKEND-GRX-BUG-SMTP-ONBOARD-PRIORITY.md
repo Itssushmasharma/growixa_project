@@ -73,4 +73,4 @@ the multi-connection priority scenario.
 
 - [x] Reviewed Code Commit: f49df0a05647b5b8a040304f13483136bfa330c8
 - [x] Approved
-- [ ] Merged
+- [x] Merged
