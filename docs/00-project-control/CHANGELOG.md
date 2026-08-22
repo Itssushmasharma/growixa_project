@@ -12,7 +12,8 @@ from Sprint 1 onward, code). Each entry names what changed and the commit(s) it 
 
 ## 2026-08-22 — v0.4.3-rc1 release candidate (UAT preview)
 
-- **`v0.4.3-rc1`** — cut UAT release candidate tag containing guarded segment deletion, dynamic segment rule editing, API/worker recipient resolution parity, and DEC-GRX-036.
+- **`v0.4.3-rc1`** — cut UAT release candidate tag containing list members API & live modal search, guarded segment deletion, dynamic segment rule editing, API/worker recipient resolution parity, and DEC-GRX-036.
+- **`feat(contacts)`** — added `GET /contacts/lists/{list_id}/members` API endpoint and live instant search filtering in both Segments and Lists modals across name, email, and phone (`GRX-CONTACTS-LIST-MEMBERS-SEARCH`).
 - **`feat(contacts)`** — added guarded segment deletion (`list_active_campaigns_referencing_segment`) blocking deletion when referenced by active campaigns (`DRAFT`, `SCHEDULED`, `DISPATCHING`, `SENDING`) with `409 Conflict`, and clean unlinking on terminal campaigns (`SENT`, `CANCELLED`, `FAILED`).
 - **`feat(contacts)`** — added dynamic segment rule editing (`replace_segment_rules`) and real-time membership re-evaluation (`refresh_saved_segment_members`) with full multi-tenant account isolation.
 - **`feat(contacts, worker)`** — synchronized recipient evaluation rules across API (`repositories.py`) and worker (`recipients.py`) adding support for `first_name`, `last_name`, `phone`, and tag `contains` operators across all 9 field types.

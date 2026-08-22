@@ -11,6 +11,8 @@
 > **Production URL**: [https://growixa.iitdeveloper.com](https://growixa.iitdeveloper.com)
 
 ### 🚀 Added
+- **Contact List Members API (`GET /contacts/lists/{list_id}/members`)**: Added dedicated backend endpoint returning active members of a contact list with strict multi-tenant account scoping.
+- **Live Search in Segments & Lists Modals**: Added instant 0ms client-side search filtering across `first_name`, `last_name`, `email`, and `phone` in both the "View Segment Members" modal and "Manage List" modal, with dynamic counter feedback (`Matching Contacts (X of Y)`) and 1-click search clear.
 - **Guarded Segment Deletion & Lifecycle Protection**: Automatically prevents deletion of segments targeted by active campaigns (`DRAFT`, `SCHEDULED`, `DISPATCHING`, `SENDING`) with a helpful `409 Conflict` naming the blocking campaigns; cleanly unlinks completed campaigns (`SENT`, `CANCELLED`, `FAILED`).
 - **Dynamic Segment Editing & Rule Re-evaluation**: Edit segment name, description, and rules with real-time membership recalculation across standard and custom fields.
 - **API & Worker Recipient Resolution Parity**: Added full support for `first_name`, `last_name`, `phone`, and tag `contains` operator across both API segment evaluator and worker recipient loader, guaranteeing preview and send agreement.
