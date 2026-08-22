@@ -62,4 +62,4 @@
 
 ## 6. Human Approval
 
-**Required** — Customer-facing authentication UI/UX redesign. Pending Product Owner sign-off before merge to `main`.
+**Signed Off** — Product Owner approved UI/UX merge to `main` on 2026-08-23.
