@@ -115,11 +115,18 @@ export function CampaignFormPage({ mode, campaignId }: CampaignFormPageProps) {
           return;
         }
 
-        const [identities, listResults, segmentResults, templateResults] = await Promise.all([
-          apiFetch<SenderIdentity[]>("/integrations/sender-identities"),
-          apiFetch<ContactListSummary[]>("/contacts/lists"),
-          apiFetch<SegmentSummary[]>("/contacts/segments"),
-          apiFetch<EmailTemplate[]>("/templates"),
+        // Sender identities require `integrations.manage` (Super-Admin only). Fetch
+        // separately so a 403 for regular users degrades to an empty list rather than
+        // crashing the whole page with "Could not load this campaign."
+        const [identities, [listResults, segmentResults, templateResults]] = await Promise.all([
+          apiFetch<SenderIdentity[]>("/integrations/sender-identities").catch(
+            () => [] as SenderIdentity[],
+          ),
+          Promise.all([
+            apiFetch<ContactListSummary[]>("/contacts/lists"),
+            apiFetch<SegmentSummary[]>("/contacts/segments"),
+            apiFetch<EmailTemplate[]>("/templates"),
+          ]),
         ]);
         setSenderIdentities(identities);
         setLists(listResults);
