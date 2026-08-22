@@ -26,7 +26,7 @@ Implements **`GRX-EMAIL-013`** per **`DEC-GRX-035`** (points 1, 2, 7, 8): Multi-
 
 ## Reviewed Code Commit
 
-`5448511`
+`3b06b30`
 
 ## Files Changed
 
@@ -57,11 +57,19 @@ Implements **`GRX-EMAIL-013`** per **`DEC-GRX-035`** (points 1, 2, 7, 8): Multi-
 
 **MEDIUM** — Schema migration modifying partial unique indexes on `email_provider_connections` and adding `name` column; guarded delete and narrowed reassignment logic.
 
+## Re-Review Fixes Applied (Round 2)
+
+1. **Blocker 1 Fixed**: `replacing_connection_id` validation now raises `EmailProviderConnectionNotFoundError` (404) if it refers to a non-existent, cross-account, or inactive connection. Added regression test `test_replacing_invalid_connection_id_returns_404`.
+2. **Blocker 2 Fixed**: `delete_email_provider_connection` executes real SQL `DELETE` after the guard confirms zero references. `list_email_provider_connections` filters `is_active.is_(True)`. Added assertion proving deleted connection no longer appears in connection lists.
+3. **Migration Hardening**: Backfill sets name to `Postmark` for Postmark rows and `smtp_host` for Custom SMTP, then automatically disambiguates any duplicate active names within an account before index creation.
+4. **MissingGreenlet Comment**: Restored explanatory comment above `await session.refresh(identity)`.
+
 ## Validation Commands Run & Results
 
-- `pytest apps/api/tests/integrations/test_integrations.py -v`: 9/9 passed
+- `pytest apps/api/tests/integrations/test_integrations.py -v`: 10/10 passed
 - `pytest apps/api/tests/permissions/test_protected_routes_audit.py -v`: 3/3 passed
 - `pytest apps/api/tests/permissions/test_cross_tenant_isolation.py -v`: 23/23 passed
+- `pytest apps/api/tests/`: 416/416 passed (including alembic upgrade/downgrade round-trip test)
 - `pytest apps/worker/tests/`: 29/29 passed
 - `ruff check .`: 0 errors
 - `ruff format --check .`: all files formatted
@@ -73,7 +81,8 @@ Implements **`GRX-EMAIL-013`** per **`DEC-GRX-035`** (points 1, 2, 7, 8): Multi-
 - [ ] Multiple active `CUSTOM_SMTP` connections can be created with distinct names on the same account.
 - [ ] Only one active `POSTMARK` connection allowed per account (creating a second deactivates the prior one).
 - [ ] Deleting a connection referenced by sender identities is refused with 409 Conflict naming the blocking identities.
-- [ ] Deleting an unreferenced connection succeeds (204 No Content).
+- [ ] Deleting an unreferenced connection succeeds (204 No Content) and removes it from connection list.
+- [ ] Supplying an invalid or inactive `replacing_connection_id` returns 404 Not Found.
 - [ ] Narrowed reassignment: replacing connection A does not repoint identities referencing connection B.
 - [ ] Worker `models.py` mirrors the `name` column.
 - [ ] No hardcoded secrets in diff.
