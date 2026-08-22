@@ -12,13 +12,15 @@ from Sprint 1 onward, code). Each entry names what changed and the commit(s) it 
 
 ## 2026-08-22 — v0.4.1 production release
 
-- **`v0.4.1`** — official production release promoted from `v0.4.1-rc1`.
+- **`v0.4.1`** — official production release promoted from `v0.4.1-rc2`.
+- **`feat(integrations)`** — auto-reassign existing sender identities in the account to the newly active connection whenever an Email Provider Connection (Custom SMTP) is created or updated via the UI (`GRX-AUTO-REASSIGN-SENDER-IDENTITIES`).
 - **`fix(onboard)`** — fixed SMTP priority in `onboard_iitdeveloper.py` to prefer real user-configured Custom SMTP (`s61.gocheapweb.com:465`) over placeholder `smtp.iitdeveloper.com:587`, deactivating stale placeholders and reassigning sender identities upon execution.
 - **`fix(e2e)`** — imported `Account` model and seeded dedicated `E2E Test Account` in `global-setup.ts` to satisfy foreign key constraints during E2E test setup.
 - **`perf(contacts)`** — batch loaded custom fields, tags, and suppression sets to eliminate N+1 latency (`GRX-PERF-BATCH-LOAD-CONTACTS`).
 - **`fix(campaigns)`** — added graceful fallback for `sender-identities` fetching on campaign creation/edit pages when the active role lacks `integrations.manage` permissions, preventing "Could not load this campaign" blocking errors.
 - **`fix(templates)`** — enhanced template builder responsive layout (1.6fr editor weight, 1100px stacking breakpoint, and viewport-relative preview frame height).
 - **`ci(deploy)`** — hardened Telegram deployment notifications by splitting into standalone success/failure jobs with robust payload formatting and stage breakdown.
+
 
 ## 2026-08-20 — v0.4.0 production release
 
