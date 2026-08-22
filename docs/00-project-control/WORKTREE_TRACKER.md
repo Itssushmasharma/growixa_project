@@ -8,7 +8,8 @@ This document maintains a real-time record of all parallel Git worktrees, active
 
 | Worktree Path | Branch Name | Feature / Task | Preview URL | Status | Created |
 |---|---|---|---|---|---|
-| — | — | — | — | — | — |
+| `.worktrees/grx-contacts-list-members-search` | `feature/BACKEND/GRX-CONTACTS-LIST-MEMBERS-SEARCH` | `GRX-CONTACT-017` — List Members API & Live Search in Segment and List Modals | `http://localhost:3000` | APPROVED (Reviewed & Ready to merge) | 2026-08-23 |
+
 
 ---
 
