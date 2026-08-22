@@ -2,6 +2,25 @@
 
 ---
 
+## 🟡 [v0.4.4-rc1] — 2026-08-23
+
+> **Release Tag**: `v0.4.4-rc1`
+> **Release Date**: August 23, 2026
+> **Platform Status**: 🟡 Preview on UAT via `v0.4.4-rc1`
+> **UAT Staging URL**: [https://uat.growixa.iitdeveloper.com](https://uat.growixa.iitdeveloper.com)
+> **Production URL**: [https://growixa.iitdeveloper.com](https://growixa.iitdeveloper.com)
+
+### 🚀 Added & Redesigned
+- **Luminous Split-Screen & Unified Canvas Auth Redesign (`GRX-AUTH-007`)**: Complete visual and architectural overhaul of customer authentication pages (`/login` and `/register`).
+  - **Unified Canvas & Edge-to-Edge Waves**: Smooth continuous background canvas with animated glowing cyan-to-purple wave ribbons.
+  - **Floating 3D Metric Cards**: Interactive, responsive metric cards featuring campaign performance (`4.82x Growth`), deliverability gauge (`99.4% Delivered`), AI Audience Score (`High Intent`), and customer social proof testimonials.
+  - **Zero Layout Shift Tab Switching**: Shared `<AuthSplitLayout>` shell preserving canvas geometry while toggling between Login and Sign up modes.
+  - **Brand & Visual Polish**: Official Growixa brand horizontal asset in showcase header, scaled typography hierarchy, 56px high-contrast CTA button, and accessible form inputs.
+  - **Redirect Security Hardening**: Sanitized relative-only path redirection preventing open redirect vulnerabilities across email/password and Google SSO flows.
+  - **Full Test Suite Validation**: 287 passing unit tests across 51 test suites.
+
+---
+
 ## 🟡 [v0.4.3-rc1] — 2026-08-22
 
 > **Release Tag**: `v0.4.3-rc1`

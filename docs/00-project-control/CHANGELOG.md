@@ -10,6 +10,14 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
+## 2026-08-23 — v0.4.4-rc1 release candidate (UAT preview)
+
+- **`v0.4.4-rc1`** — cut UAT release candidate tag containing the luminous split-screen authentication redesign (`GRX-AUTH-007`), unified continuous background canvas, interactive 3D floating metric cards, scaled accessible auth card shell, and official brand logo integration.
+- **`feat(auth)`** — delivered split-screen authentication architecture (`apps/web/src/components/auth/`) with `<AuthSplitLayout>`, `<AuthShowcase>`, `<AuthCard>`, and `<GoogleAuthButton>`, ensuring zero layout shift across `/login` and `/register`.
+- **`style(auth)`** — unified full-page background canvas with animated cyan-to-purple wave ribbons, 3D floating metric cards (`4.82x Growth`, `99.4% Delivered`), and 56px CTA button.
+- **`sec(auth)`** — hardened open-redirect validation enforcing strict relative URLs (`startsWith("/") && !startsWith("//")`) on login and registration redirect paths.
+- **`test(web)`** — updated auth test suites with 100% pass rate across 51 test suites (287 unit tests).
+
 ## 2026-08-22 — v0.4.3-rc1 release candidate (UAT preview)
 
 - **`v0.4.3-rc1`** — cut UAT release candidate tag containing Google OAuth 2.0 / SSO integration, list members API & live modal search, guarded segment deletion, dynamic segment rule editing, API/worker recipient resolution parity, and DEC-GRX-036.
