@@ -8,6 +8,7 @@ Create Date: 2026-08-14 00:00:00.000000
 
 from collections.abc import Sequence
 
+import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
@@ -44,6 +45,12 @@ def upgrade() -> None:
 def downgrade() -> None:
     """Downgrade schema."""
     op.drop_constraint("ck_subscription_plans_slug", "subscription_plans", type_="check")
+    op.execute(
+        sa.text(
+            "DELETE FROM subscription_plans "
+            "WHERE slug NOT IN ('free', 'starter', 'pro', 'enterprise')"
+        )
+    )
     op.create_check_constraint(
         "ck_subscription_plans_slug",
         "subscription_plans",

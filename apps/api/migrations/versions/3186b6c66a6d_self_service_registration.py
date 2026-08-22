@@ -79,4 +79,7 @@ def downgrade() -> None:
     op.drop_column("accounts", "selected_plan_slug")
 
     op.drop_constraint("ck_users_status", "users", type_="check")
+    op.execute(
+        sa.text("UPDATE users SET status = 'ACTIVE' WHERE status NOT IN ('ACTIVE', 'DISABLED')")
+    )
     op.create_check_constraint("ck_users_status", "users", "status IN ('ACTIVE', 'DISABLED')")

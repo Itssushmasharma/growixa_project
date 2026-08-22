@@ -454,6 +454,14 @@ def downgrade() -> None:
     op.drop_table("subscription_plans")
 
     op.drop_constraint("ck_accounts_selected_plan_slug", "accounts", type_="check")
+    op.execute(
+        sa.text(
+            "UPDATE accounts "
+            "SET selected_plan_slug = 'starter' "
+            "WHERE selected_plan_slug IS NOT NULL "
+            "AND selected_plan_slug NOT IN ('starter', 'growth')"
+        )
+    )
     op.create_check_constraint(
         "ck_accounts_selected_plan_slug", "accounts", "selected_plan_slug IN ('starter', 'growth')"
     )

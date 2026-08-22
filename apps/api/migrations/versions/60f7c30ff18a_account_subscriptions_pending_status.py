@@ -8,6 +8,7 @@ Create Date: 2026-08-13 00:00:00.000000
 
 from collections.abc import Sequence
 
+import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
@@ -36,6 +37,7 @@ def upgrade() -> None:
 def downgrade() -> None:
     """Downgrade schema."""
     op.drop_constraint("ck_account_subscriptions_status", "account_subscriptions", type_="check")
+    op.execute(sa.text("DELETE FROM account_subscriptions WHERE status = 'PENDING'"))
     op.create_check_constraint(
         "ck_account_subscriptions_status",
         "account_subscriptions",
