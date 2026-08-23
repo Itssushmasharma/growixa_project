@@ -88,6 +88,11 @@ else
 fi
 
 sudo docker compose --project-name "${COMPOSE_PROJECT_NAME}" --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" ps
+
+echo "🧹 Pruning old dangling images and container build cache..."
+sudo docker image prune -f
+sudo docker builder prune -f 2>/dev/null || true
+
 echo "================================================================="
 echo "🎉 Growixa UAT Deployment (${RELEASE_TAG}) Complete!"
 echo "================================================================="

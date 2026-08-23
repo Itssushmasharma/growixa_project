@@ -64,8 +64,10 @@ Before starting development on any new feature or task:
 - Code-review Playbook (any agent/tool — who may review, how to read a branch, the
   Growixa-specific checks, recording a verdict, and the merge gate):
   [`.agents/skills/growixa-reviewer/SKILL.md`](.agents/skills/growixa-reviewer/SKILL.md).
+- Marketing & Growth Strategy Playbook:
+  [`.agents/skills/growixa-marketing/SKILL.md`](.agents/skills/growixa-marketing/SKILL.md).
 
-  Both link these rules rather than restating them — this file stays authoritative.
+  All link these rules rather than restating them — this file stays authoritative.
 - Keep `docs/00-project-control/PROJECT_STATUS.md` and
   `docs/00-project-control/MASTER_TASK_TRACKER.md` updated as tasks progress.
 - Definition of Done:
