@@ -408,3 +408,28 @@
   align-items: center;
   gap: 10px;
 }
+
+.deleteIdentityButton {
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(220, 38, 38, 0.2);
+  background: rgba(220, 38, 38, 0.05);
+  color: #dc2626;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.15s ease;
+}
+
+.deleteIdentityButton:hover:not(:disabled) {
+  background: rgba(220, 38, 38, 0.12);
+  border-color: rgba(220, 38, 38, 0.4);
+}
+
+.deleteIdentityButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

@@ -5,6 +5,7 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from growixa_api.audit.services import record_event
 from growixa_api.auth.encryption import encrypt_secret
 from growixa_api.integrations.models import EmailProviderConnection, SenderIdentity
 from growixa_api.integrations.repositories import (
@@ -13,9 +14,11 @@ from growixa_api.integrations.repositories import (
     deactivate_active_email_provider_connections,
     deactivate_email_provider_connection,
     delete_email_provider_connection,
+    delete_sender_identity,
     get_active_email_provider_connection,
     get_email_provider_connection,
     get_sender_identity,
+    list_campaigns_referencing_sender_identity,
     list_email_provider_connections,
     list_sender_identities,
     list_sender_identities_referencing_connection,
@@ -39,6 +42,16 @@ class EmailProviderConnectionNotFoundError(Exception):
 
 class SenderIdentityNotFoundError(Exception):
     pass
+
+
+class SenderIdentityInUseError(Exception):
+    def __init__(self, campaign_names: Sequence[str]) -> None:
+        self.campaign_names = campaign_names
+        names_preview = ", ".join(campaign_names[:3])
+        super().__init__(
+            f"Cannot delete sender identity: in use by {len(campaign_names)} campaign(s): "
+            f"{names_preview}"
+        )
 
 
 class InvalidVerificationStatusError(Exception):
@@ -237,3 +250,29 @@ async def update_identity_verification_status(
     await session.commit()
     await session.refresh(identity)
     return identity
+
+
+async def delete_sender_identity_service(
+    session: AsyncSession,
+    account_id: uuid.UUID,
+    identity_id: uuid.UUID,
+    actor_id: uuid.UUID,
+) -> None:
+    identity = await get_sender_identity(session, account_id, identity_id)
+    if identity is None:
+        raise SenderIdentityNotFoundError
+
+    campaigns = await list_campaigns_referencing_sender_identity(session, account_id, identity_id)
+    if campaigns:
+        raise SenderIdentityInUseError([c.name for c in campaigns])
+
+    await delete_sender_identity(session, account_id, identity_id)
+    await record_event(
+        session,
+        account_id=account_id,
+        actor_user_id=actor_id,
+        action="sender_identity.deleted",
+        entity_type="sender_identity",
+        entity_id=identity_id,
+        metadata={"from_email": identity.from_email, "from_name": identity.from_name},
+    )

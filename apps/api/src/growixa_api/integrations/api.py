@@ -17,10 +17,12 @@ from growixa_api.integrations.services import (
     ConnectionReferencedBySenderIdentitiesError,
     EmailProviderConnectionNotFoundError,
     InvalidVerificationStatusError,
+    SenderIdentityInUseError,
     SenderIdentityNotFoundError,
     create_connection,
     create_identity,
     delete_connection,
+    delete_sender_identity_service,
     list_connections,
     list_identities,
     test_email_provider_connection,
@@ -184,3 +186,22 @@ async def update_sender_identity_status_route(
     except InvalidVerificationStatusError as exc:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid verification status") from exc
     return SenderIdentityOut.model_validate(identity)
+
+
+@router.delete("/sender-identities/{identity_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_sender_identity_route(
+    identity_id: uuid.UUID,
+    actor_id: uuid.UUID = Depends(_require_manage),
+    account_id: uuid.UUID = Depends(get_current_account_id),
+    session: AsyncSession = Depends(get_session),
+) -> None:
+    try:
+        await delete_sender_identity_service(session, account_id, identity_id, actor_id)
+        await session.commit()
+    except SenderIdentityNotFoundError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Sender identity not found") from exc
+    except SenderIdentityInUseError as exc:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            str(exc),
+        ) from exc

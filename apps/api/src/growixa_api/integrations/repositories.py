@@ -185,3 +185,28 @@ async def reassign_sender_identities_for_account(
     if old_connection_ids:
         stmt = stmt.where(SenderIdentity.email_provider_connection_id.in_(old_connection_ids))
     await session.execute(stmt)
+
+
+async def list_campaigns_referencing_sender_identity(
+    session: AsyncSession, account_id: uuid.UUID, identity_id: uuid.UUID
+) -> Sequence[Any]:
+    from growixa_api.campaigns.models import Campaign
+
+    result = await session.execute(
+        select(Campaign).where(
+            Campaign.account_id == account_id,
+            Campaign.sender_identity_id == identity_id,
+        )
+    )
+    return result.scalars().all()
+
+
+async def delete_sender_identity(
+    session: AsyncSession, account_id: uuid.UUID, identity_id: uuid.UUID
+) -> None:
+    await session.execute(
+        delete(SenderIdentity).where(
+            SenderIdentity.account_id == account_id,
+            SenderIdentity.id == identity_id,
+        )
+    )
