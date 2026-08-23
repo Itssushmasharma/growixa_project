@@ -61,4 +61,4 @@
 
 ## 6. Human Approval
 
-**Required** — Customer-facing integrations modal form addition. Product owner sign-off required prior to final merge to `main`.
+**Signed Off** — Product Owner approved merge to `main` on 2026-08-23.
