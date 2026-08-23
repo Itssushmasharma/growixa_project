@@ -209,9 +209,35 @@ class TestCancelCampaign:
         assert result.status == "CANCELLED"
 
     @pytest.mark.asyncio
+    async def test_cancel_in_flight_emergency_stop(self) -> None:
+        """A DISPATCHING or SENDING campaign can be cancelled mid-flight (Emergency Stop)."""
+        for in_flight_status in ("DISPATCHING", "SENDING"):
+            campaign = _make_campaign(status=in_flight_status)
+            session = AsyncMock()
+
+            async def _fake_update_cancel(s: Any, c: Any, f: dict[str, Any]) -> Any:
+                _apply(c, f)
+                return c
+
+            with (
+                patch(
+                    "growixa_api.campaigns.services.get_campaign",
+                    new=AsyncMock(return_value=campaign),
+                ),
+                patch(
+                    "growixa_api.campaigns.services.update_campaign_fields",
+                    new=AsyncMock(side_effect=_fake_update_cancel),
+                ),
+            ):
+                result = await cancel_campaign(session, _ACCOUNT_ID, campaign.id)
+
+            assert result.status == "CANCELLED"
+            assert result.cancelled_at is not None
+
+    @pytest.mark.asyncio
     async def test_cancel_non_cancellable_raises(self) -> None:
-        """DISPATCHING / SENT / FAILED campaigns cannot be cancelled."""
-        for bad_status in ("DISPATCHING", "SENDING", "SENT", "FAILED"):
+        """SENT / FAILED campaigns cannot be cancelled."""
+        for bad_status in ("SENT", "FAILED"):
             campaign = _make_campaign(status=bad_status)
             session = AsyncMock()
 
