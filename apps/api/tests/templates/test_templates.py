@@ -352,3 +352,30 @@ async def test_deleting_a_template_referenced_by_a_campaign_returns_409(
         assert any(t["id"] == template_id for t in list_response.json())
     finally:
         await _cleanup()
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_create_template_with_invalid_token_returns_422(
+    user_factory: Callable[..., Awaitable[uuid.UUID]],
+) -> None:
+    manager_id = await user_factory(full_name="Test Manager", role_name="Marketing Manager")
+    cookies = _access_token_cookie(manager_id)
+    try:
+        transport = ASGITransport(app=create_app())
+        async with AsyncClient(
+            transport=transport, base_url="http://test", cookies=cookies
+        ) as client:
+            invalid_payload = {
+                "name": "Invalid Template",
+                "subject": "Hello {{typo_tag}}",
+                "body_html": "<p>Content</p>",
+            }
+            res = await client.post("/templates", json=invalid_payload)
+            assert res.status_code == 422
+            detail = res.json()["detail"]
+            assert "Invalid personalization token" in detail
+            assert "typo_tag" in detail
+            assert "Available tokens:" in detail
+    finally:
+        await _cleanup()

@@ -17,11 +17,17 @@ suite implicitly does) already imports `growixa_api.accounts.models` directly fo
 fixtures, which would mask this exact bug if this test shared that process.
 """
 
+import os
 import subprocess
 import sys
 
 
 def test_create_app_registers_the_accounts_table_every_account_id_fk_points_to() -> None:
+    src_dir = os.path.abspath("src")
+    if not os.path.isdir(src_dir):
+        src_dir = os.path.abspath("apps/api/src")
+    env = {**os.environ, "PYTHONPATH": src_dir}
+
     result = subprocess.run(
         [
             sys.executable,
@@ -36,5 +42,6 @@ def test_create_app_registers_the_accounts_table_every_account_id_fk_points_to()
         capture_output=True,
         text=True,
         timeout=30,
+        env=env,
     )
     assert result.returncode == 0, result.stderr

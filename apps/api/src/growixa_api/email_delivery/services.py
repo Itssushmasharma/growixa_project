@@ -9,6 +9,7 @@ from growixa_api.auth.encryption import decrypt_secret
 from growixa_api.campaigns.models import Campaign
 from growixa_api.campaigns.repositories import get_campaign
 from growixa_api.company.repositories import get_company_profile
+from growixa_api.config import get_settings
 from growixa_api.contacts.repositories import (
     create_suppression_entry,
     get_suppression_by_email,
@@ -129,6 +130,7 @@ async def send_test_email(
         "last_name": "Recipient",
         "email": to_email,
         "phone": "+1234567890",
+        "unsubscribe_url": f"{get_settings().api_public_url}/unsubscribe/preview-test",
         **{key: f"[{key}]" for key in allowed_custom_keys},
     }
 

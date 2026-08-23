@@ -176,4 +176,22 @@ def test_unknown_typo_token_blocks_validation() -> None:
     template = "Hello {{shcool_name}}"
     with pytest.raises(UnknownTokenError) as exc_info:
         validate_template_tokens(template, allowed_custom_field_keys={"school_name"})
-    assert "shcool_name" in str(exc_info.value)
+    msg = str(exc_info.value)
+    assert "shcool_name" in msg
+    assert "Available tokens:" in msg
+    assert "{{school_name}}" in msg
+    assert "{{first_name}}" in msg
+
+
+def test_unsubscribe_url_standard_token_rendered() -> None:
+    template = '<p>Click <a href="{{unsubscribe_url}}">here to unsubscribe</a></p>'
+    validate_template_tokens(template)
+    rendered = render_personalization(
+        template,
+        recipient_data={"unsubscribe_url": "https://growixa.com/unsubscribe/rec-123"},
+        is_html=True,
+    )
+    expected = (
+        '<p>Click <a href="https://growixa.com/unsubscribe/rec-123">here to unsubscribe</a></p>'
+    )
+    assert rendered == expected

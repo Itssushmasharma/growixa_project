@@ -288,6 +288,7 @@ async def handle_send_campaign(session: AsyncSession, payload: dict[str, Any]) -
             "last_name": target_contact.last_name if target_contact else None,
             "email": recipient.email,
             "phone": target_contact.phone if target_contact else None,
+            "unsubscribe_url": f"{get_settings().api_public_url}/unsubscribe/{recipient.id}",
             **c_custom,
         }
 

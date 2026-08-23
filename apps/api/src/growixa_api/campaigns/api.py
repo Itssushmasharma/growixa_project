@@ -26,6 +26,7 @@ from growixa_api.campaigns.services import (
 )
 from growixa_api.db import get_session
 from growixa_api.permissions.dependencies import get_current_account_id, require_permission
+from growixa_api.personalization.renderer import PersonalizationError
 
 router = APIRouter(prefix="/campaigns", tags=["campaigns"])
 
@@ -58,6 +59,8 @@ async def create_campaign_route(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Template not found") from exc
     except InvalidRecipientTargetError as exc:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
+    except PersonalizationError as exc:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc)) from exc
     await session.commit()
     return CampaignOut.model_validate(campaign)
 
@@ -98,6 +101,8 @@ async def update_campaign_route(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Template not found") from exc
     except InvalidRecipientTargetError as exc:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
+    except PersonalizationError as exc:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc)) from exc
     return CampaignOut.model_validate(campaign)
 
 
