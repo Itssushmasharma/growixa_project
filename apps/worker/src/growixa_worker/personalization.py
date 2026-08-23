@@ -18,7 +18,9 @@ import re
 from typing import Any
 
 # Standard recipient-scope fields
-RECIPIENT_STANDARD_TOKENS: frozenset[str] = frozenset({"first_name", "last_name", "email", "phone"})
+RECIPIENT_STANDARD_TOKENS: frozenset[str] = frozenset(
+    {"first_name", "last_name", "email", "phone", "unsubscribe_url"}
+)
 
 # Standard account/sender-scope fields
 ACCOUNT_TOKENS: frozenset[str] = frozenset({"company_name", "website_url", "sender_name"})
@@ -54,9 +56,25 @@ class PersonalizationError(Exception):
 class UnknownTokenError(PersonalizationError):
     """Raised when an unknown, prohibited, or unusable token is encountered."""
 
-    def __init__(self, token: str, message: str | None = None) -> None:
+    def __init__(
+        self,
+        token: str,
+        message: str | None = None,
+        *,
+        allowed_tokens: set[str] | frozenset[str] | None = None,
+    ) -> None:
         self.token = token
-        err_msg = message or f"Unknown or unauthorized personalization token '{{{{{token}}}}}'"
+        if message:
+            err_msg = message
+        else:
+            avail = (
+                ", ".join(f"{{{{{t}}}}}" for t in sorted(allowed_tokens)) if allowed_tokens else ""
+            )
+            err_msg = f"Invalid personalization token '{{{{{token}}}}}'."
+            if avail:
+                err_msg += f" Available tokens: {avail}"
+            else:
+                err_msg = f"Unknown or unauthorized personalization token '{{{{{token}}}}}'"
         super().__init__(err_msg)
 
 
@@ -104,6 +122,7 @@ def validate_template_tokens(
 
     allowed_custom = set(allowed_custom_field_keys or set())
     allowed_recipient = RECIPIENT_STANDARD_TOKENS | allowed_custom
+    all_allowed = ACCOUNT_TOKENS | (set() if is_broadcast else allowed_recipient)
 
     # First, check for malformed double braces
     for match in GENERIC_CURLY_PATTERN.finditer(template_str):
@@ -137,7 +156,7 @@ def validate_template_tokens(
             continue
 
         # If it reaches here, token is not recognized
-        raise UnknownTokenError(token)
+        raise UnknownTokenError(token, allowed_tokens=all_allowed)
 
 
 def render_personalization(
