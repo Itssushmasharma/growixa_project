@@ -34,6 +34,7 @@ def _build_tls_context() -> ssl.SSLContext:
 class _TlsKwargs(TypedDict):
     use_tls: bool
     start_tls: bool
+    validate_certs: bool
     tls_context: ssl.SSLContext
 
 
@@ -45,6 +46,7 @@ def _tls_kwargs(smtp_port: int) -> _TlsKwargs:
     return {
         "use_tls": implicit_tls,
         "start_tls": not implicit_tls,
+        "validate_certs": False,
         "tls_context": _build_tls_context(),
     }
 

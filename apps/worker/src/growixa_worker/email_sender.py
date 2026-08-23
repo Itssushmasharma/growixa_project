@@ -55,6 +55,7 @@ async def send_email(
             password=smtp_password,
             use_tls=implicit_tls,
             start_tls=not implicit_tls,
+            validate_certs=False,
             tls_context=_build_tls_context(),
         )
     except (aiosmtplib.SMTPException, OSError) as exc:
