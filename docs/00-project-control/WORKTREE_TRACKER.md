@@ -16,6 +16,7 @@ This document maintains a real-time record of all parallel Git worktrees, active
 
 | Worktree Directory | Branch | Feature Delivered | Merged Commit | Merged Date |
 |---|---|---|---|---|
+| `.worktrees/grx-campaign-emergency-stop` | `feature/SHARED/GRX-CAMPAIGN-EMERGENCY-STOP` | `GRX-CAMP-008` — Live Campaign Emergency Stop & In-Flight Cancellation | `30f10c6` | 2026-08-23 |
 | `.worktrees/grx-sender-identity-reassign` | `feature/SHARED/GRX-EMAIL-SENDER-REASSIGN` | `GRX-EMAIL-017` — Sender identity auto-reassignment on connection update | `f3cde3c` | 2026-08-23 |
 | `.worktrees/grx-sender-identity-delete` | `feature/SHARED/GRX-SENDER-IDENTITY-DELETE` | `GRX-EMAIL-016` — Guarded Delete Sender Identity (Backend API & Frontend Integrations UI) | `4ff2e65` | 2026-08-23 |
 | `.worktrees/grx-email-provider-name-fix` | `feature/FRONTEND/GRX-EMAIL-PROVIDER-NAME` | `GRX-EMAIL-015` — Add required name field to email provider payload and form | `2d775f6` | 2026-08-23 |
