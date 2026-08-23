@@ -8,7 +8,6 @@ This document maintains a real-time record of all parallel Git worktrees, active
 
 | Worktree Path | Branch Name | Feature / Task | Preview URL | Status | Created |
 |---|---|---|---|---|---|
-| `.worktrees/grx-campaign-list-metrics` | `feature/SHARED/GRX-CAMP-009` | `GRX-CAMP-009` — Campaign List Inline Performance & Engagement Metrics | `http://localhost:3002` | IN_PROGRESS | 2026-08-24 |
 | — | `main` | Production & Integration Baseline | `http://localhost:3000` | ACTIVE | 2026-08-24 |
 
 ---
@@ -17,6 +16,7 @@ This document maintains a real-time record of all parallel Git worktrees, active
 
 | Worktree Directory | Branch | Feature Delivered | Merged Commit | Merged Date |
 |---|---|---|---|---|
+| `.worktrees/grx-campaign-list-metrics` | `feature/SHARED/GRX-CAMP-009` | `GRX-CAMP-009` — Campaign List Inline Performance & Engagement Metrics | `c9ef0ad` | 2026-08-24 |
 | `.worktrees/grx-template-token-validation` | `feature/BACKEND/GRX-CONTENT-002` | `GRX-CONTENT-002` — Upfront Personalization Token Validation & `{{unsubscribe_url}}` First-Class Support | `930f7b3` | 2026-08-24 |
 | `.worktrees/grx-personalization-renderer` | `feature/BACKEND/GRX-CONTENT-001` | `GRX-CONTENT-001` — Dynamic Email Personalization Engine & Merge Tags (DEC-GRX-036) | (pending merge) | 2026-08-24 |
 | `.worktrees/grx-postal-webhook-analytics` | `feature/BACKEND/GRX-POSTAL-WEBHOOK-ANALYTICS` | `GRX-EMAIL-012` — Postal Webhook Receiver & Live Delivery Analytics | `aaf51b3` | 2026-08-23 |
