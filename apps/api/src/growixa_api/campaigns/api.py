@@ -40,8 +40,7 @@ async def list_campaigns_route(
     account_id: uuid.UUID = Depends(get_current_account_id),
     session: AsyncSession = Depends(get_session),
 ) -> list[CampaignOut]:
-    campaigns = await list_all_campaigns(session, account_id)
-    return [CampaignOut.model_validate(campaign) for campaign in campaigns]
+    return await list_all_campaigns(session, account_id)
 
 
 @router.post("", response_model=CampaignOut, status_code=status.HTTP_201_CREATED)

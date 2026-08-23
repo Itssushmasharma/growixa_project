@@ -8,6 +8,7 @@ This document maintains a real-time record of all parallel Git worktrees, active
 
 | Worktree Path | Branch Name | Feature / Task | Preview URL | Status | Created |
 |---|---|---|---|---|---|
+| `.worktrees/grx-campaign-list-metrics` | `feature/SHARED/GRX-CAMP-009` | `GRX-CAMP-009` — Campaign List Inline Performance & Engagement Metrics | `http://localhost:3002` | IN_PROGRESS | 2026-08-24 |
 | — | `main` | Production & Integration Baseline | `http://localhost:3000` | ACTIVE | 2026-08-24 |
 
 ---

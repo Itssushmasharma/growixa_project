@@ -27,6 +27,12 @@ export interface Campaign {
   created_at: string;
   updated_at: string;
   sent_at: string | null;
+  sent_count?: number | null;
+  delivered_count?: number | null;
+  opened_count?: number | null;
+  clicked_count?: number | null;
+  open_rate_pct?: number | null;
+  click_rate_pct?: number | null;
 }
 
 export interface SenderIdentity {
