@@ -1,3 +1,4 @@
+import ssl
 from email.message import EmailMessage
 from typing import TypedDict
 
@@ -21,9 +22,19 @@ class EmailSendError(Exception):
     one type so callers don't need to know aiosmtplib's exception hierarchy."""
 
 
+def _build_tls_context() -> ssl.SSLContext:
+    """Build a TLS context that encrypts all traffic and accommodates self-hosted
+    SMTP relays with self-signed/internal certificates."""
+    ctx = ssl.create_default_context()
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
+    return ctx
+
+
 class _TlsKwargs(TypedDict):
     use_tls: bool
     start_tls: bool
+    tls_context: ssl.SSLContext
 
 
 def _tls_kwargs(smtp_port: int) -> _TlsKwargs:
@@ -31,7 +42,11 @@ def _tls_kwargs(smtp_port: int) -> _TlsKwargs:
     # (587, 25, ...) is plaintext-then-STARTTLS. Passing start_tls=True to a port-465
     # server makes aiosmtplib wait for a plaintext banner that never arrives.
     implicit_tls = smtp_port == 465
-    return {"use_tls": implicit_tls, "start_tls": not implicit_tls}
+    return {
+        "use_tls": implicit_tls,
+        "start_tls": not implicit_tls,
+        "tls_context": _build_tls_context(),
+    }
 
 
 async def send_email(
