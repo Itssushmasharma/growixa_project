@@ -5,6 +5,7 @@ from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from growixa_api.db import get_session
+from growixa_api.email_delivery.postal_schemas import PostalWebhookPayload
 from growixa_api.email_delivery.schemas import (
     CampaignSendOut,
     PostmarkWebhookPayload,
@@ -14,6 +15,7 @@ from growixa_api.email_delivery.services import (
     CampaignNotFoundError,
     CampaignNotSendableError,
     CampaignRecipientNotFoundError,
+    process_postal_webhook,
     record_unsubscribe,
     record_webhook_event,
     send_test_email,
@@ -87,6 +89,17 @@ async def postmark_webhook_route(
             headers={"WWW-Authenticate": "Basic"},
         )
     await record_webhook_event(session, account_id, payload)
+    return {"status": "ok"}
+
+
+@public_router.post("/webhooks/postal", status_code=status.HTTP_200_OK)
+async def postal_webhook_route(
+    payload: PostalWebhookPayload,
+    session: AsyncSession = Depends(get_session),
+) -> dict[str, str]:
+    """Public receiver for Postal / Self-Hosted SMTP webhook delivery and tracking events
+    (MessageSent, MessageDelivered, MessageLoaded, MessageClicked, MessageBounced)."""
+    await process_postal_webhook(session, payload)
     return {"status": "ok"}
 
 

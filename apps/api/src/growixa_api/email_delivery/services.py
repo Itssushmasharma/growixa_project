@@ -1,3 +1,4 @@
+import contextlib
 import secrets
 import uuid
 from datetime import UTC, datetime
@@ -11,11 +12,15 @@ from growixa_api.contacts.repositories import (
     create_suppression_entry,
     get_suppression_by_email,
 )
+from growixa_api.email_delivery.models import MessageDelivery
+from growixa_api.email_delivery.postal_schemas import PostalWebhookPayload
 from growixa_api.email_delivery.repositories import (
     create_email_event,
     create_unsubscribe_event,
     get_campaign_recipient,
+    get_message_delivery_by_id,
     get_message_delivery_by_provider_message_id,
+    get_message_delivery_by_recipient_id,
 )
 from growixa_api.email_delivery.schemas import PostmarkWebhookPayload
 from growixa_api.integrations.repositories import (
@@ -28,6 +33,17 @@ from growixa_api.jobs.producer import publish_job
 from growixa_api.jobs.schemas import JobEnvelope
 
 SEND_CAMPAIGN_QUEUE = "grx.email_delivery.send_campaign"
+
+_POSTAL_EVENT_TYPE_MAP = {
+    "MessageSent": "DELIVERED",
+    "MessageDelivered": "DELIVERED",
+    "MessageLoaded": "OPENED",
+    "MessageOpened": "OPENED",
+    "MessageClicked": "CLICKED",
+    "MessageBounced": "BOUNCED",
+    "MessageFailed": "BOUNCED",
+    "MessageHeld": "BOUNCED",
+}
 
 # Postmark's `RecordType` -> our `event_type`, and which ones also trigger auto-suppression
 # (the recipient is known-undeliverable or has actively complained) per suppression_entries'
@@ -272,4 +288,95 @@ async def record_unsubscribe(session: AsyncSession, campaign_recipient_id: uuid.
         reason="UNSUBSCRIBED",
         contact_id=recipient.contact_id,
     )
+    await session.commit()
+
+
+async def process_postal_webhook(session: AsyncSession, payload: PostalWebhookPayload) -> None:
+    """Processes an incoming webhook event emitted by Postal / Self-Hosted SMTP engine.
+    Supports MessageSent, MessageDelivered, MessageLoaded (Open), MessageClicked, MessageBounced.
+    Updates email_events, message_deliveries, campaign_recipients, and auto-suppressions."""
+    event_type = _POSTAL_EVENT_TYPE_MAP.get(payload.event)
+    if event_type is None:
+        return
+
+    msg = payload.extract_message()
+    delivery: MessageDelivery | None = None
+
+    # Try resolving via X-Growixa-Delivery-ID custom header
+    delivery_id_str = (
+        msg.custom_headers.get("x-growixa-delivery-id")
+        or msg.original_headers.get("x-growixa-delivery-id")
+        or msg.custom_headers.get("X-Growixa-Delivery-ID")
+        or msg.original_headers.get("X-Growixa-Delivery-ID")
+    )
+    if delivery_id_str:
+        with contextlib.suppress(ValueError, TypeError):
+            delivery = await get_message_delivery_by_id(session, uuid.UUID(str(delivery_id_str)))
+
+    # Fallback to X-Growixa-Recipient-ID custom header
+    if delivery is None:
+        recipient_id_str = (
+            msg.custom_headers.get("x-growixa-recipient-id")
+            or msg.original_headers.get("x-growixa-recipient-id")
+            or msg.custom_headers.get("X-Growixa-Recipient-ID")
+            or msg.original_headers.get("X-Growixa-Recipient-ID")
+        )
+        if recipient_id_str:
+            with contextlib.suppress(ValueError, TypeError):
+                delivery = await get_message_delivery_by_recipient_id(
+                    session, uuid.UUID(str(recipient_id_str))
+                )
+
+    # Fallback to provider_message_id lookup
+    if delivery is None and msg.message_id:
+        # Search across deliveries where provider_message_id matches
+        for conn in await list_active_email_provider_connections(session, "CUSTOM_SMTP"):
+            delivery = await get_message_delivery_by_provider_message_id(
+                session, conn.account_id, str(msg.message_id)
+            )
+            if delivery is not None:
+                break
+
+    if delivery is None:
+        return
+
+    occurred_at = payload.extract_occurred_at()
+    await create_email_event(
+        session,
+        {
+            "account_id": delivery.account_id,
+            "message_delivery_id": delivery.id,
+            "event_type": event_type,
+            "occurred_at": occurred_at,
+            "event_metadata": payload.payload,
+        },
+    )
+
+    if event_type == "DELIVERED":
+        delivery.status = "DELIVERED"
+        delivery.delivered_at = occurred_at
+    elif event_type == "BOUNCED":
+        delivery.status = "BOUNCED"
+        delivery.bounced_at = occurred_at
+        if msg.to:
+            recipient = await get_campaign_recipient(session, delivery.campaign_recipient_id)
+            await _upsert_suppression(
+                session,
+                account_id=delivery.account_id,
+                email=msg.to,
+                reason="BOUNCED",
+                contact_id=recipient.contact_id if recipient else None,
+            )
+    elif event_type == "COMPLAINED":
+        delivery.status = "COMPLAINED"
+        if msg.to:
+            recipient = await get_campaign_recipient(session, delivery.campaign_recipient_id)
+            await _upsert_suppression(
+                session,
+                account_id=delivery.account_id,
+                email=msg.to,
+                reason="COMPLAINED",
+                contact_id=recipient.contact_id if recipient else None,
+            )
+
     await session.commit()

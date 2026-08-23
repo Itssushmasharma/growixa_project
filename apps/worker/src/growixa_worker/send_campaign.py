@@ -94,6 +94,18 @@ def _unsubscribe_headers(campaign_recipient_id: uuid.UUID) -> dict[str, str]:
     }
 
 
+def _campaign_email_headers(
+    campaign_recipient_id: uuid.UUID,
+    delivery_id: uuid.UUID,
+    campaign_id: uuid.UUID,
+) -> dict[str, str]:
+    headers = _unsubscribe_headers(campaign_recipient_id)
+    headers["X-Postal-Tag"] = str(campaign_id)
+    headers["X-Growixa-Delivery-ID"] = str(delivery_id)
+    headers["X-Growixa-Recipient-ID"] = str(campaign_recipient_id)
+    return headers
+
+
 async def handle_send_campaign(session: AsyncSession, payload: dict[str, Any]) -> None:
     campaign_id = payload["campaign_id"]
     campaign = await session.get(Campaign, campaign_id)
@@ -214,7 +226,7 @@ async def handle_send_campaign(session: AsyncSession, payload: dict[str, Any]) -
                 subject=campaign.subject,
                 body_html=body_html,
                 body_text=body_text,
-                extra_headers=_unsubscribe_headers(recipient.id),
+                extra_headers=_campaign_email_headers(recipient.id, delivery.id, campaign.id),
             )
         except EmailSendError as exc:
             delivery.status = "FAILED"

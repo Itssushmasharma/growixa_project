@@ -36,6 +36,23 @@ async def create_unsubscribe_event(
     return event
 
 
+async def get_message_delivery_by_id(
+    session: AsyncSession, delivery_id: uuid.UUID
+) -> MessageDelivery | None:
+    return await session.get(MessageDelivery, delivery_id)
+
+
+async def get_message_delivery_by_recipient_id(
+    session: AsyncSession, recipient_id: uuid.UUID
+) -> MessageDelivery | None:
+    result = await session.execute(
+        select(MessageDelivery)
+        .where(MessageDelivery.campaign_recipient_id == recipient_id)
+        .limit(1)
+    )
+    return result.scalar_one_or_none()
+
+
 async def get_campaign_recipient(
     session: AsyncSession, campaign_recipient_id: uuid.UUID
 ) -> CampaignRecipient | None:
