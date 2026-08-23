@@ -8,6 +8,7 @@ This document maintains a real-time record of all parallel Git worktrees, active
 
 | Worktree Path | Branch Name | Feature / Task | Preview URL | Status | Created |
 |---|---|---|---|---|---|
+| `.worktrees/grx-postal-webhook-analytics` | `feature/BACKEND/GRX-POSTAL-WEBHOOK-ANALYTICS` | `GRX-EMAIL-012` — Postal Webhook Receiver & Live Delivery Analytics | `http://localhost:8000` | COMPLETED / REVIEW_READY | 2026-08-23 |
 | `.worktrees/grx-auth-split-screen-redesign` | `feature/FRONTEND/GRX-AUTH-SPLIT-SCREEN-REDESIGN` | `GRX-AUTH-007` — Unified Split-Screen Auth Redesign (Login & Register) | `http://localhost:3000` | IN_PROGRESS | 2026-08-23 |
 
 ---
