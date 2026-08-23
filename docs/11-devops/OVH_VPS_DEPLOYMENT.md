@@ -287,23 +287,113 @@ apt install -y caddy
 
 ### 7.2. Configure `/etc/caddy/Caddyfile`
 ```caddy
-# Next.js Web Frontend
-app.growixa.com {
-    reverse_proxy localhost:3000
+# ==============================================================================
+# Growixa Production & UAT Caddy Reverse Proxy Configuration
+# Automatic SSL/TLS by Let's Encrypt / ZeroSSL
+# ==============================================================================
+
+# 1. Production Environment
+growixa.iitdeveloper.com {
+    handle /webhooks/* {
+        reverse_proxy localhost:8000
+    }
+
+    handle /unsubscribe/* {
+        reverse_proxy localhost:8000
+    }
+
+    handle /api/* {
+        uri strip_prefix /api
+        reverse_proxy localhost:8000
+    }
+
+    handle {
+        reverse_proxy localhost:3000
+    }
+
     encode zstd gzip
 }
 
-# FastAPI Backend API
-api.growixa.com {
-    reverse_proxy localhost:8000
+# 2. UAT / Staging Environment
+uat.growixa.iitdeveloper.com {
+    handle /webhooks/* {
+        reverse_proxy localhost:8001
+    }
+
+    handle /unsubscribe/* {
+        reverse_proxy localhost:8001
+    }
+
+    handle /api/* {
+        uri strip_prefix /api
+        reverse_proxy localhost:8001
+    }
+
+    handle {
+        reverse_proxy localhost:3001
+    }
+
+    encode zstd gzip
+}
+
+# 3. Tracking Domain (Postal Click & Open Tracking with Auto-SSL)
+track.iitdeveloper.com {
+    reverse_proxy localhost:5000 {
+        header_up X-Postal-Track-Host 1
+        header_up Host {host}
+        header_up X-Forwarded-Proto {scheme}
+        header_up X-Forwarded-For {remote_host}
+    }
+    encode zstd gzip
+}
+
+# 4. Postal Web Dashboard (Automatic HTTPS)
+postal.iitdeveloper.com {
+    reverse_proxy localhost:5000
+    encode zstd gzip
+}
+
+# 5. VPS Host Fallback
+vps-a8199074.vps.ovh.ca {
+    handle /api/* {
+        uri strip_prefix /api
+        reverse_proxy localhost:8000
+    }
+
+    handle {
+        reverse_proxy localhost:3000
+    }
+
+    encode zstd gzip
+}
+
+# 6. HTTP Catch-All (Auto-redirects to HTTPS)
+:80 {
+    handle /api/* {
+        uri strip_prefix /api
+        reverse_proxy localhost:8000
+    }
+
+    handle {
+        reverse_proxy localhost:3000
+    }
+
     encode zstd gzip
 }
 ```
 
-### 7.3. Start Caddy
+### 7.3. Start / Reload Caddy
 ```bash
-systemctl restart caddy
+systemctl reload caddy
 systemctl enable caddy
+```
+
+### 7.4. Postal Webhook Signing Key
+Postal signs webhook payloads to Growixa. Ensure the signing key is present:
+```bash
+openssl genrsa -out /opt/smtp/engines/postal/config/signing.key 2048
+chmod 644 /opt/smtp/engines/postal/config/signing.key
+docker restart smtp-postal-worker
 ```
 
 ---
