@@ -8,10 +8,7 @@ This document maintains a real-time record of all parallel Git worktrees, active
 
 | Worktree Path | Branch Name | Feature / Task | Preview URL | Status | Created |
 |---|---|---|---|---|---|
-| `.worktrees/grx-email-provider-name-fix` | `feature/FRONTEND/GRX-EMAIL-PROVIDER-NAME` | `GRX-EMAIL-015` — Add required name field to email provider payload and form | `http://localhost:3000` | IN_PROGRESS | 2026-08-23 |
 | `.worktrees/grx-auth-split-screen-redesign` | `feature/FRONTEND/GRX-AUTH-SPLIT-SCREEN-REDESIGN` | `GRX-AUTH-007` — Unified Split-Screen Auth Redesign (Login & Register) | `http://localhost:3000` | IN_PROGRESS | 2026-08-23 |
-
-
 
 ---
 
@@ -19,6 +16,8 @@ This document maintains a real-time record of all parallel Git worktrees, active
 
 | Worktree Directory | Branch | Feature Delivered | Merged Commit | Merged Date |
 |---|---|---|---|---|
+| `.worktrees/grx-sender-identity-delete` | `feature/SHARED/GRX-SENDER-IDENTITY-DELETE` | `GRX-EMAIL-016` — Guarded Delete Sender Identity (Backend API & Frontend Integrations UI) | `4ff2e65` | 2026-08-23 |
+| `.worktrees/grx-email-provider-name-fix` | `feature/FRONTEND/GRX-EMAIL-PROVIDER-NAME` | `GRX-EMAIL-015` — Add required name field to email provider payload and form | `2d775f6` | 2026-08-23 |
 | `.worktrees/grx-web-favicon` | `feature/FRONTEND/add-web-favicon` | Site Favicon & Apple Touch Icon (512x512 PNG) | `b7e7584` | 2026-08-20 |
 | `.worktrees/password-forgot-reset-flow` | `feature/FRONTEND/password-forgot-reset-flow` | Customer Forgot-Password & Reset Flow with transactional SMTP email delivery | `e970a4a` | 2026-08-20 |
 | `.worktrees/campaign-schedule-redirect` | `feature/FRONTEND/campaign-schedule-redirect` | Campaign Scheduling Redirect to all-campaigns overview | `e970a4a` | 2026-08-20 |
