@@ -45,7 +45,7 @@ async def get_campaign_report_counts(
 
     return {
         "sent": sent,
-        "delivered": status_counts.get("DELIVERED", 0),
+        "delivered": status_counts.get("DELIVERED", 0) + status_counts.get("SENT", 0),
         "bounced": status_counts.get("BOUNCED", 0),
         "complained": status_counts.get("COMPLAINED", 0),
         "opened": event_counts.get("OPENED", 0),

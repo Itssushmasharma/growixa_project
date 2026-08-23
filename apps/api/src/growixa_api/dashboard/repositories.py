@@ -60,7 +60,8 @@ async def get_account_wide_engagement(
     `account_id` directly instead of joining through one `campaign_id`."""
     delivered_result = await session.execute(
         select(func.count(MessageDelivery.id)).where(
-            MessageDelivery.account_id == account_id, MessageDelivery.status == "DELIVERED"
+            MessageDelivery.account_id == account_id,
+            MessageDelivery.status.in_(("SENT", "DELIVERED")),
         )
     )
     delivered = delivered_result.scalar_one()
@@ -165,7 +166,10 @@ async def list_recent_campaigns_with_stats(
     delivered_result = await session.execute(
         select(CampaignRecipient.campaign_id, func.count(MessageDelivery.id))
         .join(MessageDelivery, MessageDelivery.campaign_recipient_id == CampaignRecipient.id)
-        .where(CampaignRecipient.campaign_id.in_(ids), MessageDelivery.status == "DELIVERED")
+        .where(
+            CampaignRecipient.campaign_id.in_(ids),
+            MessageDelivery.status.in_(("SENT", "DELIVERED")),
+        )
         .group_by(CampaignRecipient.campaign_id)
     )
     delivered_counts = {row[0]: row[1] for row in delivered_result.all()}
