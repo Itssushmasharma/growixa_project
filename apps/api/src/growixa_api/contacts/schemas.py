@@ -9,6 +9,7 @@ class CustomFieldIn(BaseModel):
     key: str
     label: str
     field_type: Literal["TEXT", "NUMBER", "DATE", "BOOLEAN"]
+    is_personalization_usable: bool = True
 
 
 class CustomFieldOut(BaseModel):
@@ -18,6 +19,7 @@ class CustomFieldOut(BaseModel):
     key: str
     label: str
     field_type: str
+    is_personalization_usable: bool
 
 
 class ContactIn(BaseModel):

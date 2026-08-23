@@ -187,6 +187,7 @@ async def create_custom_field_route(
             key=payload.key,
             label=payload.label,
             field_type=payload.field_type,
+            is_personalization_usable=payload.is_personalization_usable,
         )
     except DuplicateFieldKeyError as exc:
         raise HTTPException(

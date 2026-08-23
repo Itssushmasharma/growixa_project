@@ -24,10 +24,14 @@ from growixa_worker.models import (
     Campaign,
     CampaignRecipient,
     CampaignVersion,
+    CompanyProfile,
     ConsentRecord,
     Contact,
+    ContactCustomField,
+    ContactFieldValue,
     ContactList,
     ContactListMember,
+    DeliveryAttempt,
     EmailProviderConnection,
     MessageDelivery,
     Segment,
@@ -127,6 +131,8 @@ async def _create_campaign(
 
 
 async def _cleanup(session: AsyncSession) -> None:
+    await session.rollback()
+    await session.execute(delete(DeliveryAttempt))
     await session.execute(delete(MessageDelivery))
     await session.execute(delete(CampaignRecipient))
     await session.execute(delete(CampaignVersion))
@@ -138,6 +144,9 @@ async def _cleanup(session: AsyncSession) -> None:
     await session.execute(delete(ContactList))
     await session.execute(delete(ConsentRecord))
     await session.execute(delete(SuppressionEntry))
+    await session.execute(delete(ContactFieldValue))
+    await session.execute(delete(ContactCustomField))
+    await session.execute(delete(CompanyProfile))
     await session.execute(delete(Contact))
     await session.execute(delete(SenderIdentity))
     await session.execute(delete(EmailProviderConnection))
@@ -644,5 +653,148 @@ async def test_in_flight_emergency_cancellation_halts_worker_and_cancels_remaini
         usage_records = usage_result.scalars().all()
         assert len(usage_records) == 1
         assert float(usage_records[0].quantity) == 1.0
+    finally:
+        await _cleanup(session)
+
+
+@pytest.mark.integration
+async def test_campaign_send_with_personalization_tokens_and_custom_fields(
+    session: AsyncSession, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    sent_messages: list[dict[str, object]] = []
+
+    async def _fake_send_email(**kwargs: object) -> None:
+        sent_messages.append(dict(kwargs))
+
+    monkeypatch.setattr(send_campaign_module, "send_email", _fake_send_email)
+
+    try:
+        # Create company profile
+        session.add(
+            CompanyProfile(
+                id=uuid.uuid4(),
+                account_id=_ACCOUNT_ID,
+                name="IITDEVELOPER",
+                website="https://iitdeveloper.com",
+            )
+        )
+        # Create sender identity
+        sender_identity_id = await _create_sender_identity(session)
+
+        # Create custom field "school_name"
+        cf = ContactCustomField(
+            id=uuid.uuid4(),
+            account_id=_ACCOUNT_ID,
+            key="school_name",
+            label="School Name",
+            field_type="TEXT",
+            is_personalization_usable=True,
+        )
+        session.add(cf)
+        await session.flush()
+
+        # Create 2 contacts: one with custom field value, one without
+        c1 = Contact(
+            id=uuid.uuid4(),
+            account_id=_ACCOUNT_ID,
+            email="principal@school.edu",
+            first_name="Dr. Smith",
+            status="ACTIVE",
+        )
+        c2 = Contact(
+            id=uuid.uuid4(),
+            account_id=_ACCOUNT_ID,
+            email="admin@academy.edu",
+            first_name=None,  # Will test fallback default
+            status="ACTIVE",
+        )
+        session.add_all([c1, c2])
+        await session.flush()
+
+        session.add(
+            ContactFieldValue(
+                account_id=_ACCOUNT_ID,
+                contact_id=c1.id,
+                field_id=cf.id,
+                value="St. Mary's Academy",
+            )
+        )
+        await session.commit()
+
+        # Create campaign with subject and body using personalization
+        campaign = Campaign(
+            id=uuid.uuid4(),
+            account_id=_ACCOUNT_ID,
+            name="Personalized Admission Outreach",
+            subject='How does {{school_name | default:"your school"}} look to a parent?',
+            body_html=(
+                '<p>Dear {{first_name | default:"Educator"}},</p><p>From {{company_name}}.</p>'
+            ),
+            body_text='Dear {{first_name | default:"Educator"}},\nFrom {{company_name}}.',
+            sender_identity_id=sender_identity_id,
+            recipient_type="ALL_CONTACTS",
+            status="SENDING",
+        )
+        session.add(campaign)
+        await session.commit()
+
+        await handle_send_campaign(session, {"campaign_id": campaign.id})
+
+        assert len(sent_messages) == 2
+        msg_by_to = {str(m["to_email"]): m for m in sent_messages}
+
+        # Contact 1: custom field resolved + first_name + company_name
+        m1 = msg_by_to["principal@school.edu"]
+        assert m1["subject"] == "How does St. Mary's Academy look to a parent?"
+        assert "<p>Dear Dr. Smith,</p><p>From IITDEVELOPER.</p>" in str(m1["body_html"])
+        assert "Dear Dr. Smith,\nFrom IITDEVELOPER." in str(m1["body_text"])
+
+        # Contact 2: fallback defaults for school_name and first_name
+        m2 = msg_by_to["admin@academy.edu"]
+        assert m2["subject"] == "How does your school look to a parent?"
+        assert "<p>Dear Educator,</p><p>From IITDEVELOPER.</p>" in str(m2["body_html"])
+        assert "Dear Educator,\nFrom IITDEVELOPER." in str(m2["body_text"])
+    finally:
+        await _cleanup(session)
+
+
+@pytest.mark.integration
+async def test_campaign_send_with_unknown_token_fails_validation_cleanly(
+    session: AsyncSession, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    sent_messages: list[dict[str, object]] = []
+
+    async def _fake_send_email(**kwargs: object) -> None:
+        sent_messages.append(dict(kwargs))
+
+    monkeypatch.setattr(send_campaign_module, "send_email", _fake_send_email)
+
+    try:
+        sender_identity_id = await _create_sender_identity(session)
+        await _create_contact(session, "test@example.com")
+
+        # Campaign with unknown token "{{unknown_typo_token}}"
+        campaign = Campaign(
+            id=uuid.uuid4(),
+            account_id=_ACCOUNT_ID,
+            name="Broken Campaign",
+            subject="Hello {{unknown_typo_token}}",
+            body_html="<p>Content</p>",
+            body_text=None,
+            sender_identity_id=sender_identity_id,
+            recipient_type="ALL_CONTACTS",
+            status="SENDING",
+        )
+        session.add(campaign)
+        await session.commit()
+
+        await handle_send_campaign(session, {"campaign_id": campaign.id})
+
+        # Nothing should have been sent
+        assert len(sent_messages) == 0
+
+        # Campaign status should be FAILED
+        camp_result = await session.execute(select(Campaign).where(Campaign.id == campaign.id))
+        assert camp_result.scalar_one().status == "FAILED"
     finally:
         await _cleanup(session)

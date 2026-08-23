@@ -24,7 +24,7 @@ worker is the one place that actually knows an email was sent.
 import uuid
 from datetime import datetime
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Integer, Numeric, Text
+from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Integer, Numeric, Text, text
 from sqlalchemy.dialects.postgresql import CITEXT, JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
@@ -69,15 +69,31 @@ class ContactCustomField(Base):
     __tablename__ = "contact_custom_fields"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    account_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     key: Mapped[str] = mapped_column(Text, nullable=False)
+    label: Mapped[str] = mapped_column(Text, nullable=False, default="Custom Field")
+    field_type: Mapped[str] = mapped_column(Text, nullable=False, default="TEXT")
+    is_personalization_usable: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("true")
+    )
 
 
 class ContactFieldValue(Base):
     __tablename__ = "contact_field_values"
 
+    account_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     contact_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
     field_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
     value: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class CompanyProfile(Base):
+    __tablename__ = "company_profile"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    account_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    website: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 class ContactList(Base):

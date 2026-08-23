@@ -8,9 +8,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from growixa_api.auth.encryption import decrypt_secret
 from growixa_api.campaigns.models import Campaign
 from growixa_api.campaigns.repositories import get_campaign
+from growixa_api.company.repositories import get_company_profile
 from growixa_api.contacts.repositories import (
     create_suppression_entry,
     get_suppression_by_email,
+    list_custom_fields,
 )
 from growixa_api.email_delivery.models import MessageDelivery
 from growixa_api.email_delivery.postal_schemas import PostalWebhookPayload
@@ -31,6 +33,7 @@ from growixa_api.integrations.repositories import (
 from growixa_api.integrations.smtp_transport import send_email
 from growixa_api.jobs.producer import publish_job
 from growixa_api.jobs.schemas import JobEnvelope
+from growixa_api.personalization import render_personalization
 
 SEND_CAMPAIGN_QUEUE = "grx.email_delivery.send_campaign"
 
@@ -108,6 +111,53 @@ async def send_test_email(
     )
     if connection is None:
         raise CampaignNotFoundError
+
+    company_profile = await get_company_profile(session, account_id)
+    account_data = {
+        "company_name": company_profile.name if company_profile else "",
+        "website_url": company_profile.website
+        if (company_profile and company_profile.website)
+        else "",
+        "sender_name": identity.from_name or "",
+    }
+
+    custom_fields = await list_custom_fields(session, account_id)
+    allowed_custom_keys = {cf.key for cf in custom_fields if cf.is_personalization_usable}
+
+    recipient_data = {
+        "first_name": "Test",
+        "last_name": "Recipient",
+        "email": to_email,
+        "phone": "+1234567890",
+        **{key: f"[{key}]" for key in allowed_custom_keys},
+    }
+
+    personalized_subject = render_personalization(
+        campaign.subject,
+        recipient_data=recipient_data,
+        account_data=account_data,
+        allowed_custom_field_keys=allowed_custom_keys,
+        is_html=False,
+    )
+    personalized_html = render_personalization(
+        campaign.body_html,
+        recipient_data=recipient_data,
+        account_data=account_data,
+        allowed_custom_field_keys=allowed_custom_keys,
+        is_html=True,
+    )
+    personalized_text = (
+        render_personalization(
+            campaign.body_text,
+            recipient_data=recipient_data,
+            account_data=account_data,
+            allowed_custom_field_keys=allowed_custom_keys,
+            is_html=False,
+        )
+        if campaign.body_text
+        else None
+    )
+
     await send_email(
         smtp_host=connection.smtp_host,
         smtp_port=connection.smtp_port,
@@ -116,9 +166,9 @@ async def send_test_email(
         from_email=identity.from_email,
         from_name=identity.from_name,
         to_email=to_email,
-        subject=campaign.subject,
-        body_html=campaign.body_html,
-        body_text=campaign.body_text,
+        subject=personalized_subject,
+        body_html=personalized_html,
+        body_text=personalized_text,
     )
 
 

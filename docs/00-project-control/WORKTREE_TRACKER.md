@@ -8,8 +8,7 @@ This document maintains a real-time record of all parallel Git worktrees, active
 
 | Worktree Path | Branch Name | Feature / Task | Preview URL | Status | Created |
 |---|---|---|---|---|---|
-| `.worktrees/grx-postal-webhook-analytics` | `feature/BACKEND/GRX-POSTAL-WEBHOOK-ANALYTICS` | `GRX-EMAIL-012` — Postal Webhook Receiver & Live Delivery Analytics | `http://localhost:8000` | COMPLETED / REVIEW_READY | 2026-08-23 |
-| `.worktrees/grx-auth-split-screen-redesign` | `feature/FRONTEND/GRX-AUTH-SPLIT-SCREEN-REDESIGN` | `GRX-AUTH-007` — Unified Split-Screen Auth Redesign (Login & Register) | `http://localhost:3000` | IN_PROGRESS | 2026-08-23 |
+| — | `main` | Production & Integration Baseline | `http://localhost:3000` | ACTIVE | 2026-08-24 |
 
 ---
 
@@ -17,6 +16,9 @@ This document maintains a real-time record of all parallel Git worktrees, active
 
 | Worktree Directory | Branch | Feature Delivered | Merged Commit | Merged Date |
 |---|---|---|---|---|
+| `.worktrees/grx-personalization-renderer` | `feature/BACKEND/GRX-CONTENT-001` | `GRX-CONTENT-001` — Dynamic Email Personalization Engine & Merge Tags (DEC-GRX-036) | (pending merge) | 2026-08-24 |
+| `.worktrees/grx-postal-webhook-analytics` | `feature/BACKEND/GRX-POSTAL-WEBHOOK-ANALYTICS` | `GRX-EMAIL-012` — Postal Webhook Receiver & Live Delivery Analytics | `aaf51b3` | 2026-08-23 |
+| `.worktrees/grx-auth-split-screen-redesign` | `feature/FRONTEND/GRX-AUTH-SPLIT-SCREEN-REDESIGN` | `GRX-AUTH-007` — Unified Split-Screen Auth Redesign (Login & Register) | `02bf444` | 2026-08-23 |
 | `.worktrees/grx-campaign-emergency-stop` | `feature/SHARED/GRX-CAMPAIGN-EMERGENCY-STOP` | `GRX-CAMP-008` — Live Campaign Emergency Stop & In-Flight Cancellation | `30f10c6` | 2026-08-23 |
 | `.worktrees/grx-sender-identity-reassign` | `feature/SHARED/GRX-EMAIL-SENDER-REASSIGN` | `GRX-EMAIL-017` — Sender identity auto-reassignment on connection update | `f3cde3c` | 2026-08-23 |
 | `.worktrees/grx-sender-identity-delete` | `feature/SHARED/GRX-SENDER-IDENTITY-DELETE` | `GRX-EMAIL-016` — Guarded Delete Sender Identity (Backend API & Frontend Integrations UI) | `4ff2e65` | 2026-08-23 |
