@@ -68,6 +68,7 @@ PUBLIC_ROUTE_PATHS = {
     "/auth/password-reset/complete",
     "/users/invitations/accept",
     "/webhooks/postmark",
+    "/webhooks/postal",
     "/unsubscribe/{campaign_recipient_id}",
     "/platform/auth/login",
     "/platform/auth/logout",
