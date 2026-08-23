@@ -2,7 +2,7 @@
 
 ---
 
-## 🚀 [v0.4.5-rc1] (Upcoming Release) — 2026-08-24
+## 🚀 [v0.5.1-rc1] (Upcoming Release) — 2026-08-24
 
 > **Platform Status**: 🟡 Staging / Preview
 > **Target Production URL**: [https://growixa.iitdeveloper.com](https://growixa.iitdeveloper.com)

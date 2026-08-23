@@ -10,7 +10,7 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
-## 2026-08-24 — Unreleased / Post-v0.4.4 Enhancements
+## 2026-08-24 — v0.5.1-rc1 UAT release candidate (Preview)
 
 - **`feat(campaigns)`** — added in-flight emergency stop and live campaign cancellation (`GRX-CAMP-008`), allowing users to abort running campaigns (`SENDING` / `DISPATCHING`) via `POST /campaigns/{id}/cancel` with Redis/DB cancellation flags, in-flight worker interrupt, and usage/quota reconciliation.
 - **`feat(campaigns)`** — dynamic email personalization engine and merge tags (`GRX-CONTENT-001` / `DEC-GRX-036`) across API and Worker, supporting recipient tokens (`first_name`, `last_name`, `email`, `phone`), account tokens (`company_name`, `website_url`, `sender_name`), custom fields (`is_personalization_usable`), fallback default filter `{{ token | default:"fallback" }}`, and strict HTML escaping.
