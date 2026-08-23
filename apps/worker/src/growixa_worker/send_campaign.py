@@ -80,13 +80,15 @@ async def _is_suppressed_or_withdrawn(
 def _with_unsubscribe_footer(
     body_html: str, body_text: str | None, campaign_recipient_id: uuid.UUID
 ) -> tuple[str, str | None]:
-    """Every real send embeds a per-recipient unsubscribe link (GRX-EMAIL-005) — no
-    merge-tag infrastructure exists yet, so this is a plain footer append, not a
-    `{{unsubscribe_url}}` substitution. Identified only by the campaign_recipient's own
-    unguessable UUID, matching how the public /unsubscribe/{id} route authenticates it."""
+    """Every real send embeds a per-recipient unsubscribe link (GRX-EMAIL-005).
+    If {{unsubscribe_url}} was already provided in the template body, avoid duplicate footer.
+    Otherwise, append a compliance footer paragraph to body_html and body_text."""
     url = f"{get_settings().api_public_url}/unsubscribe/{campaign_recipient_id}"
-    html = f'{body_html}<p><a href="{url}">Unsubscribe</a></p>'
-    text = f"{body_text}\n\nUnsubscribe: {url}" if body_text else f"Unsubscribe: {url}"
+    html = body_html if url in body_html else f'{body_html}<p><a href="{url}">Unsubscribe</a></p>'
+    if body_text:
+        text = body_text if url in body_text else f"{body_text}\n\nUnsubscribe: {url}"
+    else:
+        text = f"Unsubscribe: {url}"
     return html, text
 
 
