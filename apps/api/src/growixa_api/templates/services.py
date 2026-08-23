@@ -1,9 +1,14 @@
 import uuid
 from collections.abc import Sequence
 
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from growixa_api.contacts.models import ContactCustomField
+from growixa_api.personalization.renderer import (
+    validate_template_tokens,
+)
 from growixa_api.templates.models import EmailTemplate, EmailTemplateVersion
 from growixa_api.templates.repositories import (
     create_template as create_template_row,
@@ -35,9 +40,32 @@ class TemplateInUseError(Exception):
     409 instead of a raw 500."""
 
 
+async def _validate_template_personalization(
+    session: AsyncSession,
+    account_id: uuid.UUID,
+    subject: str,
+    body_html: str,
+    body_text: str | None,
+) -> None:
+    res = await session.execute(
+        select(ContactCustomField.key).where(
+            ContactCustomField.account_id == account_id,
+            ContactCustomField.is_personalization_usable.is_(True),
+        )
+    )
+    allowed_custom_keys = set(res.scalars().all())
+    validate_template_tokens(subject, allowed_custom_field_keys=allowed_custom_keys)
+    validate_template_tokens(body_html, allowed_custom_field_keys=allowed_custom_keys)
+    if body_text:
+        validate_template_tokens(body_text, allowed_custom_field_keys=allowed_custom_keys)
+
+
 async def create_template(
     session: AsyncSession, account_id: uuid.UUID, data: EmailTemplateIn, actor_id: uuid.UUID
 ) -> tuple[EmailTemplate, EmailTemplateVersion]:
+    await _validate_template_personalization(
+        session, account_id, data.subject, data.body_html, data.body_text
+    )
     template = await create_template_row(
         session, {"account_id": account_id, "name": data.name, "created_by_user_id": actor_id}
     )
@@ -108,6 +136,9 @@ async def add_template_version(
     template = await get_template(session, account_id, template_id)
     if template is None:
         raise TemplateNotFoundError
+    await _validate_template_personalization(
+        session, account_id, data.subject, data.body_html, data.body_text
+    )
     next_version_number = await get_latest_version_number(session, template_id) + 1
     version = await create_template_version(
         session,

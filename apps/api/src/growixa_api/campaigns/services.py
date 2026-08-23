@@ -2,6 +2,7 @@ import uuid
 from collections.abc import Sequence
 from datetime import UTC, datetime
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from growixa_api.campaigns.models import Campaign
@@ -14,8 +15,12 @@ from growixa_api.campaigns.repositories import (
     update_campaign_fields,
 )
 from growixa_api.campaigns.schemas import CampaignIn, CampaignUpdateIn, ScheduleCampaignIn
+from growixa_api.contacts.models import ContactCustomField
 from growixa_api.contacts.repositories import get_contact_list_by_id, get_segment_by_id
 from growixa_api.integrations.repositories import get_sender_identity
+from growixa_api.personalization.renderer import (
+    validate_template_tokens,
+)
 from growixa_api.templates.repositories import get_template
 
 VALID_RECIPIENT_TYPES = {"SEGMENT", "LIST", "ALL_CONTACTS"}
@@ -84,6 +89,26 @@ async def _validate_recipient_target(
             )
 
 
+async def _validate_campaign_personalization(
+    session: AsyncSession,
+    account_id: uuid.UUID,
+    subject: str,
+    body_html: str,
+    body_text: str | None,
+) -> None:
+    res = await session.execute(
+        select(ContactCustomField.key).where(
+            ContactCustomField.account_id == account_id,
+            ContactCustomField.is_personalization_usable.is_(True),
+        )
+    )
+    allowed_custom_keys = set(res.scalars().all())
+    validate_template_tokens(subject, allowed_custom_field_keys=allowed_custom_keys)
+    validate_template_tokens(body_html, allowed_custom_field_keys=allowed_custom_keys)
+    if body_text:
+        validate_template_tokens(body_text, allowed_custom_field_keys=allowed_custom_keys)
+
+
 async def create_campaign(
     session: AsyncSession, account_id: uuid.UUID, data: CampaignIn, actor_id: uuid.UUID
 ) -> Campaign:
@@ -96,6 +121,9 @@ async def create_campaign(
         raise TemplateNotFoundError
     await _validate_recipient_target(
         session, account_id, data.recipient_type, data.recipient_segment_id, data.recipient_list_id
+    )
+    await _validate_campaign_personalization(
+        session, account_id, data.subject, data.body_html, data.body_text
     )
     return await create_campaign_row(
         session,
@@ -162,6 +190,13 @@ async def update_campaign(
         # applies, rather than leaving a stale reference from the previous type.
         fields["recipient_segment_id"] = recipient_segment_id
         fields["recipient_list_id"] = recipient_list_id
+
+    subject_to_val = fields.get("subject", campaign.subject)
+    html_to_val = fields.get("body_html", campaign.body_html)
+    text_to_val = fields.get("body_text", campaign.body_text)
+    await _validate_campaign_personalization(
+        session, account_id, subject_to_val, html_to_val, text_to_val
+    )
 
     campaign = await update_campaign_fields(session, campaign, fields)
     await session.commit()

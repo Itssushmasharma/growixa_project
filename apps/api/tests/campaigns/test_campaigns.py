@@ -89,7 +89,7 @@ async def _cleanup() -> None:
     async with async_session_factory() as session:
         await session.execute(delete(CampaignRecipient))
         await session.execute(delete(CampaignVersion))
-        await session.execute(delete(Campaign).where(Campaign.name == "Spring Sale"))
+        await session.execute(delete(Campaign))
         await session.execute(delete(Segment))
         await session.execute(delete(ContactList))
         await session.execute(delete(EmailTemplateVersion))
@@ -452,3 +452,69 @@ async def test_get_and_edit_unknown_campaign_returns_404(
 
     assert get_response.status_code == 404
     assert edit_response.status_code == 404
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_create_campaign_with_invalid_token_returns_422(
+    user_factory: Callable[..., Awaitable[uuid.UUID]],
+    campaign_account_id: uuid.UUID,
+    sender_identity_id: uuid.UUID,
+) -> None:
+    manager_id = await user_factory(
+        full_name="Test Manager", role_name="Marketing Manager", account_id=campaign_account_id
+    )
+    cookies = _access_token_cookie(manager_id)
+    try:
+        transport = ASGITransport(app=create_app())
+        async with AsyncClient(
+            transport=transport, base_url="http://test", cookies=cookies
+        ) as client:
+            invalid_payload = {
+                "name": "Invalid Token Campaign",
+                "subject": "Hello {{typo_field}}",
+                "body_html": "<p>Content</p>",
+                "sender_identity_id": str(sender_identity_id),
+                "recipient_type": "ALL_CONTACTS",
+            }
+            res = await client.post("/campaigns", json=invalid_payload)
+            assert res.status_code == 422
+            detail = res.json()["detail"]
+            assert "Invalid personalization token" in detail
+            assert "typo_field" in detail
+            assert "Available tokens:" in detail
+    finally:
+        await _cleanup()
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_create_campaign_with_standard_and_unsubscribe_tokens_succeeds(
+    user_factory: Callable[..., Awaitable[uuid.UUID]],
+    campaign_account_id: uuid.UUID,
+    sender_identity_id: uuid.UUID,
+) -> None:
+    manager_id = await user_factory(
+        full_name="Test Manager", role_name="Marketing Manager", account_id=campaign_account_id
+    )
+    cookies = _access_token_cookie(manager_id)
+    try:
+        transport = ASGITransport(app=create_app())
+        async with AsyncClient(
+            transport=transport, base_url="http://test", cookies=cookies
+        ) as client:
+            valid_payload = {
+                "name": "Standard Tokens Campaign",
+                "subject": "Hello {{first_name}} from {{company_name}}",
+                "body_html": (
+                    '<p>Hi {{first_name}}, unsubscribe <a href="{{unsubscribe_url}}">here</a></p>'
+                ),
+                "body_text": "Hi {{first_name}}, opt out: {{unsubscribe_url}}",
+                "sender_identity_id": str(sender_identity_id),
+                "recipient_type": "ALL_CONTACTS",
+            }
+            res = await client.post("/campaigns", json=valid_payload)
+            assert res.status_code == 201
+            assert res.json()["name"] == "Standard Tokens Campaign"
+    finally:
+        await _cleanup()
