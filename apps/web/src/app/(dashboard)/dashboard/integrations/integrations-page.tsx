@@ -256,6 +256,7 @@ export function IntegrationsPage() {
         (connectionFormFor === "POSTMARK"
           ? "Postmark"
           : connectionForm.smtp_host || "Primary SMTP");
+      const existingConn = connections[connectionFormFor];
       const created = await apiFetch<EmailProviderConnection>("/integrations/email-provider", {
         method: "POST",
         body: JSON.stringify({
@@ -265,6 +266,7 @@ export function IntegrationsPage() {
           smtp_port: Number(connectionForm.smtp_port),
           smtp_username: connectionForm.smtp_username,
           smtp_password: connectionForm.smtp_password,
+          replacing_connection_id: existingConn ? existingConn.id : undefined,
         }),
       });
       setConnections((current) => ({ ...current, [connectionFormFor]: created }));
@@ -274,6 +276,14 @@ export function IntegrationsPage() {
           username: created.webhook_username,
           password: created.webhook_password,
         });
+      }
+      try {
+        const refreshedIdentities = await apiFetch<SenderIdentity[]>(
+          "/integrations/sender-identities",
+        );
+        setIdentities(refreshedIdentities);
+      } catch {
+        // Non-blocking fallback
       }
       setConnectionFormFor(null);
       showToast("success", "Provider connection saved.");
