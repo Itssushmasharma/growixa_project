@@ -10,6 +10,18 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
+## 2026-08-24 — Unreleased / Post-v0.4.4 Enhancements
+
+- **`feat(campaigns)`** — added in-flight emergency stop and live campaign cancellation (`GRX-CAMP-008`), allowing users to abort running campaigns (`SENDING` / `DISPATCHING`) via `POST /campaigns/{id}/cancel` with Redis/DB cancellation flags, in-flight worker interrupt, and usage/quota reconciliation.
+- **`feat(campaigns)`** — dynamic email personalization engine and merge tags (`GRX-CONTENT-001` / `DEC-GRX-036`) across API and Worker, supporting recipient tokens (`first_name`, `last_name`, `email`, `phone`), account tokens (`company_name`, `website_url`, `sender_name`), custom fields (`is_personalization_usable`), fallback default filter `{{ token | default:"fallback" }}`, and strict HTML escaping.
+- **`feat(smtp)`** — added Postal / Self-Hosted SMTP webhook receiver (`POST /webhooks/postal`) and live delivery analytics tracking (`GRX-EMAIL-012`) with message delivery event ingestion (`DELIVERED`, `OPENED`, `CLICKED`, `BOUNCED`) and automated suppression list updates.
+- **`feat(smtp)`** — support self-hosted and internal SMTP relays with configurable TLS context (`GRX-SMTP-002`), certificate validation options (`verify_certs`), and opportunistic STARTTLS fallback.
+- **`feat(integrations)`** — added guarded delete for sender identities (`GRX-EMAIL-016`) preventing deletion of identities assigned to active campaigns.
+- **`feat(integrations)`** — added sender identity auto-reassignment (`GRX-EMAIL-017`) on connection update or removal.
+- **`fix(integrations)`** — added required connection name field and validation in email provider form (`GRX-EMAIL-015`).
+- **`fix(integrations)`** — resolved sender identity UI badge and name overlap on integrations page (`GRX-UI-018`).
+- **`chore(deploy)`** — hardened deployment workflows with automated Docker image pruning and Google Auth environment configuration.
+
 ## 2026-08-23 — v0.4.4 production release
 
 - **`v0.4.4`** — official production release promoted from `v0.4.4-rc1` and `v0.4.3-rc1`.

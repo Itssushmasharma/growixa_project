@@ -2,6 +2,34 @@
 
 ---
 
+## 🚀 [v0.4.5-rc1] (Upcoming Release) — 2026-08-24
+
+> **Platform Status**: 🟡 Staging / Preview
+> **Target Production URL**: [https://growixa.iitdeveloper.com](https://growixa.iitdeveloper.com)
+> **UAT Staging URL**: [https://uat.growixa.iitdeveloper.com](https://uat.growixa.iitdeveloper.com)
+
+### 🚀 Added & Enhanced
+- **Dynamic Email Personalization Engine & Merge Tags (`GRX-CONTENT-001` / `DEC-GRX-036`)**:
+  - Full support for recipient-scope merge tokens (`{{first_name}}`, `{{last_name}}`, `{{email}}`, `{{phone}}`, and account-authorized custom fields like `{{school_name}}`).
+  - Full support for account-scope merge tokens (`{{company_name}}`, `{{website_url}}`, `{{sender_name}}`).
+  - Fallback default filter syntax: `{{ first_name | default:"there" }}` preventing missing-token errors.
+  - Strict security guardrails: regex-bounded parsing (no SSTI vulnerability), prohibited internal columns (`source`, `status`, `id`), and automatic HTML escaping for untrusted recipient values.
+  - Real-time personalization rendering across both API test-send and worker bulk dispatch.
+- **In-Flight Live Campaign Emergency Stop (`GRX-CAMP-008`)**:
+  - Immediate campaign cancellation for actively sending campaigns (`SENDING` / `DISPATCHING`) via `POST /campaigns/{id}/cancel`.
+  - Redis broadcast interruption flag and real-time database status sync halting remaining queued dispatch batches mid-flight.
+  - Automatic quota and credit usage reconciliation returning unsent messages back to account balances.
+- **Postal & Self-Hosted SMTP Live Webhooks (`GRX-EMAIL-012`)**:
+  - Live webhook receiver (`POST /webhooks/postal`) for delivery receipts, open tracking, click tracking, and bounce telemetry.
+  - Automatic suppression entry creation on hard bounces to safeguard sender reputation.
+- **Self-Hosted SMTP Relay TLS Support (`GRX-SMTP-002`)**:
+  - Configurable TLS certificate verification and STARTTLS negotiation for custom self-hosted Postal, Stalwart, and internal SMTP gateways.
+- **Sender Identity Deletion Guard & Auto-Reassignment (`GRX-EMAIL-016`, `GRX-EMAIL-017`)**:
+  - Guarded deletion preventing removal of sender identities mapped to active campaigns.
+  - Auto-reassignment of orphaned identities when provider connections are updated.
+
+---
+
 ## 🟢 [v0.4.4] — 2026-08-23
 
 > **Release Tag**: `v0.4.4`
