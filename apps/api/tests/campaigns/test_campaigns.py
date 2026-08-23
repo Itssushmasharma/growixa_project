@@ -7,6 +7,7 @@ than through their own APIs, since setting those up isn't what this test file is
 
 import uuid
 from collections.abc import AsyncGenerator, Awaitable, Callable
+from datetime import UTC, datetime
 
 import jwt
 import pytest
@@ -16,8 +17,9 @@ from sqlalchemy import delete, select
 from growixa_api.app import create_app
 from growixa_api.campaigns.models import Campaign, CampaignRecipient, CampaignVersion
 from growixa_api.config import get_settings
-from growixa_api.contacts.models import ContactList, Segment
+from growixa_api.contacts.models import Contact, ContactList, Segment
 from growixa_api.db import async_session_factory
+from growixa_api.email_delivery.models import EmailEvent, MessageDelivery
 from growixa_api.integrations.models import EmailProviderConnection, SenderIdentity
 from growixa_api.templates.models import EmailTemplate, EmailTemplateVersion
 
@@ -516,5 +518,91 @@ async def test_create_campaign_with_standard_and_unsubscribe_tokens_succeeds(
             res = await client.post("/campaigns", json=valid_payload)
             assert res.status_code == 201
             assert res.json()["name"] == "Standard Tokens Campaign"
+    finally:
+        await _cleanup()
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_list_campaigns_returns_engagement_and_performance_metrics(
+    user_factory: Callable[..., Awaitable[uuid.UUID]],
+    campaign_account_id: uuid.UUID,
+    sender_identity_id: uuid.UUID,
+) -> None:
+    manager_id = await user_factory(
+        full_name="Test Manager", role_name="Marketing Manager", account_id=campaign_account_id
+    )
+    cookies = _access_token_cookie(manager_id)
+    transport = ASGITransport(app=create_app())
+
+    async with async_session_factory() as session:
+        campaign = Campaign(
+            account_id=campaign_account_id,
+            name="Metrics Test Campaign",
+            subject="Check your metrics",
+            body_html="<p>Test</p>",
+            sender_identity_id=sender_identity_id,
+            recipient_type="ALL_CONTACTS",
+            created_by_user_id=manager_id,
+            status="SENT",
+        )
+        session.add(campaign)
+        await session.flush()
+
+        contact = Contact(
+            account_id=campaign_account_id,
+            email="lead@example.com",
+            first_name="Lead",
+        )
+        session.add(contact)
+        await session.flush()
+
+        recip = CampaignRecipient(
+            account_id=campaign_account_id,
+            campaign_id=campaign.id,
+            contact_id=contact.id,
+            email="lead@example.com",
+            status="SENT",
+        )
+        session.add(recip)
+        await session.flush()
+
+        delivery = MessageDelivery(
+            account_id=campaign_account_id,
+            campaign_recipient_id=recip.id,
+            status="DELIVERED",
+        )
+        session.add(delivery)
+        await session.flush()
+
+        open_ev = EmailEvent(
+            account_id=campaign_account_id,
+            message_delivery_id=delivery.id,
+            event_type="OPENED",
+            occurred_at=datetime.now(UTC),
+        )
+        click_ev = EmailEvent(
+            account_id=campaign_account_id,
+            message_delivery_id=delivery.id,
+            event_type="CLICKED",
+            occurred_at=datetime.now(UTC),
+        )
+        session.add_all([open_ev, click_ev])
+        await session.commit()
+
+    try:
+        async with AsyncClient(
+            transport=transport, base_url="http://test", cookies=cookies
+        ) as client:
+            res = await client.get("/campaigns")
+            assert res.status_code == 200
+            campaigns = res.json()
+            target = next(c for c in campaigns if c["name"] == "Metrics Test Campaign")
+            assert target["sent_count"] == 1
+            assert target["delivered_count"] == 1
+            assert target["opened_count"] == 1
+            assert target["clicked_count"] == 1
+            assert target["open_rate_pct"] == 100.0
+            assert target["click_rate_pct"] == 100.0
     finally:
         await _cleanup()

@@ -1,5 +1,4 @@
 import uuid
-from collections.abc import Sequence
 from datetime import UTC, datetime
 
 from sqlalchemy import select
@@ -11,10 +10,16 @@ from growixa_api.campaigns.repositories import (
 )
 from growixa_api.campaigns.repositories import (
     get_campaign,
+    get_campaigns_metrics_batch,
     list_campaigns,
     update_campaign_fields,
 )
-from growixa_api.campaigns.schemas import CampaignIn, CampaignUpdateIn, ScheduleCampaignIn
+from growixa_api.campaigns.schemas import (
+    CampaignIn,
+    CampaignOut,
+    CampaignUpdateIn,
+    ScheduleCampaignIn,
+)
 from growixa_api.contacts.models import ContactCustomField
 from growixa_api.contacts.repositories import get_contact_list_by_id, get_segment_by_id
 from growixa_api.integrations.repositories import get_sender_identity
@@ -145,15 +150,40 @@ async def create_campaign(
 
 async def get_campaign_or_raise(
     session: AsyncSession, account_id: uuid.UUID, campaign_id: uuid.UUID
-) -> Campaign:
+) -> CampaignOut:
     campaign = await get_campaign(session, account_id, campaign_id)
     if campaign is None:
         raise CampaignNotFoundError
-    return campaign
+    metrics_map = await get_campaigns_metrics_batch(session, account_id, [campaign.id])
+    m = metrics_map.get(campaign.id, {})
+    out = CampaignOut.model_validate(campaign)
+    out.sent_count = m.get("sent_count")
+    out.delivered_count = m.get("delivered_count")
+    out.opened_count = m.get("opened_count")
+    out.clicked_count = m.get("clicked_count")
+    out.open_rate_pct = m.get("open_rate_pct")
+    out.click_rate_pct = m.get("click_rate_pct")
+    return out
 
 
-async def list_all_campaigns(session: AsyncSession, account_id: uuid.UUID) -> Sequence[Campaign]:
-    return await list_campaigns(session, account_id)
+async def list_all_campaigns(session: AsyncSession, account_id: uuid.UUID) -> list[CampaignOut]:
+    campaigns = await list_campaigns(session, account_id)
+    if not campaigns:
+        return []
+    campaign_ids = [c.id for c in campaigns]
+    metrics_map = await get_campaigns_metrics_batch(session, account_id, campaign_ids)
+    results: list[CampaignOut] = []
+    for c in campaigns:
+        m = metrics_map.get(c.id, {})
+        out = CampaignOut.model_validate(c)
+        out.sent_count = m.get("sent_count")
+        out.delivered_count = m.get("delivered_count")
+        out.opened_count = m.get("opened_count")
+        out.clicked_count = m.get("clicked_count")
+        out.open_rate_pct = m.get("open_rate_pct")
+        out.click_rate_pct = m.get("click_rate_pct")
+        results.append(out)
+    return results
 
 
 async def update_campaign(

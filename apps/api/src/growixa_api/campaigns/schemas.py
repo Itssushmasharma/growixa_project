@@ -55,3 +55,9 @@ class CampaignOut(BaseModel):
     created_at: datetime
     updated_at: datetime
     sent_at: datetime | None
+    sent_count: int | None = None
+    delivered_count: int | None = None
+    opened_count: int | None = None
+    clicked_count: int | None = None
+    open_rate_pct: float | None = None
+    click_rate_pct: float | None = None
