@@ -496,4 +496,79 @@ describe("IntegrationsPage", () => {
       screen.getByText("No AI provider connected — the platform default is used."),
     ).toBeInTheDocument();
   });
+
+  it("submits connection form with custom connection name and credentials", async () => {
+    const user = userEvent.setup();
+    let capturedBody: string | undefined;
+    mockedApiFetch.mockImplementation((path: string, init?: RequestInit) => {
+      if (path === "/auth/me") return Promise.resolve(meWithPermissions(["integrations.manage"]));
+      if (path === "/integrations/email-providers" && !init) return Promise.resolve([]);
+      if (path === "/integrations/sender-identities") return Promise.resolve([]);
+      if (path === "/social/connections") return Promise.resolve([]);
+      if (path === "/ai/connections") return Promise.resolve([]);
+      if (path === "/integrations/email-provider" && init?.method === "POST") {
+        capturedBody = init.body as string;
+        return Promise.resolve({
+          ...CUSTOM_SMTP_CONNECTION,
+          name: "My Custom SMTP",
+        });
+      }
+      throw new Error(`unexpected call: ${path}`);
+    });
+
+    renderIntegrationsPage();
+    await screen.findByText("Custom SMTP");
+
+    const configureButtons = screen.getAllByRole("button", { name: "+ Configure connection" });
+    // Index 2 is Custom SMTP
+    await user.click(configureButtons[2]!);
+
+    const nameInput = screen.getByLabelText("Connection name");
+    await user.clear(nameInput);
+    await user.type(nameInput, "My Custom SMTP");
+    await user.type(screen.getByLabelText("SMTP host"), "mail.custom.example");
+    await user.type(screen.getByLabelText("SMTP username"), "user123");
+    await user.type(screen.getByLabelText("SMTP password / server token"), "pass123");
+    await user.click(screen.getByRole("button", { name: "Save connection" }));
+
+    await waitFor(() => expect(screen.getByText("Provider connection saved.")).toBeInTheDocument());
+    expect(capturedBody).toBeDefined();
+    const parsed = JSON.parse(capturedBody!);
+    expect(parsed.name).toBe("My Custom SMTP");
+    expect(parsed.provider).toBe("CUSTOM_SMTP");
+    expect(parsed.smtp_host).toBe("mail.custom.example");
+  });
+
+  it("surfaces server validation error detail when saving email provider fails", async () => {
+    const user = userEvent.setup();
+    mockedApiFetch.mockImplementation((path: string, init?: RequestInit) => {
+      if (path === "/auth/me") return Promise.resolve(meWithPermissions(["integrations.manage"]));
+      if (path === "/integrations/email-providers" && !init) return Promise.resolve([]);
+      if (path === "/integrations/sender-identities") return Promise.resolve([]);
+      if (path === "/social/connections") return Promise.resolve([]);
+      if (path === "/ai/connections") return Promise.resolve([]);
+      if (path === "/integrations/email-provider" && init?.method === "POST") {
+        return Promise.reject(
+          new ApiError(
+            409,
+            JSON.stringify({ detail: "A connection with this name already exists" }),
+          ),
+        );
+      }
+      throw new Error(`unexpected call: ${path}`);
+    });
+
+    renderIntegrationsPage();
+    await screen.findByText("Postmark");
+
+    const configureButtons = screen.getAllByRole("button", { name: "+ Configure connection" });
+    await user.click(configureButtons[1]!);
+    await user.type(screen.getByLabelText("SMTP username"), "postmark-token");
+    await user.type(screen.getByLabelText("SMTP password / server token"), "server-token");
+    await user.click(screen.getByRole("button", { name: "Save connection" }));
+
+    expect(
+      await screen.findByText("A connection with this name already exists"),
+    ).toBeInTheDocument();
+  });
 });

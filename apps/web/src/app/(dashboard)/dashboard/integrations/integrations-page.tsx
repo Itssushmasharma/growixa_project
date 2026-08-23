@@ -27,6 +27,7 @@ const MANAGE_PERMISSION = "integrations.manage";
 type CategoryFilter = "All Transports" | "Email Transports" | "SMS Gateways" | "Webhooks";
 
 interface ConnectionFormState {
+  name: string;
   smtp_host: string;
   smtp_port: string;
   smtp_username: string;
@@ -35,6 +36,7 @@ interface ConnectionFormState {
 
 function emptyConnectionForm(definition: ProviderDefinition): ConnectionFormState {
   return {
+    name: definition.displayName,
     smtp_host: definition.defaultHost,
     smtp_port: definition.defaultPort,
     smtp_username: "",
@@ -43,6 +45,7 @@ function emptyConnectionForm(definition: ProviderDefinition): ConnectionFormStat
 }
 
 const BLANK_CONNECTION_FORM: ConnectionFormState = {
+  name: "",
   smtp_host: "",
   smtp_port: "587",
   smtp_username: "",
@@ -248,9 +251,15 @@ export function IntegrationsPage() {
     setConnectionSaving(true);
 
     try {
+      const payloadName =
+        connectionForm.name.trim() ||
+        (connectionFormFor === "POSTMARK"
+          ? "Postmark"
+          : connectionForm.smtp_host || "Primary SMTP");
       const created = await apiFetch<EmailProviderConnection>("/integrations/email-provider", {
         method: "POST",
         body: JSON.stringify({
+          name: payloadName,
           provider: connectionFormFor,
           smtp_host: connectionForm.smtp_host,
           smtp_port: Number(connectionForm.smtp_port),
@@ -268,8 +277,11 @@ export function IntegrationsPage() {
       }
       setConnectionFormFor(null);
       showToast("success", "Provider connection saved.");
-    } catch {
-      showToast("error", "Could not save the provider connection. Please try again.");
+    } catch (error) {
+      showToast(
+        "error",
+        apiErrorDetail(error, "Could not save the provider connection. Please try again."),
+      );
     } finally {
       setConnectionSaving(false);
     }
@@ -817,6 +829,21 @@ export function IntegrationsPage() {
                       deleted.
                     </p>
                   )}
+                  <div className={styles.field}>
+                    <label className={styles.label} htmlFor={`connection-name-${definition.key}`}>
+                      Connection name
+                    </label>
+                    <input
+                      id={`connection-name-${definition.key}`}
+                      className={styles.input}
+                      required
+                      placeholder="e.g. Postmark Production, Primary SMTP"
+                      value={connectionForm.name}
+                      onChange={(event) =>
+                        setConnectionForm({ ...connectionForm, name: event.target.value })
+                      }
+                    />
+                  </div>
                   <div className={styles.field}>
                     <label className={styles.label} htmlFor={`smtp-host-${definition.key}`}>
                       SMTP host
