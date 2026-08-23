@@ -14,13 +14,21 @@ from growixa_worker.models import (
     Campaign,
     CampaignRecipient,
     CampaignVersion,
+    CompanyProfile,
     ConsentRecord,
+    ContactCustomField,
+    ContactFieldValue,
     DeliveryAttempt,
     EmailProviderConnection,
     MessageDelivery,
     SenderIdentity,
     SuppressionEntry,
     UsageRecord,
+)
+from growixa_worker.personalization import (
+    PersonalizationError,
+    render_personalization,
+    validate_template_tokens,
 )
 from growixa_worker.recipients import resolve_recipients
 
@@ -123,6 +131,45 @@ async def handle_send_campaign(session: AsyncSession, payload: dict[str, Any]) -
         await session.commit()
         return
 
+    # Load account data for personalization
+    company_profile = (
+        await session.execute(
+            select(CompanyProfile).where(CompanyProfile.account_id == campaign.account_id).limit(1)
+        )
+    ).scalar_one_or_none()
+    account_data = {
+        "company_name": company_profile.name if company_profile else "",
+        "website_url": company_profile.website
+        if (company_profile and company_profile.website)
+        else "",
+        "sender_name": identity.from_name or "",
+    }
+
+    # Load allowed custom fields for personalization
+    custom_fields_res = await session.execute(
+        select(ContactCustomField).where(
+            ContactCustomField.account_id == campaign.account_id,
+            ContactCustomField.is_personalization_usable.is_(True),
+        )
+    )
+    usable_custom_fields = custom_fields_res.scalars().all()
+    allowed_custom_keys = {cf.key for cf in usable_custom_fields}
+    field_id_to_key = {cf.id: cf.key for cf in usable_custom_fields}
+
+    # Validate template tokens before snapshotting or sending
+    try:
+        validate_template_tokens(campaign.subject, allowed_custom_field_keys=allowed_custom_keys)
+        validate_template_tokens(campaign.body_html, allowed_custom_field_keys=allowed_custom_keys)
+        if campaign.body_text:
+            validate_template_tokens(
+                campaign.body_text, allowed_custom_field_keys=allowed_custom_keys
+            )
+    except PersonalizationError as exc:
+        logger.error("send_campaign: campaign %s template validation failed: %s", campaign_id, exc)
+        campaign.status = "FAILED"
+        await session.commit()
+        return
+
     contacts = await resolve_recipients(session, campaign)
 
     recipients: list[CampaignRecipient] = []
@@ -151,6 +198,28 @@ async def handle_send_campaign(session: AsyncSession, payload: dict[str, Any]) -
             recipient_count=len(recipients),
         )
     )
+
+    # Load custom field values for contacts
+    contact_map = {c.id: c for c in contacts}
+    contact_ids = list(contact_map.keys())
+    field_values_map: dict[uuid.UUID, dict[str, str]] = {cid: {} for cid in contact_ids}
+    if contact_ids and field_id_to_key:
+        values_res = await session.execute(
+            select(
+                ContactFieldValue.contact_id,
+                ContactFieldValue.field_id,
+                ContactFieldValue.value,
+            ).where(
+                ContactFieldValue.account_id == campaign.account_id,
+                ContactFieldValue.contact_id.in_(contact_ids),
+                ContactFieldValue.field_id.in_(list(field_id_to_key.keys())),
+            )
+        )
+        for cid, fid, val in values_res.all():
+            if val is not None:
+                k = field_id_to_key.get(fid)
+                if k:
+                    field_values_map[cid][k] = val
 
     smtp_password = decrypt_secret(connection.smtp_password_encrypted)
     sent_count = 0
@@ -199,8 +268,63 @@ async def handle_send_campaign(session: AsyncSession, payload: dict[str, Any]) -
             )
             continue
 
+        # Resolve personalization per recipient
+        target_contact = contact_map.get(recipient.contact_id)
+        c_custom = field_values_map.get(recipient.contact_id, {})
+        recipient_data = {
+            "first_name": target_contact.first_name if target_contact else None,
+            "last_name": target_contact.last_name if target_contact else None,
+            "email": recipient.email,
+            "phone": target_contact.phone if target_contact else None,
+            **c_custom,
+        }
+
+        try:
+            personalized_subject = render_personalization(
+                campaign.subject,
+                recipient_data=recipient_data,
+                account_data=account_data,
+                allowed_custom_field_keys=allowed_custom_keys,
+                is_html=False,
+                recipient_identifier=recipient.email,
+            )
+            personalized_html = render_personalization(
+                campaign.body_html,
+                recipient_data=recipient_data,
+                account_data=account_data,
+                allowed_custom_field_keys=allowed_custom_keys,
+                is_html=True,
+                recipient_identifier=recipient.email,
+            )
+            personalized_text = (
+                render_personalization(
+                    campaign.body_text,
+                    recipient_data=recipient_data,
+                    account_data=account_data,
+                    allowed_custom_field_keys=allowed_custom_keys,
+                    is_html=False,
+                    recipient_identifier=recipient.email,
+                )
+                if campaign.body_text
+                else None
+            )
+        except PersonalizationError as exc:
+            delivery.status = "FAILED"
+            recipient.status = "FAILED"
+            session.add(
+                DeliveryAttempt(
+                    account_id=campaign.account_id,
+                    message_delivery_id=delivery.id,
+                    attempt_number=1,
+                    status="FAILED",
+                    error_message=f"Personalization error: {exc}",
+                )
+            )
+            logger.warning("send_campaign: personalization for %s failed: %s", recipient.email, exc)
+            continue
+
         body_html, body_text = _with_unsubscribe_footer(
-            campaign.body_html, campaign.body_text, recipient.id
+            personalized_html, personalized_text, recipient.id
         )
         try:
             await send_email(
@@ -211,7 +335,7 @@ async def handle_send_campaign(session: AsyncSession, payload: dict[str, Any]) -
                 from_email=identity.from_email,
                 from_name=identity.from_name,
                 to_email=recipient.email,
-                subject=campaign.subject,
+                subject=personalized_subject,
                 body_html=body_html,
                 body_text=body_text,
                 extra_headers=_unsubscribe_headers(recipient.id),

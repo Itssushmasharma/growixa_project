@@ -7,7 +7,7 @@ This document maintains a real-time record of all parallel Git worktrees, active
 ## 🟢 Active Worktrees & Preview Servers
 
 | Worktree Path | Branch Name | Feature / Task | Preview URL | Status | Created |
-|---|---|---|---|---|---|
+| `.worktrees/grx-personalization-renderer` | `feature/BACKEND/GRX-CONTENT-001` | `GRX-CONTENT-001` — Dynamic Personalization Renderer (DEC-GRX-036) | N/A (Backend) | IN_PROGRESS | 2026-08-23 |
 | `.worktrees/grx-auth-split-screen-redesign` | `feature/FRONTEND/GRX-AUTH-SPLIT-SCREEN-REDESIGN` | `GRX-AUTH-007` — Unified Split-Screen Auth Redesign (Login & Register) | `http://localhost:3000` | IN_PROGRESS | 2026-08-23 |
 
 ---

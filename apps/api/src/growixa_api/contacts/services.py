@@ -393,13 +393,24 @@ async def list_custom_fields(
 
 
 async def create_custom_field(
-    session: AsyncSession, *, account_id: uuid.UUID, key: str, label: str, field_type: str
+    session: AsyncSession,
+    *,
+    account_id: uuid.UUID,
+    key: str,
+    label: str,
+    field_type: str,
+    is_personalization_usable: bool = True,
 ) -> ContactCustomField:
     existing = await get_custom_field_by_key(session, account_id, key)
     if existing is not None:
         raise DuplicateFieldKeyError
     field = await create_custom_field_row(
-        session, account_id=account_id, key=key, label=label, field_type=field_type
+        session,
+        account_id=account_id,
+        key=key,
+        label=label,
+        field_type=field_type,
+        is_personalization_usable=is_personalization_usable,
     )
     await session.commit()
     return field

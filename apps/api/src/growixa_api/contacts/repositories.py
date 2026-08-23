@@ -250,9 +250,21 @@ async def list_custom_fields(
 
 
 async def create_custom_field(
-    session: AsyncSession, *, account_id: uuid.UUID, key: str, label: str, field_type: str
+    session: AsyncSession,
+    *,
+    account_id: uuid.UUID,
+    key: str,
+    label: str,
+    field_type: str,
+    is_personalization_usable: bool = True,
 ) -> ContactCustomField:
-    field = ContactCustomField(account_id=account_id, key=key, label=label, field_type=field_type)
+    field = ContactCustomField(
+        account_id=account_id,
+        key=key,
+        label=label,
+        field_type=field_type,
+        is_personalization_usable=is_personalization_usable,
+    )
     session.add(field)
     await session.flush()
     return field

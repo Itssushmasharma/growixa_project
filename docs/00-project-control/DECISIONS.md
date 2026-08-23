@@ -1777,7 +1777,7 @@ add a name, add a guardrail, expose it in the UI.
 
 ## DEC-GRX-036: Personalization tokens — one channel-agnostic renderer, two token scopes, no template engine
 
-- Status: **PROPOSED** — requires the product owner's confirmation.
+- Status: **APPROVED** — confirmed by product owner (2026-08-23).
 - Date: 2026-08-17
 - Context: `MVP_SCOPE.md` §C promises "personalization variables". The template editor
   advertises an "Insert Personalization Token" control offering `{{first_name}}`,
