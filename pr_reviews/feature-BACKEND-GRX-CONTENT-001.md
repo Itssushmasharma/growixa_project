@@ -69,3 +69,56 @@ Implements the **Dynamic Email Personalization Engine & Merge Tags** (`DEC-GRX-0
 
 ### Security & Secrets Gate
 - Diff scanned with zero detected secrets, live tokens, or credentials.
+
+---
+
+## 4. Independent Review
+
+- **Reviewer**: Google Antigravity (independent review session)
+- **Reviewed Code Commit**: `d987545`
+- **Date**: 2026-08-24
+- **Risk**: **HIGH** — touching bulk email worker dispatch pipeline, dynamic rendering, and contact data schema.
+
+### Independent Verification & Checklist
+
+1. **Account Isolation (Strict Pass)**:
+   - Worker queries `CompanyProfile`, `ContactCustomField`, and `ContactFieldValue` strictly scoped by `account_id == campaign.account_id`.
+   - API test-send queries custom fields and profile strictly with `account_id=campaign.account_id`.
+   - Multi-tenant boundary is preserved with no cross-account data leakage.
+
+2. **Security & SSTI Prevention (Strict Pass - DEC-GRX-036)**:
+   - Rejected arbitrary template engines (Jinja2/Mako).
+   - Regex token parser `TOKEN_PATTERN` restricts grammar to `[a-zA-Z0-9_]+` and bounded default filter `{{ token | default:"val" }}`.
+   - Strict deny-list for sensitive internal fields (`id`, `account_id`, `created_by_user_id`, `status`, `deleted_at`, `created_at`, `updated_at`, `source`) raises `UnknownTokenError`.
+   - Automatic HTML escaping `html.escape(..., quote=True)` is enforced for all recipient and custom field values when `is_html=True`.
+
+3. **Schema & Migration Reversibility (Strict Pass)**:
+   - Alembic migration `f2a3b4c5d6e7_contact_custom_fields_personalization.py` adds `is_personalization_usable` with `server_default=sa.text("true")`.
+   - Reversible downgrade drops the column cleanly.
+   - Both API and Worker SQLAlchemy models properly declare `is_personalization_usable: Mapped[bool]`.
+
+4. **Zero Secrets or Credentials**:
+   - Zero hardcoded credentials or API keys in code or tests.
+
+5. **Test Execution & Quality (Strict Pass)**:
+   - `pytest` on worker: 35 passed, 80% coverage.
+   - `pytest` on API: 116 tests in affected domains passed.
+   - `ruff check`, `ruff format --check`, and `mypy` passed with zero errors across API and worker.
+
+---
+
+## 5. Review Decision
+
+**APPROVED**
+
+The implementation is robust, adheres strictly to `DEC-GRX-036`, prevents template injection and XSS, and safely resolves personalization across test and bulk send paths.
+
+## 6. Reviewed Code Commit
+
+`d987545`
+
+## 7. Human Approval
+
+**Not Required** — Internal backend and worker engine; no customer-facing copy changes or new permission codes.
+
+Status: `APPROVED`
