@@ -95,6 +95,7 @@ export function CampaignFormPage({ mode, campaignId }: CampaignFormPageProps) {
   const [sendMode, setSendMode] = useState<SendMode>("now");
   const [scheduledAt, setScheduledAt] = useState("");
   const [scheduling, setScheduling] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -289,6 +290,31 @@ export function CampaignFormPage({ mode, campaignId }: CampaignFormPageProps) {
       showToast("error", parseApiErrorDetail(error, "Could not schedule that campaign."));
     } finally {
       setScheduling(false);
+    }
+  }
+
+  async function handleCancelCampaign() {
+    if (!campaign) return;
+    const isSending = campaign.status === "SENDING" || campaign.status === "DISPATCHING";
+    const confirmMsg = isSending
+      ? `Emergency Stop "${campaign.name}"? Dispatch will immediately halt for all remaining unsent recipients.`
+      : `Cancel scheduled campaign "${campaign.name}"?`;
+    if (!window.confirm(confirmMsg)) return;
+
+    setCancelling(true);
+    try {
+      const updated = await apiFetch<Campaign>(`/campaigns/${campaign.id}/cancel`, {
+        method: "POST",
+      });
+      setCampaign(updated);
+      showToast(
+        "success",
+        isSending ? "Campaign send halted (Emergency Stop)." : "Campaign cancelled successfully.",
+      );
+    } catch (error) {
+      showToast("error", parseApiErrorDetail(error, "Could not cancel campaign."));
+    } finally {
+      setCancelling(false);
     }
   }
 
@@ -768,6 +794,38 @@ export function CampaignFormPage({ mode, campaignId }: CampaignFormPageProps) {
               )}
             </div>
           )}
+
+          {mode === "edit" &&
+            campaign &&
+            canManage &&
+            (campaign.status === "SCHEDULED" ||
+              campaign.status === "DISPATCHING" ||
+              campaign.status === "SENDING") && (
+              <div className={styles.emergencyStopCard}>
+                <h3 className={styles.previewHeading}>
+                  {campaign.status === "SCHEDULED"
+                    ? "Cancel Scheduled Campaign"
+                    : "Emergency Stop / Halt Send"}
+                </h3>
+                <p className={styles.hint}>
+                  {campaign.status === "SCHEDULED"
+                    ? `Scheduled for ${new Date(campaign.scheduled_at ?? "").toLocaleString()}. You can cancel before it dispatches.`
+                    : "This campaign is actively dispatching. Stopping will immediately halt send for all remaining unsent recipients."}
+                </p>
+                <button
+                  type="button"
+                  className={styles.emergencyStopButton}
+                  disabled={cancelling}
+                  onClick={handleCancelCampaign}
+                >
+                  {cancelling
+                    ? "Stopping…"
+                    : campaign.status === "SCHEDULED"
+                      ? "Cancel campaign"
+                      : "⏹️ Emergency Stop (Halt Send)"}
+                </button>
+              </div>
+            )}
         </div>
       </div>
     </div>

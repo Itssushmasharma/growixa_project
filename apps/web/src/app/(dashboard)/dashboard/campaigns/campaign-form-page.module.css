@@ -330,3 +330,33 @@
   margin-bottom: 12px;
   line-height: 1.5;
 }
+
+.emergencyStopCard {
+  margin-top: 16px;
+  padding: 18px 20px;
+  border-radius: 14px;
+  border: 1px solid rgba(225, 29, 72, 0.22);
+  background: #fff1f2;
+}
+
+.emergencyStopButton {
+  margin-top: 10px;
+  padding: 9px 16px;
+  border: none;
+  border-radius: var(--pill-radius);
+  background: #e11d48;
+  color: #fff;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.emergencyStopButton:hover:not(:disabled) {
+  background: #be123c;
+}
+
+.emergencyStopButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

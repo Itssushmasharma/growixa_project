@@ -154,7 +154,21 @@ async def handle_send_campaign(session: AsyncSession, payload: dict[str, Any]) -
 
     smtp_password = decrypt_secret(connection.smtp_password_encrypted)
     sent_count = 0
+    cancelled_mid_flight = False
     for recipient in recipients:
+        # Check if campaign was cancelled mid-flight (Emergency Stop)
+        check_status = await session.scalar(
+            select(Campaign.status).where(Campaign.id == campaign.id)
+        )
+        if check_status == "CANCELLED":
+            logger.info(
+                "send_campaign: campaign %s cancelled mid-flight (emergency stop) after %s sent",
+                campaign_id,
+                sent_count,
+            )
+            cancelled_mid_flight = True
+            break
+
         if recipient.status == "SUPPRESSED":
             continue
 
@@ -221,8 +235,13 @@ async def handle_send_campaign(session: AsyncSession, payload: dict[str, Any]) -
             recipient.status = "SENT"
             sent_count += 1
 
-    campaign.status = "SENT"
-    campaign.sent_at = datetime.now(UTC)
+    if cancelled_mid_flight:
+        campaign.status = "CANCELLED"
+        if not campaign.cancelled_at:
+            campaign.cancelled_at = datetime.now(UTC)
+    else:
+        campaign.status = "SENT"
+        campaign.sent_at = datetime.now(UTC)
 
     session.add(
         UsageRecord(
@@ -236,8 +255,9 @@ async def handle_send_campaign(session: AsyncSession, payload: dict[str, Any]) -
 
     await session.commit()
     logger.info(
-        "send_campaign: campaign %s sent to %s/%s recipients",
+        "send_campaign: campaign %s finished (%s) with %s/%s sent",
         campaign_id,
+        campaign.status,
         sent_count,
         len(recipients),
     )

@@ -52,7 +52,9 @@ def _encrypt(plaintext: str) -> str:
 @pytest.fixture
 async def session() -> AsyncGenerator[AsyncSession, None]:
     async with get_session_factory()() as session:
+        await _cleanup(session)
         yield session
+        await _cleanup(session)
 
 
 async def _create_sender_identity(session: AsyncSession) -> uuid.UUID:
@@ -579,5 +581,68 @@ async def test_soft_deleted_contacts_are_excluded_from_send(
         await handle_send_campaign(session, {"campaign_id": campaign_id})
 
         assert sent_to == ["live@example.com"]
+    finally:
+        await _cleanup(session)
+
+
+@pytest.mark.integration
+async def test_in_flight_emergency_cancellation_halts_worker_and_cancels_remaining_recipients(
+    session: AsyncSession, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    sent_to: list[str] = []
+
+    async def _fake_send_email_and_cancel_after_first(**kwargs: object) -> None:
+        sent_to.append(str(kwargs["to_email"]))
+        # Simulate user hitting Emergency Stop on the web UI after first recipient is sent
+        campaign_db = await session.get(Campaign, campaign_id)
+        if campaign_db:
+            campaign_db.status = "CANCELLED"
+            campaign_db.cancelled_at = datetime.now(UTC)
+
+    monkeypatch.setattr(send_campaign_module, "send_email", _fake_send_email_and_cancel_after_first)
+
+    try:
+        sender_identity_id = await _create_sender_identity(session)
+        await _create_contact(session, "recipient1@example.com")
+        await _create_contact(session, "recipient2@example.com")
+        await _create_contact(session, "recipient3@example.com")
+        campaign_id = await _create_campaign(
+            session, sender_identity_id, recipient_type="ALL_CONTACTS"
+        )
+
+        await handle_send_campaign(session, {"campaign_id": campaign_id})
+
+        # Only recipient1 was sent before the emergency stop triggered
+        assert sent_to == ["recipient1@example.com"]
+
+        # Verify campaign status is CANCELLED
+        camp_result = await session.execute(select(Campaign).where(Campaign.id == campaign_id))
+        campaign_final = camp_result.scalar_one()
+        assert campaign_final.status == "CANCELLED"
+        assert campaign_final.cancelled_at is not None
+
+        # Verify recipient 1 is SENT and remaining recipients 2 & 3 are CANCELLED
+        recipients_result = await session.execute(
+            select(CampaignRecipient)
+            .where(CampaignRecipient.campaign_id == campaign_id)
+            .order_by(CampaignRecipient.email)
+        )
+        statuses = {r.email: r.status for r in recipients_result.scalars().all()}
+        assert statuses == {
+            "recipient1@example.com": "SENT",
+            "recipient2@example.com": "PENDING",
+            "recipient3@example.com": "PENDING",
+        }
+
+        # Verify usage record only billed 1 email
+        usage_result = await session.execute(
+            select(UsageRecord).where(
+                UsageRecord.account_id == _ACCOUNT_ID,
+                UsageRecord.operation_type == "email.sent",
+            )
+        )
+        usage_records = usage_result.scalars().all()
+        assert len(usage_records) == 1
+        assert float(usage_records[0].quantity) == 1.0
     finally:
         await _cleanup(session)

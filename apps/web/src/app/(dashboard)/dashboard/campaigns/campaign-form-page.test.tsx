@@ -544,4 +544,62 @@ describe("CampaignFormPage", () => {
     );
     await waitFor(() => expect(mockPush).toHaveBeenCalledWith("/dashboard/campaigns"));
   });
+
+  it("renders Emergency Stop button for SENDING campaigns and halts dispatch when clicked", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+
+    const SENDING_CAMPAIGN: Campaign = {
+      ...DRAFT_CAMPAIGN,
+      status: "SENDING",
+    };
+    const CANCELLED_CAMPAIGN: Campaign = {
+      ...SENDING_CAMPAIGN,
+      status: "CANCELLED",
+      cancelled_at: "2026-08-23T10:00:00Z",
+    };
+
+    mockedApiFetch.mockImplementation((path: string, init?: RequestInit) => {
+      if (path === "/auth/me")
+        return Promise.resolve(
+          meWithPermissions(["campaigns.view", "campaigns.manage", "campaigns.send"]),
+        );
+      if (path === "/integrations/sender-identities") return Promise.resolve([IDENTITY]);
+      if (path === "/contacts/lists") return Promise.resolve([LIST]);
+      if (path === "/contacts/segments") return Promise.resolve([SEGMENT]);
+      if (path === "/templates") return Promise.resolve([TEMPLATE]);
+      if (path === "/campaigns/campaign-1" && !init) return Promise.resolve(SENDING_CAMPAIGN);
+      if (path === "/campaigns/campaign-1/report")
+        return Promise.resolve({
+          campaign_id: "campaign-1",
+          total_recipients: 10,
+          sent: 2,
+          delivered: 2,
+          opened: 0,
+          clicked: 0,
+          bounced: 0,
+          complained: 0,
+          unsubscribed: 0,
+        });
+      if (path === "/campaigns/campaign-1/cancel" && init?.method === "POST")
+        return Promise.resolve(CANCELLED_CAMPAIGN);
+      throw new Error(`unexpected call: ${path}`);
+    });
+
+    renderFormPage({ mode: "edit", campaignId: "campaign-1" });
+    await screen.findByText("Emergency Stop / Halt Send");
+
+    const stopButton = screen.getByRole("button", { name: "⏹️ Emergency Stop (Halt Send)" });
+    expect(stopButton).toBeInTheDocument();
+
+    await user.click(stopButton);
+
+    expect(mockedApiFetch).toHaveBeenCalledWith(
+      "/campaigns/campaign-1/cancel",
+      expect.objectContaining({ method: "POST" }),
+    );
+    await waitFor(() =>
+      expect(screen.getByText("Campaign send halted (Emergency Stop).")).toBeInTheDocument(),
+    );
+  });
 });

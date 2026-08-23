@@ -209,16 +209,16 @@ async def schedule_campaign(
 async def cancel_campaign(
     session: AsyncSession, account_id: uuid.UUID, campaign_id: uuid.UUID
 ) -> Campaign:
-    """Cancel a DRAFT or SCHEDULED campaign before it is dispatched.
+    """Cancel a campaign before or during dispatch (Emergency Stop).
 
-    Campaigns that are already DISPATCHING, SENDING, SENT, or FAILED cannot be
-    cancelled (they are either mid-flight or complete) — raises
+    Campaigns in DRAFT, SCHEDULED, DISPATCHING, or SENDING may be cancelled.
+    Campaigns that are already SENT or FAILED cannot be cancelled — raises
     ``CampaignNotCancellableError``.
     """
     campaign = await get_campaign(session, account_id, campaign_id)
     if campaign is None:
         raise CampaignNotFoundError
-    if campaign.status not in {"DRAFT", "SCHEDULED"}:
+    if campaign.status not in {"DRAFT", "SCHEDULED", "DISPATCHING", "SENDING"}:
         raise CampaignNotCancellableError(
             f"Campaign is in status '{campaign.status}' and cannot be cancelled"
         )

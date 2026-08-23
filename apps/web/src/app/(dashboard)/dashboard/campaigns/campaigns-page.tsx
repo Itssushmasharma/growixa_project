@@ -319,7 +319,8 @@ export function CampaignsPage() {
                     canManage &&
                     (campaign.status === "DRAFT" ||
                       campaign.status === "SCHEDULED" ||
-                      campaign.status === "DISPATCHING");
+                      campaign.status === "DISPATCHING" ||
+                      campaign.status === "SENDING");
 
                   return (
                     <tr key={campaign.id}>
