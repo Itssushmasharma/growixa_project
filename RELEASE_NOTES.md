@@ -2,10 +2,12 @@
 
 ---
 
-## 🚀 [v0.5.1-rc1] (Upcoming Release) — 2026-08-24
+## 🟢 [v0.5.1] — 2026-08-24
 
-> **Platform Status**: 🟡 Staging / Preview
-> **Target Production URL**: [https://growixa.iitdeveloper.com](https://growixa.iitdeveloper.com)
+> **Release Tag**: `v0.5.1`
+> **Release Date**: August 24, 2026
+> **Platform Status**: 🟢 Promoted to Production
+> **Production URL**: [https://growixa.iitdeveloper.com](https://growixa.iitdeveloper.com)
 > **UAT Staging URL**: [https://uat.growixa.iitdeveloper.com](https://uat.growixa.iitdeveloper.com)
 
 ### 🚀 Added & Enhanced
