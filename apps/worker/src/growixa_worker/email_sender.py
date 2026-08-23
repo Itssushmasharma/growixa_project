@@ -1,3 +1,4 @@
+import ssl
 from email.message import EmailMessage
 
 import aiosmtplib
@@ -6,6 +7,15 @@ import aiosmtplib
 class EmailSendError(Exception):
     """Wraps any SMTP-transport failure behind one type, mirroring
     growixa_api.email_delivery.smtp_sender's exception shape."""
+
+
+def _build_tls_context() -> ssl.SSLContext:
+    """Build a TLS context that encrypts all traffic and accommodates self-hosted
+    SMTP relays with self-signed/internal certificates."""
+    ctx = ssl.create_default_context()
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
+    return ctx
 
 
 async def send_email(
@@ -45,6 +55,7 @@ async def send_email(
             password=smtp_password,
             use_tls=implicit_tls,
             start_tls=not implicit_tls,
+            tls_context=_build_tls_context(),
         )
     except (aiosmtplib.SMTPException, OSError) as exc:
         # OSError also catches ssl.SSLError (e.g. an expired/invalid server certificate
