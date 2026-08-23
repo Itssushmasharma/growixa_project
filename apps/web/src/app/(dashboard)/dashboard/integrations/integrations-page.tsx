@@ -1086,26 +1086,29 @@ export function IntegrationsPage() {
                         <div className={styles.identityEmail}>{identity.from_email}</div>
                       </div>
                       <div className={styles.identityActions}>
-                        <span
-                          className={`${styles.statusBadge} ${statusBadgeClass(identity.verification_status)}`}
-                        >
-                          {identity.verification_status}
-                        </span>
-                        <select
-                          className={styles.select}
-                          value={identity.verification_status}
-                          disabled={pendingIdentityId === identity.id}
-                          onChange={(event) =>
-                            handleVerificationChange(
-                              identity.id,
-                              event.target.value as VerificationStatus,
-                            )
-                          }
-                        >
-                          <option value="PENDING">PENDING</option>
-                          <option value="VERIFIED">VERIFIED</option>
-                          <option value="FAILED">FAILED</option>
-                        </select>
+                        {canManage ? (
+                          <select
+                            className={styles.identitySelect}
+                            value={identity.verification_status}
+                            disabled={pendingIdentityId === identity.id}
+                            onChange={(event) =>
+                              handleVerificationChange(
+                                identity.id,
+                                event.target.value as VerificationStatus,
+                              )
+                            }
+                          >
+                            <option value="PENDING">PENDING</option>
+                            <option value="VERIFIED">VERIFIED</option>
+                            <option value="FAILED">FAILED</option>
+                          </select>
+                        ) : (
+                          <span
+                            className={`${styles.statusBadge} ${statusBadgeClass(identity.verification_status)}`}
+                          >
+                            {identity.verification_status}
+                          </span>
+                        )}
                         {canManage && (
                           <button
                             type="button"
