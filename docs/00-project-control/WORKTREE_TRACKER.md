@@ -16,6 +16,7 @@ This document maintains a real-time record of all parallel Git worktrees, active
 
 | Worktree Directory | Branch | Feature Delivered | Merged Commit | Merged Date |
 |---|---|---|---|---|
+| `.worktrees/grx-template-token-validation` | `feature/BACKEND/GRX-CONTENT-002` | `GRX-CONTENT-002` — Upfront Personalization Token Validation & `{{unsubscribe_url}}` First-Class Support | `930f7b3` | 2026-08-24 |
 | `.worktrees/grx-personalization-renderer` | `feature/BACKEND/GRX-CONTENT-001` | `GRX-CONTENT-001` — Dynamic Email Personalization Engine & Merge Tags (DEC-GRX-036) | (pending merge) | 2026-08-24 |
 | `.worktrees/grx-postal-webhook-analytics` | `feature/BACKEND/GRX-POSTAL-WEBHOOK-ANALYTICS` | `GRX-EMAIL-012` — Postal Webhook Receiver & Live Delivery Analytics | `aaf51b3` | 2026-08-23 |
 | `.worktrees/grx-auth-split-screen-redesign` | `feature/FRONTEND/GRX-AUTH-SPLIT-SCREEN-REDESIGN` | `GRX-AUTH-007` — Unified Split-Screen Auth Redesign (Login & Register) | `02bf444` | 2026-08-23 |
