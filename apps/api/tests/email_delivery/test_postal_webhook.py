@@ -311,3 +311,54 @@ async def test_postal_webhook_message_bounced(account_factory: Any, user_factory
             assert suppression.reason == "BOUNCED"
     finally:
         await _cleanup_test_data(account_id)
+
+
+@pytest.mark.asyncio
+async def test_postal_webhook_message_clicked_resolves_via_tag_and_to_email(
+    account_factory: Any, user_factory: Any
+) -> None:
+    account_id = await account_factory()
+    user_id = await user_factory(account_id=account_id)
+    data = await _create_test_delivery(account_id, user_id)
+
+    try:
+        # Postal webhook payload for MessageLinkClicked where headers are omitted
+        # but tag (campaign_id) + to (recipient email) are present
+        payload: dict[str, Any] = {
+            "event": "MessageLinkClicked",
+            "timestamp": 1787516593.813,
+            "payload": {
+                "message": {
+                    "id": 19,
+                    "token": "e3zmZanT1agwKyPg",
+                    "to": "lead@example.com",
+                    "from": "info@iitdeveloper.com",
+                    "tag": str(data["campaign_id"]),
+                },
+                "url": "https://iitdeveloper.com/contact",
+                "token": "bkkU4XkhPNYwEG50",
+            },
+        }
+
+        app = create_app()
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            resp = await client.post("/webhooks/postal", json=payload)
+            assert resp.status_code == 200
+
+        async with async_session_factory() as session:
+            events = (
+                (
+                    await session.execute(
+                        select(EmailEvent).where(
+                            EmailEvent.message_delivery_id == data["delivery_id"]
+                        )
+                    )
+                )
+                .scalars()
+                .all()
+            )
+            assert len(events) == 1
+            assert events[0].event_type == "CLICKED"
+    finally:
+        await _cleanup_test_data(account_id)

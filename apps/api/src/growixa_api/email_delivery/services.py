@@ -3,10 +3,11 @@ import secrets
 import uuid
 from datetime import UTC, datetime
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from growixa_api.auth.encryption import decrypt_secret
-from growixa_api.campaigns.models import Campaign
+from growixa_api.campaigns.models import Campaign, CampaignRecipient
 from growixa_api.campaigns.repositories import get_campaign
 from growixa_api.company.repositories import get_company_profile
 from growixa_api.config import get_settings
@@ -44,6 +45,7 @@ _POSTAL_EVENT_TYPE_MAP = {
     "MessageLoaded": "OPENED",
     "MessageOpened": "OPENED",
     "MessageClicked": "CLICKED",
+    "MessageLinkClicked": "CLICKED",
     "MessageBounced": "BOUNCED",
     "MessageFailed": "BOUNCED",
     "MessageHeld": "BOUNCED",
@@ -388,6 +390,23 @@ async def process_postal_webhook(session: AsyncSession, payload: PostalWebhookPa
             )
             if delivery is not None:
                 break
+
+    # Fallback to Postal tag (campaign_id) + recipient email (to)
+    if delivery is None and msg.tag and msg.to:
+        with contextlib.suppress(ValueError, TypeError):
+            campaign_id = uuid.UUID(str(msg.tag))
+            recip_stmt = (
+                select(CampaignRecipient)
+                .where(
+                    CampaignRecipient.campaign_id == campaign_id,
+                    CampaignRecipient.email == str(msg.to).strip().lower(),
+                )
+                .limit(1)
+            )
+            recip_res = await session.execute(recip_stmt)
+            recip = recip_res.scalar_one_or_none()
+            if recip is not None:
+                delivery = await get_message_delivery_by_recipient_id(session, recip.id)
 
     if delivery is None:
         return
