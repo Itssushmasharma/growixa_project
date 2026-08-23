@@ -20,6 +20,7 @@ from sqlalchemy import delete
 
 from growixa_api.app import create_app
 from growixa_api.auth.encryption import decrypt_secret
+from growixa_api.campaigns.models import Campaign
 from growixa_api.config import get_settings
 from growixa_api.db import async_session_factory
 from growixa_api.integrations.models import EmailProviderConnection, SenderIdentity
@@ -54,6 +55,9 @@ async def _cleanup(created_by_user_id: uuid.UUID) -> None:
     individual tests vary smtp_username per call (e.g. a "second-token" override) — an
     actor-scoped delete catches every row a test created regardless of payload shape."""
     async with async_session_factory() as session:
+        await session.execute(
+            delete(Campaign).where(Campaign.created_by_user_id == created_by_user_id)
+        )
         await session.execute(
             delete(SenderIdentity).where(SenderIdentity.created_by_user_id == created_by_user_id)
         )
@@ -505,3 +509,101 @@ async def test_account_isolation_on_email_providers(
     finally:
         await _cleanup(super_admin_a)
         await _cleanup(super_admin_b)
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_delete_sender_identity_lifecycle(
+    user_factory: Callable[..., Awaitable[uuid.UUID]],
+) -> None:
+    """Proves an unreferenced sender identity can be cleanly deleted and audit-logged."""
+    super_admin_id = await user_factory(full_name="Super Admin", role_name="Super Admin")
+    try:
+        cookies = _access_token_cookie(super_admin_id)
+        transport = ASGITransport(app=create_app())
+
+        async with AsyncClient(
+            transport=transport, base_url="http://test", cookies=cookies
+        ) as client:
+            conn_resp = await client.post(
+                "/integrations/email-provider",
+                json={**CUSTOM_SMTP_PAYLOAD, "name": "Deletion Test Relay"},
+            )
+            assert conn_resp.status_code == 201
+            conn_id = conn_resp.json()["id"]
+
+            id_resp = await client.post(
+                "/integrations/sender-identities",
+                json={
+                    "email_provider_connection_id": conn_id,
+                    "from_email": "temp-sender@growixa.local",
+                    "from_name": "Temp Sender",
+                },
+            )
+            assert id_resp.status_code == 201
+            identity_id = id_resp.json()["id"]
+
+            # Delete the sender identity
+            del_resp = await client.delete(f"/integrations/sender-identities/{identity_id}")
+            assert del_resp.status_code == 204
+
+            # Verify it no longer appears in the list
+            list_resp = await client.get("/integrations/sender-identities")
+            assert not any(i["id"] == identity_id for i in list_resp.json())
+
+            # Deleting again returns 404
+            del2_resp = await client.delete(f"/integrations/sender-identities/{identity_id}")
+            assert del2_resp.status_code == 404
+    finally:
+        await _cleanup(super_admin_id)
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_delete_sender_identity_in_use_by_campaign_blocked(
+    user_factory: Callable[..., Awaitable[uuid.UUID]],
+) -> None:
+    """Guarded deletion: Proves sender identity referenced by a campaign returns 409 Conflict."""
+    super_admin_id = await user_factory(full_name="Super Admin", role_name="Super Admin")
+    try:
+        cookies = _access_token_cookie(super_admin_id)
+        transport = ASGITransport(app=create_app())
+
+        async with AsyncClient(
+            transport=transport, base_url="http://test", cookies=cookies
+        ) as client:
+            conn_resp = await client.post(
+                "/integrations/email-provider",
+                json={**CUSTOM_SMTP_PAYLOAD, "name": "Campaign Guard Relay"},
+            )
+            conn_id = conn_resp.json()["id"]
+
+            id_resp = await client.post(
+                "/integrations/sender-identities",
+                json={
+                    "email_provider_connection_id": conn_id,
+                    "from_email": "active-sender@growixa.local",
+                    "from_name": "Active Sender",
+                },
+            )
+            identity_id = id_resp.json()["id"]
+
+            # Create a campaign referencing this identity
+            camp_resp = await client.post(
+                "/campaigns",
+                json={
+                    "name": "Live Campaign",
+                    "subject": "Important update",
+                    "body_html": "<p>Hello</p>",
+                    "sender_identity_id": identity_id,
+                    "recipient_type": "ALL_CONTACTS",
+                },
+            )
+            assert camp_resp.status_code == 201
+
+            # Attempting to delete identity should return 409 Conflict
+            del_resp = await client.delete(f"/integrations/sender-identities/{identity_id}")
+            assert del_resp.status_code == 409
+            assert "in use by" in del_resp.json()["detail"]
+    finally:
+        await _cleanup(super_admin_id)

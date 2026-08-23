@@ -571,4 +571,93 @@ describe("IntegrationsPage", () => {
       await screen.findByText("A connection with this name already exists"),
     ).toBeInTheDocument();
   });
+
+  it("deletes a sender identity when delete button is clicked and confirmed", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+
+    mockedApiFetch.mockImplementation((path: string, init?: RequestInit) => {
+      if (path === "/auth/me") return Promise.resolve(meWithPermissions(["integrations.manage"]));
+      if (path === "/integrations/email-providers" && !init) {
+        return Promise.resolve([CUSTOM_SMTP_CONNECTION]);
+      }
+      if (path === "/integrations/sender-identities") {
+        return Promise.resolve([
+          { ...IDENTITY, email_provider_connection_id: CUSTOM_SMTP_CONNECTION.id },
+        ]);
+      }
+      if (path === "/social/connections") return Promise.resolve([]);
+      if (path === "/ai/connections") return Promise.resolve([]);
+      if (path === `/integrations/sender-identities/${IDENTITY.id}` && init?.method === "DELETE") {
+        return Promise.resolve(undefined as unknown as void);
+      }
+      throw new Error(`unexpected call: ${path}`);
+    });
+
+    renderIntegrationsPage();
+    await screen.findByText("Custom SMTP");
+
+    const manageButtons = screen.getAllByRole("button", { name: "Manage identities" });
+    await user.click(manageButtons[1]!);
+    expect(await screen.findByText(IDENTITY.from_name)).toBeInTheDocument();
+
+    const deleteBtn = screen.getByRole("button", {
+      name: `Delete ${IDENTITY.from_email}`,
+    });
+    await user.click(deleteBtn);
+
+    expect(
+      await screen.findByText(`Sender identity "${IDENTITY.from_email}" deleted.`),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(IDENTITY.from_name)).not.toBeInTheDocument();
+  });
+
+  it("surfaces error when deleting a sender identity fails", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+
+    mockedApiFetch.mockImplementation((path: string, init?: RequestInit) => {
+      if (path === "/auth/me") return Promise.resolve(meWithPermissions(["integrations.manage"]));
+      if (path === "/integrations/email-providers" && !init) {
+        return Promise.resolve([CUSTOM_SMTP_CONNECTION]);
+      }
+      if (path === "/integrations/sender-identities") {
+        return Promise.resolve([
+          { ...IDENTITY, email_provider_connection_id: CUSTOM_SMTP_CONNECTION.id },
+        ]);
+      }
+      if (path === "/social/connections") return Promise.resolve([]);
+      if (path === "/ai/connections") return Promise.resolve([]);
+      if (path === `/integrations/sender-identities/${IDENTITY.id}` && init?.method === "DELETE") {
+        return Promise.reject(
+          new ApiError(
+            409,
+            JSON.stringify({
+              detail: "Cannot delete sender identity: in use by 1 campaign(s): Launch Newsletter",
+            }),
+          ),
+        );
+      }
+      throw new Error(`unexpected call: ${path}`);
+    });
+
+    renderIntegrationsPage();
+    await screen.findByText("Custom SMTP");
+
+    const manageButtons = screen.getAllByRole("button", { name: "Manage identities" });
+    await user.click(manageButtons[1]!);
+    expect(await screen.findByText(IDENTITY.from_name)).toBeInTheDocument();
+
+    const deleteBtn = screen.getByRole("button", {
+      name: `Delete ${IDENTITY.from_email}`,
+    });
+    await user.click(deleteBtn);
+
+    expect(
+      await screen.findByText(
+        "Cannot delete sender identity: in use by 1 campaign(s): Launch Newsletter",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText(IDENTITY.from_name)).toBeInTheDocument();
+  });
 });

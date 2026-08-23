@@ -330,6 +330,28 @@ export function IntegrationsPage() {
     }
   }
 
+  async function handleDeleteIdentity(identity: SenderIdentity) {
+    if (
+      !window.confirm(
+        `Are you sure you want to delete sender identity "${identity.from_email}"? This action cannot be undone.`,
+      )
+    ) {
+      return;
+    }
+    setPendingIdentityId(identity.id);
+    try {
+      await apiFetch<void>(`/integrations/sender-identities/${identity.id}`, {
+        method: "DELETE",
+      });
+      setIdentities((current) => current.filter((i) => i.id !== identity.id));
+      showToast("success", `Sender identity "${identity.from_email}" deleted.`);
+    } catch (error) {
+      showToast("error", apiErrorDetail(error, "Could not delete sender identity."));
+    } finally {
+      setPendingIdentityId(null);
+    }
+  }
+
   function openAiConnectionForm() {
     setAiForm(blankAIConnectionForm());
     setShowAiApiKey(false);
@@ -1074,6 +1096,18 @@ export function IntegrationsPage() {
                           <option value="VERIFIED">VERIFIED</option>
                           <option value="FAILED">FAILED</option>
                         </select>
+                        {canManage && (
+                          <button
+                            type="button"
+                            className={styles.deleteIdentityButton}
+                            disabled={pendingIdentityId === identity.id}
+                            title={`Delete ${identity.from_email}`}
+                            aria-label={`Delete ${identity.from_email}`}
+                            onClick={() => handleDeleteIdentity(identity)}
+                          >
+                            {pendingIdentityId === identity.id ? "…" : "🗑️ Delete"}
+                          </button>
+                        )}
                       </div>
                     </div>
                   ))}
