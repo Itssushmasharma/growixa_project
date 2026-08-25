@@ -146,7 +146,9 @@ async def test_dashboard_overview_returns_zero_state_for_a_fresh_account(
     assert body["active_campaigns"] == 0
     assert body["email_open_rate_pct"] is None
     assert body["email_click_rate_pct"] is None
+    assert body["email_ctor_pct"] is None
     assert body["recent_campaigns"] == []
+    assert body["recent_activity"] == []
     assert body["quota"]["plan_name"] == "Free"
     assert body["quota"]["contact_limit"] == 250
     assert len(body["contact_growth_6_months"]) == 6
@@ -191,3 +193,9 @@ async def test_dashboard_overview_reflects_contacts_campaigns_and_engagement(
     assert recent["id"] == str(campaign_id)
     assert recent["sent_count"] == 4
     assert recent["open_rate_pct"] == 25.0
+
+    assert len(body["recent_activity"]) == 1
+    activity = body["recent_activity"][0]
+    assert activity["event_type"] == "OPENED"
+    assert activity["campaign_id"] == str(campaign_id)
+    assert activity["campaign_name"] == "Engagement Campaign"

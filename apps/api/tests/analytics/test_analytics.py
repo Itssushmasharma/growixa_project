@@ -212,7 +212,6 @@ async def test_report_reflects_delivery_and_event_counts(
         await _cleanup()
 
 
-
 @pytest.mark.asyncio
 @pytest.mark.integration
 async def test_campaigns_view_only_role_can_read_report(
