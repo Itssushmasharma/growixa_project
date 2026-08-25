@@ -31,6 +31,8 @@ Before starting development on any new feature or task:
 
 1. **UAT Deployment (Automatic)**: Pushing RC release tags (e.g. `vX.Y.Z-rcN`) to trigger UAT deployment is allowed automatically upon completing an approved task and independent code review.
 2. **Production Deployment (STRICT APPROVAL REQUIRED)**: **NEVER push production release tags (e.g. `vX.Y.Z`) or trigger production deployment without explicit, prior user confirmation.** Always ask and receive user approval before deploying any changes to Production.
+3. **Mandatory Release Notes & Changelog Update**: Whenever cutting any release tag (UAT or Production), **ALWAYS update `docs/00-project-control/CHANGELOG.md` and `RELEASE_NOTES.md`** with complete details of delivered features, fixes, and infrastructure changes before tagging.
+
 
 
 ## 2. Commit Message & Co-Author Attribution

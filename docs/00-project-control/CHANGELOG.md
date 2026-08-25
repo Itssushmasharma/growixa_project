@@ -10,7 +10,25 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
+## 2026-08-25 — v0.5.6 production release
+
+- **`v0.5.6`** — official production release promoted from `v0.5.5-rc1`.
+- **`feat(dashboard)`** — Executive Analytics Overview (`GRX-DASHBOARD-004`) with 6th KPI Stat Card (**Click-to-Open Rate `🎯 CTOR`**), real-time **Live Recipient Activity Stream** (`LiveActivityStream.tsx`), and recent activity backend feed endpoint.
+- **`docs(rules)`** — added strict Production Deployment Gate Policy in `AGENTS.md` requiring prior explicit user approval before pushing production release tags (`vX.Y.Z`).
+
+## 2026-08-25 — v0.5.4 production release
+
+- **`v0.5.4`** — official production release promoted from `v0.5.4-rc1`.
+- **`feat(campaigns)`** — Total vs Unique Email Engagement Metrics (`GRX-CAMP-010`) in API schemas and UI Delivery Report card, displaying Unique Opens (`17 (22%) ↳ 22 total views`), Unique Clicks (`17 (22%) ↳ 70 total clicks · 100% CTOR`), and golden CTOR calculation across campaigns.
+
+## 2026-08-24 — v0.5.2 production release
+
+- **`v0.5.2`** — official production release promoted from `v0.5.2-rc1`.
+- **`feat(campaigns)`** — Campaign List Inline Performance Metrics (`GRX-CAMP-009`), adding **Performance** column on `/dashboard/campaigns` list view with open rate & click rate pills, subtext counts, and zero N+1 batch metric aggregation query (`get_campaigns_metrics_batch`).
+- **`infra(smtp)`** — Postal SMTP Reverse DNS (PTR) alignment (`postal.iitdeveloper.com`) on OVH VPS `149.56.101.2`, CNAME & auto-SSL verification for tracking domain `track.iitdeveloper.com`.
+
 ## 2026-08-24 — v0.5.1 production release
+
 
 - **`v0.5.1`** — official production release promoted from `v0.5.1-rc1`.
 
