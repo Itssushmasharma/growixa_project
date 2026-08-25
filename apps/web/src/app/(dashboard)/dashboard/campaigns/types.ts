@@ -31,8 +31,11 @@ export interface Campaign {
   delivered_count?: number | null;
   opened_count?: number | null;
   clicked_count?: number | null;
+  total_opened_count?: number | null;
+  total_clicked_count?: number | null;
   open_rate_pct?: number | null;
   click_rate_pct?: number | null;
+  click_to_open_rate_pct?: number | null;
 }
 
 export interface SenderIdentity {
@@ -62,6 +65,11 @@ export interface CampaignReport {
   delivered: number;
   opened: number;
   clicked: number;
+  total_opened?: number;
+  total_clicked?: number;
+  open_rate_pct?: number | null;
+  click_rate_pct?: number | null;
+  click_to_open_rate_pct?: number | null;
   bounced: number;
   complained: number;
 }
