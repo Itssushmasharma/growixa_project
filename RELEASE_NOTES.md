@@ -2,7 +2,53 @@
 
 ---
 
+## 🟢 [v0.5.6] — 2026-08-25
+
+> **Release Tag**: `v0.5.6`
+> **Release Date**: August 25, 2026
+> **Platform Status**: 🟢 Promoted to Production
+> **Production URL**: [https://growixa.iitdeveloper.com](https://growixa.iitdeveloper.com)
+> **UAT Staging URL**: [https://uat.growixa.iitdeveloper.com](https://uat.growixa.iitdeveloper.com)
+
+### 🚀 Added & Enhanced
+- **Executive Analytics Overview (`GRX-DASHBOARD-004`)**:
+  - **6th KPI Stat Card — Click-to-Open Rate (`🎯 CTOR`)**: Added global CTOR card on `/dashboard` evaluating content quality (`Unique Clicks ÷ Unique Opens × 100`).
+  - **Live Recipient Activity Stream**: Added real-time recipient activity feed component (`LiveActivityStream.tsx`) with pulse badge, contact email badges, campaign links, and human-readable time-ago timestamps (`just now`, `2m ago`, `15m ago`).
+  - **Recent Activity API Endpoint**: Backend database queries returning recipient open and click events across campaigns.
+- **Strict Production Deployment Gate Policy**: Added strict release tag rule in `AGENTS.md` requiring explicit user approval before deploying production release tags (`vX.Y.Z`).
+
+---
+
+## 🟢 [v0.5.4] — 2026-08-25
+
+> **Release Tag**: `v0.5.4`
+> **Release Date**: August 25, 2026
+> **Platform Status**: 🟢 Promoted to Production
+
+### 🚀 Added & Enhanced
+- **Total vs Unique Email Engagement Metrics (`GRX-CAMP-010`)**:
+  - Enhanced **Delivery report** card in campaign view with **Unique Opens** (`17 (22%) ↳ 22 total views`) and **Unique Clicks** (`17 (22%) ↳ 70 total clicks · 100% CTOR`).
+  - Extended API endpoints and schemas with `total_opened`, `total_clicked`, and golden CTOR calculations.
+
+---
+
+## 🟢 [v0.5.2] — 2026-08-24
+
+> **Release Tag**: `v0.5.2`
+> **Release Date**: August 24, 2026
+> **Platform Status**: 🟢 Promoted to Production
+
+### 🚀 Added & Enhanced
+- **Campaign List Inline Performance Metrics (`GRX-CAMP-009`)**:
+  - Added **Performance** column on `/dashboard/campaigns` list view with open rate & click rate pills and exact delivery counts.
+  - Zero N+1 batch query aggregation (`get_campaigns_metrics_batch`).
+- **Postal Reverse DNS & SSL Alignment**:
+  - Configured OVH VPS PTR record (`postal.iitdeveloper.com`) and verifiedNetlify CNAME + SSL for tracking domain `track.iitdeveloper.com`.
+
+---
+
 ## 🟢 [v0.5.1] — 2026-08-24
+
 
 > **Release Tag**: `v0.5.1`
 > **Release Date**: August 24, 2026
