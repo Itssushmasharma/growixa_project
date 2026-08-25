@@ -358,17 +358,24 @@ export function CampaignsPage() {
                                 className={`${styles.metricPill} ${styles.metricPillOpen}`}
                                 title={`${campaign.opened_count ?? 0} opens of ${campaign.delivered_count ?? campaign.sent_count ?? 0} delivered`}
                               >
-                                👁️ {campaign.open_rate_pct != null ? `${campaign.open_rate_pct}%` : "0%"}
+                                👁️{" "}
+                                {campaign.open_rate_pct != null
+                                  ? `${campaign.open_rate_pct}%`
+                                  : "0%"}
                               </span>
                               <span
                                 className={`${styles.metricPill} ${styles.metricPillClick}`}
                                 title={`${campaign.clicked_count ?? 0} clicks of ${campaign.delivered_count ?? campaign.sent_count ?? 0} delivered`}
                               >
-                                🔗 {campaign.click_rate_pct != null ? `${campaign.click_rate_pct}%` : "0%"}
+                                🔗{" "}
+                                {campaign.click_rate_pct != null
+                                  ? `${campaign.click_rate_pct}%`
+                                  : "0%"}
                               </span>
                             </div>
                             <div className={styles.metricsSubtext}>
-                              {campaign.opened_count ?? 0} opens · {campaign.clicked_count ?? 0} clicks
+                              {campaign.opened_count ?? 0} opens · {campaign.clicked_count ?? 0}{" "}
+                              clicks
                             </div>
                           </div>
                         ) : (

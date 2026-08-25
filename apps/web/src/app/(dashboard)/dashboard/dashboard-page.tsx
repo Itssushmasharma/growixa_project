@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import { LiveActivityStream } from "@/components/dashboard/live-activity-stream";
 import { QuotaGauge } from "@/components/dashboard/quota-gauge";
 import { TrendChart } from "@/components/dashboard/trend-chart";
 import { PageHeader } from "@/components/page-header/page-header";
@@ -28,8 +29,8 @@ function statusToneClass(status: keyof CampaignStatusBreakdown): string {
   return styles.toneNeutral ?? "";
 }
 
-function formatPct(value: number | null): string {
-  return value === null ? "—" : `${value}%`;
+function formatPct(value: number | null | undefined): string {
+  return value === null || value === undefined ? "—" : `${value}%`;
 }
 
 export function DashboardPage() {
@@ -113,6 +114,11 @@ export function DashboardPage() {
           value={formatPct(overview.email_click_rate_pct)}
           subtext="Delivered campaigns"
         />
+        <StatCard
+          label="Click-to-Open Rate"
+          value={formatPct(overview.email_ctor_pct)}
+          subtext="Unique CTOR"
+        />
       </section>
 
       <div className={styles.card}>
@@ -131,6 +137,8 @@ export function DashboardPage() {
       </div>
 
       <div className={styles.twoColumn}>
+        <LiveActivityStream items={overview.recent_activity ?? []} />
+
         <div className={styles.card}>
           <h3 className={styles.cardTitle}>Plan &amp; quota — {overview.quota.plan_name}</h3>
           <div className={styles.gauges}>
@@ -154,25 +162,25 @@ export function DashboardPage() {
             {overview.quota.ai_credits_remaining.toLocaleString()} top-up AI credits remaining.{" "}
             <Link href="/dashboard/billing">Manage billing →</Link>
           </p>
-        </div>
 
-        <div className={styles.card}>
-          <h3 className={styles.cardTitle}>Campaign status</h3>
-          {statusTotal === 0 ? (
-            <p className={styles.hint}>No campaigns yet.</p>
-          ) : (
-            <ul className={styles.statusList}>
-              {statusEntries
-                .filter(([, count]) => count > 0)
-                .map(([status, count]) => (
-                  <li key={status} className={styles.statusRow}>
-                    <span className={`${styles.statusDot} ${statusToneClass(status)}`} />
-                    <span className={styles.statusLabel}>{STATUS_LABEL[status]}</span>
-                    <span className={styles.statusCount}>{count}</span>
-                  </li>
-                ))}
-            </ul>
-          )}
+          <div style={{ marginTop: "24px" }}>
+            <h3 className={styles.cardTitle}>Campaign status</h3>
+            {statusTotal === 0 ? (
+              <p className={styles.hint}>No campaigns yet.</p>
+            ) : (
+              <ul className={styles.statusList}>
+                {statusEntries
+                  .filter(([, count]) => count > 0)
+                  .map(([status, count]) => (
+                    <li key={status} className={styles.statusRow}>
+                      <span className={`${styles.statusDot} ${statusToneClass(status)}`} />
+                      <span className={styles.statusLabel}>{STATUS_LABEL[status]}</span>
+                      <span className={styles.statusCount}>{count}</span>
+                    </li>
+                  ))}
+              </ul>
+            )}
+          </div>
         </div>
       </div>
 

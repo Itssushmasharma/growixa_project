@@ -1,5 +1,6 @@
 import uuid
 from datetime import UTC, datetime
+from typing import Any
 
 from sqlalchemy import Row, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -52,7 +53,7 @@ async def count_scheduled_social_posts(session: AsyncSession, account_id: uuid.U
 
 async def get_account_wide_engagement(
     session: AsyncSession, account_id: uuid.UUID
-) -> dict[str, int]:
+) -> dict[str, Any]:
     """Delivered/opened/clicked across every campaign this account has ever sent --
     same counting shape as analytics/repositories.py's per-campaign report (delivery
     status for `delivered`, distinct-event-per-delivery for `opened`/`clicked` since a
@@ -73,11 +74,52 @@ async def get_account_wide_engagement(
     )
     event_counts = {row[0]: row[1] for row in event_result.all()}
 
+    opened = event_counts.get("OPENED", 0)
+    clicked = event_counts.get("CLICKED", 0)
+    ctor = round(clicked / opened * 100, 1) if opened > 0 else None
+
     return {
         "delivered": delivered,
-        "opened": event_counts.get("OPENED", 0),
-        "clicked": event_counts.get("CLICKED", 0),
+        "opened": opened,
+        "clicked": clicked,
+        "ctor": ctor,
     }
+
+
+async def list_recent_activity_stream(
+    session: AsyncSession, account_id: uuid.UUID, *, limit: int = 10
+) -> list[dict[str, Any]]:
+    """Fetches the most recent email open & click events for the account."""
+    result = await session.execute(
+        select(
+            EmailEvent.id,
+            EmailEvent.event_type,
+            EmailEvent.occurred_at,
+            CampaignRecipient.email,
+            Campaign.id.label("campaign_id"),
+            Campaign.name.label("campaign_name"),
+        )
+        .join(MessageDelivery, EmailEvent.message_delivery_id == MessageDelivery.id)
+        .join(CampaignRecipient, MessageDelivery.campaign_recipient_id == CampaignRecipient.id)
+        .join(Campaign, CampaignRecipient.campaign_id == Campaign.id)
+        .where(
+            EmailEvent.account_id == account_id,
+            EmailEvent.event_type.in_(("OPENED", "CLICKED")),
+        )
+        .order_by(EmailEvent.occurred_at.desc())
+        .limit(limit)
+    )
+    return [
+        {
+            "id": row.id,
+            "event_type": row.event_type,
+            "contact_email": row.email,
+            "campaign_id": row.campaign_id,
+            "campaign_name": row.campaign_name,
+            "occurred_at": row.occurred_at.isoformat(),
+        }
+        for row in result.all()
+    ]
 
 
 async def get_contact_growth(

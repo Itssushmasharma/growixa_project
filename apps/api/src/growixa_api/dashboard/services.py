@@ -10,9 +10,11 @@ from growixa_api.dashboard.repositories import (
     get_campaign_status_breakdown,
     get_contact_growth,
     get_quota_snapshot,
+    list_recent_activity_stream,
     list_recent_campaigns_with_stats,
 )
 from growixa_api.dashboard.schemas import (
+    ActivityStreamItemOut,
     CampaignStatusBreakdownOut,
     ContactGrowthPointOut,
     DashboardOverviewOut,
@@ -32,6 +34,7 @@ async def get_dashboard_overview(
     engagement = await get_account_wide_engagement(session, account_id)
     contact_growth = await get_contact_growth(session, account_id)
     recent = await list_recent_campaigns_with_stats(session, account_id)
+    recent_activity_items = await list_recent_activity_stream(session, account_id)
     quota_snapshot = await get_quota_snapshot(session, account_id)
     ai_credits = await get_ai_credit_balance(session, account_id)
 
@@ -39,6 +42,7 @@ async def get_dashboard_overview(
     delivered = engagement["delivered"]
     open_rate = round(engagement["opened"] / delivered * 100, 1) if delivered > 0 else None
     click_rate = round(engagement["clicked"] / delivered * 100, 1) if delivered > 0 else None
+    ctor = engagement.get("ctor")
 
     if quota_snapshot is not None:
         subscription, plan = quota_snapshot
@@ -72,6 +76,7 @@ async def get_dashboard_overview(
         scheduled_social_posts=scheduled_social_posts,
         email_open_rate_pct=open_rate,
         email_click_rate_pct=click_rate,
+        email_ctor_pct=ctor,
         quota=quota,
         campaign_status_breakdown=CampaignStatusBreakdownOut(
             draft=status_breakdown.get("DRAFT", 0),
@@ -94,4 +99,5 @@ async def get_dashboard_overview(
             )
             for campaign, sent, open_rate in recent
         ],
+        recent_activity=[ActivityStreamItemOut(**item) for item in recent_activity_items],
     )

@@ -124,7 +124,6 @@ async def get_campaigns_metrics_batch(
     return stats
 
 
-
 async def update_campaign_fields(
     session: AsyncSession, campaign: Campaign, fields: dict[str, Any]
 ) -> Campaign:
