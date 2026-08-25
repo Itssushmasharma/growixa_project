@@ -16,6 +16,7 @@ This document maintains a real-time record of all parallel Git worktrees, active
 
 | Worktree Directory | Branch | Feature Delivered | Merged Commit | Merged Date |
 |---|---|---|---|---|
+| `.worktrees/grx-dashboard-analytics-overview` | `feature/FRONTEND/GRX-DASHBOARD-004` | `GRX-DASHBOARD-004` — Executive Analytics Overview (CTOR StatCard, Live Activity Stream Feed) | `f769b5c` | 2026-08-25 |
 | `.worktrees/grx-campaign-total-metrics` | `feature/SHARED/GRX-CAMP-010` | `GRX-CAMP-010` — Total vs Unique Email Engagement Metrics (Total Opens, Total Clicks, CTOR) | `8876bcf` | 2026-08-25 |
 | `.worktrees/grx-campaign-list-metrics` | `feature/SHARED/GRX-CAMP-009` | `GRX-CAMP-009` — Campaign List Inline Performance & Engagement Metrics | `c9ef0ad` | 2026-08-24 |
 | `.worktrees/grx-template-token-validation` | `feature/BACKEND/GRX-CONTENT-002` | `GRX-CONTENT-002` — Upfront Personalization Token Validation & `{{unsubscribe_url}}` First-Class Support | `930f7b3` | 2026-08-24 |
