@@ -59,5 +59,8 @@ class CampaignOut(BaseModel):
     delivered_count: int | None = None
     opened_count: int | None = None
     clicked_count: int | None = None
+    total_opened_count: int | None = None
+    total_clicked_count: int | None = None
     open_rate_pct: float | None = None
     click_rate_pct: float | None = None
+    click_to_open_rate_pct: float | None = None

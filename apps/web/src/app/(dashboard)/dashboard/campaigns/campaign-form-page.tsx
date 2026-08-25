@@ -655,13 +655,30 @@ export function CampaignFormPage({ mode, campaignId }: CampaignFormPageProps) {
                   <span className={styles.reportValue}>
                     {formatMetric(report.opened, report.delivered)}
                   </span>
-                  <span className={styles.reportLabel}>Opened</span>
+                  <span className={styles.reportLabel}>Unique Opens</span>
+                  {Boolean(report.total_opened && report.total_opened > 0) && (
+                    <span className={styles.reportSubtext}>
+                      {report.total_opened} total view{report.total_opened === 1 ? "" : "s"}
+                    </span>
+                  )}
                 </div>
                 <div className={styles.reportStat}>
                   <span className={styles.reportValue}>
                     {formatMetric(report.clicked, report.delivered)}
                   </span>
-                  <span className={styles.reportLabel}>Clicked</span>
+                  <span className={styles.reportLabel}>Unique Clicks</span>
+                  {Boolean(report.total_clicked && report.total_clicked > 0) && (
+                    <span className={styles.reportSubtext}>
+                      {report.total_clicked} total click{report.total_clicked === 1 ? "" : "s"}
+                      {report.click_to_open_rate_pct !== undefined &&
+                        report.click_to_open_rate_pct !== null && (
+                          <span className={styles.ctorBadge}>
+                            {" "}
+                            · {report.click_to_open_rate_pct}% CTOR
+                          </span>
+                        )}
+                    </span>
+                  )}
                 </div>
                 <div className={styles.reportStat}>
                   <span className={styles.reportValue}>

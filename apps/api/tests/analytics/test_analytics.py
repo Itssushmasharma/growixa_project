@@ -200,11 +200,17 @@ async def test_report_reflects_delivery_and_event_counts(
         assert body["delivered"] == 1
         assert body["bounced"] == 1
         assert body["complained"] == 0
-        # Two OPENED rows on the same delivery still count as one opened delivery.
+        # Two OPENED rows on the same delivery still count as one opened delivery (unique = 1, total = 2).
         assert body["opened"] == 1
+        assert body["total_opened"] == 2
         assert body["clicked"] == 1
+        assert body["total_clicked"] == 1
+        assert body["open_rate_pct"] == 100.0
+        assert body["click_rate_pct"] == 100.0
+        assert body["click_to_open_rate_pct"] == 100.0
     finally:
         await _cleanup()
+
 
 
 @pytest.mark.asyncio

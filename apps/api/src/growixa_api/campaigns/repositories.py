@@ -65,6 +65,7 @@ async def get_campaigns_metrics_batch(
         select(
             CampaignRecipient.campaign_id,
             func.count(func.distinct(EmailEvent.message_delivery_id)),
+            func.count(EmailEvent.id),
         )
         .join(MessageDelivery, EmailEvent.message_delivery_id == MessageDelivery.id)
         .join(CampaignRecipient, MessageDelivery.campaign_recipient_id == CampaignRecipient.id)
@@ -75,12 +76,13 @@ async def get_campaigns_metrics_batch(
         )
         .group_by(CampaignRecipient.campaign_id)
     )
-    opened_counts = {row[0]: row[1] for row in opened_result.all()}
+    opened_counts = {row[0]: (row[1], row[2]) for row in opened_result.all()}
 
     clicked_result = await session.execute(
         select(
             CampaignRecipient.campaign_id,
             func.count(func.distinct(EmailEvent.message_delivery_id)),
+            func.count(EmailEvent.id),
         )
         .join(MessageDelivery, EmailEvent.message_delivery_id == MessageDelivery.id)
         .join(CampaignRecipient, MessageDelivery.campaign_recipient_id == CampaignRecipient.id)
@@ -91,29 +93,36 @@ async def get_campaigns_metrics_batch(
         )
         .group_by(CampaignRecipient.campaign_id)
     )
-    clicked_counts = {row[0]: row[1] for row in clicked_result.all()}
+    clicked_counts = {row[0]: (row[1], row[2]) for row in clicked_result.all()}
 
     stats: dict[uuid.UUID, dict[str, Any]] = {}
     for cid in campaign_ids:
         sent = sent_counts.get(cid, 0)
         delivered = delivered_counts.get(cid, 0)
-        opened = opened_counts.get(cid, 0)
-        clicked = clicked_counts.get(cid, 0)
+        opened = opened_counts.get(cid, (0, 0))[0]
+        total_opened = opened_counts.get(cid, (0, 0))[1]
+        clicked = clicked_counts.get(cid, (0, 0))[0]
+        total_clicked = clicked_counts.get(cid, (0, 0))[1]
         open_rate = (
             round(opened / delivered * 100, 1) if delivered > 0 else (0.0 if sent > 0 else None)
         )
         click_rate = (
             round(clicked / delivered * 100, 1) if delivered > 0 else (0.0 if sent > 0 else None)
         )
+        ctor = round(clicked / opened * 100, 1) if opened > 0 else None
         stats[cid] = {
             "sent_count": sent,
             "delivered_count": delivered,
             "opened_count": opened,
             "clicked_count": clicked,
+            "total_opened_count": total_opened,
+            "total_clicked_count": total_clicked,
             "open_rate_pct": open_rate,
             "click_rate_pct": click_rate,
+            "click_to_open_rate_pct": ctor,
         }
     return stats
+
 
 
 async def update_campaign_fields(
