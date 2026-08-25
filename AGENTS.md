@@ -27,6 +27,12 @@ Before starting development on any new feature or task:
    one exception — it runs in a GitHub-hosted cloud sandbox on a real branch/PR instead;
    see `.github/copilot-instructions.md`.
 
+## 1.1. Deployment Gate & Release Tag Policy (Strict Rule)
+
+1. **UAT Deployment (Automatic)**: Pushing RC release tags (e.g. `vX.Y.Z-rcN`) to trigger UAT deployment is allowed automatically upon completing an approved task and independent code review.
+2. **Production Deployment (STRICT APPROVAL REQUIRED)**: **NEVER push production release tags (e.g. `vX.Y.Z`) or trigger production deployment without explicit, prior user confirmation.** Always ask and receive user approval before deploying any changes to Production.
+
+
 ## 2. Commit Message & Co-Author Attribution
 
 1. **Format**: Follow Conventional Commits: `<type>(<scope>): <summary>`.
