@@ -1,11 +1,11 @@
 Task: GRX-COMPANY-003 — AI Brand Control Center redesign
 Developer: Claude Code
-Reviewer: (pending)
+Reviewer: Claude Code growixa-reviewer subagent — independent context, no memory of developer's session
 Branch: feature/FRONTEND/GRX-COMPANY-003
 Worktree: .worktrees/grx-company-003-brand-redesign
 Base Commit: ae188536140e94fa71c307e307288c1705fa210a
 Latest Commit: 872ef73f9fbf8d709536de603297ae589b96589f
-Status: READY_FOR_REVIEW
+Status: APPROVED
 
 ## What Changed
 
@@ -76,8 +76,78 @@ the new nullable fields round-tripping — see that commit for the run.
 
 ## Review Findings
 
+Verified independently against the real branch (`git log`/`git diff` `ae1885..HEAD`, the
+branch's true divergence point from `main` — `main..HEAD` alone is noisy because `main`
+moved forward independently after that point; confirmed the noise is unrelated docs/tracker
+commits, not this branch's work).
+
+- **Migration/model consistency**: `72e376f46c26` adds exactly the 6 nullable/JSONB-default
+  columns declared in `company/models.py` and `brand/models.py`; `downgrade()` reverses them
+  correctly; it is the sole head off `f2a3b4c5d6e7` (no branching); both modules are already
+  imported in `migrations/env.py`. Schemas (`CompanyProfileIn`, `BrandProfileIn`) match.
+- **RBAC**: No new routes added. `company.settings.edit`/`.view` and `ai.manage`/`ai.view`
+  permissions are pre-existing and reused unchanged (verified in
+  `apps/api/src/growixa_api/{company,ai}/api.py`) — no hand-rolled checks introduced.
+- **No placeholder/fabricated completion** (the specific risk called out for this task):
+  - `AICopyPreview` calls the real, pre-existing `POST /ai/generate/{capability}` route
+    (confirmed in `apps/api/src/growixa_api/ai/api.py`) — not mocked, not a fake preview
+    endpoint. 409 (`AINotConfiguredError`) is surfaced as an honest "not connected" state,
+    not a fabricated result. No tone/readability scores are shown (correctly avoided,
+    since the API computes none).
+  - `LogoUploader` disables "Upload a file" and is truthful that no upload backend exists
+    (confirmed: no upload/media route anywhere in `growixa_api`); the working URL-entry
+    path writes to the real, already-persisted `logo_url` field.
+  - `GuardrailList` is a real structured editor over the existing `forbidden_claims`/
+    `required_facts` JSONB `string[]` fields — wire format unchanged, confirmed via the
+    extended round-trip test.
+- **Tests actually assert behavior**: ran them myself, not trusting the handoff.
+  - Backend: `pytest apps/api/tests/company/` → 5 passed. The extended test asserts a real
+    round-trip of every new field (`support_email`, `sender_name`, `business_address`,
+    `description`, `persona_tags`, `voice_settings`) through PUT then GET — not a
+    tautological check.
+  - Frontend: `npx vitest run .../company-settings` → 10 passed across 2 files. Tests cover
+    tab switching, view-only disabling, dirty-state save/discard (asserts both PUTs fire in
+    the right order), guardrail add/remove, and all three `AICopyPreview` states (success,
+    forbidden-claim detection, honest 409 not-connected) — genuine behavioral assertions,
+    not implementation-detail checks.
+  - `npm run lint` (0 errors, 2 pre-existing unrelated warnings), `tsc --noEmit` (clean),
+    `npm run format:check` (clean), `npm run build` (succeeds) — all reproduced myself.
+  - `ruff check .` and `mypy src/growixa_api/{company,brand}` on the backend — both clean.
+- **Secrets scan**: grepped the full `ae1885..HEAD` diff for credential/token/key patterns —
+  no hits. No hardcoded secrets.
+- **Scope**: the branch also pins `mypy==1.18.2` (was floating unpinned) and wraps one
+  over-long comment in `apps/api/tests/analytics/test_analytics.py`, both justified in the
+  commit message as blocking local CI. Note: an *identical* fix to that same comment was
+  separately made and already merged to `main` via `b970760` (GRX-CI-FIX-001) after this
+  branch's base — the two are content-identical, so there is no real conflict or
+  regression, but it is a sign this branch should have rebased onto `main` before review
+  (the skill's stated preference) rather than review flagging pre-existing skew. Not a
+  blocker.
+- **Known gaps** (as declared in the handoff, checked and accurate): no Playwright e2e
+  added for the new tab flows; responsive layout not eyeballed in a real browser this
+  session. Given tab/save/preview logic is well covered by component tests and this is a
+  low-complexity CSS layout, this is acceptable to ship with a human visual check, not a
+  blocker for independent code review — but it is exactly why product-owner sign-off
+  (UI/UX gate) is required below.
+- Tracker (`MASTER_TASK_TRACKER.md`/`.csv`) row added correctly at `IN_REVIEW`, matching
+  the actual state (task not yet merged).
+
+No secret leakage, no RBAC bypass, no fabricated AI output, no unauthorized scope creep of
+consequence. This is a well-scoped, honestly-labeled UI redesign over already-approved data.
 
 ## Review Decision
-
+APPROVED
 
 ## Reviewed Code Commit
+3aa37c0f1d9fc5721627aa2ba01709aa056fe029
+
+## Review Record Commit
+(recorded in the commit that adds this verdict)
+
+## Human Approval
+Required — customer-facing UI/UX redesign of an existing settings screen. Independent
+code review alone is not sufficient to merge; the product owner must still explicitly
+sign off (especially on the responsive/mobile layout and the AI Preview tab's honest
+"not connected" state), and that approval must be recorded in this file before merge.
+
+Status: APPROVED
