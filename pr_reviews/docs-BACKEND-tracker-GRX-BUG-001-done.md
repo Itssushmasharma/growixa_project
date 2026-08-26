@@ -1,9 +1,24 @@
 Task: Mark GRX-BUG-001 DONE in the master tracker (post-merge status correction)
 Developer: Ravi Kant Yadav (human)
-Reviewer: Claude Code (growixa-reviewer) — independent context, did not author this branch
+Reviewer: (pending re-review — see note below)
 Branch: docs/BACKEND/tracker-GRX-BUG-001-done
 Worktree: /Users/ravi/Projects/growixa
-Status: APPROVED
+Status: READY_FOR_REVIEW
+
+## Note: approval invalidated by post-review merge (2026-08-26)
+
+Backend CI on this branch was failing on a pre-existing `ruff` E501 violation on `main`,
+unrelated to this branch's own diff (see `feature/BACKEND/GRX-CI-FIX-001`, merged to
+`main` as part of PR #23, independently reviewed `APPROVED` in
+`pr_reviews/feature-BACKEND-GRX-CI-FIX-001.md`). To unblock CI, `main` was merged into
+this branch (commit `fb69719`), bringing that fix in via a clean, conflict-free merge —
+no logic was authored on this branch itself. Per this skill's merge-gate rule, this
+still invalidates the `APPROVED` verdict below (recorded against `Reviewed Code Commit
+67c9989`), since a real file (`apps/api/tests/analytics/test_analytics.py`) now differs
+from that commit outside `pr_reviews/**`. Re-review is required against the new HEAD.
+The reviewer who wrote the original `APPROVED` verdict below is this same session, so a
+fresh independent reviewer must re-verify rather than this file being self-amended back
+to `APPROVED`.
 
 ## What Changed
 
