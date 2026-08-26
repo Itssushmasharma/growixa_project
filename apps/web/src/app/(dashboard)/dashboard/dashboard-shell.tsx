@@ -233,17 +233,6 @@ export function DashboardShell({
               ❓ Help
             </button>
 
-            {/* Notifications Bell */}
-            <button
-              type="button"
-              className={topbarStyles.notificationButton}
-              aria-label="Notifications"
-              onClick={() => router.push("/dashboard/ai")}
-            >
-              🔔
-              <span className={topbarStyles.notificationBadge}>3</span>
-            </button>
-
             {/* User Profile Chip */}
             <div className={topbarStyles.userProfileChip}>
               <div className={topbarStyles.userAvatar}>{initials}</div>

@@ -183,27 +183,6 @@
   color: #0b1b33;
 }
 
-/* Notifications Button */
-.notificationButton {
-  position: relative;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #475569;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-
-.notificationButton:hover {
-  background: #f8fafc;
-  color: #0b1b33;
-}
-
 .helpButton {
   display: flex;
   align-items: center;
@@ -223,22 +202,6 @@
   background: #f8fafc;
   border-color: var(--color-primary-blue, #1457e6);
   color: var(--color-primary-blue, #1457e6);
-}
-
-.notificationBadge {
-  position: absolute;
-  top: -2px;
-  right: -2px;
-  background: #ef4444;
-  color: #ffffff;
-  font-size: 10px;
-  font-weight: 700;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 
 /* User Profile Chip */
