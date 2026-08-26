@@ -1,73 +1,119 @@
 "use client";
 
-import { type FormEvent, useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { PageHeader } from "@/components/page-header/page-header";
 import { useToast } from "@/components/toast/toast-context";
 import { apiFetch } from "@/lib/api-client";
 
+import { AIPreviewTab } from "./components/ai-preview-tab";
+import { BrandVoiceTab } from "./components/brand-voice-tab";
+import { CompanyProfileTab } from "./components/company-profile-tab";
+import { GuardrailsTab } from "./components/guardrails-tab";
+import { ProfileReadiness } from "./components/profile-readiness";
+import { type SettingsTab, SettingsTabs } from "./components/settings-tabs";
+import { StickySaveBar } from "./components/sticky-save-bar";
 import styles from "./company-settings-form.module.css";
-import type { BrandProfile, CompanyProfile, MeResponse } from "./types";
+import type { BrandProfile, CompanyProfile, MeResponse, VoiceSettings } from "./types";
 
 const EDIT_PERMISSION = "company.settings.edit";
 
-interface CompanyFormState {
+export interface CompanyDraft {
   name: string;
   website: string;
   industry: string;
   timezone: string;
   default_language: string;
   legal_footer: string;
+  business_address: string;
+  description: string;
+  support_email: string;
+  sender_name: string;
+  logo_url: string;
 }
 
-interface BrandFormState {
+export interface BrandDraft {
   brand_voice: string;
-  forbidden_claims: string;
-  required_facts: string;
+  forbidden_claims: string[];
+  required_facts: string[];
+  persona_tags: string[];
+  voice_settings: VoiceSettings;
 }
 
-const EMPTY_COMPANY: CompanyFormState = {
+const EMPTY_COMPANY: CompanyDraft = {
   name: "",
   website: "",
   industry: "",
   timezone: "Asia/Kolkata",
   default_language: "en",
   legal_footer: "",
+  business_address: "",
+  description: "",
+  support_email: "",
+  sender_name: "",
+  logo_url: "",
 };
 
-const EMPTY_BRAND: BrandFormState = {
+const EMPTY_BRAND: BrandDraft = {
   brand_voice: "",
-  forbidden_claims: "",
-  required_facts: "",
+  forbidden_claims: [],
+  required_facts: [],
+  persona_tags: [],
+  voice_settings: {},
 };
 
-const COMMON_TIMEZONES = [
-  "Asia/Kolkata",
-  "America/New_York",
-  "America/Los_Angeles",
-  "America/Chicago",
-  "Europe/London",
-  "Europe/Paris",
-  "Asia/Tokyo",
-  "Asia/Dubai",
-  "UTC",
+const TABS: SettingsTab[] = [
+  { id: "company-profile", label: "Company Profile" },
+  { id: "brand-voice", label: "Brand Voice" },
+  { id: "ai-guardrails", label: "AI Guardrails" },
+  { id: "ai-preview", label: "AI Preview" },
 ];
 
-function linesToList(value: string): string[] {
-  return value
-    .split("\n")
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0);
+function companyToDraft(profile: CompanyProfile): CompanyDraft {
+  return {
+    name: profile.name,
+    website: profile.website ?? "",
+    industry: profile.industry ?? "",
+    timezone: profile.timezone ?? "Asia/Kolkata",
+    default_language: profile.default_language,
+    legal_footer: profile.legal_footer ?? "",
+    business_address: profile.business_address ?? "",
+    description: profile.description ?? "",
+    support_email: profile.support_email ?? "",
+    sender_name: profile.sender_name ?? "",
+    logo_url: profile.logo_url ?? "",
+  };
+}
+
+function brandToDraft(profile: BrandProfile): BrandDraft {
+  return {
+    brand_voice: profile.brand_voice ?? "",
+    forbidden_claims: profile.forbidden_claims,
+    required_facts: profile.required_facts,
+    persona_tags: profile.persona_tags,
+    voice_settings: profile.voice_settings,
+  };
+}
+
+function cleanList(items: string[]): string[] {
+  return items.map((item) => item.trim()).filter((item) => item.length > 0);
 }
 
 export function CompanySettingsForm() {
   const { showToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [canEdit, setCanEdit] = useState(false);
-  const [company, setCompany] = useState<CompanyFormState>(EMPTY_COMPANY);
-  const [brand, setBrand] = useState<BrandFormState>(EMPTY_BRAND);
-  const [contactDetails, setContactDetails] = useState<Record<string, unknown>>({});
+  const [activeTab, setActiveTab] = useState(TABS[0]!.id);
   const [saving, setSaving] = useState(false);
+
+  const [savedCompany, setSavedCompany] = useState<CompanyProfile | null>(null);
+  const [savedBrand, setSavedBrand] = useState<BrandProfile | null>(null);
+  const [contactDetails, setContactDetails] = useState<Record<string, unknown>>({});
+
+  const [company, setCompany] = useState<CompanyDraft>(EMPTY_COMPANY);
+  const [brand, setBrand] = useState<BrandDraft>(EMPTY_BRAND);
+  const [initialCompany, setInitialCompany] = useState<CompanyDraft>(EMPTY_COMPANY);
+  const [initialBrand, setInitialBrand] = useState<BrandDraft>(EMPTY_BRAND);
 
   useEffect(() => {
     async function load() {
@@ -81,23 +127,18 @@ export function CompanySettingsForm() {
         setCanEdit(me.permissions.includes(EDIT_PERMISSION));
 
         if (companyProfile) {
-          setCompany({
-            name: companyProfile.name,
-            website: companyProfile.website ?? "",
-            industry: companyProfile.industry ?? "",
-            timezone: companyProfile.timezone ?? "Asia/Kolkata",
-            default_language: companyProfile.default_language,
-            legal_footer: companyProfile.legal_footer ?? "",
-          });
+          setSavedCompany(companyProfile);
           setContactDetails(companyProfile.contact_details);
+          const draft = companyToDraft(companyProfile);
+          setCompany(draft);
+          setInitialCompany(draft);
         }
 
         if (brandProfile) {
-          setBrand({
-            brand_voice: brandProfile.brand_voice ?? "",
-            forbidden_claims: brandProfile.forbidden_claims.join("\n"),
-            required_facts: brandProfile.required_facts.join("\n"),
-          });
+          setSavedBrand(brandProfile);
+          const draft = brandToDraft(brandProfile);
+          setBrand(draft);
+          setInitialBrand(draft);
         }
       } catch {
         showToast("error", "Could not load company settings.");
@@ -109,12 +150,35 @@ export function CompanySettingsForm() {
     void load();
   }, [showToast]);
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setSaving(true);
+  const dirty = useMemo(
+    () =>
+      JSON.stringify(company) !== JSON.stringify(initialCompany) ||
+      JSON.stringify(brand) !== JSON.stringify(initialBrand),
+    [company, initialCompany, brand, initialBrand],
+  );
 
+  // Warns before closing/refreshing the tab with unsaved edits. In-app client-side
+  // navigation isn't guarded (Next.js App Router has no built-in route-leave
+  // confirmation hook), so this covers what the current architecture supports.
+  useEffect(() => {
+    if (!dirty) return;
+    function handleBeforeUnload(event: BeforeUnloadEvent) {
+      event.preventDefault();
+      event.returnValue = "";
+    }
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [dirty]);
+
+  function handleDiscard() {
+    setCompany(initialCompany);
+    setBrand(initialBrand);
+  }
+
+  async function handleSave() {
+    setSaving(true);
     try {
-      await apiFetch<CompanyProfile>("/company/profile", {
+      const companyResponse = await apiFetch<CompanyProfile>("/company/profile", {
         method: "PUT",
         body: JSON.stringify({
           name: company.name,
@@ -123,18 +187,34 @@ export function CompanySettingsForm() {
           timezone: company.timezone || null,
           default_language: company.default_language,
           legal_footer: company.legal_footer || null,
+          business_address: company.business_address || null,
+          description: company.description || null,
+          support_email: company.support_email || null,
+          sender_name: company.sender_name || null,
+          logo_url: company.logo_url || null,
           contact_details: contactDetails,
         }),
       });
 
-      await apiFetch<BrandProfile>("/brand/profile", {
+      const brandResponse = await apiFetch<BrandProfile>("/brand/profile", {
         method: "PUT",
         body: JSON.stringify({
           brand_voice: brand.brand_voice || null,
-          forbidden_claims: linesToList(brand.forbidden_claims),
-          required_facts: linesToList(brand.required_facts),
+          forbidden_claims: cleanList(brand.forbidden_claims),
+          required_facts: cleanList(brand.required_facts),
+          persona_tags: brand.persona_tags,
+          voice_settings: brand.voice_settings,
         }),
       });
+
+      setSavedCompany(companyResponse);
+      setSavedBrand(brandResponse);
+      const nextCompanyDraft = companyToDraft(companyResponse);
+      const nextBrandDraft = brandToDraft(brandResponse);
+      setCompany(nextCompanyDraft);
+      setBrand(nextBrandDraft);
+      setInitialCompany(nextCompanyDraft);
+      setInitialBrand(nextBrandDraft);
 
       showToast("success", "Settings saved.");
     } catch {
@@ -144,252 +224,52 @@ export function CompanySettingsForm() {
     }
   }
 
-  function handleAppendTone(tone: string) {
-    if (!canEdit) return;
-    setBrand((current) => ({
-      ...current,
-      brand_voice: current.brand_voice
-        ? `${current.brand_voice}, ${tone.toLowerCase()}`
-        : `Our brand tone is ${tone.toLowerCase()}`,
-    }));
-  }
-
   if (loading) {
-    return <div className={styles.card}>Loading settings…</div>;
+    return (
+      <div className={styles.page}>
+        <div className={styles.loadingCard}>Loading settings…</div>
+      </div>
+    );
   }
-
-  const readinessPercent = brand.brand_voice.length > 20 ? 100 : brand.brand_voice ? 60 : 30;
 
   return (
     <div className={styles.page}>
-      {/* Page Header */}
       <PageHeader
         icon="⚙️"
         title="Company & Brand Settings"
-        description="Manage your organization profile, legal disclosures, and AI brand voice guidelines."
+        description="Manage your company profile, brand voice, AI guardrails, and how Growixa represents your organization."
+        actions={<ProfileReadiness company={savedCompany} brand={savedBrand} />}
       />
-
-      {/* AI Readiness Banner */}
-      <div className={styles.readinessCard}>
-        <div className={styles.readinessContent}>
-          <span className={styles.readinessBadge}>🤖 AI Brand Voice Profile</span>
-          <h3 className={styles.readinessTitle}>Company Identity &amp; AI Copy Guidelines</h3>
-          <p className={styles.readinessSubtitle}>
-            Configure your brand voice, legal compliance disclosures, forbidden claims, and required
-            facts. Growixa AI Assistant enforces these guidelines on every generated campaign and
-            email.
-          </p>
-        </div>
-        <div className={styles.readinessStat}>
-          <span className={styles.readinessPercent}>{readinessPercent}%</span>
-          <span className={styles.readinessLabel}>Profile Readiness</span>
-        </div>
-      </div>
 
       {!canEdit && (
         <p className={styles.readOnlyNote}>You have view-only access to company settings.</p>
       )}
 
-      <form onSubmit={handleSubmit} className={styles.page}>
-        <div className={styles.formGrid}>
-          {/* Card A: General Company Profile */}
-          <div className={styles.card}>
-            <div className={styles.cardHeader}>
-              <span className={styles.cardHeaderIcon}>🏢</span>
-              <div>
-                <h3 className={styles.cardHeaderTitle}>Company Profile</h3>
-                <p className={styles.cardHeaderSubtitle}>
-                  Primary company details used for footers &amp; CAN-SPAM compliance.
-                </p>
-              </div>
-            </div>
+      <SettingsTabs tabs={TABS} activeTab={activeTab} onChange={setActiveTab} />
 
-            <div className={styles.inputGrid}>
-              <div className={`${styles.field} ${styles.fullWidth}`}>
-                <label className={styles.label} htmlFor="company-name">
-                  Company Name *
-                </label>
-                <input
-                  id="company-name"
-                  className={styles.input}
-                  required
-                  disabled={!canEdit}
-                  placeholder="e.g. Growixa Inc."
-                  value={company.name}
-                  onChange={(event) => setCompany({ ...company, name: event.target.value })}
-                />
-              </div>
-
-              <div className={styles.field}>
-                <label className={styles.label} htmlFor="company-website">
-                  Website URL
-                </label>
-                <input
-                  id="company-website"
-                  type="url"
-                  className={styles.input}
-                  disabled={!canEdit}
-                  placeholder="https://example.com"
-                  value={company.website}
-                  onChange={(event) => setCompany({ ...company, website: event.target.value })}
-                />
-              </div>
-
-              <div className={styles.field}>
-                <label className={styles.label} htmlFor="company-industry">
-                  Industry
-                </label>
-                <input
-                  id="company-industry"
-                  className={styles.input}
-                  disabled={!canEdit}
-                  placeholder="e.g. SaaS / E-commerce"
-                  value={company.industry}
-                  onChange={(event) => setCompany({ ...company, industry: event.target.value })}
-                />
-              </div>
-
-              <div className={`${styles.field} ${styles.fullWidth}`}>
-                <label className={styles.label} htmlFor="company-timezone">
-                  Timezone
-                </label>
-                <select
-                  id="company-timezone"
-                  className={styles.select}
-                  disabled={!canEdit}
-                  value={company.timezone}
-                  onChange={(event) => setCompany({ ...company, timezone: event.target.value })}
-                >
-                  {COMMON_TIMEZONES.map((tz) => (
-                    <option key={tz} value={tz}>
-                      {tz}
-                    </option>
-                  ))}
-                  {!COMMON_TIMEZONES.includes(company.timezone) && company.timezone && (
-                    <option value={company.timezone}>{company.timezone}</option>
-                  )}
-                </select>
-              </div>
-
-              <div className={`${styles.field} ${styles.fullWidth}`}>
-                <label className={styles.label} htmlFor="company-legal-footer">
-                  Legal Address &amp; Unsubscribe Footer
-                </label>
-                <textarea
-                  id="company-legal-footer"
-                  className={styles.textarea}
-                  disabled={!canEdit}
-                  placeholder="123 Growth Way, San Francisco, CA 94107 · All rights reserved."
-                  value={company.legal_footer}
-                  onChange={(event) => setCompany({ ...company, legal_footer: event.target.value })}
-                />
-                <p className={styles.hint}>
-                  Appears automatically in campaign footer templates to satisfy anti-spam
-                  regulations.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Column 2: Brand Voice & AI Rules */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
-            {/* Card B: Brand Persona */}
-            <div className={styles.card}>
-              <div className={styles.cardHeader}>
-                <span className={styles.cardHeaderIcon}>🗣️</span>
-                <div>
-                  <h3 className={styles.cardHeaderTitle}>AI Brand Voice &amp; Persona</h3>
-                  <p className={styles.cardHeaderSubtitle}>
-                    Describe the tone, vocabulary, and personality for AI copy.
-                  </p>
-                </div>
-              </div>
-
-              <div className={styles.field}>
-                <label className={styles.label} htmlFor="brand-voice">
-                  Brand Persona Description
-                </label>
-                <textarea
-                  id="brand-voice"
-                  className={styles.textarea}
-                  disabled={!canEdit}
-                  placeholder="Our brand tone is professional yet approachable, bold, confident, and focused on clear ROI for founders."
-                  value={brand.brand_voice}
-                  onChange={(event) => setBrand({ ...brand, brand_voice: event.target.value })}
-                />
-                <div className={styles.chipGroup}>
-                  <span className={styles.hint}>Add tone helpers:</span>
-                  {["Professional", "Friendly", "Authoritative", "Innovative", "Casual"].map(
-                    (tone) => (
-                      <button
-                        key={tone}
-                        type="button"
-                        className={styles.chip}
-                        disabled={!canEdit}
-                        onClick={() => handleAppendTone(tone)}
-                      >
-                        + {tone}
-                      </button>
-                    ),
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Card C: AI Compliance & Guardrails */}
-            <div className={styles.card}>
-              <div className={styles.cardHeader}>
-                <span className={styles.cardHeaderIcon}>🛡️</span>
-                <div>
-                  <h3 className={styles.cardHeaderTitle}>Compliance &amp; AI Guardrails</h3>
-                  <p className={styles.cardHeaderSubtitle}>
-                    Strict boundaries AI content must avoid or always include.
-                  </p>
-                </div>
-              </div>
-
-              <div className={styles.field}>
-                <label className={styles.label} htmlFor="brand-forbidden-claims">
-                  Forbidden Claims (Never say)
-                </label>
-                <textarea
-                  id="brand-forbidden-claims"
-                  className={styles.textarea}
-                  disabled={!canEdit}
-                  placeholder="Guaranteed 100% ROI&#10;No risk involved&#10;Instant results"
-                  value={brand.forbidden_claims}
-                  onChange={(event) => setBrand({ ...brand, forbidden_claims: event.target.value })}
-                />
-                <p className={styles.hint}>Enter one claim per line.</p>
-              </div>
-
-              <div className={styles.field}>
-                <label className={styles.label} htmlFor="brand-required-facts">
-                  Required Disclosures &amp; Key Facts
-                </label>
-                <textarea
-                  id="brand-required-facts"
-                  className={styles.textarea}
-                  disabled={!canEdit}
-                  placeholder="ISO 27001 Certified&#10;24/7 Priority Support included"
-                  value={brand.required_facts}
-                  onChange={(event) => setBrand({ ...brand, required_facts: event.target.value })}
-                />
-                <p className={styles.hint}>Enter one fact per line.</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Save Bar */}
-        {canEdit && (
-          <div className={styles.actionsBar}>
-            <button type="submit" className={styles.submit} disabled={saving}>
-              {saving ? "Saving…" : "Save changes"}
-            </button>
-          </div>
+      <div role="tabpanel" id={`tabpanel-${activeTab}`} aria-labelledby={`tab-${activeTab}`}>
+        {activeTab === "company-profile" && (
+          <CompanyProfileTab company={company} canEdit={canEdit} onChange={setCompany} />
         )}
-      </form>
+        {activeTab === "brand-voice" && (
+          <BrandVoiceTab brand={brand} canEdit={canEdit} onChange={setBrand} />
+        )}
+        {activeTab === "ai-guardrails" && (
+          <GuardrailsTab brand={brand} canEdit={canEdit} onChange={setBrand} />
+        )}
+        {activeTab === "ai-preview" && (
+          <AIPreviewTab forbiddenClaims={cleanList(brand.forbidden_claims)} />
+        )}
+      </div>
+
+      {canEdit && (
+        <StickySaveBar
+          dirty={dirty}
+          saving={saving}
+          onDiscard={handleDiscard}
+          onSave={handleSave}
+        />
+      )}
     </div>
   );
 }

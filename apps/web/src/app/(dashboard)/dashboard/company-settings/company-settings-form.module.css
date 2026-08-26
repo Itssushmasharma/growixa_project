@@ -1,128 +1,34 @@
 .page {
   display: flex;
   flex-direction: column;
-  gap: 24px;
-}
-
-/* AI Readiness Banner */
-.readinessCard {
-  background: #fff;
-  border-radius: var(--card-radius);
-  box-shadow: var(--card-shadow);
-  border: 1px solid rgba(15, 42, 86, 0.08);
-  padding: 22px 26px;
-  color: var(--color-dark-text);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   gap: 20px;
+  padding-bottom: 24px;
 }
 
-.readinessContent {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  max-width: 600px;
-}
-
-.readinessBadge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  align-self: flex-start;
-  padding: 4px 12px;
-  border-radius: 999px;
-  background: rgba(37, 99, 235, 0.08);
-  border: 1px solid rgba(37, 99, 235, 0.2);
-  color: #2563eb;
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.readinessTitle {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 800;
-  color: var(--color-dark-text);
-  letter-spacing: -0.01em;
-}
-
-.readinessSubtitle {
-  margin: 0;
-  font-size: 13px;
-  line-height: 1.5;
-  color: var(--color-slate);
-}
-
-.readinessStat {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 4px;
-  flex-shrink: 0;
-}
-
-.readinessPercent {
-  font-size: 26px;
-  font-weight: 800;
-  color: #2563eb;
-  line-height: 1;
-}
-
-.readinessLabel {
-  font-size: 12px;
-  color: var(--color-slate-light);
-  font-weight: 600;
-}
-
-/* 2-Column Grid Layout */
-.formGrid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 24px;
-}
-
-@media (max-width: 1024px) {
-  .formGrid {
-    grid-template-columns: 1fr;
-  }
-}
-
-.card {
+.loadingCard {
   background: #fff;
   border-radius: var(--card-radius);
   box-shadow: var(--card-shadow);
   padding: 24px;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
+  color: var(--color-slate);
 }
 
-.cardHeader {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  border-bottom: 1px solid rgba(15, 42, 86, 0.08);
-  padding-bottom: 14px;
-}
-
-.cardHeaderIcon {
-  font-size: 20px;
-}
-
-.cardHeaderTitle {
-  font-size: 16px;
-  font-weight: 800;
-  color: var(--color-dark-text);
+.readOnlyNote {
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  color: #b45309;
+  font-size: 13px;
+  font-weight: 600;
   margin: 0;
 }
 
-.cardHeaderSubtitle {
-  font-size: 12.5px;
-  color: var(--color-slate);
-  margin-top: 2px;
+/* Stack of cards within a tab panel */
+.tabStack {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 
 .inputGrid {
@@ -154,7 +60,8 @@
 }
 
 .input {
-  padding: 9px 12px;
+  padding: 11px 12px;
+  min-height: 44px;
   border-radius: 10px;
   border: 1px solid rgba(15, 42, 86, 0.14);
   font-size: 14px;
@@ -170,8 +77,14 @@
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
 }
 
+.input:disabled {
+  background: #f8fafc;
+  color: var(--color-slate);
+}
+
 .select {
-  padding: 9px 12px;
+  padding: 11px 12px;
+  min-height: 44px;
   border-radius: 10px;
   border: 1px solid rgba(15, 42, 86, 0.14);
   font-size: 14px;
@@ -179,6 +92,12 @@
   color: var(--color-dark-text);
   background: #fff;
   width: 100%;
+}
+
+.select:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
 }
 
 .textarea {
@@ -201,71 +120,13 @@
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
 }
 
+.textarea:disabled {
+  background: #f8fafc;
+  color: var(--color-slate);
+}
+
 .hint {
   font-size: 12px;
   color: var(--color-slate-light);
-  margin: 0;
-}
-
-.chipGroup {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
-  margin-top: 4px;
-}
-
-.chip {
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: #f1f5f9;
-  border: 1px solid rgba(15, 42, 86, 0.08);
-  font-size: 11.5px;
-  font-weight: 600;
-  color: #475569;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.chip:hover {
-  background: #e2e8f0;
-  color: #0f172a;
-}
-
-.actionsBar {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 12px;
-  padding: 16px 24px;
-  background: #fff;
-  border-radius: var(--card-radius);
-  box-shadow: var(--card-shadow);
-}
-
-.submit {
-  padding: 10px 24px;
-  border-radius: var(--pill-radius);
-  border: none;
-  background: var(--gradient-primary);
-  color: #fff;
-  font-weight: 700;
-  font-size: 14px;
-  cursor: pointer;
-}
-
-.submit:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.readOnlyNote {
-  padding: 10px 14px;
-  border-radius: 8px;
-  background: rgba(245, 158, 11, 0.1);
-  border: 1px solid rgba(245, 158, 11, 0.3);
-  color: #b45309;
-  font-size: 13px;
-  font-weight: 600;
   margin: 0;
 }

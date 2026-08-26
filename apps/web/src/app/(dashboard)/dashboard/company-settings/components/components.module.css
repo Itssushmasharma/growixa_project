@@ -1,0 +1,579 @@
+/* Shared styles for the AI Brand Control Center's sub-components. */
+
+/* ---- SettingsTabs ---- */
+.tabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: #fff;
+  border-radius: var(--pill-radius);
+  box-shadow: var(--card-shadow);
+  padding: 6px;
+  overflow-x: auto;
+}
+
+.tab {
+  flex-shrink: 0;
+  padding: 9px 18px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--color-slate);
+  font-size: 13.5px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.tab:hover {
+  background: #f1f5f9;
+  color: var(--color-dark-text);
+}
+
+.tabActive,
+.tabActive:hover {
+  background: var(--gradient-primary);
+  color: #fff;
+}
+
+.tab:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
+/* ---- SettingsCard ---- */
+.card {
+  background: #fff;
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid rgba(15, 42, 86, 0.08);
+  padding-bottom: 14px;
+}
+
+.cardHeaderIcon {
+  font-size: 20px;
+}
+
+.cardHeaderTitle {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--color-dark-text);
+  margin: 0;
+}
+
+.cardHeaderSubtitle {
+  font-size: 12.5px;
+  color: var(--color-slate);
+  margin-top: 2px;
+}
+
+/* ---- ProfileReadiness (rendered inline in the page header) ---- */
+.readinessWrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.readinessBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 14px;
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.08);
+  border: 1px solid rgba(37, 99, 235, 0.2);
+  color: #2563eb;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.readinessMeta {
+  font-size: 12px;
+  color: var(--color-slate-light);
+}
+
+/* ---- BrandPersonaSelector ---- */
+.personaGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+}
+
+.personaCard {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px 10px;
+  border-radius: 12px;
+  border: 1.5px solid rgba(15, 42, 86, 0.12);
+  background: #fff;
+  color: var(--color-dark-text);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.personaCard:hover:not(:disabled) {
+  border-color: rgba(37, 99, 235, 0.4);
+  background: rgba(37, 99, 235, 0.04);
+}
+
+.personaCard:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
+.personaCard:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.personaCardSelected {
+  border-color: #2563eb;
+  background: rgba(37, 99, 235, 0.08);
+  color: #1d4ed8;
+}
+
+.personaCheck {
+  font-size: 13px;
+  line-height: 1;
+}
+
+/* ---- BrandVoiceSlider ---- */
+.sliderGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.sliderRow {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sliderHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sliderLabel {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-dark-text);
+}
+
+.sliderValue {
+  font-size: 12px;
+  font-weight: 700;
+  color: #2563eb;
+  background: rgba(37, 99, 235, 0.08);
+  border-radius: 999px;
+  padding: 2px 9px;
+}
+
+.sliderInput {
+  width: 100%;
+  accent-color: #2563eb;
+  cursor: pointer;
+}
+
+.sliderInput:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.sliderEnds {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11.5px;
+  color: var(--color-slate-light);
+}
+
+/* ---- Shared field/label (also used inside GuardrailList) ---- */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-dark-text);
+}
+
+.hint {
+  font-size: 12px;
+  color: var(--color-slate-light);
+  margin: 0;
+}
+
+/* ---- GuardrailList ---- */
+.guardrailHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.guardrailAdd {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(37, 99, 235, 0.3);
+  background: rgba(37, 99, 235, 0.06);
+  color: #2563eb;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.guardrailAdd:hover:not(:disabled) {
+  background: rgba(37, 99, 235, 0.12);
+}
+
+.guardrailAdd:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.guardrailList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.guardrailItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #f8fafc;
+  border: 1px solid rgba(15, 42, 86, 0.06);
+}
+
+.guardrailIconForbidden {
+  color: #f43f5e;
+  font-size: 15px;
+  line-height: 1.4;
+  flex-shrink: 0;
+}
+
+.guardrailIconRequired {
+  color: #22a06b;
+  font-size: 15px;
+  line-height: 1.4;
+  flex-shrink: 0;
+}
+
+.guardrailInput {
+  flex: 1;
+  border: none;
+  background: transparent;
+  font-size: 13.5px;
+  color: var(--color-dark-text);
+  font-family: inherit;
+  padding: 2px 0;
+}
+
+.guardrailInput:focus {
+  outline: none;
+}
+
+.guardrailInput:disabled {
+  color: var(--color-dark-text);
+  -webkit-text-fill-color: var(--color-dark-text);
+  opacity: 1;
+}
+
+.guardrailRemove {
+  flex-shrink: 0;
+  border: none;
+  background: transparent;
+  color: var(--color-slate-light);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 6px;
+}
+
+.guardrailRemove:hover {
+  color: #f43f5e;
+  background: rgba(244, 63, 94, 0.08);
+}
+
+.guardrailEmpty {
+  font-size: 12.5px;
+  color: var(--color-slate-light);
+  padding: 10px 12px;
+}
+
+/* ---- LogoUploader ---- */
+.logoRow {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.logoPreview {
+  width: 64px;
+  height: 64px;
+  border-radius: 14px;
+  background: #f1f5f9;
+  border: 1px solid rgba(15, 42, 86, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.logoPreview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.logoEmptyIcon {
+  font-size: 24px;
+  color: var(--color-slate-light);
+}
+
+.logoActions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+}
+
+.logoActionsRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.logoButton {
+  padding: 7px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 42, 86, 0.14);
+  background: #fff;
+  color: var(--color-dark-text);
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.logoButton:hover:not(:disabled) {
+  background: #f1f5f9;
+}
+
+.logoButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.logoUrlInput {
+  flex: 1;
+  min-width: 200px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(15, 42, 86, 0.14);
+  font-size: 13px;
+  font-family: inherit;
+}
+
+.logoUrlInput:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+/* ---- AICopyPreview ---- */
+.previewToolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.previewSelect {
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(15, 42, 86, 0.14);
+  font-size: 13.5px;
+  font-family: inherit;
+  color: var(--color-dark-text);
+  background: #fff;
+}
+
+.previewGenerate {
+  padding: 9px 18px;
+  border-radius: var(--pill-radius);
+  border: none;
+  background: var(--gradient-primary);
+  color: #fff;
+  font-weight: 700;
+  font-size: 13.5px;
+  cursor: pointer;
+}
+
+.previewGenerate:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.previewBody {
+  min-height: 140px;
+  border-radius: 12px;
+  border: 1px dashed rgba(15, 42, 86, 0.14);
+  background: #f8fafc;
+  padding: 16px;
+}
+
+.previewText {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.7;
+  color: var(--color-dark-text);
+  white-space: pre-wrap;
+}
+
+.previewPlaceholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 100%;
+  min-height: 108px;
+  text-align: center;
+  color: var(--color-slate-light);
+  font-size: 13px;
+}
+
+.previewMetaRow {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding-top: 4px;
+}
+
+.previewMetaItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+.previewMetaOk {
+  color: #22a06b;
+}
+
+.previewMetaWarn {
+  color: #b45309;
+}
+
+/* ---- StickySaveBar ---- */
+.saveBar {
+  position: sticky;
+  bottom: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 22px;
+  background: #0b1e3f;
+  color: #fff;
+  border-radius: var(--card-radius);
+  box-shadow: 0 12px 32px rgba(11, 30, 63, 0.35);
+  z-index: 10;
+}
+
+.saveBarStatus {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.saveBarDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #fbbf24;
+  flex-shrink: 0;
+}
+
+.saveBarActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.saveBarDiscard {
+  padding: 9px 16px;
+  border-radius: var(--pill-radius);
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  background: transparent;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.saveBarDiscard:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.saveBarSave {
+  padding: 9px 20px;
+  border-radius: var(--pill-radius);
+  border: none;
+  background: var(--gradient-primary);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.saveBarSave:disabled,
+.saveBarDiscard:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.savedNote {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 22px;
+  font-size: 13px;
+  color: var(--color-slate);
+}
