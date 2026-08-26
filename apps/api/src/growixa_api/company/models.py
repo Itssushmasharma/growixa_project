@@ -30,7 +30,14 @@ class CompanyProfile(Base):
     industry: Mapped[str | None] = mapped_column(Text, nullable=True)
     timezone: Mapped[str | None] = mapped_column(Text, nullable=True)
     default_language: Mapped[str] = mapped_column(Text, nullable=False, server_default="en")
+    # Outbound-campaign footer/unsubscribe disclosure text -- deliberately distinct from
+    # `business_address` below (GRX-COMPANY-003): the two were combined in one field before
+    # this task, per product direction they must not be.
     legal_footer: Mapped[str | None] = mapped_column(Text, nullable=True)
+    business_address: Mapped[str | None] = mapped_column(Text, nullable=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    support_email: Mapped[str | None] = mapped_column(Text, nullable=True)
+    sender_name: Mapped[str | None] = mapped_column(Text, nullable=True)
     contact_details: Mapped[dict[str, Any]] = mapped_column(
         JSONB, nullable=False, server_default="{}"
     )

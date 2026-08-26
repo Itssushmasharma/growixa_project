@@ -51,7 +51,15 @@ async def test_admin_can_save_and_view_company_profile(
     transport = ASGITransport(app=create_app())
     async with AsyncClient(transport=transport, base_url="http://test", cookies=cookies) as client:
         put_response = await client.put(
-            "/company/profile", json={"name": "Growixa Inc.", "timezone": "UTC"}
+            "/company/profile",
+            json={
+                "name": "Growixa Inc.",
+                "timezone": "UTC",
+                "support_email": "support@growixa.example",
+                "sender_name": "Growixa Team",
+                "business_address": "123 Growth Way, San Francisco, CA",
+                "description": "Growixa helps SMBs run AI-assisted email campaigns.",
+            },
         )
         assert put_response.status_code == 200
         assert put_response.json()["name"] == "Growixa Inc."
@@ -62,6 +70,10 @@ async def test_admin_can_save_and_view_company_profile(
     body = get_response.json()
     assert body["name"] == "Growixa Inc."
     assert body["timezone"] == "UTC"
+    assert body["support_email"] == "support@growixa.example"
+    assert body["sender_name"] == "Growixa Team"
+    assert body["business_address"] == "123 Growth Way, San Francisco, CA"
+    assert body["description"] == "Growixa helps SMBs run AI-assisted email campaigns."
 
 
 @pytest.mark.asyncio
@@ -108,7 +120,12 @@ async def test_brand_profile_requires_company_profile_first(
 
         brand_response = await client.put(
             "/brand/profile",
-            json={"brand_voice": "Friendly", "forbidden_claims": ["guaranteed results"]},
+            json={
+                "brand_voice": "Friendly",
+                "forbidden_claims": ["guaranteed results"],
+                "persona_tags": ["Professional", "Confident"],
+                "voice_settings": {"formality": 70, "energy": 40},
+            },
         )
         assert brand_response.status_code == 200
         assert brand_response.json()["brand_voice"] == "Friendly"
@@ -116,7 +133,10 @@ async def test_brand_profile_requires_company_profile_first(
         get_response = await client.get("/brand/profile")
 
     assert get_response.status_code == 200
-    assert get_response.json()["forbidden_claims"] == ["guaranteed results"]
+    body = get_response.json()
+    assert body["forbidden_claims"] == ["guaranteed results"]
+    assert body["persona_tags"] == ["Professional", "Confident"]
+    assert body["voice_settings"] == {"formality": 70, "energy": 40}
 
 
 @pytest.mark.asyncio
