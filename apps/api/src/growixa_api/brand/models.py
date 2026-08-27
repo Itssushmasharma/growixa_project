@@ -28,6 +28,14 @@ class BrandProfile(Base):
     brand_voice: Mapped[str | None] = mapped_column(Text, nullable=True)
     forbidden_claims: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, server_default="[]")
     required_facts: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, server_default="[]")
+    # Selected persona chips, e.g. ["Professional", "Confident"] (GRX-COMPANY-003).
+    persona_tags: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, server_default="[]")
+    # 0-100 slider values, e.g. {"formality": 70, "energy": 40, "technical_depth": 50,
+    # "sales_style": 60}. Free-form JSONB rather than fixed columns since these are UI
+    # preference knobs, not queried or validated server-side (GRX-COMPANY-003).
+    voice_settings: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, nullable=False, server_default="{}"
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

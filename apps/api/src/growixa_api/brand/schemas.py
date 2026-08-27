@@ -9,6 +9,8 @@ class BrandProfileIn(BaseModel):
     brand_voice: str | None = None
     forbidden_claims: list[Any] = Field(default_factory=list)
     required_facts: list[Any] = Field(default_factory=list)
+    persona_tags: list[Any] = Field(default_factory=list)
+    voice_settings: dict[str, Any] = Field(default_factory=dict)
 
 
 class BrandProfileOut(BrandProfileIn):

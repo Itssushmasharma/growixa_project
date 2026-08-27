@@ -13,6 +13,10 @@ class CompanyProfileIn(BaseModel):
     timezone: str | None = None
     default_language: str = "en"
     legal_footer: str | None = None
+    business_address: str | None = None
+    description: str | None = None
+    support_email: str | None = None
+    sender_name: str | None = None
     contact_details: dict[str, Any] = Field(default_factory=dict)
 
 
