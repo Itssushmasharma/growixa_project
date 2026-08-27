@@ -145,9 +145,14 @@ APPROVED
 (recorded in the commit that adds this verdict)
 
 ## Human Approval
-Required — customer-facing UI/UX redesign of an existing settings screen. Independent
-code review alone is not sufficient to merge; the product owner must still explicitly
-sign off (especially on the responsive/mobile layout and the AI Preview tab's honest
-"not connected" state), and that approval must be recorded in this file before merge.
 
-Status: APPROVED
+**Signed Off** — Product owner (Ravi Kant Yadav) approved this UI/UX redesign for merge
+to `main` on 2026-08-27, after being informed of the independent review's findings above
+(tabbed Brand Control Center over already-approved data; no fabricated AI output; honest
+"not connected" AI Preview state; logo upload correctly labeled "coming soon" rather than
+faked; responsive layout is fluid CSS, not browser-verified this session; no Playwright
+e2e added for the new tab flows). Approved with that as known, accepted follow-up rather
+than a blocker.
+
+Status: APPROVED — independent review complete; product-owner sign-off recorded; cleared
+for merge
