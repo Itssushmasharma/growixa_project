@@ -91,7 +91,7 @@ from Sprint 1 onward, code). Each entry names what changed and the commit(s) it 
 - **`v0.4.0`** — official production release promoted from `v0.4.0-rc2`.
 - Merged `feature/FRONTEND/GRX-CSV-AUTO-MATCH-FIX` adding B2B column auto-mapping, 1-click custom fields generation in CSV imports, custom fields in contact detail modal & segment rules, `🏷️ Move to Tag` and `📋 Add to List` floating bulk actions, and tag filter dropdown.
 - Merged `feature/FRONTEND/GRX-TEMPLATE-TOKEN-FIX` fixing visual editor token synchronization and live preview.
-- Merged `feature/INFRA/GRX-TELEGRAM-NOTIFY` integrating automated Telegram release notifications for UAT and Production via central `iitdeveloper-git-shared-workflows` action.
+- Merged `feature/INFRA/GRX-TELEGRAM-NOTIFY` integrating automated Telegram release notifications for UAT and Production via central DeployKit (`iitdeveloper-git/deploykit/actions/notify@v1`) action.
 - Fixed GitHub Actions service container environment evaluation in `ci.yml`.
 
 ## 2026-08-20 — v0.3.0 production release

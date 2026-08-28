@@ -336,8 +336,9 @@ jobs:
           PYEOF
 
       - name: Send Telegram Release Notification
-        uses: iitdeveloper-git/shared-workflows/actions/telegram-notify@v1
+        uses: iitdeveloper-git/deploykit/actions/notify@v1
         with:
+          channel: telegram
           bot_token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           chat_id: ${{ secrets.TELEGRAM_CHAT_ID }}
           app_name: "Growixa"
@@ -354,8 +355,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Send Telegram Failure Notification
-        uses: iitdeveloper-git/shared-workflows/actions/telegram-notify@v1
+        uses: iitdeveloper-git/deploykit/actions/notify@v1
         with:
+          channel: telegram
           bot_token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           chat_id: ${{ secrets.TELEGRAM_CHAT_ID }}
           app_name: "Growixa"
