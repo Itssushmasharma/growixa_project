@@ -55,7 +55,7 @@ async def main():
         )
         session.add(user)
         await session.flush()
-        session.add(UserRole(user_id=user.id, role_id=admin_role.id))
+        session.add(UserRole(account_id=account.id, user_id=user.id, role_id=admin_role.id))
         await session.commit()
 
 asyncio.run(main())
