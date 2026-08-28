@@ -40,7 +40,7 @@ export function PasswordField({
           type="button"
           className={styles.passwordToggle}
           onClick={() => setShowPassword((prev) => !prev)}
-          aria-label={showPassword ? "Hide password" : "Show password"}
+          aria-label={showPassword ? "Hide characters" : "Show characters"}
           tabIndex={-1}
         >
           {showPassword ? <EyeOffIcon /> : <EyeIcon />}
