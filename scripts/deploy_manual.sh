@@ -242,8 +242,20 @@ else
     echo "⚠️ Warning: Health check returned HTTP ${HEALTH_STATUS}."
 fi
 
-# Prune old dangling images to prevent disk from filling up
-ssh "${VPS_USER}@${VPS_HOST}" "sudo docker image prune -f && sudo docker builder prune -f 2>/dev/null || true"
+# Thorough disk & image cleanup to keep VPS disk footprint minimal
+echo "  -> Pruning Docker build cache and intermediate layers..."
+ssh "${VPS_USER}@${VPS_HOST}" bash -c "'
+set -euo pipefail
+# 1. Prune all buildx builder cache
+sudo docker builder prune -a -f >/dev/null 2>&1 || true
+
+# 2. Prune dangling and unused images
+sudo docker image prune -f >/dev/null 2>&1 || true
+
+# 3. Clean up node_modules and .next from build directory to save disk
+sudo rm -rf ${BUILD_DIR}/apps/web/.next ${BUILD_DIR}/apps/web/node_modules ${BUILD_DIR}/**/__pycache__ 2>/dev/null || true
+'
+echo "🧹 Auto-cleanup finished: Reclaimed Docker build cache and cleaned build artifacts."
 
 # Extract changelog release notes summary if available
 RELEASE_NOTES_SUMMARY=$(python3 -c "
