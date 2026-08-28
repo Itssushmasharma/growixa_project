@@ -118,6 +118,14 @@ intelligence, SEO execution, AEO, GEO, authority/outreach, full growth-agent sys
 [ROADMAP.md](ROADMAP.md) for release staging, including the marketing-side post-MVP
 releases (1.1, 1.2).
 
+Also see [FUTURE_SCOPE_LEAD_INTELLIGENCE.md](FUTURE_SCOPE_LEAD_INTELLIGENCE.md) —
+company/person contact discovery and enrichment, AI-generated lead qualification, and
+approval-gated outreach sequencing. **Idea capture and a `PROPOSED` (not `APPROVED`)
+architecture decision only** ([DECISIONS.md §DEC-GRX-033](../00-project-control/DECISIONS.md)) —
+would expand Growixa's positioning (§9) beyond automating a company's own existing
+audience, so it is not committed scope and must not be treated as such until the
+product owner approves the underlying decision.
+
 ## 15. Functional requirements
 
 Full detail lives in `docs/02-features/` (Phase 2). Top-level requirement groups and IDs:

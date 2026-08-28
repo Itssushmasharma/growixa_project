@@ -1548,6 +1548,39 @@ contact someone you have no prior relationship with?
    claim recorded in these documents should be treated as a research starting point for
    that review, not as a cleared position.
 
+### Addendum 4, 2026-08-28 — Understand and Act layers (Find/Understand/Act framing)
+
+Recorded from a product-owner brainstorm on positioning this module as core and
+visibly AI-driven, not just an enrichment utility. Full detail lives in
+`FUTURE_SCOPE_LEAD_INTELLIGENCE.md` §"Update, 2026-08-28" to keep this entry short;
+summarized here for traceability. **Still `PROPOSED`** — this addendum adds scope, it
+does not move anything toward `APPROVED`.
+
+Reframes the module as three layers: **Find** (discovery/enrichment/provenance —
+everything already specified above), **Understand** (a new, evidence-citing AI
+qualification narrative generated from Find's provenance-tagged fields — not a new
+data source, a synthesis step), and **Act** (segment fit + a drafted outreach
+sequence that reuses `GRX-FEAT-021`'s draft/approve pipeline under the existing
+`DEC-GRX-006` human-approval rule, with the approval doubling as the lead→contact
+promotion event this decision already requires to be explicit and audited).
+
+Understand has no new preconditions beyond this decision's existing ones and could
+ship before Act. **Corrected, 2026-08-28, after independent review flagged this
+addendum contradicted `FUTURE_SCOPE_LEAD_INTELLIGENCE.md`'s own "Build sequencing"
+section written the same day** — this entry originally said Act "cannot ship before
+`GRX-FEAT-021` (AI Content Assistant, currently `NOT_STARTED`) exists." That was
+wrong: `MASTER_TASK_TRACKER.md` shows the underlying `GRX-AI-001..011` tasks reached
+`DONE`, and AI-generated drafting is live in the campaign composer today.
+`GRX-FEAT-021`'s own row in `FEATURE_CATALOG.md`/`FEATURE_STATUS_MATRIX.md` is
+simply unreconciled to that (still reads `NOT_STARTED`/unaudited) — a pre-existing
+documentation-hygiene gap, not evidence the capability doesn't exist. Act's real new
+work is the lead→draft wiring and the promotion/eligibility-check mechanism itself,
+not waiting on drafting infrastructure to be built. That mechanism — "approving a
+sequence = promotion + eligibility check" — is new product behavior that needs its
+own explicit confirmation before build regardless, since `DEC-GRX-006` did not
+originally anticipate a sequence being drafted before the contact relationship
+exists.
+
 ## DEC-GRX-034: Contact soft deletion — `deleted_at`, enforced invisibility, and re-import behaviour
 
 - Status: **APPROVED** — confirmed by the product owner 2026-08-16, after considering and
