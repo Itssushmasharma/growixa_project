@@ -10,12 +10,25 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
-## 2026-08-28 — Unreleased / Post-v0.5.6 Enhancements
+## 2026-08-28 — v0.5.7-rc1 UAT release candidate (Preview)
+
+> Tag `v0.5.7-rc1` was pushed as this work landed (retagged forward across the session as
+> more PRs merged); it currently points at `ba576e6`, the last commit below. This entry was
+> written after the fact to cover everything the tag actually contains, since the tag push
+> preceded the changelog update.
 
 - **`fix(e2e)`** — the e2e seed script created `UserRole` rows without the required `account_id`, failing every `e2e` CI run on `main` since 2026-08-23 at setup, before any test executed (`GRX-BUG-006`).
 - **`fix(auth)`** — the password-visibility toggle's `aria-label` ("Show/Hide password") collided with the password field's own "Password" label, causing a Playwright strict-mode violation on `getByLabel("Password")` (`GRX-BUG-007`).
 - **`fix(e2e)`** — updated stale e2e login specs to assert the real "Login to Growixa" submit button copy instead of a nonexistent "Sign in" button, unblocking the login flow in `dashboard.spec.ts`/`team.spec.ts` (`GRX-BUG-008`).
-- **`chore(quality)`** — filed follow-up `GRX-BUG-009` (stale "Welcome to Growixa" dashboard assertion) and `GRX-BUG-010` (duplicate invite-confirmation text matching both a toast and an inline panel), found while verifying the above but not yet fixed.
+- **`fix(e2e)`** — updated a stale dashboard e2e assertion for pre-`GRX-SAAS-014` empty-state copy ("Welcome to Growixa") that was replaced by the real Overview UI on 2026-08-14, to assert the current `PageHeader` welcome text instead (`GRX-BUG-009`).
+- **`fix(e2e)`** — disambiguated a Playwright strict-mode collision in the team invite-confirmation flow (toast vs. persistent panel), fixed the accept-invitation token extraction (was passing the full URL instead of the token), and gave the e2e seed account an `AccountSubscription` row on the `starter` plan so quota checks pass — closing out the entire `GRX-BUG-006`→`010` e2e chain; the full Playwright suite is green for the first time (`GRX-BUG-010`).
+- **`chore(ci)`** — cut GitHub Actions minutes usage on `ci.yml`: skip the full suite on docs-only changes, cancel superseded runs on new commits, cache pip/npm/Docker/Playwright, and move dependency audits to a weekly schedule instead of every push.
+- **`chore(ci)`** — production deploys now promote the already-tested UAT release-candidate image (retag via `docker buildx imagetools create`) instead of re-testing and rebuilding from source, when a matching RC image exists in GHCR — falls back to the original full test+build path otherwise.
+- **`chore(docs)`** — removed 28 `pr_reviews/` handoffs that were pure tracker bookkeeping or small self-contained bug/lint/CI fixes with no lasting design value; real feature and infra-decision reviews are untouched. Cleaned up ~115 already-merged Git branches (remote and local).
+- **`docs(product)`** — captured a Lead Intelligence brainstorm (Find/Understand/Act framing) with a `DEC-GRX-033` traceability addendum and competitive-positioning research — idea capture only, not scheduled or ticketed.
+- **`feat(devops)`** — added `scripts/deploy_manual.sh`, an interactive manual VPS deployment script for UAT/Production with pre-flight tests and Telegram notifications, plus Claude skill adapter pointers for all 5 canonical Growixa skills.
+- **`feat(devops)`** — added deep automatic cleanup of Docker buildx cache, dangling images, and stray build artifacts (`node_modules`, `.next`, `__pycache__`) to `deploy_manual.sh` after every deploy.
+- **`ci(infra)`** — migrated CI/deploy workflows from `iitdeveloper-git/iitdeveloper-git-shared-workflows` to the stable `iitdeveloper-git/shared-workflows@v1` release, then to `iitdeveloper-git/deploykit/actions/notify@v1` for Telegram notifications — no behavioral change, just a maintained-dependency swap.
 
 ## 2026-08-25 — v0.5.6 production release
 

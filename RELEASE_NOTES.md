@@ -2,19 +2,35 @@
 
 ---
 
-## 🟡 [Unreleased] — 2026-08-28
+## 🟡 [v0.5.7-rc1] (Upcoming Release) — 2026-08-28
 
-> **Platform Status**: 🟡 Post-`v0.5.6`, not yet tagged for release
-> **Base**: `v0.5.6`
+> **Release Tag**: `v0.5.7-rc1` (points at `ba576e6`)
+> **Platform Status**: 🟡 Staging / Preview — tag pushed, but every `deploy-uat` run failed
+> immediately (~6s) due to this GitHub account's Actions minutes being exhausted for the
+> billing cycle; nothing has actually deployed yet. Re-push the tag (or re-run the workflow)
+> once minutes reset.
+> **Target Production URL**: [https://growixa.iitdeveloper.com](https://growixa.iitdeveloper.com)
+> **UAT Staging URL**: [https://uat.growixa.iitdeveloper.com](https://uat.growixa.iitdeveloper.com)
 
 ### 🐛 Fixed
 - **E2E CI seed script `NOT NULL` failure (`GRX-BUG-006`)**: the e2e seed script created `UserRole` rows without `account_id`, failing every `e2e` CI run on `main` since 2026-08-23 before any test executed.
 - **Password-toggle `aria-label` collision (`GRX-BUG-007`)**: the "Show/Hide password" toggle button's `aria-label` collided with the password field's own label, breaking Playwright's `getByLabel("Password")`.
 - **Stale login button assertion (`GRX-BUG-008`)**: e2e specs expected a "Sign in" button that doesn't exist — updated to match the real "Login to Growixa" copy.
+- **Stale dashboard welcome assertion (`GRX-BUG-009`)**: e2e spec asserted pre-redesign empty-state copy ("Welcome to Growixa") that no longer renders — updated to match the real `PageHeader` welcome text.
+- **Team invite e2e flow (`GRX-BUG-010`)**: fixed a Playwright strict-mode collision (toast vs. persistent confirmation panel), a broken invite-token extraction (was sending the full URL instead of the token), and gave the e2e seed account a proper subscription so quota checks pass. Closes out the entire `GRX-BUG-006`→`010` chain — the full e2e suite is green for the first time.
 
-### 📋 Follow-ups Filed (not yet fixed)
-- `GRX-BUG-009` — e2e dashboard spec asserts "Welcome to Growixa" text that no longer renders on the dashboard.
-- `GRX-BUG-010` — e2e team spec's invite-confirmation text matches two elements (toast + inline panel), causing a strict-mode violation.
+### ⚙️ Infrastructure
+- **Reduced GitHub Actions minutes usage**: docs-only changes skip the full CI suite, superseded runs get cancelled automatically, and pip/npm/Docker/Playwright caching cuts job time. Dependency vulnerability scans moved to a weekly schedule.
+- **Production deploys now promote the tested UAT image** instead of re-testing and rebuilding from source when a matching release-candidate image already exists — falls back to the original full build automatically otherwise.
+- **Added `scripts/deploy_manual.sh`**: an interactive manual VPS deployment script for UAT/Production with pre-flight tests and Telegram notifications, plus Claude skill adapter pointers for all 5 canonical Growixa skills.
+- **Deep Docker cleanup on every deploy**: `deploy_manual.sh` now auto-prunes buildx cache, dangling images, and stray build artifacts to keep server/local disk usage minimal.
+- **CI notification dependency migration**: moved from `iitdeveloper-git-shared-workflows` to the stable `shared-workflows@v1` release, then to `deploykit/actions/notify@v1` — maintained-dependency swap, no behavior change.
+
+### 📋 Product
+- **Lead Intelligence brainstorm** (Find → Understand → Act framing) with competitive-positioning research — idea capture and a `DEC-GRX-033` traceability addendum only; nothing scheduled or ticketed yet.
+
+### 🧹 Housekeeping
+- Cleaned up 28 stale `pr_reviews/` bookkeeping/small-fix handoffs and ~115 already-merged Git branches.
 
 ---
 
