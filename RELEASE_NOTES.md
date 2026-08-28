@@ -2,6 +2,22 @@
 
 ---
 
+## 🟡 [Unreleased] — 2026-08-28
+
+> **Platform Status**: 🟡 Post-`v0.5.6`, not yet tagged for release
+> **Base**: `v0.5.6`
+
+### 🐛 Fixed
+- **E2E CI seed script `NOT NULL` failure (`GRX-BUG-006`)**: the e2e seed script created `UserRole` rows without `account_id`, failing every `e2e` CI run on `main` since 2026-08-23 before any test executed.
+- **Password-toggle `aria-label` collision (`GRX-BUG-007`)**: the "Show/Hide password" toggle button's `aria-label` collided with the password field's own label, breaking Playwright's `getByLabel("Password")`.
+- **Stale login button assertion (`GRX-BUG-008`)**: e2e specs expected a "Sign in" button that doesn't exist — updated to match the real "Login to Growixa" copy.
+
+### 📋 Follow-ups Filed (not yet fixed)
+- `GRX-BUG-009` — e2e dashboard spec asserts "Welcome to Growixa" text that no longer renders on the dashboard.
+- `GRX-BUG-010` — e2e team spec's invite-confirmation text matches two elements (toast + inline panel), causing a strict-mode violation.
+
+---
+
 ## 🟢 [v0.5.6] — 2026-08-25
 
 > **Release Tag**: `v0.5.6`

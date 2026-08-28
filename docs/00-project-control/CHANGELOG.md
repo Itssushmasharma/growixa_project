@@ -10,6 +10,13 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
+## 2026-08-28 — Unreleased / Post-v0.5.6 Enhancements
+
+- **`fix(e2e)`** — the e2e seed script created `UserRole` rows without the required `account_id`, failing every `e2e` CI run on `main` since 2026-08-23 at setup, before any test executed (`GRX-BUG-006`).
+- **`fix(auth)`** — the password-visibility toggle's `aria-label` ("Show/Hide password") collided with the password field's own "Password" label, causing a Playwright strict-mode violation on `getByLabel("Password")` (`GRX-BUG-007`).
+- **`fix(e2e)`** — updated stale e2e login specs to assert the real "Login to Growixa" submit button copy instead of a nonexistent "Sign in" button, unblocking the login flow in `dashboard.spec.ts`/`team.spec.ts` (`GRX-BUG-008`).
+- **`chore(quality)`** — filed follow-up `GRX-BUG-009` (stale "Welcome to Growixa" dashboard assertion) and `GRX-BUG-010` (duplicate invite-confirmation text matching both a toast and an inline panel), found while verifying the above but not yet fixed.
+
 ## 2026-08-25 — v0.5.6 production release
 
 - **`v0.5.6`** — official production release promoted from `v0.5.5-rc1`.
