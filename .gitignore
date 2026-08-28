@@ -58,5 +58,9 @@ dummy/
 need_review_docs/
 data/
 
+# Claude local settings
+.claude/settings.local.json
+.claude/worktrees/
+
 # Claude-Flow daemon & session state (local tooling, never source)
 .claude-flow/
