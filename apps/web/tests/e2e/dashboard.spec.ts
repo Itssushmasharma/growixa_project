@@ -15,7 +15,11 @@ test("logging in shows the dashboard shell, and logging out returns to login", a
 
   await expect(page).toHaveURL(/\/dashboard$/);
   await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
-  await expect(page.getByText("Welcome to Growixa")).toBeVisible();
+  await expect(
+    page.getByText(
+      "Welcome back! Track your multi-channel marketing performance and audience growth.",
+    ),
+  ).toBeVisible();
   await expect(page.getByText("E2E Dashboard User")).toBeVisible();
 
   await page.getByRole("button", { name: "Log out" }).click();
