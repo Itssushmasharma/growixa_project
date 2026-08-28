@@ -64,8 +64,15 @@ test("admin invites a user, the invitee accepts, and logs in (GRX-USER-002 happy
     await page.getByLabel("Email").fill(invitedEmail);
     await page.getByRole("button", { name: "Send invite" }).click();
 
-    await expect(page.getByText(new RegExp(`Invitation sent to ${invitedEmail}`))).toBeVisible();
-    const inviteToken = await page.locator("code").textContent();
+    const invitePanel = page.getByTestId("invite-success-panel");
+    await expect(
+      invitePanel.getByText(new RegExp(`Invitation sent to ${invitedEmail}`)),
+    ).toBeVisible();
+    // The panel shows the full accept-invitation URL (for sharing), not the bare token —
+    // extract just the `token` query param the accept API actually expects.
+    const inviteLink = await invitePanel.locator("code").textContent();
+    expect(inviteLink).toBeTruthy();
+    const inviteToken = new URL(inviteLink ?? "").searchParams.get("token");
     expect(inviteToken).toBeTruthy();
 
     const acceptResponse = await page.request.post(`${API_URL}/users/invitations/accept`, {

@@ -252,7 +252,7 @@ export function TeamPage() {
         </div>
 
         {inviteResult && (
-          <div className={styles.inviteSuccess}>
+          <div className={styles.inviteSuccess} data-testid="invite-success-panel">
             <span>
               ✅ Invitation sent to <strong>{inviteResult.email}</strong>. If the email does not
               arrive within a few minutes, share this link instead:

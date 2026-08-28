@@ -20,6 +20,8 @@ const COMPOSE_BIN = process.env.COMPOSE_BIN ?? "podman";
 export default function globalSetup(): void {
   const script = `
 import asyncio
+from datetime import UTC, datetime, timedelta
+
 from sqlalchemy import select
 
 from growixa_api.db import async_session_factory
@@ -27,6 +29,10 @@ from growixa_api.auth.security import hash_password
 from growixa_api.accounts.models import Account  # must be imported so SQLAlchemy can
 from growixa_api.roles.models import Role         # resolve users.account_id -> accounts.id
 from growixa_api.users.models import User, UserRole
+from growixa_api.billing.models import AccountSubscription
+from growixa_api.platform_auth.models import PlatformAdmin  # noqa: F401 -- must be imported
+# so SQLAlchemy can resolve account_subscriptions.set_by_platform_admin_id -> platform_admins.id
+from growixa_api.billing.repositories import FREE_PLAN_PERIOD_DAYS, get_plan_by_slug
 
 async def main():
     async with async_session_factory() as session:
@@ -46,6 +52,25 @@ async def main():
         account = Account(name="E2E Test Account")
         session.add(account)
         await session.flush()  # populate account.id before referencing it
+
+        # Every account gets exactly one AccountSubscription row, normally created at
+        # registration (BILLING_SYSTEM_ARCHITECTURE.md §3.4) -- quota checks like the
+        # team invite flow's max_user_seats assert this row exists, so a manually
+        # seeded account needs it too, not just Account/User/UserRole. "starter" (3
+        # seats), not "free" (1 seat): the free plan's single seat is already used by
+        # this admin user, so team.spec.ts inviting a second member would otherwise be
+        # correctly rejected with 402 QUOTA_EXCEEDED regardless of the test's own logic.
+        starter_plan = await get_plan_by_slug(session, "starter")
+        assert starter_plan is not None, "the \`starter\` subscription_plans row must be seeded"
+        now = datetime.now(UTC)
+        session.add(AccountSubscription(
+            account_id=account.id,
+            plan_id=starter_plan.id,
+            status="ACTIVE",
+            currency="USD",
+            current_period_start=now,
+            current_period_end=now + timedelta(days=FREE_PLAN_PERIOD_DAYS),
+        ))
 
         user = User(
             account_id=account.id,
