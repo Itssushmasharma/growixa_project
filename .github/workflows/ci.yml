@@ -338,7 +338,7 @@ jobs:
           echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Send Telegram CI Failure Notification
-        uses: iitdeveloper-git/iitdeveloper-git-shared-workflows/actions/telegram-notify@main
+        uses: iitdeveloper-git/shared-workflows/actions/telegram-notify@v1
         with:
           bot_token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           chat_id: ${{ secrets.TELEGRAM_CHAT_ID }}
