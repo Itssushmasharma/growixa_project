@@ -1,0 +1,70 @@
+name: Dependency Audit
+
+# Moved out of ci.yml: these scans check third-party dependencies for known
+# vulnerabilities, which don't change commit-to-commit — running them on every push
+# burned Actions minutes for no new signal. A weekly schedule (plus on-demand) still
+# catches newly disclosed CVEs promptly without paying that cost on every commit.
+on:
+  schedule:
+    - cron: "0 3 * * 1" # every Monday 03:00 UTC
+  workflow_dispatch:
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: "pip"
+          cache-dependency-path: |
+            apps/api/pyproject.toml
+            apps/worker/pyproject.toml
+
+      - name: Install backend dependencies
+        working-directory: apps/api
+        run: pip install -e ".[dev]"
+
+      - name: Install worker dependencies
+        working-directory: apps/worker
+        run: pip install -e ".[dev]"
+
+      - name: pip-audit (api)
+        run: |
+          pip install pip-audit
+          pip-audit apps/api
+
+      - name: pip-audit (worker)
+        run: pip-audit apps/worker
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: apps/web
+        run: npm ci
+
+      - name: npm audit
+        working-directory: apps/web
+        run: npm audit --audit-level=high
+
+  notify-on-failure:
+    name: Telegram Audit Failure Alert
+    needs: [audit]
+    if: failure()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Telegram Dependency Audit Failure Notification
+        uses: iitdeveloper-git/iitdeveloper-git-shared-workflows/actions/telegram-notify@main
+        with:
+          bot_token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          chat_id: ${{ secrets.TELEGRAM_CHAT_ID }}
+          app_name: "Growixa"
+          environment: "Dependency Audit"
+          status: "failure"
+          custom_message: "⚠️ Weekly dependency audit found a vulnerability on ${{ github.ref_name }} — check the pip-audit/npm audit output in the workflow run."

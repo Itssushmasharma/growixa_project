@@ -3,8 +3,24 @@ name: CI
 on:
   push:
     branches: [main]
+    paths-ignore: &docs-only-paths
+      - "docs/**"
+      - "pr_reviews/**"
+      - "AGENTS.md"
+      - "CLAUDE.md"
+      - "RELEASE_NOTES.md"
+      - ".agents/**"
+      - ".claude/**"
+      - ".github/copilot-instructions.md"
   pull_request:
     branches: [main]
+    paths-ignore: *docs-only-paths
+
+# Cancel a still-running CI run for the same branch/PR when a newer commit lands, instead
+# of letting superseded runs burn minutes to completion.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 # Ephemeral, CI-only credentials for throwaway service containers — not secrets, never
 # reused outside this workflow. Real deployments get real secrets from a proper store.
@@ -68,15 +84,12 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
+          cache: "pip"
+          cache-dependency-path: apps/api/pyproject.toml
 
       - name: Install backend dependencies
         working-directory: apps/api
         run: pip install -e ".[dev]"
-
-      - name: Dependency security audit
-        run: |
-          pip install pip-audit
-          pip-audit apps/api
 
       - name: Lint
         working-directory: apps/api
@@ -145,6 +158,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
+          cache: "pip"
+          cache-dependency-path: |
+            apps/worker/pyproject.toml
+            apps/api/pyproject.toml
 
       - name: Install worker dependencies
         working-directory: apps/worker
@@ -159,11 +176,6 @@ jobs:
         run: alembic upgrade head
         env:
           DATABASE_URL: postgresql+asyncpg://growixa:ci_pg_password@localhost:5432/growixa_test
-
-      - name: Dependency security audit
-        run: |
-          pip install pip-audit
-          pip-audit apps/worker
 
       - name: Lint
         working-directory: apps/worker
@@ -199,10 +211,6 @@ jobs:
         working-directory: apps/web
         run: npm ci
 
-      - name: Dependency security audit
-        working-directory: apps/web
-        run: npm audit --audit-level=high
-
       - name: Lint
         working-directory: apps/web
         run: npm run lint
@@ -235,6 +243,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Compose auto-tags this service's image as `<project>-api` (project name "growixa"
+      # per compose.yaml's top-level `name:`) — building it here with the GitHub Actions
+      # cache backend and loading it into the local daemon lets the later `docker compose
+      # up` (no `--build`) reuse it instead of rebuilding from scratch every run.
+      - name: Build api image (cached)
+        uses: docker/build-push-action@v6
+        with:
+          context: ./apps/api
+          tags: growixa-api:latest
+          load: true
+          cache-from: type=gha,scope=ci-api
+          cache-to: type=gha,mode=max,scope=ci-api
+
       - name: Write Compose .env
         run: |
           cat > .env <<EOF
@@ -255,8 +279,9 @@ jobs:
 
       # Only postgres/redis/rabbitmq/api — Playwright brings its own Next.js instance
       # (see apps/web/playwright.config.ts), so the `web` container isn't needed here.
+      # No `--build`: the api image was already built (with cache) above.
       - name: Start backing services and the api
-        run: docker compose up -d --build postgres redis rabbitmq api
+        run: docker compose up -d postgres redis rabbitmq api
 
       - name: Wait for the api to become healthy
         run: timeout 90 bash -c 'until curl -sf http://localhost:8000/health > /dev/null; do sleep 2; done'
@@ -270,6 +295,12 @@ jobs:
       - name: Install frontend dependencies
         working-directory: apps/web
         run: npm ci
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}-${{ hashFiles('apps/web/package-lock.json') }}
 
       - name: Install Playwright browsers
         working-directory: apps/web
