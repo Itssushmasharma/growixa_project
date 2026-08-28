@@ -47,6 +47,15 @@ This skill provides step-by-step instructions, runbooks, and architectures for d
    - Workflow: `.github/workflows/deploy-production.yml`
    - Packages images: `ghcr.io/iitdeveloper-git/growixa-*:v1.0.0` & `:latest`
    - Deploys to: `/opt/growixa/`
+   - **Build once, promote**: the workflow first checks GHCR for
+     `growixa-*:v1.0.0-rc1` (same version, `-rc1` — the convention above). If found, it
+     retags that already-tested UAT image as `v1.0.0`/`latest` with no rebuild and no
+     re-run of the test suite — production runs the exact bytes UAT verified. Only falls
+     back to a full test + rebuild when no matching RC image exists (e.g. a production tag
+     cut without a prior RC cycle). If the source RC's version number doesn't match the
+     production tag (multiple RC rounds, a version bump during promotion), pass it
+     explicitly via `workflow_dispatch`'s `source_rc_tag` input instead of relying on the
+     `-rc1` default.
 
 ---
 
