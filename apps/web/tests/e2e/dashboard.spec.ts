@@ -11,7 +11,7 @@ test("logging in shows the dashboard shell, and logging out returns to login", a
   await page.goto("/login");
   await page.getByLabel("Email").fill(E2E_USER_EMAIL);
   await page.getByLabel("Password").fill(E2E_USER_PASSWORD);
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.getByRole("button", { name: "Login to Growixa" }).click();
 
   await expect(page).toHaveURL(/\/dashboard$/);
   await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();

@@ -54,7 +54,7 @@ test("admin invites a user, the invitee accepts, and logs in (GRX-USER-002 happy
     await page.goto("/login");
     await page.getByLabel("Email").fill(E2E_USER_EMAIL);
     await page.getByLabel("Password").fill(E2E_USER_PASSWORD);
-    await page.getByRole("button", { name: "Sign in" }).click();
+    await page.getByRole("button", { name: "Login to Growixa" }).click();
     await expect(page).toHaveURL(/\/dashboard$/);
 
     await page.getByRole("link", { name: "Team" }).click();
@@ -81,7 +81,7 @@ test("admin invites a user, the invitee accepts, and logs in (GRX-USER-002 happy
     await page.goto("/login");
     await page.getByLabel("Email").fill(invitedEmail);
     await page.getByLabel("Password").fill(invitedPassword);
-    await page.getByRole("button", { name: "Sign in" }).click();
+    await page.getByRole("button", { name: "Login to Growixa" }).click();
 
     await expect(page).toHaveURL(/\/dashboard$/);
     await expect(page.getByText("E2E Invitee")).toBeVisible();
