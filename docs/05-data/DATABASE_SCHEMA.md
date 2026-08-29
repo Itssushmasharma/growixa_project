@@ -396,6 +396,7 @@ reads them, since plain SMTP has no webhook mechanism.
 | Column | Type | Constraints |
 |---|---|---|
 | id | uuid | PK |
+| account_id | uuid | FK → accounts.id ON DELETE CASCADE, NOT NULL |
 | name | text | NOT NULL |
 | created_by_user_id | uuid | FK → users.id, NULL |
 | created_at | timestamptz | NOT NULL, DEFAULT now() |
@@ -406,6 +407,7 @@ reads them, since plain SMTP has no webhook mechanism.
 | Column | Type | Constraints |
 |---|---|---|
 | id | uuid | PK |
+| account_id | uuid | FK → accounts.id ON DELETE CASCADE, NOT NULL — denormalized from `template_id`'s own `account_id` |
 | template_id | uuid | FK → email_templates.id ON DELETE CASCADE, NOT NULL |
 | version_number | integer | NOT NULL |
 | subject | text | NOT NULL |
