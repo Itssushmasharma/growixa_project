@@ -1,11 +1,11 @@
 Task: GRX-EMAIL-016 — Platform-published default/public email templates
 Developer: Claude Code
-Reviewer: Claude Code growixa-reviewer subagent — independent context, no memory of developer's session
+Reviewer: Claude Code growixa-reviewer subagent — independent context, no memory of developer's session (re-review pass)
 Branch: feature/BACKEND/GRX-EMAIL-016
 Worktree: .worktrees/grx-email-016
 Base Commit: d125b2e
-Latest Commit: 4c6f147
-Status: RE_REVIEW_REQUIRED
+Latest Commit: 10c74bc
+Status: APPROVED
 
 ## Update — 4c6f147 (post-approval addition)
 
@@ -225,5 +225,124 @@ higher-trust platform permission, per AGENTS.md §4.5. Independent code review a
 APPROVED, but this is a separate gate: the product owner still needs to give explicit
 sign-off before merge, including ideally a real visual check of `/dashboard/templates`
 (neither the developer nor this reviewer had working browser tooling to do that check).
+
+---
+
+## Re-Review — 2026-08-30 (post-approval platform-admin UI addition, `4c6f147`)
+
+Reviewer: Claude Code growixa-reviewer subagent — fresh independent context, no memory of
+either the original developer's session or the prior reviewer's session (fallback case per
+`growixa-reviewer` SKILL.md §1 — no other tool available this session; recorded plainly per
+that rule).
+
+Scope: **only** the diff introduced by `4c6f147` (`git show 4c6f147`, 7 files, 780
+insertions / 2 deletions) — a platform-admin frontend UI for managing default email
+templates, added after the prior `APPROVED` verdict at `47aa65e` per explicit user request.
+The prior review's scope (`d125b2e..47aa65e`, backend + customer-facing "Default Templates"
+UI) was not re-verified; it stays covered by the original review section above. Confirmed
+via `git log --oneline 47aa65e..4c6f147` that the range also contains `2f31fcd` and
+`7f2db93`, which are the pre-existing handoff/tracker commits that recorded the *original*
+approval (docs-only, already covered) — not new scope; the only code/tests/docs change in
+this pass is `4c6f147` itself, confirmed via `git show --stat 4c6f147` matching `git diff
+47aa65e..4c6f147 --stat` minus the tracker/pr_reviews files.
+
+**RBAC correctness in the UI** — confirmed:
+- `templates-page.tsx`'s `load()` effect calls `GET /platform/templates` and, on
+  `ApiError` with `status === 403`, renders `"You don't have access to manage platform
+  default templates."` instead of assuming access or silently showing an empty list.
+  Verified this branch is real (not vacuous) via
+  `templates-page.test.tsx::"shows an access-denied message on a 403"`, which mocks
+  `apiFetch` to reject with `new ApiError(403, "Forbidden")` and asserts the message
+  renders.
+- Sidebar nav entry: `sidebar.tsx`'s new `{ label: "Templates", href: "/platform/templates",
+  requiresPermission: "platform.templates.manage" }` entry is filtered dynamically —
+  `Sidebar({ permissions })` does `NAV_ITEMS.filter((item) =>
+  permissions.includes(item.requiresPermission))`, and `permissions` is threaded from
+  `layout.tsx`'s `apiFetch<PlatformAdmin>("/platform/auth/me")` →
+  `admin.permissions` → `<PlatformShell permissions={admin.permissions}>` →
+  `<Sidebar permissions={permissions} />`. Not hardcoded, not client-side-only guessed —
+  reflects the real session's permission grants from the backend on every load.
+- Backend route confirmed to match: `platform_admin/api.py` defines
+  `_require_templates_manage = require_platform_permission("platform.templates.manage")`
+  applied to all four routes (`GET/POST /templates`, `POST /templates/{id}/versions`,
+  `DELETE /templates/{id}`) — the same permission the UI's sidebar and 403 handling assume,
+  no drift between the gate and the check.
+
+**Clone-independence messaging** — confirmed correct, not misleading:
+- Retire confirmation (`window.confirm` in `handleRetire`): *"Retire "{name}"? Accounts
+  that already cloned it keep their own independent copy — this only removes it from the
+  Default Templates section for everyone else."* — accurately describes the backend's
+  actual behavior (clone creates an independent row with no FK back to the source, per the
+  original review's verification of `clone_template_for_account`).
+- Edit form heading reinforces the same point: *"Edit "{name}" — saves as a new version,
+  existing clones are unaffected."*
+- Page-level hint text also states retiring/updating "never affects a copy an account
+  already cloned." No copy anywhere overstates or contradicts the actual clone-not-edit
+  guarantee.
+
+**Edit = new version, not mutation** — confirmed: `handleEditSubmit` calls `POST
+/platform/templates/${editingId}/versions` (append-only version endpoint, matching the
+already-reviewed `add_platform_template_version` service function and its route at
+`platform_admin/api.py:990`). No call to any endpoint that would mutate a version or the
+template row in place. `templates-page.test.tsx::"edits a template by appending a new
+version"` asserts the mock only resolves for that exact path + `POST`, not a hypothetical
+`PUT`/`PATCH` on the template itself, and asserts the resulting toast reflects the new
+version number (`v2`) returned by the (mocked) backend.
+
+**Standard frontend hygiene** — all run directly in the worktree, not taken from the
+handoff's claims:
+- `npm run lint` (`eslint .`): 0 errors, 2 pre-existing warnings in
+  `social/post-form-page.tsx` (unrelated file, not touched by `4c6f147`) — matches prior
+  baseline.
+- `npm run format:check` (`prettier --check .`): clean, "All matched files use Prettier
+  code style!"
+- `npm run typecheck` (`tsc --noEmit`): clean, no output/errors.
+- `npm run test -- --run` (full suite): **53 files / 311 tests passed** — matches the
+  handoff's claimed count exactly (their 311 already includes the 7 new tests in
+  `templates-page.test.tsx`, confirmed by file count).
+- `templates-page.test.tsx` reviewed line-by-line: 7 tests (403 access-denied, list
+  render, empty state, publish, edit-appends-version, retire-after-confirm,
+  retire-declined) — all assert real behavior via mocked `apiFetch` call
+  paths/methods/payloads and resulting DOM/toast state, not implementation details that
+  would pass regardless (e.g. the edit test would fail if the code called `PUT
+  /platform/templates/{id}` instead of `POST .../versions`). Not vacuous.
+- `npm run build` (`next build`): succeeds; route table lists `/platform/templates` (3.6
+  kB, 106 kB First Load JS) alongside the rest of the platform-admin routes.
+
+**Secrets scan** on `git show 4c6f147` (the actual scoped diff, not the wider 3-commit
+range): grepped for `api[_-]?key|secret|password|token|BEGIN (RSA|PRIVATE)|AKIA|smtp|Bearer`
+— only benign matches are UI copy ("Only standard recipient/account tokens are allowed")
+and a doc section header ("## 6. Personalization tokens"), both referring to email
+merge-field tokens, not credentials. No real secret, key, or credential found.
+
+**Scope** — `4c6f147` alone touches exactly: `sidebar.tsx` (+6, one nav entry),
+`templates/page.tsx` (new, 5 lines, thin wrapper), `templates/templates-page.tsx` (new),
+`templates/templates-page.module.css` (new), `templates/templates-page.test.tsx` (new),
+`templates/types.ts` (new), and `docs/02-features/EMAIL_TEMPLATES.md` (+8/-4, corrects the
+now-false "no platform-admin UI" claim to describe what was actually added). No
+backend/schema/migration/worker changes in this commit. No unrelated files touched. Matches
+exactly what the task description says was added.
+
+No CHANGES_REQUESTED-triggering findings. No secrets. No scope creep. No RBAC gap. No
+misleading clone-independence copy. No mutation-in-place editing path.
+
+### Re-Review Decision
+
+APPROVED
+
+### Re-Reviewed Code Commit
+
+4c6f147 (the platform-admin UI addition; `10c74bc` on top is docs-only — tracker + this
+handoff file — confirmed via `git show --stat 10c74bc`, no code/tests/config/docs-under-review
+touched).
+
+### Re-Review Human Approval
+
+Still Required, unchanged from the original review's note above — this UI addition is
+itself customer-facing (platform-admin-facing) and touches the same higher-trust
+`platform.templates.manage` permission surface. Product owner sign-off (ideally including a
+real visual check of `/platform/templates`, since neither this reviewer nor the prior one
+had working browser tooling) is still outstanding and is a separate gate from this
+independent code-review approval.
 
 Status: APPROVED
