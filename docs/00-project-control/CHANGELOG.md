@@ -10,6 +10,10 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
+## 2026-08-31 — v0.5.9-rc4 UAT release candidate
+
+- **`fix(FRONTEND)`** — **Login/register test fix for IITD IAM Google button URL**: `v0.5.9-rc3`'s own UAT deploy test gate caught 2 stale tests still asserting the pre-IAM direct-Google-OAuth href; the button itself had already correctly moved to `/auth/oauth/iitd?kc_idp_hint=google` on 2026-08-30 (`GRX-AUTH-007-iam-button-flow`, formalized under `DEC-GRX-037`) but that PR's review only checked `next build` compiles, never the full test suite. Full frontend suite: 322 passed, 0 failed (was 320 passed, 2 failed). No behavior change — assertion-only fix. (`#60`)
+
 ## 2026-08-31 — v0.5.9-rc3 UAT release candidate
 
 - **`feat(BACKEND)`** — **API pagination for contacts/audit/ai-generations (`GRX-PERF-001`)**: every `GET` list endpoint in the API was previously fully unbounded (no `limit`/`offset` anywhere). Adds a shared `pagination.py` convention (`DEFAULT_LIMIT=50`, `MAX_LIMIT=200`, server-enforced) applied to `contacts`, `audit`, and `ai/generations`, with `LIMIT`/`OFFSET` at the SQL level, not fetched-then-sliced in Python. (`#52`)

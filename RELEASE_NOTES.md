@@ -2,6 +2,19 @@
 
 ---
 
+## 🟡 [v0.5.9-rc4] (UAT Release Candidate) — 2026-08-31
+
+> **Release Tag**: `v0.5.9-rc4`
+> **Release Date**: August 31, 2026
+> **Platform Status**: 🟡 Active on UAT Staging
+> **Target Production URL**: [https://growixa.iitdeveloper.com](https://growixa.iitdeveloper.com)
+> **UAT Staging URL**: [https://uat.growixa.iitdeveloper.com](https://uat.growixa.iitdeveloper.com)
+
+### 🐛 Fixed
+- **Login/Register Test Fix for IITD IAM Google Button**: `v0.5.9-rc3`'s own UAT deploy test gate caught 2 stale tests still asserting the pre-IAM direct-Google-OAuth URL — the button itself already correctly routed through IITD IAM since 2026-08-30, only the tests were out of date. Full frontend suite now 322 passed, 0 failed. No behavior change.
+
+---
+
 ## 🟡 [v0.5.9-rc3] (UAT Release Candidate) — 2026-08-31
 
 > **Release Tag**: `v0.5.9-rc3`
