@@ -244,7 +244,7 @@ fi
 
 # Thorough disk & image cleanup to keep VPS disk footprint minimal
 echo "  -> Pruning Docker build cache and intermediate layers..."
-ssh "${VPS_USER}@${VPS_HOST}" bash -c "'
+ssh "${VPS_USER}@${VPS_HOST}" bash -s << EOF
 set -euo pipefail
 # 1. Prune all buildx builder cache
 sudo docker builder prune -a -f >/dev/null 2>&1 || true
@@ -253,8 +253,8 @@ sudo docker builder prune -a -f >/dev/null 2>&1 || true
 sudo docker image prune -f >/dev/null 2>&1 || true
 
 # 3. Clean up node_modules and .next from build directory to save disk
-sudo rm -rf ${BUILD_DIR}/apps/web/.next ${BUILD_DIR}/apps/web/node_modules ${BUILD_DIR}/**/__pycache__ 2>/dev/null || true
-'
+sudo rm -rf "${BUILD_DIR}/apps/web/.next" "${BUILD_DIR}/apps/web/node_modules" "${BUILD_DIR}"/**/__pycache__ 2>/dev/null || true
+EOF
 echo "🧹 Auto-cleanup finished: Reclaimed Docker build cache and cleaned build artifacts."
 
 # Extract changelog release notes summary if available
