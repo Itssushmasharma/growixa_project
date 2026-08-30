@@ -1,6 +1,6 @@
 "use client";
 
-import { type FormEvent, useEffect, useState } from "react";
+import { type FormEvent, useEffect, useMemo, useState } from "react";
 
 import { TemplatePreviewModal } from "@/components/template-preview/template-preview-modal";
 import { useToast } from "@/components/toast/toast-context";
@@ -8,6 +8,20 @@ import { ApiError, apiFetch } from "@/lib/api-client";
 
 import styles from "./templates-page.module.css";
 import type { EmailTemplate } from "./types";
+
+type SortOption = "updated" | "name";
+type ViewMode = "grid" | "list";
+type CategoryFilter =
+  "All" | "Marketing" | "Onboarding" | "Announcement" | "Newsletter" | "Transactional";
+
+const CATEGORIES: CategoryFilter[] = [
+  "All",
+  "Marketing",
+  "Onboarding",
+  "Announcement",
+  "Newsletter",
+  "Transactional",
+];
 
 function errorDetail(error: unknown, fallback: string): string {
   if (error instanceof ApiError) {
@@ -66,6 +80,11 @@ export function PlatformTemplatesPage() {
 
   const [retiringId, setRetiringId] = useState<string | null>(null);
   const [previewingTemplate, setPreviewingTemplate] = useState<EmailTemplate | null>(null);
+
+  const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState<SortOption>("updated");
+  const [viewMode, setViewMode] = useState<ViewMode>("grid");
+  const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("All");
 
   useEffect(() => {
     async function load() {
@@ -168,6 +187,111 @@ export function PlatformTemplatesPage() {
       setRetiringId(null);
     }
   }
+
+  const categoryCounts = useMemo(() => {
+    const counts: Record<CategoryFilter, number> = {
+      All: templates.length,
+      Marketing: 0,
+      Onboarding: 0,
+      Announcement: 0,
+      Newsletter: 0,
+      Transactional: 0,
+    };
+
+    for (const t of templates) {
+      const nameLower = t.name.toLowerCase();
+      if (
+        nameLower.includes("marketing") ||
+        nameLower.includes("promo") ||
+        nameLower.includes("sale")
+      ) {
+        counts.Marketing += 1;
+      }
+      if (nameLower.includes("onboarding") || nameLower.includes("welcome")) {
+        counts.Onboarding += 1;
+      }
+      if (
+        nameLower.includes("announcement") ||
+        nameLower.includes("update") ||
+        nameLower.includes("launch")
+      ) {
+        counts.Announcement += 1;
+      }
+      if (
+        nameLower.includes("newsletter") ||
+        nameLower.includes("digest") ||
+        nameLower.includes("roundup")
+      ) {
+        counts.Newsletter += 1;
+      }
+      if (
+        nameLower.includes("transactional") ||
+        nameLower.includes("receipt") ||
+        nameLower.includes("alert")
+      ) {
+        counts.Transactional += 1;
+      }
+    }
+
+    return counts;
+  }, [templates]);
+
+  const visibleTemplates = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    let filtered = query
+      ? templates.filter(
+          (t) =>
+            t.name.toLowerCase().includes(query) ||
+            (t.current_version?.subject.toLowerCase().includes(query) ?? false),
+        )
+      : templates;
+
+    if (categoryFilter !== "All") {
+      filtered = filtered.filter((t) => {
+        const nameLower = t.name.toLowerCase();
+        if (categoryFilter === "Marketing") {
+          return (
+            nameLower.includes("marketing") ||
+            nameLower.includes("promo") ||
+            nameLower.includes("sale")
+          );
+        }
+        if (categoryFilter === "Onboarding") {
+          return nameLower.includes("onboarding") || nameLower.includes("welcome");
+        }
+        if (categoryFilter === "Announcement") {
+          return (
+            nameLower.includes("announcement") ||
+            nameLower.includes("update") ||
+            nameLower.includes("launch")
+          );
+        }
+        if (categoryFilter === "Newsletter") {
+          return (
+            nameLower.includes("newsletter") ||
+            nameLower.includes("digest") ||
+            nameLower.includes("roundup")
+          );
+        }
+        if (categoryFilter === "Transactional") {
+          return (
+            nameLower.includes("transactional") ||
+            nameLower.includes("receipt") ||
+            nameLower.includes("alert")
+          );
+        }
+        return true;
+      });
+    }
+
+    const sorted = [...filtered];
+    if (sortBy === "name") {
+      sorted.sort((a, b) => a.name.localeCompare(b.name));
+    } else {
+      sorted.sort((a, b) => b.updated_at.localeCompare(a.updated_at));
+    }
+    return sorted;
+  }, [templates, search, sortBy, categoryFilter]);
 
   if (loading) {
     return (
@@ -289,128 +413,373 @@ export function PlatformTemplatesPage() {
           </form>
         )}
 
-        <div className={styles.list}>
-          {templates.length === 0 && !createFormOpen && (
-            <div className={styles.rowSubject}>No default templates published yet.</div>
-          )}
-          {templates.map((template) => (
-            <div key={template.id}>
-              <div className={styles.row}>
-                <div className={styles.rowMain}>
-                  <span className={styles.rowName}>{template.name}</span>
-                  <span className={styles.rowSubject}>
-                    {template.current_version?.subject ?? "No subject"}
-                  </span>
-                </div>
-                <span className={styles.badge}>
-                  v{template.current_version?.version_number ?? 0}
-                </span>
-                <span className={styles.rowMeta}>Updated {formatDate(template.updated_at)}</span>
-                <div className={styles.rowActions}>
-                  {template.current_version && (
-                    <button
-                      type="button"
-                      className={styles.secondaryButton}
-                      onClick={() => setPreviewingTemplate(template)}
-                    >
-                      Preview
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    className={styles.secondaryButton}
-                    onClick={() =>
-                      editingId === template.id ? setEditingId(null) : openEditForm(template)
-                    }
-                  >
-                    {editingId === template.id ? "Cancel edit" : "Edit"}
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.dangerButton}
-                    disabled={retiringId === template.id}
-                    onClick={() => handleRetire(template)}
-                  >
-                    {retiringId === template.id ? "Retiring…" : "Retire"}
-                  </button>
-                </div>
-              </div>
+        {/* Toolbar & Filter Pills */}
+        <div className={styles.toolbar}>
+          <div className={styles.toolbarLeft}>
+            <div className={styles.searchWrapper}>
+              <span className={styles.searchIcon} aria-hidden="true">
+                🔍
+              </span>
+              <input
+                type="search"
+                className={styles.searchInput}
+                placeholder="Search default templates…"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                aria-label="Search default templates"
+              />
+            </div>
 
-              {editingId === template.id && (
-                <form onSubmit={handleEditSubmit} className={styles.form}>
-                  <div className={styles.formHeading}>
-                    Edit &quot;{template.name}&quot; — saves as a new version, existing clones are
-                    unaffected
-                  </div>
-                  <div className={styles.field}>
-                    <label className={styles.label} htmlFor={`edit-subject-${template.id}`}>
-                      Subject
-                    </label>
-                    <input
-                      id={`edit-subject-${template.id}`}
-                      className={styles.input}
-                      required
-                      value={editForm.subject}
-                      onChange={(event) =>
-                        setEditForm({ ...editForm, subject: event.target.value })
-                      }
+            <select
+              className={styles.sortSelect}
+              value={sortBy}
+              onChange={(event) => setSortBy(event.target.value as SortOption)}
+              aria-label="Sort default templates"
+            >
+              <option value="updated">Sort by: Last updated</option>
+              <option value="name">Sort by: Name</option>
+            </select>
+
+            <div className={styles.categoryPills} role="tablist" aria-label="Template categories">
+              {CATEGORIES.map((cat) => (
+                <button
+                  key={cat}
+                  type="button"
+                  role="tab"
+                  aria-selected={categoryFilter === cat}
+                  className={`${styles.categoryPill} ${
+                    categoryFilter === cat ? styles.categoryPillActive : ""
+                  }`}
+                  onClick={() => setCategoryFilter(cat)}
+                >
+                  <span>{cat}</span>
+                  {categoryCounts[cat] > 0 && (
+                    <span className={styles.categoryBadge}>{categoryCounts[cat]}</span>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className={styles.viewModeToggle} role="group" aria-label="View Mode">
+            <button
+              type="button"
+              className={`${styles.viewModeBtn} ${
+                viewMode === "grid" ? styles.viewModeBtnActive : ""
+              }`}
+              onClick={() => setViewMode("grid")}
+              aria-label="Grid View"
+              aria-pressed={viewMode === "grid"}
+            >
+              🎴 Grid
+            </button>
+            <button
+              type="button"
+              className={`${styles.viewModeBtn} ${
+                viewMode === "list" ? styles.viewModeBtnActive : ""
+              }`}
+              onClick={() => setViewMode("list")}
+              aria-label="List View"
+              aria-pressed={viewMode === "list"}
+            >
+              📋 List
+            </button>
+          </div>
+        </div>
+
+        {/* Empty States */}
+        {templates.length === 0 && !createFormOpen && (
+          <div className={styles.emptyState}>
+            <p className={styles.emptyStateTitle}>No default templates published yet.</p>
+            <p className={styles.emptyStateSubtitle}>
+              Click &quot;+ New default template&quot; to publish the first responsive email design.
+            </p>
+          </div>
+        )}
+
+        {templates.length > 0 && visibleTemplates.length === 0 && (
+          <div className={styles.emptyState}>
+            <p className={styles.emptyStateTitle}>No templates match &quot;{search}&quot;.</p>
+            <p className={styles.emptyStateSubtitle}>
+              Try refining your search terms or clearing the filter.
+            </p>
+          </div>
+        )}
+
+        {/* Visual Card Grid View */}
+        {viewMode === "grid" && visibleTemplates.length > 0 && (
+          <div className={styles.gridContainer}>
+            {visibleTemplates.map((template) => (
+              <div className={styles.templateCard} key={template.id}>
+                <div className={styles.cardPreviewArea}>
+                  {template.current_version ? (
+                    <iframe
+                      title={`Thumbnail for ${template.name}`}
+                      className={styles.cardPreviewIframe}
+                      sandbox=""
+                      srcDoc={template.current_version.body_html}
                     />
-                  </div>
-                  <div className={styles.field}>
-                    <label className={styles.label} htmlFor={`edit-body-html-${template.id}`}>
-                      Body (HTML)
-                    </label>
-                    <textarea
-                      id={`edit-body-html-${template.id}`}
-                      className={styles.textarea}
-                      required
-                      value={editForm.body_html}
-                      onChange={(event) =>
-                        setEditForm({ ...editForm, body_html: event.target.value })
-                      }
-                    />
-                  </div>
-                  {editForm.body_html && (
-                    <div className={styles.previewPane}>
-                      <div className={styles.previewLabel}>Live preview</div>
-                      <iframe
-                        title="Edit template live preview"
-                        className={styles.previewFrame}
-                        sandbox=""
-                        srcDoc={editForm.body_html}
-                      />
+                  ) : (
+                    <div className={styles.hint} style={{ padding: "20px" }}>
+                      No preview available
                     </div>
                   )}
-                  <div className={styles.field}>
-                    <label className={styles.label} htmlFor={`edit-body-text-${template.id}`}>
-                      Body (plain text, optional)
-                    </label>
-                    <textarea
-                      id={`edit-body-text-${template.id}`}
-                      className={styles.textarea}
-                      value={editForm.body_text}
-                      onChange={(event) =>
-                        setEditForm({ ...editForm, body_text: event.target.value })
-                      }
-                    />
+                </div>
+
+                <div className={styles.cardBody}>
+                  <div className={styles.cardTitleRow}>
+                    <h4 className={styles.cardName}>{template.name}</h4>
+                    <span className={styles.badge}>
+                      v{template.current_version?.version_number ?? 0}
+                    </span>
                   </div>
-                  <div className={styles.formActions}>
-                    <button type="submit" className={styles.actionButton} disabled={savingEdit}>
-                      {savingEdit ? "Saving…" : "Save new version"}
-                    </button>
+
+                  <p className={styles.cardSubject}>
+                    {template.current_version?.subject ?? "No subject"}
+                  </p>
+
+                  <div className={styles.cardMetaRow}>
+                    <span className={styles.hint}>Updated {formatDate(template.updated_at)}</span>
+
+                    <div className={styles.cardActions}>
+                      {template.current_version && (
+                        <button
+                          type="button"
+                          className={styles.secondaryButton}
+                          onClick={() => setPreviewingTemplate(template)}
+                        >
+                          Preview
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        className={styles.secondaryButton}
+                        onClick={() =>
+                          editingId === template.id ? setEditingId(null) : openEditForm(template)
+                        }
+                      >
+                        {editingId === template.id ? "Cancel edit" : "Edit"}
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.dangerButton}
+                        disabled={retiringId === template.id}
+                        onClick={() => handleRetire(template)}
+                      >
+                        {retiringId === template.id ? "Retiring…" : "Retire"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {editingId === template.id && (
+                  <form
+                    onSubmit={handleEditSubmit}
+                    className={styles.form}
+                    style={{ margin: "16px" }}
+                  >
+                    <div className={styles.formHeading}>
+                      Edit &quot;{template.name}&quot; — saves as a new version
+                    </div>
+                    <div className={styles.field}>
+                      <label className={styles.label} htmlFor={`edit-subject-${template.id}`}>
+                        Subject
+                      </label>
+                      <input
+                        id={`edit-subject-${template.id}`}
+                        className={styles.input}
+                        required
+                        value={editForm.subject}
+                        onChange={(event) =>
+                          setEditForm({ ...editForm, subject: event.target.value })
+                        }
+                      />
+                    </div>
+                    <div className={styles.field}>
+                      <label className={styles.label} htmlFor={`edit-body-html-${template.id}`}>
+                        Body (HTML)
+                      </label>
+                      <textarea
+                        id={`edit-body-html-${template.id}`}
+                        className={styles.textarea}
+                        required
+                        value={editForm.body_html}
+                        onChange={(event) =>
+                          setEditForm({ ...editForm, body_html: event.target.value })
+                        }
+                      />
+                    </div>
+                    {editForm.body_html && (
+                      <div className={styles.previewPane}>
+                        <div className={styles.previewLabel}>Live preview</div>
+                        <iframe
+                          title="Edit template live preview"
+                          className={styles.previewFrame}
+                          sandbox=""
+                          srcDoc={editForm.body_html}
+                        />
+                      </div>
+                    )}
+                    <div className={styles.field}>
+                      <label className={styles.label} htmlFor={`edit-body-text-${template.id}`}>
+                        Body (plain text, optional)
+                      </label>
+                      <textarea
+                        id={`edit-body-text-${template.id}`}
+                        className={styles.textarea}
+                        value={editForm.body_text}
+                        onChange={(event) =>
+                          setEditForm({ ...editForm, body_text: event.target.value })
+                        }
+                      />
+                    </div>
+                    <div className={styles.formActions}>
+                      <button type="submit" className={styles.actionButton} disabled={savingEdit}>
+                        {savingEdit ? "Saving…" : "Save new version"}
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.secondaryButton}
+                        onClick={() => setEditingId(null)}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </form>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Table List View */}
+        {viewMode === "list" && visibleTemplates.length > 0 && (
+          <div className={styles.list}>
+            {visibleTemplates.map((template) => (
+              <div key={template.id}>
+                <div className={styles.row}>
+                  <div className={styles.rowMain}>
+                    <span className={styles.rowName}>{template.name}</span>
+                    <span className={styles.rowSubject}>
+                      {template.current_version?.subject ?? "No subject"}
+                    </span>
+                  </div>
+                  <span className={styles.badge}>
+                    v{template.current_version?.version_number ?? 0}
+                  </span>
+                  <span className={styles.rowMeta}>Updated {formatDate(template.updated_at)}</span>
+                  <div className={styles.rowActions}>
+                    {template.current_version && (
+                      <button
+                        type="button"
+                        className={styles.secondaryButton}
+                        onClick={() => setPreviewingTemplate(template)}
+                      >
+                        Preview
+                      </button>
+                    )}
                     <button
                       type="button"
                       className={styles.secondaryButton}
-                      onClick={() => setEditingId(null)}
+                      onClick={() =>
+                        editingId === template.id ? setEditingId(null) : openEditForm(template)
+                      }
                     >
-                      Cancel
+                      {editingId === template.id ? "Cancel edit" : "Edit"}
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.dangerButton}
+                      disabled={retiringId === template.id}
+                      onClick={() => handleRetire(template)}
+                    >
+                      {retiringId === template.id ? "Retiring…" : "Retire"}
                     </button>
                   </div>
-                </form>
-              )}
-            </div>
-          ))}
-        </div>
+                </div>
+
+                {editingId === template.id && (
+                  <form onSubmit={handleEditSubmit} className={styles.form}>
+                    <div className={styles.formHeading}>
+                      Edit &quot;{template.name}&quot; — saves as a new version, existing clones are
+                      unaffected
+                    </div>
+                    <div className={styles.field}>
+                      <label className={styles.label} htmlFor={`edit-subject-list-${template.id}`}>
+                        Subject
+                      </label>
+                      <input
+                        id={`edit-subject-list-${template.id}`}
+                        className={styles.input}
+                        required
+                        value={editForm.subject}
+                        onChange={(event) =>
+                          setEditForm({ ...editForm, subject: event.target.value })
+                        }
+                      />
+                    </div>
+                    <div className={styles.field}>
+                      <label
+                        className={styles.label}
+                        htmlFor={`edit-body-html-list-${template.id}`}
+                      >
+                        Body (HTML)
+                      </label>
+                      <textarea
+                        id={`edit-body-html-list-${template.id}`}
+                        className={styles.textarea}
+                        required
+                        value={editForm.body_html}
+                        onChange={(event) =>
+                          setEditForm({ ...editForm, body_html: event.target.value })
+                        }
+                      />
+                    </div>
+                    {editForm.body_html && (
+                      <div className={styles.previewPane}>
+                        <div className={styles.previewLabel}>Live preview</div>
+                        <iframe
+                          title="Edit template live preview"
+                          className={styles.previewFrame}
+                          sandbox=""
+                          srcDoc={editForm.body_html}
+                        />
+                      </div>
+                    )}
+                    <div className={styles.field}>
+                      <label
+                        className={styles.label}
+                        htmlFor={`edit-body-text-list-${template.id}`}
+                      >
+                        Body (plain text, optional)
+                      </label>
+                      <textarea
+                        id={`edit-body-text-list-${template.id}`}
+                        className={styles.textarea}
+                        value={editForm.body_text}
+                        onChange={(event) =>
+                          setEditForm({ ...editForm, body_text: event.target.value })
+                        }
+                      />
+                    </div>
+                    <div className={styles.formActions}>
+                      <button type="submit" className={styles.actionButton} disabled={savingEdit}>
+                        {savingEdit ? "Saving…" : "Save new version"}
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.secondaryButton}
+                        onClick={() => setEditingId(null)}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </form>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {previewingTemplate && previewingTemplate.current_version && (

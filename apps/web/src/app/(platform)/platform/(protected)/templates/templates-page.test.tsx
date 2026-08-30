@@ -219,4 +219,96 @@ describe("PlatformTemplatesPage", () => {
     expect(previewIframe).toBeInTheDocument();
     expect(previewIframe).toHaveAttribute("srcdoc", "<h1>Hello</h1>");
   });
+
+  it("filters default templates by search query", async () => {
+    const user = userEvent.setup();
+    const OTHER_TEMPLATE: EmailTemplate = {
+      id: "platform-template-2",
+      name: "Announcement Promo",
+      is_platform_default: true,
+      created_at: "2026-08-30T00:00:00Z",
+      updated_at: "2026-08-30T00:00:00Z",
+      current_version: {
+        id: "version-2",
+        template_id: "platform-template-2",
+        version_number: 1,
+        subject: "Big Announcement",
+        body_html: "<p>Promo</p>",
+        body_text: "Promo",
+        created_at: "2026-08-30T00:00:00Z",
+      },
+    };
+
+    mockedApiFetch.mockImplementation((path: string) => {
+      if (path === "/platform/templates") return Promise.resolve([TEMPLATE, OTHER_TEMPLATE]);
+      throw new Error(`unexpected path: ${path}`);
+    });
+
+    renderPage();
+    await screen.findByText("Welcome Series Kickoff");
+    expect(screen.getByText("Announcement Promo")).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText("Search default templates"), "Announcement");
+
+    expect(screen.queryByText("Welcome Series Kickoff")).not.toBeInTheDocument();
+    expect(screen.getByText("Announcement Promo")).toBeInTheDocument();
+  });
+
+  it("filters default templates by category filter pills", async () => {
+    const user = userEvent.setup();
+    const OTHER_TEMPLATE: EmailTemplate = {
+      id: "platform-template-2",
+      name: "Monthly Newsletter template",
+      is_platform_default: true,
+      created_at: "2026-08-30T00:00:00Z",
+      updated_at: "2026-08-30T00:00:00Z",
+      current_version: {
+        id: "version-2",
+        template_id: "platform-template-2",
+        version_number: 1,
+        subject: "Digest",
+        body_html: "<p>Digest</p>",
+        body_text: "Digest",
+        created_at: "2026-08-30T00:00:00Z",
+      },
+    };
+
+    mockedApiFetch.mockImplementation((path: string) => {
+      if (path === "/platform/templates") return Promise.resolve([TEMPLATE, OTHER_TEMPLATE]);
+      throw new Error(`unexpected path: ${path}`);
+    });
+
+    renderPage();
+    await screen.findByText("Welcome Series Kickoff");
+    expect(screen.getByText("Monthly Newsletter template")).toBeInTheDocument();
+
+    // Click Newsletter tab pill
+    await user.click(screen.getByRole("tab", { name: /Newsletter/i }));
+    expect(screen.queryByText("Welcome Series Kickoff")).not.toBeInTheDocument();
+    expect(screen.getByText("Monthly Newsletter template")).toBeInTheDocument();
+
+    // Click Onboarding tab pill
+    await user.click(screen.getByRole("tab", { name: /Onboarding/i }));
+    expect(screen.getByText("Welcome Series Kickoff")).toBeInTheDocument();
+    expect(screen.queryByText("Monthly Newsletter template")).not.toBeInTheDocument();
+  });
+
+  it("toggles between grid and list views", async () => {
+    const user = userEvent.setup();
+    mockedApiFetch.mockImplementation((path: string) => {
+      if (path === "/platform/templates") return Promise.resolve([TEMPLATE]);
+      throw new Error(`unexpected path: ${path}`);
+    });
+
+    renderPage();
+    await screen.findByText("Welcome Series Kickoff");
+
+    const listBtn = screen.getByRole("button", { name: "List View" });
+    await user.click(listBtn);
+    expect(listBtn).toHaveAttribute("aria-pressed", "true");
+
+    const gridBtn = screen.getByRole("button", { name: "Grid View" });
+    await user.click(gridBtn);
+    expect(gridBtn).toHaveAttribute("aria-pressed", "true");
+  });
 });
