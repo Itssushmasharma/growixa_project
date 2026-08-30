@@ -175,4 +175,48 @@ describe("PlatformTemplatesPage", () => {
       expect.objectContaining({ method: "DELETE" }),
     );
   });
+
+  it("opens a preview modal when clicking the Preview button", async () => {
+    const user = userEvent.setup();
+    mockedApiFetch.mockImplementation((path: string) => {
+      if (path === "/platform/templates") return Promise.resolve([TEMPLATE]);
+      throw new Error(`unexpected path: ${path}`);
+    });
+
+    renderPage();
+    await screen.findByText("Welcome Series Kickoff");
+
+    await user.click(screen.getByRole("button", { name: "Preview" }));
+
+    // The shared TemplatePreviewModal renders the template name and subject
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByText("Subject: Welcome to Growixa")).toBeInTheDocument();
+    // An iframe renders the HTML body
+    const iframe = screen.getByTitle("Template preview");
+    expect(iframe).toBeInTheDocument();
+    expect(iframe).toHaveAttribute("srcdoc", "<p>Hello {{first_name}}</p>");
+  });
+
+  it("shows a live preview iframe in the create form when HTML is typed", async () => {
+    const user = userEvent.setup();
+    mockedApiFetch.mockImplementation((path: string) => {
+      if (path === "/platform/templates") return Promise.resolve([]);
+      throw new Error(`unexpected path: ${path}`);
+    });
+
+    renderPage();
+    await screen.findByText("No default templates published yet.");
+
+    await user.click(screen.getByRole("button", { name: "+ New default template" }));
+
+    // Before typing, no live preview iframe should exist
+    expect(screen.queryByTitle("Create template live preview")).not.toBeInTheDocument();
+
+    await user.type(screen.getByLabelText("Body (HTML)"), "<h1>Hello</h1>");
+
+    // After typing, the live preview iframe should appear
+    const previewIframe = screen.getByTitle("Create template live preview");
+    expect(previewIframe).toBeInTheDocument();
+    expect(previewIframe).toHaveAttribute("srcdoc", "<h1>Hello</h1>");
+  });
 });

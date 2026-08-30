@@ -2,6 +2,7 @@
 
 import { type FormEvent, useEffect, useState } from "react";
 
+import { TemplatePreviewModal } from "@/components/template-preview/template-preview-modal";
 import { useToast } from "@/components/toast/toast-context";
 import { ApiError, apiFetch } from "@/lib/api-client";
 
@@ -64,6 +65,7 @@ export function PlatformTemplatesPage() {
   const [savingEdit, setSavingEdit] = useState(false);
 
   const [retiringId, setRetiringId] = useState<string | null>(null);
+  const [previewingTemplate, setPreviewingTemplate] = useState<EmailTemplate | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -244,6 +246,17 @@ export function PlatformTemplatesPage() {
                 placeholder="<p>Hi {{first_name}}...</p>"
               />
             </div>
+            {createForm.body_html && (
+              <div className={styles.previewPane}>
+                <div className={styles.previewLabel}>Live preview</div>
+                <iframe
+                  title="Create template live preview"
+                  className={styles.previewFrame}
+                  sandbox=""
+                  srcDoc={createForm.body_html}
+                />
+              </div>
+            )}
             <div className={styles.field}>
               <label className={styles.label} htmlFor="new-template-body-text">
                 Body (plain text, optional)
@@ -294,6 +307,15 @@ export function PlatformTemplatesPage() {
                 </span>
                 <span className={styles.rowMeta}>Updated {formatDate(template.updated_at)}</span>
                 <div className={styles.rowActions}>
+                  {template.current_version && (
+                    <button
+                      type="button"
+                      className={styles.secondaryButton}
+                      onClick={() => setPreviewingTemplate(template)}
+                    >
+                      Preview
+                    </button>
+                  )}
                   <button
                     type="button"
                     className={styles.secondaryButton}
@@ -348,6 +370,17 @@ export function PlatformTemplatesPage() {
                       }
                     />
                   </div>
+                  {editForm.body_html && (
+                    <div className={styles.previewPane}>
+                      <div className={styles.previewLabel}>Live preview</div>
+                      <iframe
+                        title="Edit template live preview"
+                        className={styles.previewFrame}
+                        sandbox=""
+                        srcDoc={editForm.body_html}
+                      />
+                    </div>
+                  )}
                   <div className={styles.field}>
                     <label className={styles.label} htmlFor={`edit-body-text-${template.id}`}>
                       Body (plain text, optional)
@@ -379,6 +412,15 @@ export function PlatformTemplatesPage() {
           ))}
         </div>
       </div>
+
+      {previewingTemplate && previewingTemplate.current_version && (
+        <TemplatePreviewModal
+          templateName={previewingTemplate.name}
+          subject={previewingTemplate.current_version.subject}
+          bodyHtml={previewingTemplate.current_version.body_html}
+          onClose={() => setPreviewingTemplate(null)}
+        />
+      )}
     </div>
   );
 }

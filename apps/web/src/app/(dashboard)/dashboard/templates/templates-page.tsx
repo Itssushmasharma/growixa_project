@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { PageHeader } from "@/components/page-header/page-header";
 import { StatCard } from "@/components/stat-card/stat-card";
+import { TemplatePreviewModal } from "@/components/template-preview/template-preview-modal";
 import { useToast } from "@/components/toast/toast-context";
 import { ApiError, apiFetch } from "@/lib/api-client";
 
@@ -36,80 +37,6 @@ function formatDate(iso: string): string {
     month: "short",
     day: "numeric",
   });
-}
-
-function TemplatePreviewModal({
-  template,
-  onClose,
-}: {
-  template: EmailTemplate;
-  onClose: () => void;
-}) {
-  const [deviceMode, setDeviceMode] = useState<"desktop" | "mobile">("desktop");
-
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [onClose]);
-
-  if (!template.current_version) return null;
-
-  return (
-    <div className={styles.modalBackdrop} onClick={onClose} role="dialog" aria-modal="true">
-      <div className={styles.modalCard} onClick={(e) => e.stopPropagation()}>
-        <div className={styles.modalHeader}>
-          <div className={styles.modalTitleGroup}>
-            <h3 className={styles.modalTitle}>{template.name}</h3>
-            <span className={styles.modalSubject}>Subject: {template.current_version.subject}</span>
-          </div>
-
-          <div className={styles.deviceToggleGroup}>
-            <button
-              type="button"
-              className={`${styles.deviceButton} ${
-                deviceMode === "desktop" ? styles.deviceButtonActive : ""
-              }`}
-              onClick={() => setDeviceMode("desktop")}
-            >
-              🖥️ Desktop
-            </button>
-            <button
-              type="button"
-              className={`${styles.deviceButton} ${
-                deviceMode === "mobile" ? styles.deviceButtonActive : ""
-              }`}
-              onClick={() => setDeviceMode("mobile")}
-            >
-              📱 Mobile
-            </button>
-          </div>
-
-          <button
-            type="button"
-            className={styles.closeButton}
-            onClick={onClose}
-            aria-label="Close preview"
-          >
-            ✕
-          </button>
-        </div>
-
-        <div className={styles.modalBody}>
-          <iframe
-            title="Template preview"
-            className={
-              deviceMode === "desktop" ? styles.modalIframeDesktop : styles.modalIframeMobile
-            }
-            sandbox=""
-            srcDoc={template.current_version.body_html}
-          />
-        </div>
-      </div>
-    </div>
-  );
 }
 
 export function TemplatesPage() {
@@ -687,9 +614,11 @@ export function TemplatesPage() {
         )}
       </div>
 
-      {previewingTemplate && (
+      {previewingTemplate && previewingTemplate.current_version && (
         <TemplatePreviewModal
-          template={previewingTemplate}
+          templateName={previewingTemplate.name}
+          subject={previewingTemplate.current_version.subject}
+          bodyHtml={previewingTemplate.current_version.body_html}
           onClose={() => setPreviewingTemplate(null)}
         />
       )}
