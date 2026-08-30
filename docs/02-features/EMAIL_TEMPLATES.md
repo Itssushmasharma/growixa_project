@@ -95,8 +95,12 @@ gated by `platform.templates.manage`):
   `campaigns.manage` holders, **Use this template**. Cloning navigates straight to the
   new copy's edit page so the customer can review or customize it immediately.
 
-No platform-admin frontend UI ships in this pass — platform template management is
-API-only for now; a UI can be added later without any backend change.
+`apps/web/src/app/(platform)/platform/(protected)/templates/`:
+
+- Platform admins (`platform.templates.manage`) publish, edit (append a new version), and
+  retire default templates from a dedicated "Templates" sidebar page — list view, an
+  inline create form, and a per-row edit form. Retiring asks for confirmation and makes
+  clear that accounts which already cloned the template keep their own independent copy.
 
 ## 6. Personalization tokens
 

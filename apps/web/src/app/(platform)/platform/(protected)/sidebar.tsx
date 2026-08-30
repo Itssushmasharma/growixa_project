@@ -65,6 +65,12 @@ const NAV_ITEMS: NavItem[] = [
     requiresPermission: "platform.validation.manage",
   },
   {
+    label: "Templates",
+    href: "/platform/templates",
+    icon: "📋",
+    requiresPermission: "platform.templates.manage",
+  },
+  {
     label: "Subscriptions",
     href: "/platform/subscriptions",
     icon: "💳",
