@@ -1,81 +1,15 @@
 services:
-  postgres:
-    image: postgres:16-alpine
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-growixa}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
-      POSTGRES_DB: ${POSTGRES_DB:-growixa}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-growixa} -d ${POSTGRES_DB:-growixa}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "20m"
-        max-file: "3"
-
-  redis:
-    image: redis:7-alpine
-    restart: unless-stopped
-    command: ["redis-server", "--appendonly", "yes"]
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 5s
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "20m"
-        max-file: "3"
-
-  rabbitmq:
-    image: rabbitmq:3-management-alpine
-    restart: unless-stopped
-    environment:
-      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-growixa}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD in .env}
-    volumes:
-      - rabbitmq_data:/var/lib/rabbitmq
-    ports:
-      - "127.0.0.1:5672:5672"
-      - "127.0.0.1:15672:15672"
-    healthcheck:
-      test: ["CMD-SHELL", "rabbitmq-diagnostics -q ping"]
-      interval: 15s
-      timeout: 10s
-      retries: 5
-      start_period: 20s
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "20m"
-        max-file: "3"
-
   api:
     image: ${API_IMAGE:-ghcr.io/iitdeveloper-git/growixa-api:latest}
     restart: unless-stopped
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
+    networks:
+      - iitd_data_network
+      - iitd_edge_network
     environment:
       ENVIRONMENT: production
       DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://growixa:${POSTGRES_PASSWORD}@postgres:5432/growixa}
-      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
-      RABBITMQ_URL: ${RABBITMQ_URL:-amqp://growixa:${RABBITMQ_PASSWORD}@rabbitmq:5672/}
+      REDIS_URL: ${REDIS_URL:-redis://redis-growixa:6379/0}
+      RABBITMQ_URL: ${RABBITMQ_URL:-amqp://${RABBITMQ_USER:-growixa}:${RABBITMQ_PASSWORD}@rabbitmq:5672/}
       JWT_SIGNING_KEY: ${JWT_SIGNING_KEY:?Set JWT_SIGNING_KEY in .env}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY:?Set ENCRYPTION_KEY in .env}
       FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:-https://growixa.iitdeveloper.com}
@@ -98,7 +32,6 @@ services:
       SUPABASE_STORAGE_BUCKET: ${SUPABASE_STORAGE_BUCKET:-social-media}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
-
     ports:
       - "127.0.0.1:8000:8000"
     healthcheck:
@@ -116,18 +49,13 @@ services:
   worker:
     image: ${WORKER_IMAGE:-ghcr.io/iitdeveloper-git/growixa-worker:latest}
     restart: unless-stopped
-    depends_on:
-      postgres:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+    networks:
+      - iitd_data_network
     environment:
       ENVIRONMENT: production
       DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://growixa:${POSTGRES_PASSWORD}@postgres:5432/growixa}
-      RABBITMQ_URL: ${RABBITMQ_URL:-amqp://growixa:${RABBITMQ_PASSWORD}@rabbitmq:5672/}
-      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      RABBITMQ_URL: ${RABBITMQ_URL:-amqp://${RABBITMQ_USER:-growixa}:${RABBITMQ_PASSWORD}@rabbitmq:5672/}
+      REDIS_URL: ${REDIS_URL:-redis://redis-growixa:6379/0}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY:?Set ENCRYPTION_KEY in .env}
       FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:-https://growixa.iitdeveloper.com}
       API_PUBLIC_URL: ${API_PUBLIC_URL:-https://growixa.iitdeveloper.com/api}
@@ -146,6 +74,9 @@ services:
     depends_on:
       api:
         condition: service_healthy
+    networks:
+      - iitd_edge_network
+      - iitd_data_network
     environment:
       NODE_ENV: production
       NEXT_PUBLIC_API_URL: /api
@@ -164,10 +95,10 @@ services:
         max-size: "30m"
         max-file: "3"
 
-volumes:
-  postgres_data:
-    name: docker_postgres_data
-  redis_data:
-    name: docker_redis_data
-  rabbitmq_data:
-    name: docker_rabbitmq_data
+networks:
+  iitd_data_network:
+    name: iitd_data_network
+    external: true
+  iitd_edge_network:
+    name: iitd_edge_network
+    external: true

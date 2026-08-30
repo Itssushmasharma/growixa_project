@@ -17,7 +17,8 @@ from Sprint 1 onward, code). Each entry names what changed and the commit(s) it 
 - **`feat(platform-templates)`** — **Side-by-Side Live Preview Editor Modal**: Replaced inline expanding forms on `/platform/templates` with a 2-column modal featuring form inputs on the left and a live rendering email preview iframe on the right with Desktop 🖥️ / Mobile 📱 device frames.
 - **`feat(platform-templates)`** — **Platform Admin Toolbar & Visual Grid**: Brought instant search, sort selector, category filter pills, and visual thumbnail cards to `/platform/templates`.
 - **`refactor(templates)`** — Extracted shared `TemplatePreviewModal` into `components/template-preview/`, removing duplicated modal code and CSS between dashboard and platform routes.
-- **`test(templates)`** — Added 8 new unit tests covering tab switching, search filtering on default templates, stat card clicks, and side-by-side modal editor flows (319 vitest tests passing).
+- **`feat(infra)`** — **Core-Infra Database Decoupling (`GRX-INFRA-005`)**: Decoupled stateful PostgreSQL, Redis, and RabbitMQ containers from `compose.uat.yaml` and `compose.prod.yaml` to run against centralized `core-infra` networks (`iitd_data_network` and `iitd_edge_network`), preventing volume collisions and zero-downtime database container recreation during app updates.
+- **`feat(devops)`** — Updated `scripts/deploy_manual.sh` to run database migrations directly against the `core_postgres` instance over `iitd_data_network` and perform `--remove-orphans` app rollouts.
 
 ## 2026-08-28 — v0.5.7-rc1 UAT release candidate (Preview)
 
