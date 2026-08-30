@@ -10,6 +10,14 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
+## 2026-08-30 — v0.5.9-rc1 UAT release candidate
+
+- **`feat(auth)`** — **IITD IAM Universal SSO & Keycloak OIDC Integration (`GRX-IAM-SSO-001`)**: Integrated centralized IITDeveloper IAM (`auth.iitdeveloper.com` / `uat.auth.iitdeveloper.com`) via modular `KeycloakOAuthProvider` supporting standard OpenID Connect authorization code flow and `kc_idp_hint` for direct Google pass-through.
+- **`feat(auth)`** — **Just-In-Time (JIT) Tenant Provisioning**: Automatically provisions a dedicated Growixa workspace, assigns the Super Admin role, grants default free tier subscription, and establishes secure HttpOnly session cookies on first login.
+- **`feat(auth)`** — **Account Auto-Linking**: Seamlessly links existing accounts by verified email address without duplicate collision or loss of data.
+- **`feat(auth)`** — **Keycloak SMTP Transactional Email Verification**: Activated transactional email verification in Keycloak realm on VPS, delivering confirmation and password reset links directly to users.
+- **`feat(theme)`** — **Dynamic Client Co-Branding**: Customized Keycloak FreeMarker templates (`template.ftl` & `login.ftl`) to render dynamic Growixa branding (logo, title, theme, trust badge) when accessed by Growixa clients.
+
 ## 2026-08-30 — v0.5.8 production release
 
 - **`feat(templates)`** — **Tabbed Email Template Library Redesign**: Refactored customer-facing `/dashboard/templates` from stacked sections to top-level tabs (📁 *My Templates* vs 🌟 *Default Templates*) with dynamic count badges, interactive KPI stat cards for fast tab switching, and smart empty state CTA to explore Growixa defaults.

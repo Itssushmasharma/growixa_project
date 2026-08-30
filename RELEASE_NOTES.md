@@ -2,6 +2,26 @@
 
 ---
 
+## 🟡 [v0.5.9-rc1] (UAT Release Candidate) — 2026-08-30
+
+> **Release Tag**: `v0.5.9-rc1`
+> **Release Date**: August 30, 2026
+> **Platform Status**: 🟡 Active on UAT Staging
+> **Target Production URL**: [https://growixa.iitdeveloper.com](https://growixa.iitdeveloper.com)
+> **UAT Staging URL**: [https://uat.growixa.iitdeveloper.com](https://uat.growixa.iitdeveloper.com)
+
+### 🚀 Added & Enhanced
+- **IITD IAM Universal SSO & Keycloak OIDC Integration (`GRX-IAM-SSO-001`)**:
+  - Modular `KeycloakOAuthProvider` supporting OpenID Connect standard token exchange, userinfo fetching, and `kc_idp_hint` (Google pass-through).
+  - Just-In-Time (JIT) Tenant Provisioning: New sign-ins automatically create a customer workspace, assign the Super Admin role, configure the default free tier, and establish secure cookies.
+  - Account Auto-Linking: Automatically links existing accounts by verified email without duplicate account collisions.
+- **Keycloak SMTP Transactional Email Verification**:
+  - Configured transactional SMTP for Keycloak on VPS, delivering verification links and password resets directly to users.
+- **Dynamic Client Co-Branding**:
+  - Keycloak FreeMarker templates dynamically render Growixa's brand identity, title, theme, and security trust badge for `growixa-app` clients.
+
+---
+
 ## 🟢 [v0.5.8] — 2026-08-30
 
 > **Release Tag**: `v0.5.8`
