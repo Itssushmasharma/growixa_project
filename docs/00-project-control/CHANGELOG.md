@@ -10,6 +10,14 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
+## 2026-08-31 — v0.5.9-rc3 UAT release candidate
+
+- **`feat(BACKEND)`** — **API pagination for contacts/audit/ai-generations (`GRX-PERF-001`)**: every `GET` list endpoint in the API was previously fully unbounded (no `limit`/`offset` anywhere). Adds a shared `pagination.py` convention (`DEFAULT_LIMIT=50`, `MAX_LIMIT=200`, server-enforced) applied to `contacts`, `audit`, and `ai/generations`, with `LIMIT`/`OFFSET` at the SQL level, not fetched-then-sliced in Python. (`#52`)
+- **`fix(FRONTEND)`** — **Contacts page rewired for the paginated backend**: new `GET /contacts/stats`/`GET /contacts/count` endpoints (real SQL `COUNT()` aggregates) so stat badges, search, and pagination read correctly against a bounded page instead of the old full-array fetch that would have silently shown wrong counts for any account over 50 contacts; adds server-side `search`/`status`/`tag_id` filters; CSV export now uses bounded, looped requests instead of a client-side array. (`#52`)
+- **`docs(auth)`** — **IITD IAM adoption formalized (`DEC-GRX-037`)**: retroactively resolves a governance gap where the 2026-08-30 Keycloak/IITD-IAM SSO integration merged without the decision `DEC-GRX-014` required first. Amends (does not reverse) `DEC-GRX-014` — email/password auth, sessions, and RBAC remain application-managed; only Google SSO now routes through IITDeveloper's central IAM. Corrects `AUTHENTICATION.md`'s now-inaccurate "no Keycloak" statement and adds retroactive `GRX-AUTH-008`/`GRX-AUTH-009` tracker rows for work that previously had none. (`#58`)
+- **`docs(skills)`** — Pagination now required on every new list endpoint per the `growixa-developer`/`growixa-reviewer` skill playbooks, to prevent a repeat of the `GRX-PERF-001` gap. (`#50`)
+- **`docs(tracker)`** — Adds `GRX-PERF-001..005` (API pagination/scale follow-ups: remaining endpoints, templates N+1, DB pool sizing, composite indexes, caching) to `MASTER_TASK_TRACKER.md`. (`#51`)
+
 ## 2026-08-30 — v0.5.9-rc1 UAT release candidate
 
 - **`feat(auth)`** — **IITD IAM Universal SSO & Keycloak OIDC Integration (`GRX-IAM-SSO-001`)**: Integrated centralized IITDeveloper IAM (`auth.iitdeveloper.com` / `uat.auth.iitdeveloper.com`) via modular `KeycloakOAuthProvider` supporting standard OpenID Connect authorization code flow and `kc_idp_hint` for direct Google pass-through.

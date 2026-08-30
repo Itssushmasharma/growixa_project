@@ -2,6 +2,28 @@
 
 ---
 
+## 🟡 [v0.5.9-rc3] (UAT Release Candidate) — 2026-08-31
+
+> **Release Tag**: `v0.5.9-rc3`
+> **Release Date**: August 31, 2026
+> **Platform Status**: 🟡 Active on UAT Staging
+> **Target Production URL**: [https://growixa.iitdeveloper.com](https://growixa.iitdeveloper.com)
+> **UAT Staging URL**: [https://uat.growixa.iitdeveloper.com](https://uat.growixa.iitdeveloper.com)
+
+### 🚀 Added & Enhanced
+- **API Pagination for High-Scale Endpoints (`GRX-PERF-001`)**:
+  - Every list endpoint in the API was previously fully unbounded — fixed for the three highest-risk ones: `contacts`, `audit`, and `ai/generations`.
+  - New shared pagination convention (server-enforced max page size, SQL-level `LIMIT`/`OFFSET`).
+- **Contacts Page Fixed for Paginated Backend**:
+  - New `/contacts/stats` and `/contacts/count` endpoints (real SQL aggregates) so stat badges and search stay accurate for accounts with more than 50 contacts.
+  - Server-side search/status/tag filtering; bounded CSV export.
+- **IITD IAM Adoption Formalized (`DEC-GRX-037`)**:
+  - Retroactively documents and approves the Keycloak/IITD-IAM Google SSO integration shipped 2026-08-30, closing a governance gap where it merged ahead of its required decision record.
+  - Email/password auth, sessions, and RBAC remain unaffected — application-managed as before.
+- **Pagination Now a Standing Requirement**: `growixa-developer`/`growixa-reviewer` playbooks updated so new list endpoints can't repeat the unbounded-query gap.
+
+---
+
 ## 🟡 [v0.5.9-rc1] (UAT Release Candidate) — 2026-08-30
 
 > **Release Tag**: `v0.5.9-rc1`
