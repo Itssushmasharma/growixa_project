@@ -4,8 +4,39 @@ Reviewer: Claude Code growixa-reviewer subagent — independent context, no memo
 Branch: feature/BACKEND/GRX-EMAIL-016
 Worktree: .worktrees/grx-email-016
 Base Commit: d125b2e
-Latest Commit: 47aa65e
-Status: APPROVED
+Latest Commit: 4c6f147
+Status: RE_REVIEW_REQUIRED
+
+## Update — 4c6f147 (post-approval addition)
+
+Per explicit user request after the prior APPROVED review, this branch now also adds a
+**platform-admin frontend UI** for managing default templates (previously deliberately
+out of scope, API-only). This changed code after the `Reviewed Code Commit: 47aa65e`
+recorded below, so per AGENTS.md §4 rule 4 that approval is now stale — a fresh
+independent review of the new diff (`47aa65e..4c6f147`) is required before merge.
+
+**New in `4c6f147`** (`apps/web/src/app/(platform)/platform/(protected)/templates/`):
+- `page.tsx`, `templates-page.tsx`, `templates-page.module.css`, `types.ts` — full CRUD
+  UI: list existing platform default templates, publish a new one, edit-by-appending-a-
+  new-version, retire (with a `window.confirm` explaining clone-independence).
+- `templates-page.test.tsx` — 7 new vitest tests (403 access-denied, list, empty state,
+  publish, edit-appends-version, retire-after-confirm, retire-declined).
+- `sidebar.tsx` — new "Templates" nav entry gated on `platform.templates.manage`
+  (permission already existed/granted from the original migration — no backend change
+  needed for this to appear).
+- `docs/02-features/EMAIL_TEMPLATES.md` — corrected the now-false "No platform-admin
+  frontend UI ships in this pass" claim.
+
+No backend/schema/migration changes in this update — same `platform.templates.manage`
+permission and routes from `47aa65e`, just a UI on top of the already-approved API.
+
+Verified locally before pushing: `eslint`, `prettier --check`, `tsc --noEmit` all clean
+on the new/changed files; full frontend suite `npm run test -- --run` — **311 passed**
+(53 files); `npm run build` succeeds and lists `/platform/templates` as a generated
+route. No browser tool available this session either — same known gap as before, now
+applying to this new UI too.
+
+---
 
 ## What Changed
 
@@ -86,10 +117,9 @@ Ran against a live Compose stack (`docker compose up postgres redis rabbitmq api
   behavior (section visibility, button permission-gating, clone navigation), plus a full
   manual API-level verification of the underlying flow — but a human visual check of the
   actual rendered page is still recommended before merge, given this is customer-facing UI.
-- **No platform-admin frontend UI** for creating/editing/retiring platform templates —
-  deliberately out of scope (not listed in the tracker's frontend file scope,
-  `apps/web/.../templates/` only). Platform template management is API-only for now; a
-  UI can be added later with zero backend changes.
+- ~~No platform-admin frontend UI for creating/editing/retiring platform templates —
+  deliberately out of scope~~ **Superseded in `4c6f147`** — see "Update" section above;
+  a platform-admin UI was added per explicit user request.
 
 ## Review Findings
 
