@@ -57,7 +57,10 @@ if [[ "${ENV_CHOICE}" == "prod" ]]; then
     echo "⚠️  STRICT SAFETY GATE: PRODUCTION DEPLOYMENT"
     echo "⚠️  You are about to deploy '${RELEASE_TAG}' directly to PRODUCTION."
     echo "⚠️  =============================================================="
-    read -rp "Type 'YES' (all caps) to confirm production rollout: " CONFIRM
+    CONFIRM="${CONFIRM_PROD_DEPLOY:-}"
+    if [[ -z "${CONFIRM}" && -t 0 ]]; then
+        read -rp "Type 'YES' (all caps) to confirm production rollout: " CONFIRM
+    fi
     if [[ "${CONFIRM}" != "YES" ]]; then
         echo "❌ Production deployment cancelled by user."
         exit 0
@@ -114,7 +117,10 @@ trap 'if [ $? -ne 0 ]; then send_telegram_notification "failure" "Deployment ter
 
 # 5. Optional Pre-Flight Test Suite
 echo ""
-read -rp "Run local test suite before deploying? [y/N, default: n]: " RUN_TESTS_INPUT
+RUN_TESTS_INPUT="${RUN_TESTS:-n}"
+if [[ -t 0 && -z "${RUN_TESTS:-}" ]]; then
+    read -rp "Run local test suite before deploying? [y/N, default: n]: " RUN_TESTS_INPUT
+fi
 if [[ "${RUN_TESTS_INPUT}" == "y" || "${RUN_TESTS_INPUT}" == "Y" ]]; then
     echo "================================================================="
     echo "🧪 Running Pre-Flight Validation Tests..."
@@ -161,16 +167,17 @@ echo "================================================================="
 # Step 1: Sync local code to VPS build directory
 echo "Step 1/6: Syncing workspace files to OVH VPS (${VPS_HOST})..."
 ssh "${VPS_USER}@${VPS_HOST}" "sudo mkdir -p ${BUILD_DIR} && sudo chown -R ${VPS_USER}:${VPS_USER} ${BUILD_DIR}"
-rsync -avz --delete \
-    --exclude 'node_modules' \
-    --exclude '.venv' \
-    --exclude '.worktrees' \
-    --exclude '__pycache__' \
-    --exclude '.mypy_cache' \
-    --exclude '.pytest_cache' \
-    --exclude '.next' \
-    --exclude '.git' \
-    ./ "${VPS_USER}@${VPS_HOST}:${BUILD_DIR}/"
+RSYNC_EXCLUDES=(
+    --exclude 'node_modules'
+    --exclude '.venv'
+    --exclude '.worktrees'
+    --exclude '__pycache__'
+    --exclude '.mypy_cache'
+    --exclude '.pytest_cache'
+    --exclude '.next'
+    --exclude '.git'
+)
+rsync -avz --delete "${RSYNC_EXCLUDES[@]}" ./ "${VPS_USER}@${VPS_HOST}:${BUILD_DIR}/"
 
 # Step 2: Build Docker images directly on VPS
 echo ""
