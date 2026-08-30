@@ -2,14 +2,18 @@
 
 - Document ID: DOC-SEC-AUTH
 - Status: ACTIVE
-- Version: 1.0
-- Last updated: 2026-07-22
+- Version: 1.1
+- Last updated: 2026-08-31
 - Owner: Coding agent
-- Related documents: [DECISIONS §DEC-GRX-014](../00-project-control/DECISIONS.md), [SECURITY_ARCHITECTURE](SECURITY_ARCHITECTURE.md), [RBAC](RBAC.md), [DATA_MODEL](../05-data/DATA_MODEL.md)
+- Related documents: [DECISIONS §DEC-GRX-014](../00-project-control/DECISIONS.md), [DECISIONS §DEC-GRX-037](../00-project-control/DECISIONS.md#dec-grx-037-adopt-iitdevelopers-central-iam-keycloak-for-google-sso--amends-dec-grx-014), [SECURITY_ARCHITECTURE](SECURITY_ARCHITECTURE.md), [RBAC](RBAC.md), [DATA_MODEL](../05-data/DATA_MODEL.md)
 
 Implements [DEC-GRX-014](../00-project-control/DECISIONS.md): application-managed
 authentication in FastAPI, PostgreSQL-backed, with an adapter boundary for future OIDC/SSO.
-No Keycloak or third-party auth provider in MVP.
+Email/password authentication, sessions, and RBAC remain application-managed. **Corrected
+2026-08-31** — this previously said "no Keycloak or third-party auth provider in MVP,"
+which is no longer accurate: per [DEC-GRX-037](../00-project-control/DECISIONS.md#dec-grx-037-adopt-iitdevelopers-central-iam-keycloak-for-google-sso--amends-dec-grx-014),
+Google sign-in now routes through IITDeveloper's central IAM (Keycloak) — see
+§"IITD IAM (Keycloak) — Google SSO" below.
 
 ## Password storage
 
@@ -90,8 +94,29 @@ The `auth` module exposes an internal `AuthProvider` interface (issue session, v
 session, resolve identity) that the application-managed implementation satisfies today. A
 future OIDC/enterprise-SSO provider would implement the same interface and be selected via
 configuration — no call site outside `auth` depends on the concrete implementation. This is
-the "adapter boundary" required by [DEC-GRX-014](../00-project-control/DECISIONS.md); it is
-not built out with a second implementation in Sprint 1, only the interface seam.
+the "adapter boundary" required by [DEC-GRX-014](../00-project-control/DECISIONS.md).
+
+## IITD IAM (Keycloak) — Google SSO
+
+Per [DEC-GRX-037](../00-project-control/DECISIONS.md#dec-grx-037-adopt-iitdevelopers-central-iam-keycloak-for-google-sso--amends-dec-grx-014),
+the adapter boundary above is now used for exactly the future need it was built for:
+`KeycloakOAuthProvider` (`apps/api/src/growixa_api/auth/oauth/keycloak.py`) implements
+the same `OAuthProvider` protocol as the direct Google provider, pointed at
+IITDeveloper's central identity realm (`iam_oidc_issuer =
+https://auth.iitdeveloper.com/realms/iitd`, `iam_client_id = growixa-app`, both in
+`config.py`). The frontend's Google sign-in button
+(`apps/web/src/components/auth/google-auth-button.tsx`) routes through
+`/auth/oauth/iitd?kc_idp_hint=google`, which uses Keycloak's identity-provider hint to
+pass through directly to Google rather than showing a Keycloak login screen first — the
+user experience is unchanged, only the token issuer changes (Keycloak-issued tokens via
+the IAM realm, rather than Google's tokens consumed directly).
+
+**Scope**: this covers Google sign-in only. Email/password authentication, session
+issuance/validation, refresh-token rotation, and RBAC are unaffected — they remain the
+application-managed implementation `DEC-GRX-014` specifies, satisfying the same
+`AuthProvider` interface as before. A further identity-provider change (a second SSO
+provider, or moving email/password auth itself behind IAM) is out of scope for
+`DEC-GRX-037` and needs its own decision.
 
 ## Audit events (minimum set, Sprint 1)
 

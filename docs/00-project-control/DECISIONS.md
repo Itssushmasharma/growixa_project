@@ -173,7 +173,11 @@ Decision statuses: `PROPOSED`, `UNDER_REVIEW`, `APPROVED`, `REJECTED`, `SUPERSED
 
 ## DEC-GRX-014: Application-managed authentication in FastAPI (resolves OQ-001)
 
-- Status: APPROVED
+- Status: APPROVED — the "no Keycloak/third-party provider" clause in Consequences is
+  **amended** (not reversed) by [DEC-GRX-037](#dec-grx-037-adopt-iitdevelopers-central-iam-keycloak-for-google-sso--amends-dec-grx-014)
+  (2026-08-31): Google SSO now routes through IITDeveloper's central IAM. Every other
+  part of this decision (application-managed email/password auth, sessions, RBAC) is
+  still in force.
 - Date: 2026-07-22
 - Context: Slice 1 (Foundation) cannot start until the authentication approach is fixed —
   it determines the user/session data model, the auth module's API surface, and how RBAC
@@ -1889,3 +1893,76 @@ This also resolves the `{{company_name}}` button, which today resolves to nothin
   (no DONE without evidence), `GRX-FEAT-SMS-001` and `GRX-FEAT-034` (future channels that
   reuse the same renderer).
 - Supersedes: none.
+
+---
+
+## DEC-GRX-037: Adopt IITDeveloper's central IAM (Keycloak) for Google SSO — amends `DEC-GRX-014`
+
+- Status: APPROVED
+- Date: 2026-08-31
+- Context: `DEC-GRX-014` (2026-07-22, still `APPROVED`) chose application-managed
+  authentication for the MVP and explicitly ruled out Keycloak/any third-party provider
+  unless "a new logged decision superseding this one" existed first. On 2026-08-30, two
+  branches — `feature/BACKEND/GRX-IAM-SSO-001` and
+  `feature/FRONTEND/GRX-AUTH-007-iam-button-flow` — were merged into `main` by a
+  different tool (Google Antigravity) that did exactly what `DEC-GRX-014` said required
+  a decision first: added a `KeycloakOAuthProvider`
+  (`apps/api/src/growixa_api/auth/oauth/keycloak.py`) pointed at
+  `https://auth.iitdeveloper.com/realms/iitd` — IITDeveloper's own central IAM, not an
+  unrelated third party — and rewired the existing Google login button to route through
+  it (`kc_idp_hint=google`) instead of direct Google OAuth. Both branches' reviews
+  approved on code-quality grounds only (tests, lint, no secrets) and never checked
+  against `DECISIONS.md` or `docs/08-security/AUTHENTICATION.md`, which still said "No
+  Keycloak or third-party auth provider in MVP" — this decision exists to close that gap
+  retroactively, per the product owner's explicit direction (2026-08-31 chat: "keep it,
+  formalize with a decision and update — we will use this IITD IAM") rather than leave
+  the merged code standing on no recorded authority.
+- Options considered:
+  1. **Revert the IAM branches** until a decision was written and approved first, in the
+     correct order. Cleanest process-wise, but throws away working, tested code and a
+     real product direction (IITDeveloper centralizing SSO across its products,
+     including Growixa and the sibling `ett_gns` project) for a process technicality.
+  2. **Formalize retroactively** — write the superseding decision now, correct
+     `AUTHENTICATION.md`'s now-false statement, and give the merged work real tracked
+     task IDs, rather than leaving it as unauthorized, untracked code on `main`.
+  3. **Ignore the gap** — leave `DECISIONS.md`/`AUTHENTICATION.md` contradicting the
+     live code indefinitely. Rejected outright; this is exactly the doc-vs-reality
+     failure mode this session spent significant effort finding and correcting
+     elsewhere (`FEATURE_STATUS_MATRIX.md`, the GNS audit) — leaving a *known* instance
+     of it in place would be inconsistent with that standard.
+- Decision: Option 2. `DEC-GRX-014`'s core choice (PostgreSQL-backed, application-managed
+  authentication as the system of record — password hashing, sessions, refresh-token
+  rotation, RBAC) is **not reversed**. This decision amends only the single clause
+  prohibiting Keycloak/third-party SSO: Growixa's Google sign-in now routes through
+  IITDeveloper's central IAM (Keycloak realm `iitd`) via the OIDC adapter boundary
+  `DEC-GRX-014` itself specified should exist for exactly this future need.
+  Email/password authentication, sessions, and RBAC are unaffected and remain
+  application-managed as `DEC-GRX-014` requires.
+- Rationale: IITDeveloper operates multiple products (Growixa, `ett_gns`, others) under
+  one organization and is centralizing identity across them rather than each product
+  running its own SSO integration — a real operational reason `DEC-GRX-014` didn't
+  anticipate in July 2026 when Growixa had no sibling products sharing an identity
+  system. This is the kind of "documented implementation constraint" `DEC-GRX-014`
+  itself said would justify revisiting the no-Keycloak stance, made explicit here rather
+  than left implicit in a merge commit message.
+- Consequences:
+  1. `docs/08-security/AUTHENTICATION.md` line 12 ("No Keycloak or third-party auth
+     provider in MVP") is corrected to describe the actual IAM integration now live —
+     tracked as `GRX-AUTH-008` (backend) in the fix, not left stale.
+  2. `MASTER_TASK_TRACKER.md` gains real rows for this work (`GRX-AUTH-008` backend,
+     `GRX-AUTH-009` frontend) with evidence pointing at the actual merged commits —
+     this work was previously untracked, borrowing `GRX-AUTH-007`'s ID (a *different*,
+     unrelated UI-redesign task) only in a merge commit message, not in the tracker.
+  3. Future auth-affecting merges from any tool must check `DECISIONS.md` before
+     merging, not just tests/lint — `growixa-reviewer`'s skill already says to check
+     project standards including security docs; this incident is recorded here so a
+     future reviewer session has a concrete example of what "check against
+     `DECISIONS.md`" is meant to catch.
+  4. Any further identity-provider change (a second SSO provider, dropping
+     application-managed auth as the primary path, changing what `kc_idp_hint`s are
+     supported) needs its own decision — this one covers exactly what's already merged,
+     not a general license for further silent IAM changes.
+- Related: `DEC-GRX-014` (amended, not reversed), `AUTHENTICATION.md`,
+  `GRX-AUTH-008`/`GRX-AUTH-009` in `MASTER_TASK_TRACKER.md`.
+- Supersedes: `DEC-GRX-014`'s "no Keycloak/third-party provider" clause only; all other
+  parts of `DEC-GRX-014` remain in force.
