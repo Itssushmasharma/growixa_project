@@ -104,6 +104,14 @@ in the migration?
 **Secrets.** Credentials encrypted via the existing Fernet helper (`auth/encryption.py`),
 redacted from logs, and omitted from read schemas. No second secret-handling path.
 
+**New list endpoints paginate, with a server-enforced cap.** This has shipped wrong
+repo-wide before (`GRX-PERF-001`/`002`, 2026-08-30 audit) — every existing list endpoint
+was fully unbounded. On a new or changed `GET` list route, check: a max page size is
+enforced server-side (not just a client-suggested default); `LIMIT`/`OFFSET` or a cursor
+is applied at the SQL level, not fetched-then-sliced in Python; and related data is
+batch-loaded keyed on the page's IDs rather than lazy-loaded per row (an N+1). Absence of
+a page-size cap, or an in-memory slice of a full-table query, is a finding.
+
 **No fabricated or placeholder completion.**
 [`DEFINITION_OF_DONE.md §No placeholder completion`](../../../docs/00-project-control/DEFINITION_OF_DONE.md#no-placeholder-completion).
 Check specifically for hardcoded or invented data standing in for a real query, endpoints

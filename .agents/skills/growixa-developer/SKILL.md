@@ -118,6 +118,18 @@ domain) WHERE domain IS NOT NULL`. Reach for one before inventing a new uniquene
 **Don't build UI for capabilities that don't exist.** Established practice (`DEC-GRX-016`):
 no provider cards, tabs, or buttons for backends that aren't implemented.
 
+**Every new list endpoint must paginate — this has already shipped wrong repo-wide once.**
+A 2026-08-30 audit found every existing `GET` list endpoint (contacts, campaigns,
+templates, audit, AI generations, and more) fully unbounded — no `limit`/`offset`/cursor
+param anywhere, tracked as `GRX-PERF-001`/`002`. Don't repeat it: a new list endpoint
+needs (1) a server-enforced max page size — a client-suppliable `limit` with no cap just
+relocates the same unbounded-query risk, not fixes it; (2) the `LIMIT`/`OFFSET` (or
+cursor) applied at the SQL level via SQLAlchemy, never fetched-then-sliced in Python;
+(3) related data loaded via a batch query keyed on the page's IDs, not a per-row lazy
+load — `contacts/services.py::list_contacts_with_fields` and `campaigns`' batched metrics
+are the reference pattern to copy; `templates/services.py`'s N+1 (`GRX-PERF-002`) is the
+one to not repeat.
+
 **Centralize constants and enums — never scatter raw magic strings.**
 Define shared fields, rule operators, statuses, and options in a dedicated `constants.py`
 using `StrEnum` on the backend (e.g. `SegmentRuleField`, `SegmentRuleOperator`), and `as const`
