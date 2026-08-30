@@ -220,11 +220,12 @@ via `git diff 47aa65e..2f31fcd --stat`)
 
 
 ## Human Approval
-Required — customer-facing UI change (new "Default Templates" section) and a new
-higher-trust platform permission, per AGENTS.md §4.5. Independent code review above is
-APPROVED, but this is a separate gate: the product owner still needs to give explicit
-sign-off before merge, including ideally a real visual check of `/dashboard/templates`
-(neither the developer nor this reviewer had working browser tooling to do that check).
+Granted — 2026-08-30, product owner (Ravi Kant Yadav) gave explicit approval to merge in
+chat ("ok then merge"), after both the original review (`47aa65e`, APPROVED) and the
+re-review of the platform-admin UI addition (`4c6f147`, APPROVED) were reported back.
+Note: no live browser visual check was performed by the product owner before this
+approval — recorded here plainly since it was called out as recommended in prior review
+passes, though not a hard blocker for this sign-off.
 
 ---
 
