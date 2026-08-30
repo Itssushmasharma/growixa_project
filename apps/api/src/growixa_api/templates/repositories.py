@@ -39,6 +39,28 @@ async def list_templates(session: AsyncSession, account_id: uuid.UUID) -> Sequen
     return result.scalars().all()
 
 
+async def list_platform_default_templates(session: AsyncSession) -> Sequence[EmailTemplate]:
+    """Every account can browse these read-only (GRX-EMAIL-016) -- deliberately not
+    account-scoped, unlike list_templates above."""
+    result = await session.execute(
+        select(EmailTemplate)
+        .where(EmailTemplate.is_platform_default.is_(True))
+        .order_by(EmailTemplate.created_at)
+    )
+    return result.scalars().all()
+
+
+async def get_platform_default_template(
+    session: AsyncSession, template_id: uuid.UUID
+) -> EmailTemplate | None:
+    result = await session.execute(
+        select(EmailTemplate).where(
+            EmailTemplate.id == template_id, EmailTemplate.is_platform_default.is_(True)
+        )
+    )
+    return result.scalar_one_or_none()
+
+
 async def create_template_version(
     session: AsyncSession, fields: dict[str, Any]
 ) -> EmailTemplateVersion:

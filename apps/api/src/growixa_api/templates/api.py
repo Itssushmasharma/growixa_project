@@ -17,9 +17,11 @@ from growixa_api.templates.services import (
     TemplateInUseError,
     TemplateNotFoundError,
     add_template_version,
+    clone_template_for_account,
     create_template,
     delete_template,
     get_template_with_current_version,
+    list_platform_default_templates_with_current_version,
     list_template_versions,
     list_templates_with_current_version,
 )
@@ -36,6 +38,7 @@ def _to_out(
     return EmailTemplateOut(
         id=template.id,
         name=template.name,
+        is_platform_default=template.is_platform_default,
         created_at=template.created_at,
         updated_at=template.updated_at,
         current_version=(
@@ -65,6 +68,42 @@ async def create_template_route(
 ) -> EmailTemplateOut:
     try:
         template, version = await create_template(session, account_id, payload, actor_id)
+    except PersonalizationError as exc:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc)) from exc
+    await session.commit()
+    return _to_out(template, version)
+
+
+@router.get("/platform-defaults", response_model=list[EmailTemplateOut])
+async def list_platform_default_templates_route(
+    _actor_id: uuid.UUID = Depends(_require_view),
+    session: AsyncSession = Depends(get_session),
+) -> list[EmailTemplateOut]:
+    """Browse-only (GRX-EMAIL-016) -- every account sees the same platform-published
+    defaults; deliberately not account-scoped, unlike list_templates_route above. Must be
+    registered before /{template_id} or "platform-defaults" would be swallowed by that
+    route's UUID path param and 422 instead of matching here."""
+    templates = await list_platform_default_templates_with_current_version(session)
+    return [_to_out(template, version) for template, version in templates]
+
+
+@router.post(
+    "/{template_id}/clone", response_model=EmailTemplateOut, status_code=status.HTTP_201_CREATED
+)
+async def clone_platform_default_template_route(
+    template_id: uuid.UUID,
+    actor_id: uuid.UUID = Depends(_require_manage),
+    account_id: uuid.UUID = Depends(get_current_account_id),
+    session: AsyncSession = Depends(get_session),
+) -> EmailTemplateOut:
+    """The "Use this template" action -- clones a platform default into the caller's own
+    account as an independent, editable row (clone-not-edit, GRX-EMAIL-016)."""
+    try:
+        template, version = await clone_template_for_account(
+            session, account_id, template_id, actor_id
+        )
+    except TemplateNotFoundError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Template not found") from exc
     except PersonalizationError as exc:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc)) from exc
     await session.commit()

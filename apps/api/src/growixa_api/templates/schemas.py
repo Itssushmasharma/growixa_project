@@ -31,6 +31,7 @@ class EmailTemplateOut(BaseModel):
 
     id: uuid.UUID
     name: str
+    is_platform_default: bool
     created_at: datetime
     updated_at: datetime
     current_version: EmailTemplateVersionOut | None

@@ -148,6 +148,20 @@ from growixa_api.platform_admin.services import (
 )
 from growixa_api.platform_admin.services import update_subscription_plan as update_plan_service
 from growixa_api.platform_auth.dependencies import require_platform_permission
+from growixa_api.templates.models import EmailTemplate, EmailTemplateVersion
+from growixa_api.templates.schemas import (
+    EmailTemplateIn,
+    EmailTemplateOut,
+    EmailTemplateVersionIn,
+    EmailTemplateVersionOut,
+)
+from growixa_api.templates.services import (
+    TemplateNotFoundError,
+    add_platform_template_version,
+    create_platform_template,
+    list_platform_default_templates_with_current_version,
+    retire_platform_template,
+)
 
 router = APIRouter(prefix="/platform/accounts", tags=["platform_admin"])
 usage_router = APIRouter(prefix="/platform", tags=["platform_admin"])
@@ -157,6 +171,7 @@ billing_router = APIRouter(prefix="/platform", tags=["platform_admin"])
 email_config_router = APIRouter(prefix="/platform", tags=["platform_admin"])
 email_validation_config_router = APIRouter(prefix="/platform", tags=["platform_admin"])
 monitoring_router = APIRouter(prefix="/platform", tags=["platform_admin"])
+templates_router = APIRouter(prefix="/platform", tags=["platform_admin"])
 
 _require_manage = require_platform_permission("platform.accounts.manage")
 _require_usage_manage = require_platform_permission("platform.usage.manage")
@@ -167,6 +182,7 @@ _require_billing_manage = require_platform_permission("platform.billing.manage")
 _require_email_manage = require_platform_permission("platform.email.manage")
 _require_validation_manage = require_platform_permission("platform.validation.manage")
 _require_monitoring_manage = require_platform_permission("platform.monitoring.manage")
+_require_templates_manage = require_platform_permission("platform.templates.manage")
 
 
 def _to_list_item(account: Account, user_count: int) -> AccountListItemOut:
@@ -927,3 +943,75 @@ async def get_financial_metrics_route(
         churned_last_30_days=metrics.churned_last_30_days,
         churn_rate_percent=metrics.churn_rate_percent,
     )
+
+
+def _template_to_out(
+    template: EmailTemplate, current_version: EmailTemplateVersion | None
+) -> EmailTemplateOut:
+    return EmailTemplateOut(
+        id=template.id,
+        name=template.name,
+        is_platform_default=template.is_platform_default,
+        created_at=template.created_at,
+        updated_at=template.updated_at,
+        current_version=(
+            EmailTemplateVersionOut.model_validate(current_version)
+            if current_version is not None
+            else None
+        ),
+    )
+
+
+@templates_router.get("/templates", response_model=list[EmailTemplateOut])
+async def list_platform_templates_route(
+    _platform_admin_id: uuid.UUID = Depends(_require_templates_manage),
+    session: AsyncSession = Depends(get_session),
+) -> list[EmailTemplateOut]:
+    """Platform-admin management view of every platform-published default template
+    (GRX-EMAIL-016) -- distinct from the customer-facing, read-only
+    GET /templates/platform-defaults."""
+    templates = await list_platform_default_templates_with_current_version(session)
+    return [_template_to_out(template, version) for template, version in templates]
+
+
+@templates_router.post(
+    "/templates", response_model=EmailTemplateOut, status_code=status.HTTP_201_CREATED
+)
+async def create_platform_template_route(
+    payload: EmailTemplateIn,
+    _platform_admin_id: uuid.UUID = Depends(_require_templates_manage),
+    session: AsyncSession = Depends(get_session),
+) -> EmailTemplateOut:
+    template, version = await create_platform_template(session, payload)
+    await session.commit()
+    return _template_to_out(template, version)
+
+
+@templates_router.post("/templates/{template_id}/versions", response_model=EmailTemplateOut)
+async def add_platform_template_version_route(
+    template_id: uuid.UUID,
+    payload: EmailTemplateVersionIn,
+    _platform_admin_id: uuid.UUID = Depends(_require_templates_manage),
+    session: AsyncSession = Depends(get_session),
+) -> EmailTemplateOut:
+    """Editing always appends a new version -- never mutates a version an already-cloned
+    customer copy points at, since a clone is a fully independent row (GRX-EMAIL-016)."""
+    try:
+        template, version = await add_platform_template_version(session, template_id, payload)
+    except TemplateNotFoundError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Template not found") from exc
+    await session.commit()
+    return _template_to_out(template, version)
+
+
+@templates_router.delete("/templates/{template_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def retire_platform_template_route(
+    template_id: uuid.UUID,
+    _platform_admin_id: uuid.UUID = Depends(_require_templates_manage),
+    session: AsyncSession = Depends(get_session),
+) -> None:
+    try:
+        await retire_platform_template(session, template_id)
+    except TemplateNotFoundError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Template not found") from exc
+    await session.commit()

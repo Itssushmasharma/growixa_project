@@ -18,6 +18,7 @@ export interface EmailTemplateVersion {
 export interface EmailTemplate {
   id: string;
   name: string;
+  is_platform_default: boolean;
   created_at: string;
   updated_at: string;
   current_version: EmailTemplateVersion | null;

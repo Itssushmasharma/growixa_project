@@ -20,6 +20,15 @@ async def get_account_name(session: AsyncSession, account_id: uuid.UUID) -> str 
     return result.scalar_one_or_none()
 
 
+async def get_platform_system_account_id(session: AsyncSession) -> uuid.UUID:
+    """The one reserved account (GRX-EMAIL-016) platform-published default templates are
+    owned by -- seeded by migration b8704f3eeada, enforced singleton by a partial unique
+    index on `is_platform_system`. Looked up by that flag rather than a hardcoded UUID in
+    app code, so the seed migration stays the single source of truth for the id."""
+    result = await session.execute(select(Account.id).where(Account.is_platform_system.is_(True)))
+    return result.scalar_one()
+
+
 async def create_account_verification_token(
     session: AsyncSession,
     *,

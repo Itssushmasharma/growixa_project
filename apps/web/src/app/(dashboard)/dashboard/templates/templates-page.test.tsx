@@ -8,6 +8,12 @@ import { ApiError, apiFetch } from "@/lib/api-client";
 import { TemplatesPage } from "./templates-page";
 import type { EmailTemplate, MeResponse } from "./types";
 
+const mockPush = vi.fn();
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: mockPush }),
+}));
+
 vi.mock("@/lib/api-client", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/api-client")>();
   return {
@@ -33,6 +39,7 @@ function meWithPermissions(permissions: string[]): MeResponse {
 const TEMPLATE: EmailTemplate = {
   id: "template-1",
   name: "Welcome Onboarding email",
+  is_platform_default: false,
   created_at: "2026-08-06T00:00:00Z",
   updated_at: "2026-08-06T00:00:00Z",
   current_version: {
@@ -46,9 +53,27 @@ const TEMPLATE: EmailTemplate = {
   },
 };
 
+const PLATFORM_TEMPLATE: EmailTemplate = {
+  id: "platform-template-1",
+  name: "Platform Welcome Default",
+  is_platform_default: true,
+  created_at: "2026-08-06T00:00:00Z",
+  updated_at: "2026-08-06T00:00:00Z",
+  current_version: {
+    id: "platform-version-1",
+    template_id: "platform-template-1",
+    version_number: 1,
+    subject: "Welcome to Growixa",
+    body_html: "<p>Hello {{first_name}}</p>",
+    body_text: "Hello {{first_name}}",
+    created_at: "2026-08-06T00:00:00Z",
+  },
+};
+
 const OTHER_TEMPLATE: EmailTemplate = {
   id: "template-2",
   name: "Monthly Newsletter digest",
+  is_platform_default: false,
   created_at: "2026-08-01T00:00:00Z",
   updated_at: "2026-08-01T00:00:00Z",
   current_version: {
@@ -64,6 +89,7 @@ const OTHER_TEMPLATE: EmailTemplate = {
 
 beforeEach(() => {
   mockedApiFetch.mockReset();
+  mockPush.mockReset();
 });
 
 describe("TemplatesPage", () => {
@@ -71,6 +97,7 @@ describe("TemplatesPage", () => {
     mockedApiFetch.mockImplementation((path: string) => {
       if (path === "/auth/me") return Promise.resolve(meWithPermissions([]));
       if (path === "/templates") return Promise.reject(new ApiError(403, "Forbidden"));
+      if (path === "/templates/platform-defaults") return Promise.resolve([]);
       throw new Error(`unexpected path: ${path}`);
     });
 
@@ -86,6 +113,7 @@ describe("TemplatesPage", () => {
     mockedApiFetch.mockImplementation((path: string) => {
       if (path === "/auth/me") return Promise.resolve(meWithPermissions(["campaigns.view"]));
       if (path === "/templates") return Promise.resolve([TEMPLATE]);
+      if (path === "/templates/platform-defaults") return Promise.resolve([]);
       throw new Error(`unexpected path: ${path}`);
     });
 
@@ -107,6 +135,7 @@ describe("TemplatesPage", () => {
       if (path === "/auth/me")
         return Promise.resolve(meWithPermissions(["campaigns.view", "campaigns.manage"]));
       if (path === "/templates") return Promise.resolve([TEMPLATE]);
+      if (path === "/templates/platform-defaults") return Promise.resolve([]);
       throw new Error(`unexpected path: ${path}`);
     });
 
@@ -132,6 +161,7 @@ describe("TemplatesPage", () => {
     mockedApiFetch.mockImplementation((path: string) => {
       if (path === "/auth/me") return Promise.resolve(meWithPermissions(["campaigns.view"]));
       if (path === "/templates") return Promise.resolve([TEMPLATE]);
+      if (path === "/templates/platform-defaults") return Promise.resolve([]);
       throw new Error(`unexpected path: ${path}`);
     });
 
@@ -161,6 +191,7 @@ describe("TemplatesPage", () => {
     mockedApiFetch.mockImplementation((path: string) => {
       if (path === "/auth/me") return Promise.resolve(meWithPermissions(["campaigns.view"]));
       if (path === "/templates") return Promise.resolve([]);
+      if (path === "/templates/platform-defaults") return Promise.resolve([]);
       throw new Error(`unexpected path: ${path}`);
     });
 
@@ -174,6 +205,7 @@ describe("TemplatesPage", () => {
     mockedApiFetch.mockImplementation((path: string) => {
       if (path === "/auth/me") return Promise.resolve(meWithPermissions(["campaigns.view"]));
       if (path === "/templates") return Promise.resolve([TEMPLATE, OTHER_TEMPLATE]);
+      if (path === "/templates/platform-defaults") return Promise.resolve([]);
       throw new Error(`unexpected path: ${path}`);
     });
 
@@ -192,6 +224,7 @@ describe("TemplatesPage", () => {
     mockedApiFetch.mockImplementation((path: string) => {
       if (path === "/auth/me") return Promise.resolve(meWithPermissions(["campaigns.view"]));
       if (path === "/templates") return Promise.resolve([TEMPLATE, OTHER_TEMPLATE]);
+      if (path === "/templates/platform-defaults") return Promise.resolve([]);
       throw new Error(`unexpected path: ${path}`);
     });
 
@@ -220,6 +253,7 @@ describe("TemplatesPage", () => {
     mockedApiFetch.mockImplementation((path: string) => {
       if (path === "/auth/me") return Promise.resolve(meWithPermissions(["campaigns.view"]));
       if (path === "/templates") return Promise.resolve([TEMPLATE]);
+      if (path === "/templates/platform-defaults") return Promise.resolve([]);
       throw new Error(`unexpected path: ${path}`);
     });
 
@@ -245,6 +279,7 @@ describe("TemplatesPage", () => {
       if (path === "/templates/template-1" && init?.method === "DELETE") {
         return Promise.resolve(undefined);
       }
+      if (path === "/templates/platform-defaults" && !init) return Promise.resolve([]);
       throw new Error(`unexpected call: ${path}`);
     });
 
@@ -266,6 +301,7 @@ describe("TemplatesPage", () => {
       if (path === "/auth/me")
         return Promise.resolve(meWithPermissions(["campaigns.view", "campaigns.manage"]));
       if (path === "/templates" && !init) return Promise.resolve([TEMPLATE]);
+      if (path === "/templates/platform-defaults" && !init) return Promise.resolve([]);
       throw new Error(`unexpected call: ${path}`);
     });
 
@@ -298,6 +334,7 @@ describe("TemplatesPage", () => {
           ),
         );
       }
+      if (path === "/templates/platform-defaults" && !init) return Promise.resolve([]);
       throw new Error(`unexpected call: ${path}`);
     });
 
@@ -312,5 +349,81 @@ describe("TemplatesPage", () => {
       ),
     ).toBeInTheDocument();
     expect(screen.getByText("Welcome Onboarding email")).toBeInTheDocument();
+  });
+
+  it("does not render the Default Templates section when there are none", async () => {
+    mockedApiFetch.mockImplementation((path: string) => {
+      if (path === "/auth/me") return Promise.resolve(meWithPermissions(["campaigns.view"]));
+      if (path === "/templates") return Promise.resolve([TEMPLATE]);
+      if (path === "/templates/platform-defaults") return Promise.resolve([]);
+      throw new Error(`unexpected path: ${path}`);
+    });
+
+    renderTemplatesPage();
+    await screen.findByText("Welcome Onboarding email");
+
+    expect(screen.queryByText("Default Templates")).not.toBeInTheDocument();
+  });
+
+  it("shows platform default templates in a separate read-only section", async () => {
+    mockedApiFetch.mockImplementation((path: string) => {
+      if (path === "/auth/me")
+        return Promise.resolve(meWithPermissions(["campaigns.view", "campaigns.manage"]));
+      if (path === "/templates") return Promise.resolve([TEMPLATE]);
+      if (path === "/templates/platform-defaults") return Promise.resolve([PLATFORM_TEMPLATE]);
+      throw new Error(`unexpected path: ${path}`);
+    });
+
+    renderTemplatesPage();
+    await screen.findByText("Default Templates");
+
+    expect(screen.getByText("Platform Welcome Default")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Use this template" })).toBeInTheDocument();
+    // My Templates' own row is unaffected -- still just the account-owned template.
+    expect(screen.getByText("Welcome Onboarding email")).toBeInTheDocument();
+  });
+
+  it("hides the 'Use this template' action for a view-only user", async () => {
+    mockedApiFetch.mockImplementation((path: string) => {
+      if (path === "/auth/me") return Promise.resolve(meWithPermissions(["campaigns.view"]));
+      if (path === "/templates") return Promise.resolve([]);
+      if (path === "/templates/platform-defaults") return Promise.resolve([PLATFORM_TEMPLATE]);
+      throw new Error(`unexpected path: ${path}`);
+    });
+
+    renderTemplatesPage();
+    await screen.findByText("Platform Welcome Default");
+
+    expect(screen.queryByRole("button", { name: "Use this template" })).not.toBeInTheDocument();
+    // Preview stays available -- browse/preview only, per GRX-EMAIL-016.
+    expect(screen.getByRole("button", { name: "Preview" })).toBeInTheDocument();
+  });
+
+  it("clones a platform default and navigates to the new copy's edit page", async () => {
+    const user = userEvent.setup();
+    mockedApiFetch.mockImplementation((path: string, init?: RequestInit) => {
+      if (path === "/auth/me")
+        return Promise.resolve(meWithPermissions(["campaigns.view", "campaigns.manage"]));
+      if (path === "/templates" && !init) return Promise.resolve([]);
+      if (path === "/templates/platform-defaults") return Promise.resolve([PLATFORM_TEMPLATE]);
+      if (path === "/templates/platform-template-1/clone" && init?.method === "POST") {
+        return Promise.resolve({
+          ...PLATFORM_TEMPLATE,
+          id: "cloned-1",
+          is_platform_default: false,
+        });
+      }
+      throw new Error(`unexpected call: ${path}`);
+    });
+
+    renderTemplatesPage();
+    await screen.findByText("Platform Welcome Default");
+
+    await user.click(screen.getByRole("button", { name: "Use this template" }));
+
+    expect(
+      await screen.findByText('"Platform Welcome Default" added to your templates.'),
+    ).toBeInTheDocument();
+    expect(mockPush).toHaveBeenCalledWith("/dashboard/templates/cloned-1/edit");
   });
 });

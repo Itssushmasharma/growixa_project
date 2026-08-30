@@ -296,6 +296,28 @@ upgrade until a vendor is configured.
 |---|---|---|---|---|---|
 | `platform.validation.manage` | ✅ | ✅ | ❌ | ❌ | ❌ |
 
+## Ad hoc — Platform-published default email templates (`GRX-EMAIL-016`)
+
+| Code | Meaning |
+|---|---|
+| `platform.templates.manage` | Create/update/retire platform-published default email templates every account can browse and clone |
+
+Same wiring and trust shape as `platform.ai.manage`/`platform.email.manage`/
+`platform.validation.manage` (`require_platform_permission`, `platform.owner`/
+`platform.admin` only). Unlike those, this doesn't gate an encrypted credential — the
+higher-trust tier is because a platform template is customer-facing content every
+account sees, not just an internal config knob. The templates it manages are owned by a
+reserved "platform system account" (`accounts.is_platform_system`, a singleton row) with
+`email_templates.is_platform_default = true`; no account role, including account Admin,
+can create, edit, or delete one directly — `GET /templates/platform-defaults` is
+browse-only, and the only account-side mutation is `POST /templates/{id}/clone`
+("Use this template"), which creates an entirely independent, account-owned copy rather
+than granting any access to the platform-owned original.
+
+| Permission | platform.owner | platform.admin | platform.support | platform.finance | platform.operations |
+|---|---|---|---|---|---|
+| `platform.templates.manage` | ✅ | ✅ | ❌ | ❌ | ❌ |
+
 ## Sprint 5 Phase B — platform-level roles (separate namespace, `GRX-SAAS-002`)
 
 This is a **distinct identity class**, not an addition to the roles/permissions above.

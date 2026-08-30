@@ -42,6 +42,19 @@
   width: 100%;
 }
 
+.sectionHeadingRow {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sectionHeading {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-dark-text, #0f172a);
+  margin: 0;
+}
+
 /* Toolbar */
 .toolbar {
   display: flex;
