@@ -6,7 +6,7 @@ import { ToastProvider } from "@/components/toast/toast-context";
 import { apiFetch } from "@/lib/api-client";
 
 import { ContactsPage } from "./contacts-page";
-import type { ConsentRecord, Contact, MeResponse, Tag } from "./types";
+import type { ConsentRecord, Contact, ContactStats, MeResponse, Tag } from "./types";
 
 vi.mock("@/lib/api-client", async () => {
   const actual = await vi.importActual<typeof import("@/lib/api-client")>("@/lib/api-client");
@@ -27,17 +27,80 @@ function meWithPermissions(permissions: string[]): MeResponse {
   return { id: "user-1", email: "admin@example.com", full_name: "Admin User", permissions };
 }
 
-function isTagsGet(path: string, init?: RequestInit): boolean {
-  if (
-    (path === "/contacts/custom-fields" || path === "/contacts/lists") &&
-    (!init || init.method === undefined)
-  )
-    return true;
-  return path === "/contacts/tags" && (!init || init.method === undefined);
-}
-
 function isConsentGet(path: string, init?: RequestInit): boolean {
   return /^\/contacts\/[^/]+\/consent$/.test(path) && (!init || init.method === undefined);
+}
+
+// GRX-PERF-001 follow-up: `/contacts` is now server-paginated, and the Contacts page gets
+// its stat badges/tab counts and "total pages" figure from the dedicated `/contacts/stats`
+// and `/contacts/count` endpoints instead of `.length` on a fully-fetched array. This fake
+// backend mirrors that shape: `store.active`/`store.deleted` hold the current fixture data,
+// and `/contacts`, `/contacts/stats`, `/contacts/count` are all derived live from the store
+// so a test's own mutation handler (`extra`) can update the store and have every
+// subsequent fetch (triggered by the component's own refetch-after-mutation) reflect it --
+// exactly like a real backend, without re-deriving numbers from a stale full-array fetch.
+interface ContactsMockStore {
+  active: Contact[];
+  deleted: Contact[];
+}
+
+function createStore(initial: Partial<ContactsMockStore> = {}): ContactsMockStore {
+  return { active: initial.active ?? [], deleted: initial.deleted ?? [] };
+}
+
+function computeStats(active: Contact[]): ContactStats {
+  const now = new Date();
+  return {
+    total: active.length,
+    active: active.filter((c) => c.status === "ACTIVE").length,
+    archived: active.filter((c) => c.status === "ARCHIVED").length,
+    suppressed: active.filter((c) => c.is_suppressed).length,
+    new_this_month: active.filter((c) => {
+      if (!c.created_at) return false;
+      const created = new Date(c.created_at);
+      return created.getFullYear() === now.getFullYear() && created.getMonth() === now.getMonth();
+    }).length,
+  };
+}
+
+function baseContactsMock(
+  store: ContactsMockStore,
+  opts: {
+    permissions: string[];
+    tags?: Tag[];
+    lists?: unknown[];
+    customFields?: unknown[];
+    extra?: (path: string, init?: RequestInit) => unknown;
+  },
+) {
+  return (path: string, init?: RequestInit): Promise<unknown> => {
+    if (opts.extra) {
+      const result = opts.extra(path, init);
+      if (result !== undefined) return Promise.resolve(result);
+    }
+    if (path === "/auth/me") return Promise.resolve(meWithPermissions(opts.permissions));
+    if (path === "/contacts/tags" && (!init || init.method === undefined)) {
+      return Promise.resolve(opts.tags ?? []);
+    }
+    if (path === "/contacts/lists" && (!init || init.method === undefined)) {
+      return Promise.resolve(opts.lists ?? []);
+    }
+    if (path === "/contacts/custom-fields" && (!init || init.method === undefined)) {
+      return Promise.resolve(opts.customFields ?? []);
+    }
+    if (path === "/contacts/stats") {
+      return Promise.resolve(computeStats(store.active));
+    }
+    if (path.startsWith("/contacts/count")) {
+      return Promise.resolve({
+        total: path.includes("deleted_only=true") ? store.deleted.length : store.active.length,
+      });
+    }
+    if (path.startsWith("/contacts?") && (!init || init.method === undefined)) {
+      return Promise.resolve(path.includes("deleted_only=true") ? store.deleted : store.active);
+    }
+    throw new Error(`unexpected call: ${path}`);
+  };
 }
 
 const ACTIVE_CONTACT: Contact = {
@@ -105,14 +168,10 @@ beforeEach(() => {
 
 describe("ContactsPage", () => {
   it("renders the contact list with status and suppressed badges", async () => {
-    mockedApiFetch.mockImplementation((path: string, init?: RequestInit) => {
-      if (path === "/auth/me") {
-        return Promise.resolve(meWithPermissions(["contacts.view", "contacts.manage"]));
-      }
-      if (path === "/contacts") return Promise.resolve([ACTIVE_CONTACT, SUPPRESSED_CONTACT]);
-      if (isTagsGet(path, init)) return Promise.resolve([]);
-      throw new Error(`unexpected path: ${path}`);
-    });
+    const store = createStore({ active: [ACTIVE_CONTACT, SUPPRESSED_CONTACT] });
+    mockedApiFetch.mockImplementation(
+      baseContactsMock(store, { permissions: ["contacts.view", "contacts.manage"] }),
+    );
 
     renderContactsPage();
 
@@ -127,13 +186,42 @@ describe("ContactsPage", () => {
     expect(within(bobBlock).getByText("Suppressed")).toBeInTheDocument();
   });
 
+  it("shows account-wide stat badges independent of the current page", async () => {
+    // Regression test for the GRX-PERF-001 review finding: badges must come from
+    // `/contacts/stats`, not `.length` on whatever page happened to be fetched.
+    const manyActive = Array.from({ length: 60 }, (_, i) => ({
+      ...ACTIVE_CONTACT,
+      id: `contact-${i}`,
+      email: `contact-${i}@example.com`,
+      status: i < 5 ? ("ARCHIVED" as const) : ("ACTIVE" as const),
+    }));
+    const store = createStore({ active: manyActive });
+    mockedApiFetch.mockImplementation(
+      baseContactsMock(store, { permissions: ["contacts.view", "contacts.manage"] }),
+    );
+
+    renderContactsPage();
+
+    await screen.findByText("Total Contacts");
+    const totalCard = screen
+      .getByText("Total Contacts")
+      .closest("div[class*='statCard']") as HTMLElement;
+    const activeCard = screen
+      .getAllByText("Active Contacts")
+      .map((el) => el.closest("div[class*='statCard']"))
+      .find((el): el is HTMLElement => el !== null) as HTMLElement;
+    const archivedCard = screen
+      .getAllByText("Archived")
+      .map((el) => el.closest("div[class*='statCard']"))
+      .find((el): el is HTMLElement => el !== null) as HTMLElement;
+    expect(within(totalCard).getByText("60")).toBeInTheDocument();
+    expect(within(activeCard).getByText("55")).toBeInTheDocument();
+    expect(within(archivedCard).getByText("5")).toBeInTheDocument();
+  });
+
   it("shows an access-denied message for a user without contacts.view", async () => {
-    mockedApiFetch.mockImplementation((path: string, init?: RequestInit) => {
-      if (path === "/auth/me") return Promise.resolve(meWithPermissions([]));
-      if (path === "/contacts") return Promise.resolve([]);
-      if (isTagsGet(path, init)) return Promise.resolve([]);
-      throw new Error(`unexpected path: ${path}`);
-    });
+    const store = createStore();
+    mockedApiFetch.mockImplementation(baseContactsMock(store, { permissions: [] }));
 
     renderContactsPage();
 
@@ -141,13 +229,13 @@ describe("ContactsPage", () => {
   });
 
   it("hides write controls for a view-only user", async () => {
-    mockedApiFetch.mockImplementation((path: string, init?: RequestInit) => {
-      if (path === "/auth/me") return Promise.resolve(meWithPermissions(["contacts.view"]));
-      if (path === "/contacts") return Promise.resolve([ACTIVE_CONTACT]);
-      if (isTagsGet(path, init)) return Promise.resolve([]);
-      if (isConsentGet(path, init)) return Promise.resolve([]);
-      throw new Error(`unexpected path: ${path}`);
-    });
+    const store = createStore({ active: [ACTIVE_CONTACT] });
+    mockedApiFetch.mockImplementation(
+      baseContactsMock(store, {
+        permissions: ["contacts.view"],
+        extra: (path, init) => (isConsentGet(path, init) ? [] : undefined),
+      }),
+    );
 
     const user = userEvent.setup();
     renderContactsPage();
@@ -162,20 +250,20 @@ describe("ContactsPage", () => {
   });
 
   it("creates a contact via the add form", async () => {
-    const created: Contact = { ...ACTIVE_CONTACT, id: "contact-3", email: "new@example.com" };
-    mockedApiFetch.mockImplementation((path: string, init?: RequestInit) => {
-      if (path === "/auth/me") {
-        return Promise.resolve(meWithPermissions(["contacts.view", "contacts.manage"]));
-      }
-      if (path === "/contacts" && (!init || init.method === undefined)) {
-        return Promise.resolve([]);
-      }
-      if (isTagsGet(path, init)) return Promise.resolve([]);
-      if (path === "/contacts" && init?.method === "POST") {
-        return Promise.resolve(created);
-      }
-      throw new Error(`unexpected call: ${path}`);
-    });
+    const store = createStore({ active: [] });
+    const created: Contact = { ...ACTIVE_CONTACT, id: "contact-new", email: "new@example.com" };
+    mockedApiFetch.mockImplementation(
+      baseContactsMock(store, {
+        permissions: ["contacts.view", "contacts.manage"],
+        extra: (path, init) => {
+          if (path === "/contacts" && init?.method === "POST") {
+            store.active = [created, ...store.active];
+            return created;
+          }
+          return undefined;
+        },
+      }),
+    );
 
     const user = userEvent.setup();
     renderContactsPage();
@@ -189,20 +277,21 @@ describe("ContactsPage", () => {
   });
 
   it("edits a contact via the inline detail panel", async () => {
-    mockedApiFetch.mockImplementation((path: string, init?: RequestInit) => {
-      if (path === "/auth/me") {
-        return Promise.resolve(meWithPermissions(["contacts.view", "contacts.manage"]));
-      }
-      if (path === "/contacts" && (!init || init.method === undefined)) {
-        return Promise.resolve([ACTIVE_CONTACT]);
-      }
-      if (isTagsGet(path, init)) return Promise.resolve([]);
-      if (isConsentGet(path, init)) return Promise.resolve([]);
-      if (path === "/contacts/contact-1" && init?.method === "PATCH") {
-        return Promise.resolve({ ...ACTIVE_CONTACT, first_name: "Alicia" });
-      }
-      throw new Error(`unexpected call: ${path}`);
-    });
+    const store = createStore({ active: [ACTIVE_CONTACT] });
+    mockedApiFetch.mockImplementation(
+      baseContactsMock(store, {
+        permissions: ["contacts.view", "contacts.manage"],
+        extra: (path, init) => {
+          if (isConsentGet(path, init)) return [];
+          if (path === "/contacts/contact-1" && init?.method === "PATCH") {
+            const updated = { ...ACTIVE_CONTACT, first_name: "Alicia" };
+            store.active = store.active.map((c) => (c.id === "contact-1" ? updated : c));
+            return updated;
+          }
+          return undefined;
+        },
+      }),
+    );
 
     const user = userEvent.setup();
     renderContactsPage();
@@ -225,20 +314,21 @@ describe("ContactsPage", () => {
   });
 
   it("archives a contact via the toggle button", async () => {
-    mockedApiFetch.mockImplementation((path: string, init?: RequestInit) => {
-      if (path === "/auth/me") {
-        return Promise.resolve(meWithPermissions(["contacts.view", "contacts.manage"]));
-      }
-      if (path === "/contacts" && (!init || init.method === undefined)) {
-        return Promise.resolve([ACTIVE_CONTACT]);
-      }
-      if (isTagsGet(path, init)) return Promise.resolve([]);
-      if (isConsentGet(path, init)) return Promise.resolve([]);
-      if (path === "/contacts/contact-1/status" && init?.method === "PATCH") {
-        return Promise.resolve({ ...ACTIVE_CONTACT, status: "ARCHIVED" });
-      }
-      throw new Error(`unexpected call: ${path}`);
-    });
+    const store = createStore({ active: [ACTIVE_CONTACT] });
+    mockedApiFetch.mockImplementation(
+      baseContactsMock(store, {
+        permissions: ["contacts.view", "contacts.manage"],
+        extra: (path, init) => {
+          if (isConsentGet(path, init)) return [];
+          if (path === "/contacts/contact-1/status" && init?.method === "PATCH") {
+            const updated = { ...ACTIVE_CONTACT, status: "ARCHIVED" as const };
+            store.active = store.active.map((c) => (c.id === "contact-1" ? updated : c));
+            return updated;
+          }
+          return undefined;
+        },
+      }),
+    );
 
     const user = userEvent.setup();
     renderContactsPage();
@@ -252,20 +342,22 @@ describe("ContactsPage", () => {
   });
 
   it("attaches an existing tag to a contact", async () => {
-    mockedApiFetch.mockImplementation((path: string, init?: RequestInit) => {
-      if (path === "/auth/me") {
-        return Promise.resolve(meWithPermissions(["contacts.view", "contacts.manage"]));
-      }
-      if (path === "/contacts" && (!init || init.method === undefined)) {
-        return Promise.resolve([ACTIVE_CONTACT]);
-      }
-      if (isTagsGet(path, init)) return Promise.resolve([VIP_TAG]);
-      if (isConsentGet(path, init)) return Promise.resolve([]);
-      if (path === "/contacts/contact-1/tags" && init?.method === "POST") {
-        return Promise.resolve({ ...ACTIVE_CONTACT, tags: ["VIP"] });
-      }
-      throw new Error(`unexpected call: ${path}`);
-    });
+    const store = createStore({ active: [ACTIVE_CONTACT] });
+    mockedApiFetch.mockImplementation(
+      baseContactsMock(store, {
+        permissions: ["contacts.view", "contacts.manage"],
+        tags: [VIP_TAG],
+        extra: (path, init) => {
+          if (isConsentGet(path, init)) return [];
+          if (path === "/contacts/contact-1/tags" && init?.method === "POST") {
+            const updated = { ...ACTIVE_CONTACT, tags: ["VIP"] };
+            store.active = store.active.map((c) => (c.id === "contact-1" ? updated : c));
+            return updated;
+          }
+          return undefined;
+        },
+      }),
+    );
 
     const user = userEvent.setup();
     renderContactsPage();
@@ -280,20 +372,22 @@ describe("ContactsPage", () => {
 
   it("removes a tag from a contact", async () => {
     const tagged: Contact = { ...ACTIVE_CONTACT, tags: ["VIP"] };
-    mockedApiFetch.mockImplementation((path: string, init?: RequestInit) => {
-      if (path === "/auth/me") {
-        return Promise.resolve(meWithPermissions(["contacts.view", "contacts.manage"]));
-      }
-      if (path === "/contacts" && (!init || init.method === undefined)) {
-        return Promise.resolve([tagged]);
-      }
-      if (isTagsGet(path, init)) return Promise.resolve([VIP_TAG]);
-      if (isConsentGet(path, init)) return Promise.resolve([]);
-      if (path === "/contacts/contact-1/tags/tag-1" && init?.method === "DELETE") {
-        return Promise.resolve({ ...ACTIVE_CONTACT, tags: [] });
-      }
-      throw new Error(`unexpected call: ${path}`);
-    });
+    const store = createStore({ active: [tagged] });
+    mockedApiFetch.mockImplementation(
+      baseContactsMock(store, {
+        permissions: ["contacts.view", "contacts.manage"],
+        tags: [VIP_TAG],
+        extra: (path, init) => {
+          if (isConsentGet(path, init)) return [];
+          if (path === "/contacts/contact-1/tags/tag-1" && init?.method === "DELETE") {
+            const updated = { ...ACTIVE_CONTACT, tags: [] };
+            store.active = store.active.map((c) => (c.id === "contact-1" ? updated : c));
+            return updated;
+          }
+          return undefined;
+        },
+      }),
+    );
 
     const user = userEvent.setup();
     renderContactsPage();
@@ -311,23 +405,22 @@ describe("ContactsPage", () => {
 
   it("creates a new tag and attaches it to a contact", async () => {
     const createdTag: Tag = { id: "tag-2", name: "Newsletter" };
-    mockedApiFetch.mockImplementation((path: string, init?: RequestInit) => {
-      if (path === "/auth/me") {
-        return Promise.resolve(meWithPermissions(["contacts.view", "contacts.manage"]));
-      }
-      if (path === "/contacts" && (!init || init.method === undefined)) {
-        return Promise.resolve([ACTIVE_CONTACT]);
-      }
-      if (isTagsGet(path, init)) return Promise.resolve([]);
-      if (isConsentGet(path, init)) return Promise.resolve([]);
-      if (path === "/contacts/tags" && init?.method === "POST") {
-        return Promise.resolve(createdTag);
-      }
-      if (path === "/contacts/contact-1/tags" && init?.method === "POST") {
-        return Promise.resolve({ ...ACTIVE_CONTACT, tags: ["Newsletter"] });
-      }
-      throw new Error(`unexpected call: ${path}`);
-    });
+    const store = createStore({ active: [ACTIVE_CONTACT] });
+    mockedApiFetch.mockImplementation(
+      baseContactsMock(store, {
+        permissions: ["contacts.view", "contacts.manage"],
+        extra: (path, init) => {
+          if (isConsentGet(path, init)) return [];
+          if (path === "/contacts/tags" && init?.method === "POST") return createdTag;
+          if (path === "/contacts/contact-1/tags" && init?.method === "POST") {
+            const updated = { ...ACTIVE_CONTACT, tags: ["Newsletter"] };
+            store.active = store.active.map((c) => (c.id === "contact-1" ? updated : c));
+            return updated;
+          }
+          return undefined;
+        },
+      }),
+    );
 
     const user = userEvent.setup();
     renderContactsPage();
@@ -341,17 +434,13 @@ describe("ContactsPage", () => {
   });
 
   it("loads and displays a contact's consent history", async () => {
-    mockedApiFetch.mockImplementation((path: string, init?: RequestInit) => {
-      if (path === "/auth/me") {
-        return Promise.resolve(meWithPermissions(["contacts.view", "contacts.manage"]));
-      }
-      if (path === "/contacts" && (!init || init.method === undefined)) {
-        return Promise.resolve([ACTIVE_CONTACT]);
-      }
-      if (isTagsGet(path, init)) return Promise.resolve([]);
-      if (isConsentGet(path, init)) return Promise.resolve([GRANTED_CONSENT]);
-      throw new Error(`unexpected call: ${path}`);
-    });
+    const store = createStore({ active: [ACTIVE_CONTACT] });
+    mockedApiFetch.mockImplementation(
+      baseContactsMock(store, {
+        permissions: ["contacts.view", "contacts.manage"],
+        extra: (path, init) => (isConsentGet(path, init) ? [GRANTED_CONSENT] : undefined),
+      }),
+    );
 
     const user = userEvent.setup();
     renderContactsPage();
@@ -372,20 +461,17 @@ describe("ContactsPage", () => {
       source: null,
       recorded_at: "2026-07-02T00:00:00Z",
     };
-    mockedApiFetch.mockImplementation((path: string, init?: RequestInit) => {
-      if (path === "/auth/me") {
-        return Promise.resolve(meWithPermissions(["contacts.view", "contacts.manage"]));
-      }
-      if (path === "/contacts" && (!init || init.method === undefined)) {
-        return Promise.resolve([ACTIVE_CONTACT]);
-      }
-      if (isTagsGet(path, init)) return Promise.resolve([]);
-      if (isConsentGet(path, init)) return Promise.resolve([]);
-      if (path === "/contacts/contact-1/consent" && init?.method === "POST") {
-        return Promise.resolve(newRecord);
-      }
-      throw new Error(`unexpected call: ${path}`);
-    });
+    const store = createStore({ active: [ACTIVE_CONTACT] });
+    mockedApiFetch.mockImplementation(
+      baseContactsMock(store, {
+        permissions: ["contacts.view", "contacts.manage"],
+        extra: (path, init) => {
+          if (isConsentGet(path, init)) return [];
+          if (path === "/contacts/contact-1/consent" && init?.method === "POST") return newRecord;
+          return undefined;
+        },
+      }),
+    );
 
     const user = userEvent.setup();
     renderContactsPage();
@@ -402,14 +488,10 @@ describe("ContactsPage", () => {
   });
 
   it("selects contacts, toggles select all, and displays bulk action bar", async () => {
-    mockedApiFetch.mockImplementation((path: string, init?: RequestInit) => {
-      if (path === "/auth/me") {
-        return Promise.resolve(meWithPermissions(["contacts.view", "contacts.manage"]));
-      }
-      if (path === "/contacts") return Promise.resolve([ACTIVE_CONTACT, SUPPRESSED_CONTACT]);
-      if (isTagsGet(path, init)) return Promise.resolve([]);
-      throw new Error(`unexpected call: ${path}`);
-    });
+    const store = createStore({ active: [ACTIVE_CONTACT, SUPPRESSED_CONTACT] });
+    mockedApiFetch.mockImplementation(
+      baseContactsMock(store, { permissions: ["contacts.view", "contacts.manage"] }),
+    );
 
     const user = userEvent.setup();
     renderContactsPage();
@@ -439,19 +521,21 @@ describe("ContactsPage", () => {
 
   it("performs bulk delete of selected contacts", async () => {
     let bulkDeletedIds: string[] = [];
-    mockedApiFetch.mockImplementation((path: string, init?: RequestInit) => {
-      if (path === "/auth/me") {
-        return Promise.resolve(meWithPermissions(["contacts.view", "contacts.manage"]));
-      }
-      if (path === "/contacts") return Promise.resolve([ACTIVE_CONTACT, SUPPRESSED_CONTACT]);
-      if (isTagsGet(path, init)) return Promise.resolve([]);
-      if (path === "/contacts/bulk-delete" && init?.method === "POST") {
-        const body = JSON.parse(init.body as string);
-        bulkDeletedIds = body.contact_ids;
-        return Promise.resolve({ deleted_count: bulkDeletedIds.length });
-      }
-      throw new Error(`unexpected call: ${path}`);
-    });
+    const store = createStore({ active: [ACTIVE_CONTACT, SUPPRESSED_CONTACT] });
+    mockedApiFetch.mockImplementation(
+      baseContactsMock(store, {
+        permissions: ["contacts.view", "contacts.manage"],
+        extra: (path, init) => {
+          if (path === "/contacts/bulk-delete" && init?.method === "POST") {
+            const body = JSON.parse(init.body as string);
+            bulkDeletedIds = body.contact_ids;
+            store.active = store.active.filter((c) => !bulkDeletedIds.includes(c.id));
+            return { deleted_count: bulkDeletedIds.length };
+          }
+          return undefined;
+        },
+      }),
+    );
 
     const user = userEvent.setup();
     renderContactsPage();
@@ -480,22 +564,24 @@ describe("ContactsPage", () => {
 
   it("performs bulk delete with optional suppression checkbox", async () => {
     const suppressedEmails: string[] = [];
-    mockedApiFetch.mockImplementation((path: string, init?: RequestInit) => {
-      if (path === "/auth/me") {
-        return Promise.resolve(meWithPermissions(["contacts.view", "contacts.manage"]));
-      }
-      if (path === "/contacts") return Promise.resolve([ACTIVE_CONTACT]);
-      if (isTagsGet(path, init)) return Promise.resolve([]);
-      if (path === "/contacts/suppression" && init?.method === "POST") {
-        const body = JSON.parse(init.body as string);
-        suppressedEmails.push(body.email);
-        return Promise.resolve({ id: "supp-1", email: body.email });
-      }
-      if (path === "/contacts/bulk-delete" && init?.method === "POST") {
-        return Promise.resolve({ deleted_count: 1 });
-      }
-      throw new Error(`unexpected call: ${path}`);
-    });
+    const store = createStore({ active: [ACTIVE_CONTACT] });
+    mockedApiFetch.mockImplementation(
+      baseContactsMock(store, {
+        permissions: ["contacts.view", "contacts.manage"],
+        extra: (path, init) => {
+          if (path === "/contacts/suppression" && init?.method === "POST") {
+            const body = JSON.parse(init.body as string);
+            suppressedEmails.push(body.email);
+            return { id: "supp-1", email: body.email };
+          }
+          if (path === "/contacts/bulk-delete" && init?.method === "POST") {
+            store.active = [];
+            return { deleted_count: 1 };
+          }
+          return undefined;
+        },
+      }),
+    );
 
     const user = userEvent.setup();
     renderContactsPage();
@@ -519,19 +605,23 @@ describe("ContactsPage", () => {
 
   it("moves selected contacts to suppression list in bulk", async () => {
     const suppressedEmails: string[] = [];
-    mockedApiFetch.mockImplementation((path: string, init?: RequestInit) => {
-      if (path === "/auth/me") {
-        return Promise.resolve(meWithPermissions(["contacts.view", "contacts.manage"]));
-      }
-      if (path === "/contacts") return Promise.resolve([ACTIVE_CONTACT]);
-      if (isTagsGet(path, init)) return Promise.resolve([]);
-      if (path === "/contacts/suppression" && init?.method === "POST") {
-        const body = JSON.parse(init.body as string);
-        suppressedEmails.push(body.email);
-        return Promise.resolve({ id: "supp-1", email: body.email });
-      }
-      throw new Error(`unexpected call: ${path}`);
-    });
+    const store = createStore({ active: [ACTIVE_CONTACT] });
+    mockedApiFetch.mockImplementation(
+      baseContactsMock(store, {
+        permissions: ["contacts.view", "contacts.manage"],
+        extra: (path, init) => {
+          if (path === "/contacts/suppression" && init?.method === "POST") {
+            const body = JSON.parse(init.body as string);
+            suppressedEmails.push(body.email);
+            store.active = store.active.map((c) =>
+              c.email === body.email ? { ...c, is_suppressed: true } : c,
+            );
+            return { id: "supp-1", email: body.email };
+          }
+          return undefined;
+        },
+      }),
+    );
 
     const user = userEvent.setup();
     renderContactsPage();
@@ -551,27 +641,30 @@ describe("ContactsPage", () => {
   it("deletes a single contact from the detail modal with optional suppression", async () => {
     let deletedId: string | null = null;
     const suppressedEmails: string[] = [];
+    const store = createStore({ active: [ACTIVE_CONTACT] });
 
-    mockedApiFetch.mockImplementation((path: string, init?: RequestInit) => {
-      if (path === "/auth/me") {
-        return Promise.resolve(meWithPermissions(["contacts.view", "contacts.manage"]));
-      }
-      if (path === "/contacts" && (!init || init.method === undefined)) {
-        return Promise.resolve([ACTIVE_CONTACT]);
-      }
-      if (isTagsGet(path, init)) return Promise.resolve([]);
-      if (isConsentGet(path, init)) return Promise.resolve([]);
-      if (path === "/contacts/suppression" && init?.method === "POST") {
-        const body = JSON.parse(init.body as string);
-        suppressedEmails.push(body.email);
-        return Promise.resolve({ id: "supp-1", email: body.email });
-      }
-      if (path === "/contacts/contact-1" && init?.method === "DELETE") {
-        deletedId = "contact-1";
-        return Promise.resolve(undefined);
-      }
-      throw new Error(`unexpected call: ${path}`);
-    });
+    mockedApiFetch.mockImplementation(
+      baseContactsMock(store, {
+        permissions: ["contacts.view", "contacts.manage"],
+        extra: (path, init) => {
+          if (isConsentGet(path, init)) return [];
+          if (path === "/contacts/suppression" && init?.method === "POST") {
+            const body = JSON.parse(init.body as string);
+            suppressedEmails.push(body.email);
+            return { id: "supp-1", email: body.email };
+          }
+          if (path === "/contacts/contact-1" && init?.method === "DELETE") {
+            deletedId = "contact-1";
+            store.active = store.active.filter((c) => c.id !== "contact-1");
+            // DELETE returns a 204 (no body) -- `null` here is the actual response,
+            // distinct from `undefined`, which `baseContactsMock` treats as "not handled,
+            // fall through to the generic matchers".
+            return null;
+          }
+          return undefined;
+        },
+      }),
+    );
 
     const user = userEvent.setup();
     renderContactsPage();
@@ -597,18 +690,20 @@ describe("ContactsPage", () => {
 
   it("purges entire audience when purge button is confirmed", async () => {
     let purgeCalled = false;
-    mockedApiFetch.mockImplementation((path: string, init?: RequestInit) => {
-      if (path === "/auth/me") {
-        return Promise.resolve(meWithPermissions(["contacts.view", "contacts.manage"]));
-      }
-      if (path === "/contacts") return Promise.resolve([ACTIVE_CONTACT, SUPPRESSED_CONTACT]);
-      if (isTagsGet(path, init)) return Promise.resolve([]);
-      if (path === "/contacts/all" && init?.method === "DELETE") {
-        purgeCalled = true;
-        return Promise.resolve({ deleted_count: 2 });
-      }
-      throw new Error(`unexpected call: ${path}`);
-    });
+    const store = createStore({ active: [ACTIVE_CONTACT, SUPPRESSED_CONTACT] });
+    mockedApiFetch.mockImplementation(
+      baseContactsMock(store, {
+        permissions: ["contacts.view", "contacts.manage"],
+        extra: (path, init) => {
+          if (path === "/contacts/all" && init?.method === "DELETE") {
+            purgeCalled = true;
+            store.active = [];
+            return { deleted_count: 2 };
+          }
+          return undefined;
+        },
+      }),
+    );
 
     const user = userEvent.setup();
     renderContactsPage();
@@ -633,14 +728,8 @@ describe("ContactsPage", () => {
   });
 
   it("hides checkboxes and bulk toolbar for view-only users", async () => {
-    mockedApiFetch.mockImplementation((path: string, init?: RequestInit) => {
-      if (path === "/auth/me") {
-        return Promise.resolve(meWithPermissions(["contacts.view"]));
-      }
-      if (path === "/contacts") return Promise.resolve([ACTIVE_CONTACT]);
-      if (isTagsGet(path, init)) return Promise.resolve([]);
-      throw new Error(`unexpected call: ${path}`);
-    });
+    const store = createStore({ active: [ACTIVE_CONTACT] });
+    mockedApiFetch.mockImplementation(baseContactsMock(store, { permissions: ["contacts.view"] }));
 
     renderContactsPage();
 
@@ -652,19 +741,20 @@ describe("ContactsPage", () => {
 
   it("renders deleted tab, fetches deleted contacts, and restores single contact", async () => {
     let restoreCalled = false;
-    mockedApiFetch.mockImplementation((path: string, init?: RequestInit) => {
-      if (path === "/auth/me") {
-        return Promise.resolve(meWithPermissions(["contacts.view", "contacts.manage"]));
-      }
-      if (path === "/contacts") return Promise.resolve([ACTIVE_CONTACT]);
-      if (path === "/contacts?deleted_only=true") return Promise.resolve([DELETED_CONTACT]);
-      if (isTagsGet(path, init)) return Promise.resolve([]);
-      if (path === "/contacts/contact-3/restore" && init?.method === "POST") {
-        restoreCalled = true;
-        return Promise.resolve({ ...DELETED_CONTACT, deleted_at: null });
-      }
-      throw new Error(`unexpected call: ${path}`);
-    });
+    const store = createStore({ active: [ACTIVE_CONTACT], deleted: [DELETED_CONTACT] });
+    mockedApiFetch.mockImplementation(
+      baseContactsMock(store, {
+        permissions: ["contacts.view", "contacts.manage"],
+        extra: (path, init) => {
+          if (path === "/contacts/contact-3/restore" && init?.method === "POST") {
+            restoreCalled = true;
+            store.deleted = store.deleted.filter((c) => c.id !== "contact-3");
+            return { ...DELETED_CONTACT, deleted_at: null };
+          }
+          return undefined;
+        },
+      }),
+    );
 
     const user = userEvent.setup();
     renderContactsPage();
@@ -691,19 +781,20 @@ describe("ContactsPage", () => {
 
   it("supports bulk restore in deleted contacts tab", async () => {
     let bulkRestoreCalled = false;
-    mockedApiFetch.mockImplementation((path: string, init?: RequestInit) => {
-      if (path === "/auth/me") {
-        return Promise.resolve(meWithPermissions(["contacts.view", "contacts.manage"]));
-      }
-      if (path === "/contacts") return Promise.resolve([ACTIVE_CONTACT]);
-      if (path === "/contacts?deleted_only=true") return Promise.resolve([DELETED_CONTACT]);
-      if (isTagsGet(path, init)) return Promise.resolve([]);
-      if (path === "/contacts/bulk-restore" && init?.method === "POST") {
-        bulkRestoreCalled = true;
-        return Promise.resolve({ restored_count: 1 });
-      }
-      throw new Error(`unexpected call: ${path}`);
-    });
+    const store = createStore({ active: [ACTIVE_CONTACT], deleted: [DELETED_CONTACT] });
+    mockedApiFetch.mockImplementation(
+      baseContactsMock(store, {
+        permissions: ["contacts.view", "contacts.manage"],
+        extra: (path, init) => {
+          if (path === "/contacts/bulk-restore" && init?.method === "POST") {
+            bulkRestoreCalled = true;
+            store.deleted = [];
+            return { restored_count: 1 };
+          }
+          return undefined;
+        },
+      }),
+    );
 
     const user = userEvent.setup();
     renderContactsPage();
@@ -730,20 +821,21 @@ describe("ContactsPage", () => {
 
   it("renders deleted contact notice and restore button inside details modal", async () => {
     let restoreCalled = false;
-    mockedApiFetch.mockImplementation((path: string, init?: RequestInit) => {
-      if (path === "/auth/me") {
-        return Promise.resolve(meWithPermissions(["contacts.view", "contacts.manage"]));
-      }
-      if (path === "/contacts") return Promise.resolve([ACTIVE_CONTACT]);
-      if (path === "/contacts?deleted_only=true") return Promise.resolve([DELETED_CONTACT]);
-      if (isTagsGet(path, init)) return Promise.resolve([]);
-      if (isConsentGet(path, init)) return Promise.resolve([]);
-      if (path === "/contacts/contact-3/restore" && init?.method === "POST") {
-        restoreCalled = true;
-        return Promise.resolve({ ...DELETED_CONTACT, deleted_at: null });
-      }
-      throw new Error(`unexpected call: ${path}`);
-    });
+    const store = createStore({ active: [ACTIVE_CONTACT], deleted: [DELETED_CONTACT] });
+    mockedApiFetch.mockImplementation(
+      baseContactsMock(store, {
+        permissions: ["contacts.view", "contacts.manage"],
+        extra: (path, init) => {
+          if (isConsentGet(path, init)) return [];
+          if (path === "/contacts/contact-3/restore" && init?.method === "POST") {
+            restoreCalled = true;
+            store.deleted = store.deleted.filter((c) => c.id !== "contact-3");
+            return { ...DELETED_CONTACT, deleted_at: null };
+          }
+          return undefined;
+        },
+      }),
+    );
 
     const user = userEvent.setup();
     renderContactsPage();
@@ -769,18 +861,20 @@ describe("ContactsPage", () => {
 
   it("moves selected contacts to tag in bulk", async () => {
     let bulkTagAttached = false;
-    mockedApiFetch.mockImplementation((path: string, init?: RequestInit) => {
-      if (path === "/auth/me") {
-        return Promise.resolve(meWithPermissions(["contacts.view", "contacts.manage"]));
-      }
-      if (path === "/contacts") return Promise.resolve([ACTIVE_CONTACT]);
-      if (isTagsGet(path, init)) return Promise.resolve([VIP_TAG]);
-      if (path === "/contacts/contact-1/tags" && init?.method === "POST") {
-        bulkTagAttached = true;
-        return Promise.resolve({ ...ACTIVE_CONTACT, tags: [VIP_TAG] });
-      }
-      throw new Error(`unexpected call: ${path}`);
-    });
+    const store = createStore({ active: [ACTIVE_CONTACT] });
+    mockedApiFetch.mockImplementation(
+      baseContactsMock(store, {
+        permissions: ["contacts.view", "contacts.manage"],
+        tags: [VIP_TAG],
+        extra: (path, init) => {
+          if (path === "/contacts/contact-1/tags" && init?.method === "POST") {
+            bulkTagAttached = true;
+            return { ...ACTIVE_CONTACT, tags: [VIP_TAG] };
+          }
+          return undefined;
+        },
+      }),
+    );
 
     const user = userEvent.setup();
     renderContactsPage();
@@ -807,13 +901,11 @@ describe("ContactsPage", () => {
 
   it("adds selected contacts to a list in bulk", async () => {
     let bulkListAttached = false;
-    mockedApiFetch.mockImplementation((path: string, init?: RequestInit) => {
-      if (path === "/auth/me") {
-        return Promise.resolve(meWithPermissions(["contacts.view", "contacts.manage"]));
-      }
-      if (path === "/contacts") return Promise.resolve([ACTIVE_CONTACT]);
-      if (path === "/contacts/lists" && (!init || init.method === undefined)) {
-        return Promise.resolve([
+    const store = createStore({ active: [ACTIVE_CONTACT] });
+    mockedApiFetch.mockImplementation(
+      baseContactsMock(store, {
+        permissions: ["contacts.view", "contacts.manage"],
+        lists: [
           {
             id: "list-1",
             name: "Newsletter",
@@ -822,22 +914,23 @@ describe("ContactsPage", () => {
             created_at: "2026-07-01T00:00:00Z",
             updated_at: "2026-07-01T00:00:00Z",
           },
-        ]);
-      }
-      if (isTagsGet(path, init)) return Promise.resolve([]);
-      if (path === "/contacts/lists/list-1/members" && init?.method === "POST") {
-        bulkListAttached = true;
-        return Promise.resolve({
-          id: "list-1",
-          name: "Newsletter",
-          description: null,
-          member_count: 1,
-          created_at: "2026-07-01T00:00:00Z",
-          updated_at: "2026-07-01T00:00:00Z",
-        });
-      }
-      throw new Error(`unexpected call: ${path}`);
-    });
+        ],
+        extra: (path, init) => {
+          if (path === "/contacts/lists/list-1/members" && init?.method === "POST") {
+            bulkListAttached = true;
+            return {
+              id: "list-1",
+              name: "Newsletter",
+              description: null,
+              member_count: 1,
+              created_at: "2026-07-01T00:00:00Z",
+              updated_at: "2026-07-01T00:00:00Z",
+            };
+          }
+          return undefined;
+        },
+      }),
+    );
 
     const user = userEvent.setup();
     renderContactsPage();
@@ -859,6 +952,66 @@ describe("ContactsPage", () => {
 
     await waitFor(() => {
       expect(bulkListAttached).toBe(true);
+    });
+  });
+
+  it("searches contacts server-side with a debounced request", async () => {
+    // GRX-PERF-001 follow-up: search must hit the backend with a `search` param (not
+    // filter a client-held array), and only after the debounce window.
+    const store = createStore({ active: [ACTIVE_CONTACT, SUPPRESSED_CONTACT] });
+    mockedApiFetch.mockImplementation(
+      baseContactsMock(store, { permissions: ["contacts.view", "contacts.manage"] }),
+    );
+
+    const user = userEvent.setup();
+    renderContactsPage();
+
+    await screen.findByText("Alice Anderson");
+    mockedApiFetch.mockClear();
+
+    await user.type(screen.getByPlaceholderText("Search by name, email, or source..."), "alice");
+
+    await waitFor(
+      () => {
+        const searchCall = mockedApiFetch.mock.calls.find(([path]) =>
+          typeof path === "string" ? path.includes("search=alice") : false,
+        );
+        expect(searchCall).toBeDefined();
+      },
+      { timeout: 2000 },
+    );
+  });
+
+  it("shows the account-wide total in the pagination footer, not the page length", async () => {
+    // Regression test: "Showing X-Y of Z" and total pages must come from
+    // `/contacts/count`, not `pagedContacts.length`.
+    const manyActive = Array.from({ length: 30 }, (_, i) => ({
+      ...ACTIVE_CONTACT,
+      id: `contact-${i}`,
+      email: `contact-${i}@example.com`,
+      first_name: `Person${i}`,
+    }));
+    const store = createStore({ active: manyActive });
+    mockedApiFetch.mockImplementation(
+      baseContactsMock(store, { permissions: ["contacts.view", "contacts.manage"] }),
+    );
+
+    renderContactsPage();
+
+    await screen.findByText(/Person0/);
+    // 30 matching contacts at the default page size (25) means 2 pages -- if the total
+    // pages figure were derived from the fetched page's own length (25), this would
+    // wrongly read "Page 1 of 1".
+    function hasPageOneOfTwoText(node: Element | null) {
+      return node?.textContent === "Page 1 of 2";
+    }
+    await waitFor(() => {
+      expect(
+        screen.getByText((_content, element) => {
+          if (!hasPageOneOfTwoText(element)) return false;
+          return Array.from(element?.children ?? []).every((child) => !hasPageOneOfTwoText(child));
+        }),
+      ).toBeInTheDocument();
     });
   });
 });

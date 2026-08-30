@@ -43,6 +43,26 @@ class UpdateContactStatusIn(BaseModel):
     status: Literal["ACTIVE", "ARCHIVED"]
 
 
+class ContactStatsOut(BaseModel):
+    """Account-wide contact status counts (GRX-PERF-001 follow-up) -- feeds the Contacts
+    page's stat badges independently of whatever page of `/contacts` is currently loaded,
+    so they stay accurate for accounts with more than one page of contacts."""
+
+    total: int
+    active: int
+    archived: int
+    suppressed: int
+    new_this_month: int
+
+
+class ContactCountOut(BaseModel):
+    """Total contacts matching the same filters as `GET /contacts` -- feeds the Contacts
+    page's "total pages" figure without requiring a full-list fetch (GRX-PERF-001
+    follow-up)."""
+
+    total: int
+
+
 class ContactOut(BaseModel):
     id: uuid.UUID
     email: str

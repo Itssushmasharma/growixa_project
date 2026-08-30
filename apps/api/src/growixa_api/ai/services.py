@@ -15,6 +15,7 @@ from growixa_api.ai.schemas import AIProviderConnectionIn, PlatformAIProviderCon
 from growixa_api.auth.encryption import encrypt_secret
 from growixa_api.billing.services import check_and_consume_quota
 from growixa_api.brand.repositories import get_brand_profile
+from growixa_api.pagination import DEFAULT_LIMIT
 from growixa_api.usage.models import UsageRecord
 
 _BASE_URL_REQUIRED_PROVIDERS = {"AZURE_OPENAI", "OLLAMA"}
@@ -283,6 +284,8 @@ async def list_generation_history(
     capability: str | None = None,
     linked_entity_type: str | None = None,
     linked_entity_id: uuid.UUID | None = None,
+    limit: int = DEFAULT_LIMIT,
+    offset: int = 0,
 ) -> Sequence[AIGeneration]:
     return await repositories.list_generations(
         session,
@@ -290,6 +293,8 @@ async def list_generation_history(
         capability=capability,
         linked_entity_type=linked_entity_type,
         linked_entity_id=linked_entity_id,
+        limit=limit,
+        offset=offset,
     )
 
 

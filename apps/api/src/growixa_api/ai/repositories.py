@@ -6,6 +6,7 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from growixa_api.ai.models import AIGeneration, AIProviderConnection, PlatformAIProviderConfig
+from growixa_api.pagination import DEFAULT_LIMIT
 
 
 async def get_active_provider_connection(
@@ -105,6 +106,8 @@ async def list_generations(
     capability: str | None = None,
     linked_entity_type: str | None = None,
     linked_entity_id: uuid.UUID | None = None,
+    limit: int = DEFAULT_LIMIT,
+    offset: int = 0,
 ) -> Sequence[AIGeneration]:
     query = select(AIGeneration).where(AIGeneration.account_id == account_id)
     if capability is not None:
@@ -113,5 +116,6 @@ async def list_generations(
         query = query.where(AIGeneration.linked_entity_type == linked_entity_type)
     if linked_entity_id is not None:
         query = query.where(AIGeneration.linked_entity_id == linked_entity_id)
-    result = await session.execute(query.order_by(AIGeneration.created_at.desc()))
+    query = query.order_by(AIGeneration.created_at.desc()).limit(limit).offset(offset)
+    result = await session.execute(query)
     return result.scalars().all()

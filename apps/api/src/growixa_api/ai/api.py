@@ -1,6 +1,6 @@
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from growixa_api.ai.providers.base import AIProviderError, InsecureBaseUrlError
@@ -26,6 +26,7 @@ from growixa_api.ai.services import (
 )
 from growixa_api.billing.services import QuotaExceededError
 from growixa_api.db import get_session
+from growixa_api.pagination import DEFAULT_LIMIT, clamp_limit
 from growixa_api.permissions.dependencies import get_current_account_id, require_permission
 
 router = APIRouter(prefix="/ai", tags=["ai"])
@@ -144,6 +145,8 @@ async def list_ai_generations_route(
     capability: AICapability | None = None,
     linked_entity_type: AILinkedEntityType | None = None,
     linked_entity_id: uuid.UUID | None = None,
+    limit: int = Query(default=DEFAULT_LIMIT, ge=1),
+    offset: int = Query(default=0, ge=0),
     _actor_id: uuid.UUID = Depends(_require_view),
     account_id: uuid.UUID = Depends(get_current_account_id),
     session: AsyncSession = Depends(get_session),
@@ -154,5 +157,7 @@ async def list_ai_generations_route(
         capability=capability,
         linked_entity_type=linked_entity_type,
         linked_entity_id=linked_entity_id,
+        limit=clamp_limit(limit),
+        offset=offset,
     )
     return [AIGenerationOut.model_validate(generation) for generation in generations]

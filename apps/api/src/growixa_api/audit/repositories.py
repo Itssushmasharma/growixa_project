@@ -43,12 +43,14 @@ async def list_audit_logs(
     entity_id: uuid.UUID | None = None,
     actor_user_id: uuid.UUID | None = None,
     limit: int = 100,
+    offset: int = 0,
 ) -> Sequence[AuditLog]:
     stmt = (
         select(AuditLog)
         .where(AuditLog.account_id == account_id)
         .order_by(AuditLog.created_at.desc())
         .limit(limit)
+        .offset(offset)
     )
     if entity_type is not None:
         stmt = stmt.where(AuditLog.entity_type == entity_type)

@@ -65,6 +65,7 @@ async def list_events(
     entity_id: uuid.UUID | None = None,
     actor_user_id: uuid.UUID | None = None,
     limit: int = 100,
+    offset: int = 0,
 ) -> Sequence[AuditLog]:
     return await list_audit_logs(
         session,
@@ -73,4 +74,5 @@ async def list_events(
         entity_id=entity_id,
         actor_user_id=actor_user_id,
         limit=limit,
+        offset=offset,
     )

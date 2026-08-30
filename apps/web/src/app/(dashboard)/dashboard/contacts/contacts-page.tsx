@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { type FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { type FormEvent, useCallback, useEffect, useState } from "react";
 
 import { HelpTooltip } from "@/components/help/help-tooltip";
 import { PageHeader } from "@/components/page-header/page-header";
@@ -10,10 +10,37 @@ import { useToast } from "@/components/toast/toast-context";
 import { ApiError, apiFetch } from "@/lib/api-client";
 
 import styles from "./shared.module.css";
-import type { ConsentRecord, Contact, ContactList, CustomField, MeResponse, Tag } from "./types";
+import type {
+  ConsentRecord,
+  Contact,
+  ContactList,
+  ContactStats,
+  CustomField,
+  MeResponse,
+  Tag,
+} from "./types";
 
 const VIEW_PERMISSION = "contacts.view";
 const MANAGE_PERMISSION = "contacts.manage";
+
+// GRX-PERF-001 follow-up: `/contacts` is now server-paginated (DEFAULT_LIMIT=50,
+// MAX_LIMIT=200) and can no longer be fetched in full to derive stats/search/pagination
+// client-side (that silently undercounted every stat badge and only searched the first
+// page for any account over 50 contacts -- see the GRX-PERF-001 review). Everything below
+// fetches a bounded page at a time and gets its totals from the dedicated
+// `/contacts/stats` and `/contacts/count` endpoints instead of `.length` on a full array.
+const EMPTY_STATS: ContactStats = {
+  total: 0,
+  active: 0,
+  archived: 0,
+  suppressed: 0,
+  new_this_month: 0,
+};
+// CSV export still needs every row matching the current filters, not just one page -- loop
+// bounded backend calls (each capped, same as every other paginated request) instead of a
+// single unbounded fetch.
+const EXPORT_PAGE_SIZE = 200;
+const SEARCH_DEBOUNCE_MS = 300;
 
 interface ContactFormState {
   email: string;
@@ -106,6 +133,16 @@ export function ContactsPage() {
   const [customFields, setCustomFields] = useState<CustomField[]>([]);
   const [contactLists, setContactLists] = useState<ContactList[]>([]);
 
+  // Account-wide stat badges / status-tab counts -- always unfiltered by search/tag, from
+  // the backend's dedicated COUNT(*) endpoints, never `.length` on a fetched page.
+  const [stats, setStats] = useState<ContactStats>(EMPTY_STATS);
+  const [deletedCount, setDeletedCount] = useState(0);
+  // Total contacts matching the *currently active* search/status/tag filters (whichever
+  // tab is open) -- feeds "Showing X-Y of Z" and the total-pages figure.
+  const [viewTotal, setViewTotal] = useState(0);
+  const [pageLoading, setPageLoading] = useState(false);
+
+  const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [tagFilter, setTagFilter] = useState<string>("ALL");
@@ -152,19 +189,38 @@ export function ContactsPage() {
   const [deletedContacts, setDeletedContacts] = useState<Contact[]>([]);
   const [restoring, setRestoring] = useState(false);
 
+  // Debounce the search box so typing doesn't fire a request per keystroke -- the fetch
+  // effect below depends on the debounced `search`, not `searchInput` directly.
+  useEffect(() => {
+    const handle = setTimeout(() => setSearch(searchInput), SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(handle);
+  }, [searchInput]);
+
+  const refreshStats = useCallback(async () => {
+    try {
+      const [statsRes, deletedRes] = await Promise.all([
+        apiFetch<ContactStats>("/contacts/stats"),
+        apiFetch<{ total: number }>("/contacts/count?deleted_only=true"),
+      ]);
+      setStats(statsRes);
+      setDeletedCount(deletedRes.total);
+    } catch {
+      // Stat badges/tab counts are supplementary -- a failed refresh leaves the previous
+      // (still-accurate-enough) numbers in place rather than blocking the page.
+    }
+  }, []);
+
   useEffect(() => {
     async function load() {
       try {
-        const [me, contactList, tagList, customFieldList, listCollection] = await Promise.all([
+        const [me, tagList, customFieldList, listCollection] = await Promise.all([
           apiFetch<MeResponse>("/auth/me"),
-          apiFetch<Contact[]>("/contacts"),
           apiFetch<Tag[]>("/contacts/tags"),
           apiFetch<CustomField[]>("/contacts/custom-fields").catch(() => []),
           apiFetch<ContactList[]>("/contacts/lists").catch(() => []),
         ]);
         setCanView(me.permissions.includes(VIEW_PERMISSION));
         setCanManage(me.permissions.includes(MANAGE_PERMISSION));
-        setContacts(contactList);
         setTags(tagList);
         setCustomFields(customFieldList);
         setContactLists(listCollection);
@@ -176,78 +232,109 @@ export function ContactsPage() {
     }
 
     void load();
-  }, []);
+    void refreshStats();
+  }, [refreshStats]);
 
   useEffect(() => {
     setCurrentPage(1);
     setSelectedIds(new Set());
   }, [search, statusFilter, tagFilter, pageSize]);
 
-  const loadDeletedContacts = useCallback(async () => {
-    try {
-      const list = await apiFetch<Contact[]>("/contacts?deleted_only=true");
-      setDeletedContacts(list);
-    } catch {
-      showToast("error", "Could not load deleted contacts.");
+  // Builds the query string shared by the list fetch and its matching count fetch --
+  // both need the exact same search/status/tag/deleted_only filters so "Showing X-Y of Z"
+  // and the total-pages figure always agree with what's actually on screen.
+  const buildFilterParams = useCallback(() => {
+    const params = new URLSearchParams();
+    const deletedOnly = statusFilter === "DELETED";
+    if (deletedOnly) {
+      params.set("deleted_only", "true");
+    } else if (statusFilter !== "ALL") {
+      params.set("status", statusFilter);
     }
-  }, [showToast]);
+    if (search.trim()) params.set("search", search.trim());
+    if (tagFilter !== "ALL") params.set("tag_id", tagFilter);
+    return { params, deletedOnly };
+  }, [search, statusFilter, tagFilter]);
+
+  // Fetches exactly one bounded page (GRX-PERF-001) matching the current filters, plus
+  // the matching SQL-level COUNT(*) for pagination math -- never the full contact list.
+  const loadContactsPage = useCallback(async () => {
+    if (!canView) return;
+    const { params, deletedOnly } = buildFilterParams();
+    const listParams = new URLSearchParams(params);
+    listParams.set("limit", String(pageSize));
+    listParams.set("offset", String((currentPage - 1) * pageSize));
+
+    const countQuery = params.toString();
+    setPageLoading(true);
+    try {
+      const [rows, countRes] = await Promise.all([
+        apiFetch<Contact[]>(`/contacts?${listParams.toString()}`),
+        apiFetch<{ total: number }>(`/contacts/count${countQuery ? `?${countQuery}` : ""}`),
+      ]);
+      if (deletedOnly) {
+        setDeletedContacts(rows);
+      } else {
+        setContacts(rows);
+      }
+      setViewTotal(countRes.total);
+    } catch {
+      showToast("error", "Could not load contacts.");
+    } finally {
+      setPageLoading(false);
+    }
+  }, [canView, buildFilterParams, pageSize, currentPage, showToast]);
 
   useEffect(() => {
-    if (statusFilter === "DELETED") {
-      void loadDeletedContacts();
-    }
-  }, [statusFilter, loadDeletedContacts]);
+    void loadContactsPage();
+  }, [loadContactsPage]);
 
-  const visibleContacts = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    const sourceList = statusFilter === "DELETED" ? deletedContacts : contacts;
-    return sourceList.filter((c) => {
-      const matchesSearch =
-        !query ||
-        c.email.toLowerCase().includes(query) ||
-        (c.first_name && c.first_name.toLowerCase().includes(query)) ||
-        (c.last_name && c.last_name.toLowerCase().includes(query)) ||
-        (c.source && c.source.toLowerCase().includes(query));
-      const matchesStatus =
-        statusFilter === "ALL" || statusFilter === "DELETED" || c.status === statusFilter;
-      const matchesTag =
-        tagFilter === "ALL" ||
-        (c.tags &&
-          c.tags.some(
-            (t) => resolveTagId(t, tags) === tagFilter || getTagInfo(t).name === tagFilter,
-          ));
-      return matchesSearch && matchesStatus && matchesTag;
-    });
-  }, [contacts, deletedContacts, search, statusFilter, tagFilter, tags]);
+  // Current page's rows, already filtered/paginated server-side -- no client-side
+  // `.filter()`/`.slice()` over a full array.
+  const pagedContacts = statusFilter === "DELETED" ? deletedContacts : contacts;
 
-  const totalPages = Math.ceil(visibleContacts.length / pageSize) || 1;
+  const totalPages = Math.ceil(viewTotal / pageSize) || 1;
   const safeCurrentPage = Math.min(currentPage, totalPages);
-  const startIndex = (safeCurrentPage - 1) * pageSize;
-  const endIndex = Math.min(startIndex + pageSize, visibleContacts.length);
-  const paginatedContacts = useMemo(() => {
-    return visibleContacts.slice(startIndex, endIndex);
-  }, [visibleContacts, startIndex, endIndex]);
+  // If a mutation shrank the result set out from under the current page (e.g. the last
+  // row on the last page got deleted), snap back to the new last page -- this refetches
+  // via `loadContactsPage`'s `currentPage` dependency.
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(totalPages);
+  }, [currentPage, totalPages]);
+  const startIndex = viewTotal > 0 ? (safeCurrentPage - 1) * pageSize : 0;
+  const endIndex = Math.min(startIndex + pageSize, viewTotal);
 
-  const metrics = useMemo(() => {
-    const now = new Date();
-    const currentYear = now.getFullYear();
-    const currentMonth = now.getMonth();
-    return {
-      total: contacts.length,
-      active: contacts.filter((c) => c.status === "ACTIVE").length,
-      suppressed: contacts.filter((c) => c.is_suppressed).length,
-      archived: contacts.filter((c) => c.status === "ARCHIVED").length,
-      newThisMonth: contacts.filter((c) => {
-        if (!c.created_at) return false;
-        const created = new Date(c.created_at);
-        return created.getFullYear() === currentYear && created.getMonth() === currentMonth;
-      }).length,
-    };
-  }, [contacts]);
+  // Exports every contact matching the current filters, not just the current page --
+  // loops bounded backend requests (GRX-PERF-001's own per-request cap) instead of the
+  // single unbounded fetch this used to rely on.
+  async function fetchAllMatchingContacts(): Promise<Contact[]> {
+    const { params } = buildFilterParams();
+    const all: Contact[] = [];
+    let offset = 0;
+    // viewTotal already reflects the current filters (refetched alongside the visible
+    // page); use it to bound the loop instead of looping until an empty page.
+    while (offset < viewTotal) {
+      const pageParams = new URLSearchParams(params);
+      pageParams.set("limit", String(EXPORT_PAGE_SIZE));
+      pageParams.set("offset", String(offset));
+      const rows = await apiFetch<Contact[]>(`/contacts?${pageParams.toString()}`);
+      if (rows.length === 0) break;
+      all.push(...rows);
+      offset += EXPORT_PAGE_SIZE;
+    }
+    return all;
+  }
 
-  function handleExportCsv() {
-    if (visibleContacts.length === 0) {
+  async function handleExportCsv() {
+    if (viewTotal === 0) {
       showToast("error", "No contacts available to export.");
+      return;
+    }
+    let exportRows: Contact[];
+    try {
+      exportRows = await fetchAllMatchingContacts();
+    } catch {
+      showToast("error", "Could not export contacts.");
       return;
     }
     const csvHeaders = [
@@ -260,7 +347,7 @@ export function ContactsPage() {
       "Source",
       "Created At",
     ];
-    const csvRows = visibleContacts.map((c) => [
+    const csvRows = exportRows.map((c) => [
       c.id,
       `"${c.email.replace(/"/g, '""')}"`,
       `"${(c.first_name || "").replace(/"/g, '""')}"`,
@@ -282,7 +369,7 @@ export function ContactsPage() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    showToast("success", `Exported ${visibleContacts.length} contacts to CSV.`);
+    showToast("success", `Exported ${exportRows.length} contacts to CSV.`);
   }
 
   async function handleCreateSubmit(event: FormEvent<HTMLFormElement>) {
@@ -290,7 +377,7 @@ export function ContactsPage() {
     setCreating(true);
 
     try {
-      const created = await apiFetch<Contact>("/contacts", {
+      await apiFetch<Contact>("/contacts", {
         method: "POST",
         body: JSON.stringify({
           email: createForm.email,
@@ -300,9 +387,9 @@ export function ContactsPage() {
           source: createForm.source || null,
         }),
       });
-      setContacts((current) => [created, ...current]);
       setShowCreateForm(false);
       setCreateForm(EMPTY_FORM);
+      await Promise.all([loadContactsPage(), refreshStats()]);
       showToast("success", "Contact created.");
     } catch (error) {
       if (error instanceof ApiError && error.status === 409) {
@@ -316,19 +403,18 @@ export function ContactsPage() {
   }
 
   const allOnPageSelected =
-    paginatedContacts.length > 0 && paginatedContacts.every((c) => selectedIds.has(c.id));
-  const isIndeterminate =
-    paginatedContacts.some((c) => selectedIds.has(c.id)) && !allOnPageSelected;
+    pagedContacts.length > 0 && pagedContacts.every((c) => selectedIds.has(c.id));
+  const isIndeterminate = pagedContacts.some((c) => selectedIds.has(c.id)) && !allOnPageSelected;
 
   function toggleSelectAllOnPage() {
     setSelectedIds((prev) => {
       const next = new Set(prev);
       if (allOnPageSelected) {
-        for (const c of paginatedContacts) {
+        for (const c of pagedContacts) {
           next.delete(c.id);
         }
       } else {
-        for (const c of paginatedContacts) {
+        for (const c of pagedContacts) {
           next.add(c.id);
         }
       }
@@ -370,7 +456,6 @@ export function ContactsPage() {
           }
         }
         await apiFetch(`/contacts/${target.id}`, { method: "DELETE" });
-        setContacts((prev) => prev.filter((c) => c.id !== target.id));
         setSelectedIds((prev) => {
           const next = new Set(prev);
           next.delete(target.id);
@@ -379,6 +464,7 @@ export function ContactsPage() {
         if (selectedContact?.id === target.id) {
           closeContactModal();
         }
+        await Promise.all([loadContactsPage(), refreshStats()]);
         if (suppressionFailed) {
           showToast(
             "info",
@@ -391,7 +477,9 @@ export function ContactsPage() {
         const targetIds = Array.from(selectedIds);
         let failedSuppressionCount = 0;
         if (alsoSuppress) {
-          const targetEmails = contacts.filter((c) => selectedIds.has(c.id)).map((c) => c.email);
+          const targetEmails = pagedContacts
+            .filter((c) => selectedIds.has(c.id))
+            .map((c) => c.email);
           const results = await Promise.allSettled(
             targetEmails.map((email) =>
               apiFetch("/contacts/suppression", {
@@ -406,8 +494,8 @@ export function ContactsPage() {
           method: "POST",
           body: JSON.stringify({ contact_ids: targetIds }),
         });
-        setContacts((prev) => prev.filter((c) => !selectedIds.has(c.id)));
         setSelectedIds(new Set());
+        await Promise.all([loadContactsPage(), refreshStats()]);
         if (failedSuppressionCount > 0) {
           showToast(
             "info",
@@ -421,8 +509,8 @@ export function ContactsPage() {
         }
       } else if (deleteModal.mode === "PURGE") {
         await apiFetch<{ deleted_count: number }>("/contacts/all", { method: "DELETE" });
-        setContacts([]);
         setSelectedIds(new Set());
+        await Promise.all([loadContactsPage(), refreshStats()]);
         showToast("success", "All contacts purged successfully.");
       }
       setDeleteModal(null);
@@ -438,7 +526,7 @@ export function ContactsPage() {
 
   async function handleBulkSuppress() {
     if (selectedIds.size === 0) return;
-    const selectedContacts = contacts.filter((c) => selectedIds.has(c.id));
+    const selectedContacts = pagedContacts.filter((c) => selectedIds.has(c.id));
     const results = await Promise.allSettled(
       selectedContacts.map((c) =>
         apiFetch("/contacts/suppression", {
@@ -458,9 +546,7 @@ export function ContactsPage() {
       }
     });
     if (successfulIds.size > 0) {
-      setContacts((prev) =>
-        prev.map((c) => (successfulIds.has(c.id) ? { ...c, is_suppressed: true } : c)),
-      );
+      await Promise.all([loadContactsPage(), refreshStats()]);
     }
     setSelectedIds((prev) => {
       const next = new Set(prev);
@@ -487,14 +573,13 @@ export function ContactsPage() {
   async function handleRestoreContact(contactId: string) {
     setRestoring(true);
     try {
-      const restored = await apiFetch<Contact>(`/contacts/${contactId}/restore`, {
+      await apiFetch<Contact>(`/contacts/${contactId}/restore`, {
         method: "POST",
       });
-      setDeletedContacts((current) => current.filter((c) => c.id !== contactId));
-      setContacts((current) => [restored, ...current]);
       if (selectedContact?.id === contactId) {
         setSelectedContact(null);
       }
+      await Promise.all([loadContactsPage(), refreshStats()]);
       showToast("success", "Contact restored successfully.");
     } catch (error) {
       if (error instanceof ApiError && error.status === 402) {
@@ -518,10 +603,8 @@ export function ContactsPage() {
         method: "POST",
         body: JSON.stringify({ contact_ids: targetIds }),
       });
-      setDeletedContacts((current) => current.filter((c) => !selectedIds.has(c.id)));
-      const activeList = await apiFetch<Contact[]>("/contacts");
-      setContacts(activeList);
       setSelectedIds(new Set());
+      await Promise.all([loadContactsPage(), refreshStats()]);
       showToast(
         "success",
         `Restored ${res.restored_count} contact${res.restored_count === 1 ? "" : "s"}.`,
@@ -577,12 +660,11 @@ export function ContactsPage() {
         }),
       );
 
-      const activeList = await apiFetch<Contact[]>("/contacts");
-      setContacts(activeList);
       setSelectedIds(new Set());
       setShowBulkTagModal(false);
       setBulkTagId("");
       setBulkNewTagName("");
+      await loadContactsPage();
       showToast(
         "success",
         `Applied tag to ${successCount} contact${successCount === 1 ? "" : "s"}.`,
@@ -695,8 +777,10 @@ export function ContactsPage() {
           custom_fields: editForm.custom_fields,
         }),
       });
-      setContacts((current) => current.map((c) => (c.id === contactId ? updated : c)));
       setSelectedContact(updated);
+      // An edit can move the contact out of the current search filter -- refetch rather
+      // than patch the row in place.
+      await loadContactsPage();
       showToast("success", "Contact updated.");
     } catch {
       showToast("error", "Could not update contact.");
@@ -712,8 +796,11 @@ export function ContactsPage() {
         method: "PATCH",
         body: JSON.stringify({ status: nextStatus }),
       });
-      setContacts((current) => current.map((c) => (c.id === contactId ? updated : c)));
       setSelectedContact(updated);
+      // A status change can move the contact out of the currently-filtered view (e.g.
+      // archiving while the "Active" tab is open) and always changes the active/archived
+      // stat badges -- refetch rather than patch the row in place.
+      await Promise.all([loadContactsPage(), refreshStats()]);
       showToast("success", `Status changed to ${nextStatus}.`);
     } catch {
       showToast("error", "Could not change status.");
@@ -730,9 +817,11 @@ export function ContactsPage() {
         method: "POST",
         body: JSON.stringify({ tag_id: attachTagId }),
       });
-      setContacts((current) => current.map((c) => (c.id === contactId ? updated : c)));
       setSelectedContact(updated);
       setAttachTagId("");
+      // A tag change can move the contact out of the current tag filter -- refetch
+      // rather than patch the row in place.
+      await loadContactsPage();
       showToast("success", "Tag attached.");
     } catch {
       showToast("error", "Could not attach tag.");
@@ -754,9 +843,9 @@ export function ContactsPage() {
         method: "POST",
         body: JSON.stringify({ tag_id: newTag.id }),
       });
-      setContacts((current) => current.map((c) => (c.id === contactId ? updated : c)));
       setSelectedContact(updated);
       setNewTagName("");
+      await loadContactsPage();
       showToast("success", "Tag created and attached.");
     } catch {
       showToast("error", "Could not create tag.");
@@ -772,8 +861,8 @@ export function ContactsPage() {
       const updated = await apiFetch<Contact>(`/contacts/${contactId}/tags/${targetTagId}`, {
         method: "DELETE",
       });
-      setContacts((current) => current.map((c) => (c.id === contactId ? updated : c)));
       setSelectedContact(updated);
+      await loadContactsPage();
       showToast("success", "Tag removed.");
     } catch {
       showToast("error", "Could not remove tag.");
@@ -877,25 +966,25 @@ export function ContactsPage() {
 
       {/* Metric Summary Cards (Real Derived Counts) */}
       <section className={styles.metricsGrid} aria-label="Contacts Overview KPIs">
-        <StatCard label="Total Contacts" value={metrics.total} subtext="All audience" />
-        <StatCard label="Active Contacts" value={metrics.active} subtext="Subscribed" />
+        <StatCard label="Total Contacts" value={stats.total} subtext="All audience" />
+        <StatCard label="Active Contacts" value={stats.active} subtext="Subscribed" />
         <StatCard
           label="New This Month"
-          value={metrics.newThisMonth}
+          value={stats.new_this_month}
           subtext="Joined this calendar month"
         />
-        <StatCard label="Suppressed" value={metrics.suppressed} subtext="Unsubscribed & bounced" />
-        <StatCard label="Archived" value={metrics.archived} subtext="Inactive" />
+        <StatCard label="Suppressed" value={stats.suppressed} subtext="Unsubscribed & bounced" />
+        <StatCard label="Archived" value={stats.archived} subtext="Inactive" />
       </section>
 
       <div className={styles.card}>
         {/* Status Filter Tabs */}
         <div className={styles.statusTabs}>
           {[
-            { value: "ALL", label: "All Contacts", count: metrics.total },
-            { value: "ACTIVE", label: "Active", count: metrics.active },
-            { value: "ARCHIVED", label: "Archived", count: metrics.archived },
-            { value: "DELETED", label: "Deleted", count: deletedContacts.length },
+            { value: "ALL", label: "All Contacts", count: stats.total },
+            { value: "ACTIVE", label: "Active", count: stats.active },
+            { value: "ARCHIVED", label: "Archived", count: stats.archived },
+            { value: "DELETED", label: "Deleted", count: deletedCount },
           ].map((tab) => (
             <button
               key={tab.value}
@@ -910,13 +999,13 @@ export function ContactsPage() {
         </div>
 
         {/* Search & Filter Toolbar */}
-        <div className={styles.toolbar}>
+        <div className={styles.toolbar} aria-busy={pageLoading}>
           <div className={styles.searchGroup}>
             <input
               type="text"
               placeholder="Search by name, email, or source..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
               className={styles.searchInput}
             />
             <select
@@ -947,11 +1036,11 @@ export function ContactsPage() {
             )}
           </div>
           <div className={styles.actionGroup}>
-            {canManage && statusFilter !== "DELETED" && contacts.length > 0 && (
+            {canManage && statusFilter !== "DELETED" && stats.total > 0 && (
               <button
                 type="button"
                 className={styles.dangerOutlineBtn}
-                onClick={() => setDeleteModal({ mode: "PURGE", count: contacts.length })}
+                onClick={() => setDeleteModal({ mode: "PURGE", count: stats.total })}
                 title="Delete all contacts in your account"
               >
                 🗑️ Purge Audience
@@ -1032,9 +1121,9 @@ export function ContactsPage() {
           </form>
         )}
 
-        {contacts.length === 0 ? (
+        {(statusFilter === "DELETED" ? deletedCount === 0 : stats.total === 0) ? (
           <div className={styles.emptyState}>No contacts yet.</div>
-        ) : visibleContacts.length === 0 ? (
+        ) : viewTotal === 0 ? (
           <div className={styles.emptyState}>No contacts match your criteria.</div>
         ) : (
           <div>
@@ -1062,7 +1151,7 @@ export function ContactsPage() {
                 <div style={{ textAlign: "right" }}>Actions</div>
               </div>
 
-              {paginatedContacts.map((contact) => {
+              {pagedContacts.map((contact) => {
                 return (
                   <div
                     key={contact.id}
@@ -1145,8 +1234,8 @@ export function ContactsPage() {
                 <div className={styles.bulkInfo}>
                   <span className={styles.bulkBadge}>{selectedIds.size} selected</span>
                   <span className={styles.bulkSelectedText}>
-                    {selectedIds.size} of {visibleContacts.length} contact
-                    {visibleContacts.length > 1 ? "s" : ""} selected
+                    {selectedIds.size} of {viewTotal} contact
+                    {viewTotal > 1 ? "s" : ""} selected
                   </span>
                 </div>
                 <div className={styles.bulkActions}>
@@ -1209,12 +1298,12 @@ export function ContactsPage() {
             )}
 
             {/* Pagination Controls Bar */}
-            {visibleContacts.length > 0 && (
+            {viewTotal > 0 && (
               <div className={styles.paginationBar}>
                 <div className={styles.paginationInfo}>
-                  Showing <strong>{visibleContacts.length > 0 ? startIndex + 1 : 0}</strong>–
-                  <strong>{endIndex}</strong> of{" "}
-                  <strong>{visibleContacts.length.toLocaleString()}</strong> contacts
+                  Showing <strong>{viewTotal > 0 ? startIndex + 1 : 0}</strong>–
+                  <strong>{endIndex}</strong> of <strong>{viewTotal.toLocaleString()}</strong>{" "}
+                  contacts
                 </div>
 
                 <div className={styles.paginationControls}>

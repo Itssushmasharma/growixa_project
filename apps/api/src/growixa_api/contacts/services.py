@@ -32,6 +32,7 @@ from growixa_api.contacts.repositories import (
     attach_tag,
     bulk_soft_delete_contacts,
     count_active_contacts,
+    count_contacts,
     count_dynamic_segment_members,
     count_list_members,
     count_saved_segment_members,
@@ -47,6 +48,7 @@ from growixa_api.contacts.repositories import (
     get_contact_by_id,
     get_contact_by_id_including_deleted,
     get_contact_list_by_id,
+    get_contact_stats,
     get_custom_field_by_key,
     get_deleted_contacts_by_ids,
     get_import_by_id,
@@ -103,6 +105,7 @@ from growixa_api.contacts.repositories import list_tags as list_tags_rows
 from growixa_api.contacts.repositories import (
     restore_contact as restore_contact_row,
 )
+from growixa_api.pagination import DEFAULT_LIMIT
 
 ContactSnapshot = tuple[Contact, dict[str, str], list[str], bool]
 SegmentDetail = tuple[Segment, Sequence[SegmentRule], int]
@@ -364,9 +367,22 @@ async def list_contacts_with_fields(
     *,
     include_deleted: bool = False,
     deleted_only: bool = False,
+    status: str | None = None,
+    search: str | None = None,
+    tag_id: uuid.UUID | None = None,
+    limit: int = DEFAULT_LIMIT,
+    offset: int = 0,
 ) -> list[ContactSnapshot]:
     contacts = await list_contacts_rows(
-        session, account_id, include_deleted=include_deleted, deleted_only=deleted_only
+        session,
+        account_id,
+        include_deleted=include_deleted,
+        deleted_only=deleted_only,
+        status=status,
+        search=search,
+        tag_id=tag_id,
+        limit=limit,
+        offset=offset,
     )
     if not contacts:
         return []
@@ -384,6 +400,37 @@ async def list_contacts_with_fields(
         )
         for contact in contacts
     ]
+
+
+async def count_contacts_service(
+    session: AsyncSession,
+    account_id: uuid.UUID,
+    *,
+    include_deleted: bool = False,
+    deleted_only: bool = False,
+    status: str | None = None,
+    search: str | None = None,
+    tag_id: uuid.UUID | None = None,
+) -> int:
+    """Thin passthrough to the SQL-level `COUNT(*)` -- feeds the Contacts page's
+    "total pages" figure under the currently-active search/status/tag filters without
+    ever fetching the matching rows (GRX-PERF-001 follow-up)."""
+    return await count_contacts(
+        session,
+        account_id,
+        include_deleted=include_deleted,
+        deleted_only=deleted_only,
+        status=status,
+        search=search,
+        tag_id=tag_id,
+    )
+
+
+async def get_contact_stats_service(session: AsyncSession, account_id: uuid.UUID) -> dict[str, int]:
+    """Thin passthrough to the SQL-level stats aggregate -- feeds the Contacts page's
+    stat badges (total/active/archived/suppressed/new-this-month) without ever fetching
+    the account's full contact list (GRX-PERF-001 follow-up)."""
+    return await get_contact_stats(session, account_id)
 
 
 async def list_custom_fields(

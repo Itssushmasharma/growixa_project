@@ -4,7 +4,17 @@ import json
 import uuid
 from collections.abc import Sequence
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, UploadFile, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    Query,
+    Response,
+    UploadFile,
+    status,
+)
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from growixa_api.billing.services import PlanLimitExceededError
@@ -26,12 +36,14 @@ from growixa_api.contacts.schemas import (
     BulkRestoreContactsOut,
     ConsentRecordIn,
     ConsentRecordOut,
+    ContactCountOut,
     ContactImportOut,
     ContactImportRowOut,
     ContactIn,
     ContactListIn,
     ContactListOut,
     ContactOut,
+    ContactStatsOut,
     ContactUpdateIn,
     CustomFieldIn,
     CustomFieldOut,
@@ -60,7 +72,9 @@ from growixa_api.contacts.services import (
     SuppressionEntryNotFoundError,
     TagNotFoundError,
     UnknownCustomFieldError,
+    count_contacts_service,
     delete_segment_service,
+    get_contact_stats_service,
     update_segment_service,
 )
 from growixa_api.contacts.services import add_contact_to_list as add_contact_to_list_service
@@ -111,6 +125,7 @@ from growixa_api.contacts.services import suppress_email as suppress_email_servi
 from growixa_api.contacts.services import update_contact as update_contact_service
 from growixa_api.contacts.services import update_contact_status as update_contact_status_service
 from growixa_api.db import get_session
+from growixa_api.pagination import DEFAULT_LIMIT, clamp_limit
 from growixa_api.permissions.dependencies import get_current_account_id, require_permission
 
 router = APIRouter(prefix="/contacts", tags=["contacts"])
@@ -631,16 +646,68 @@ async def remove_suppression_route(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Suppression entry not found") from exc
 
 
+@router.get("/stats", response_model=ContactStatsOut)
+async def get_contact_stats_route(
+    _actor_id: uuid.UUID = Depends(_require_view),
+    account_id: uuid.UUID = Depends(get_current_account_id),
+    session: AsyncSession = Depends(get_session),
+) -> ContactStatsOut:
+    """Account-wide contact status counts, independent of `/contacts` pagination
+    (GRX-PERF-001 follow-up) -- feeds the Contacts page's stat badges so they stay
+    accurate for accounts with more than one page of contacts."""
+    stats = await get_contact_stats_service(session, account_id)
+    return ContactStatsOut(**stats)
+
+
+@router.get("/count", response_model=ContactCountOut)
+async def count_contacts_route(
+    include_deleted: bool = False,
+    deleted_only: bool = False,
+    status: str | None = None,
+    search: str | None = None,
+    tag_id: uuid.UUID | None = None,
+    _actor_id: uuid.UUID = Depends(_require_view),
+    account_id: uuid.UUID = Depends(get_current_account_id),
+    session: AsyncSession = Depends(get_session),
+) -> ContactCountOut:
+    """Total contacts matching the same filters as `GET /contacts` (GRX-PERF-001
+    follow-up) -- feeds the Contacts page's "total pages" figure under the
+    currently-active search/status/tag filters without a full-list fetch."""
+    total = await count_contacts_service(
+        session,
+        account_id,
+        include_deleted=include_deleted,
+        deleted_only=deleted_only,
+        status=status,
+        search=search,
+        tag_id=tag_id,
+    )
+    return ContactCountOut(total=total)
+
+
 @router.get("", response_model=list[ContactOut])
 async def list_contacts_route(
     include_deleted: bool = False,
     deleted_only: bool = False,
+    status: str | None = None,
+    search: str | None = None,
+    tag_id: uuid.UUID | None = None,
+    limit: int = Query(default=DEFAULT_LIMIT, ge=1),
+    offset: int = Query(default=0, ge=0),
     _actor_id: uuid.UUID = Depends(_require_view),
     account_id: uuid.UUID = Depends(get_current_account_id),
     session: AsyncSession = Depends(get_session),
 ) -> list[ContactOut]:
     contacts_with_fields = await list_contacts_service(
-        session, account_id, include_deleted=include_deleted, deleted_only=deleted_only
+        session,
+        account_id,
+        include_deleted=include_deleted,
+        deleted_only=deleted_only,
+        status=status,
+        search=search,
+        tag_id=tag_id,
+        limit=clamp_limit(limit),
+        offset=offset,
     )
     return [
         _to_out(contact, fields, tags, suppressed)

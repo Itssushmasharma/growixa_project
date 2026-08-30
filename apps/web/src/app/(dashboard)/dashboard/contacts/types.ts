@@ -10,6 +10,14 @@ export interface Tag {
   name: string;
 }
 
+export interface ContactStats {
+  total: number;
+  active: number;
+  archived: number;
+  suppressed: number;
+  new_this_month: number;
+}
+
 export interface ContactList {
   id: string;
   name: string;

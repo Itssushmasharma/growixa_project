@@ -3,7 +3,18 @@ from collections.abc import Sequence
 from datetime import datetime
 from typing import Any, cast
 
-from sqlalchemy import ColumnElement, CursorResult, Select, and_, delete, func, select, update
+from sqlalchemy import (
+    ColumnElement,
+    CursorResult,
+    Select,
+    and_,
+    delete,
+    exists,
+    func,
+    or_,
+    select,
+    update,
+)
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from growixa_api.campaigns.models import Campaign
@@ -27,6 +38,7 @@ from growixa_api.contacts.models import (
     SuppressionEntry,
     Tag,
 )
+from growixa_api.pagination import DEFAULT_LIMIT
 
 
 async def get_account_id_for_contact(
@@ -94,22 +106,135 @@ async def count_active_contacts(session: AsyncSession, account_id: uuid.UUID) ->
     return result.scalar_one()
 
 
+def _contact_search_condition(search: str) -> ColumnElement[bool]:
+    """Free-text search across the same fields the (now-removed) client-side filter used
+    to check -- email, first/last name, source -- so server-side search matches the exact
+    UX the Contacts page previously implemented in the browser (GRX-PERF-001 follow-up)."""
+    like = f"%{search}%"
+    return or_(
+        Contact.email.ilike(like),
+        Contact.first_name.ilike(like),
+        Contact.last_name.ilike(like),
+        Contact.source.ilike(like),
+    )
+
+
+def _contact_tag_condition(tag_id: uuid.UUID) -> ColumnElement[bool]:
+    return Contact.id.in_(select(ContactTag.contact_id).where(ContactTag.tag_id == tag_id))
+
+
+def _contact_filter_conditions(
+    account_id: uuid.UUID,
+    *,
+    include_deleted: bool,
+    deleted_only: bool,
+    status: str | None,
+    search: str | None,
+    tag_id: uuid.UUID | None,
+) -> list[ColumnElement[bool]]:
+    conditions: list[ColumnElement[bool]] = [Contact.account_id == account_id]
+    if deleted_only:
+        conditions.append(Contact.deleted_at.is_not(None))
+    elif not include_deleted:
+        conditions.append(Contact.deleted_at.is_(None))
+    if status is not None:
+        conditions.append(Contact.status == status)
+    if search:
+        conditions.append(_contact_search_condition(search))
+    if tag_id is not None:
+        conditions.append(_contact_tag_condition(tag_id))
+    return conditions
+
+
 async def list_contacts(
     session: AsyncSession,
     account_id: uuid.UUID,
     *,
     include_deleted: bool = False,
     deleted_only: bool = False,
+    status: str | None = None,
+    search: str | None = None,
+    tag_id: uuid.UUID | None = None,
+    limit: int = DEFAULT_LIMIT,
+    offset: int = 0,
 ) -> Sequence[Contact]:
-    query = select(Contact).where(Contact.account_id == account_id)
-    if deleted_only:
-        query = query.where(Contact.deleted_at.is_not(None)).order_by(Contact.deleted_at.desc())
-    elif not include_deleted:
-        query = query.where(Contact.deleted_at.is_(None)).order_by(Contact.created_at.desc())
-    else:
-        query = query.order_by(Contact.created_at.desc())
+    conditions = _contact_filter_conditions(
+        account_id,
+        include_deleted=include_deleted,
+        deleted_only=deleted_only,
+        status=status,
+        search=search,
+        tag_id=tag_id,
+    )
+    query = select(Contact).where(*conditions)
+    query = query.order_by(Contact.deleted_at.desc() if deleted_only else Contact.created_at.desc())
+    query = query.limit(limit).offset(offset)
     result = await session.execute(query)
     return result.scalars().all()
+
+
+async def count_contacts(
+    session: AsyncSession,
+    account_id: uuid.UUID,
+    *,
+    include_deleted: bool = False,
+    deleted_only: bool = False,
+    status: str | None = None,
+    search: str | None = None,
+    tag_id: uuid.UUID | None = None,
+) -> int:
+    """SQL-level `COUNT(*)` matching the same filters as `list_contacts` -- feeds the
+    Contacts page's "total pages" figure without ever fetching the matching rows
+    themselves (GRX-PERF-001 follow-up: the frontend used to derive this from
+    `.length` on a full unbounded fetch)."""
+    conditions = _contact_filter_conditions(
+        account_id,
+        include_deleted=include_deleted,
+        deleted_only=deleted_only,
+        status=status,
+        search=search,
+        tag_id=tag_id,
+    )
+    result = await session.execute(select(func.count()).select_from(Contact).where(*conditions))
+    return result.scalar_one()
+
+
+async def get_contact_stats(session: AsyncSession, account_id: uuid.UUID) -> dict[str, int]:
+    """Account-wide contact status counts via a single `COUNT(*) FILTER (WHERE ...)`
+    query -- never fetch-then-count in Python. Feeds the Contacts page's stat badges,
+    which previously derived these from `.length` on a full unbounded `/contacts` fetch
+    and silently undercounted for any account over the pagination default (GRX-PERF-001
+    review finding). Scoped to non-deleted contacts only, matching what the page's
+    default `/contacts` fetch (no `deleted_only`) always returned."""
+    suppressed_exists = exists(
+        select(SuppressionEntry.id).where(
+            SuppressionEntry.account_id == account_id,
+            func.lower(SuppressionEntry.email) == func.lower(Contact.email),
+        )
+    )
+    result = await session.execute(
+        select(
+            func.count().label("total"),
+            func.count().filter(Contact.status == "ACTIVE").label("active"),
+            func.count().filter(Contact.status == "ARCHIVED").label("archived"),
+            func.count()
+            .filter(
+                func.date_trunc("month", Contact.created_at) == func.date_trunc("month", func.now())
+            )
+            .label("new_this_month"),
+            func.count().filter(suppressed_exists).label("suppressed"),
+        )
+        .select_from(Contact)
+        .where(Contact.account_id == account_id, Contact.deleted_at.is_(None))
+    )
+    row = result.one()
+    return {
+        "total": row.total,
+        "active": row.active,
+        "archived": row.archived,
+        "new_this_month": row.new_this_month,
+        "suppressed": row.suppressed,
+    }
 
 
 async def soft_delete_contact(
