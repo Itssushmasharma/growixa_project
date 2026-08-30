@@ -70,7 +70,7 @@ export function PlatformTemplatesPage() {
   const [createForm, setCreateForm] = useState<CreateFormState>(blankCreateForm());
   const [creating, setCreating] = useState(false);
 
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingTemplate, setEditingTemplate] = useState<EmailTemplate | null>(null);
   const [editForm, setEditForm] = useState<EditFormState>({
     subject: "",
     body_html: "",
@@ -78,6 +78,7 @@ export function PlatformTemplatesPage() {
   });
   const [savingEdit, setSavingEdit] = useState(false);
 
+  const [editorDeviceMode, setEditorDeviceMode] = useState<"desktop" | "mobile">("desktop");
   const [retiringId, setRetiringId] = useState<string | null>(null);
   const [previewingTemplate, setPreviewingTemplate] = useState<EmailTemplate | null>(null);
 
@@ -105,8 +106,21 @@ export function PlatformTemplatesPage() {
     void load();
   }, []);
 
+  // Close modals on Escape key
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        if (createFormOpen) setCreateFormOpen(false);
+        if (editingTemplate) setEditingTemplate(null);
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [createFormOpen, editingTemplate]);
+
   function openCreateForm() {
     setCreateForm(blankCreateForm());
+    setEditorDeviceMode("desktop");
     setCreateFormOpen(true);
   }
 
@@ -134,7 +148,8 @@ export function PlatformTemplatesPage() {
   }
 
   function openEditForm(template: EmailTemplate) {
-    setEditingId(template.id);
+    setEditingTemplate(template);
+    setEditorDeviceMode("desktop");
     setEditForm({
       subject: template.current_version?.subject ?? "",
       body_html: template.current_version?.body_html ?? "",
@@ -144,23 +159,26 @@ export function PlatformTemplatesPage() {
 
   async function handleEditSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!editingId) return;
+    if (!editingTemplate) return;
     setSavingEdit(true);
     try {
-      const updated = await apiFetch<EmailTemplate>(`/platform/templates/${editingId}/versions`, {
-        method: "POST",
-        body: JSON.stringify({
-          subject: editForm.subject.trim(),
-          body_html: editForm.body_html,
-          body_text: editForm.body_text.trim() === "" ? null : editForm.body_text,
-        }),
-      });
+      const updated = await apiFetch<EmailTemplate>(
+        `/platform/templates/${editingTemplate.id}/versions`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            subject: editForm.subject.trim(),
+            body_html: editForm.body_html,
+            body_text: editForm.body_text.trim() === "" ? null : editForm.body_text,
+          }),
+        },
+      );
       setTemplates((current) => current.map((t) => (t.id === updated.id ? updated : t)));
       showToast(
         "success",
         `"${updated.name}" updated to v${updated.current_version?.version_number}.`,
       );
-      setEditingId(null);
+      setEditingTemplate(null);
     } catch (err) {
       showToast("error", errorDetail(err, "Could not update that template."));
     } finally {
@@ -326,93 +344,6 @@ export function PlatformTemplatesPage() {
           </button>
         </div>
 
-        {createFormOpen && (
-          <form onSubmit={handleCreate} className={styles.form}>
-            <div className={styles.formHeading}>New default template</div>
-            <div className={styles.field}>
-              <label className={styles.label} htmlFor="new-template-name">
-                Name
-              </label>
-              <input
-                id="new-template-name"
-                className={styles.input}
-                required
-                value={createForm.name}
-                onChange={(event) => setCreateForm({ ...createForm, name: event.target.value })}
-                placeholder="e.g. Welcome Series Kickoff"
-              />
-            </div>
-            <div className={styles.field}>
-              <label className={styles.label} htmlFor="new-template-subject">
-                Subject
-              </label>
-              <input
-                id="new-template-subject"
-                className={styles.input}
-                required
-                value={createForm.subject}
-                onChange={(event) => setCreateForm({ ...createForm, subject: event.target.value })}
-                placeholder="e.g. Welcome to Growixa, {{first_name}}!"
-              />
-            </div>
-            <div className={styles.field}>
-              <label className={styles.label} htmlFor="new-template-body-html">
-                Body (HTML)
-              </label>
-              <textarea
-                id="new-template-body-html"
-                className={styles.textarea}
-                required
-                value={createForm.body_html}
-                onChange={(event) =>
-                  setCreateForm({ ...createForm, body_html: event.target.value })
-                }
-                placeholder="<p>Hi {{first_name}}...</p>"
-              />
-            </div>
-            {createForm.body_html && (
-              <div className={styles.previewPane}>
-                <div className={styles.previewLabel}>Live preview</div>
-                <iframe
-                  title="Create template live preview"
-                  className={styles.previewFrame}
-                  sandbox=""
-                  srcDoc={createForm.body_html}
-                />
-              </div>
-            )}
-            <div className={styles.field}>
-              <label className={styles.label} htmlFor="new-template-body-text">
-                Body (plain text, optional)
-              </label>
-              <textarea
-                id="new-template-body-text"
-                className={styles.textarea}
-                value={createForm.body_text}
-                onChange={(event) =>
-                  setCreateForm({ ...createForm, body_text: event.target.value })
-                }
-              />
-            </div>
-            <div className={styles.hint}>
-              Only standard recipient/account tokens are allowed (no account-specific custom fields)
-              — a default template must render the same for every account.
-            </div>
-            <div className={styles.formActions}>
-              <button type="submit" className={styles.actionButton} disabled={creating}>
-                {creating ? "Publishing…" : "Publish"}
-              </button>
-              <button
-                type="button"
-                className={styles.secondaryButton}
-                onClick={() => setCreateFormOpen(false)}
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
-        )}
-
         {/* Toolbar & Filter Pills */}
         <div className={styles.toolbar}>
           <div className={styles.toolbarLeft}>
@@ -554,11 +485,9 @@ export function PlatformTemplatesPage() {
                       <button
                         type="button"
                         className={styles.secondaryButton}
-                        onClick={() =>
-                          editingId === template.id ? setEditingId(null) : openEditForm(template)
-                        }
+                        onClick={() => openEditForm(template)}
                       >
-                        {editingId === template.id ? "Cancel edit" : "Edit"}
+                        Edit
                       </button>
                       <button
                         type="button"
@@ -571,82 +500,6 @@ export function PlatformTemplatesPage() {
                     </div>
                   </div>
                 </div>
-
-                {editingId === template.id && (
-                  <form
-                    onSubmit={handleEditSubmit}
-                    className={styles.form}
-                    style={{ margin: "16px" }}
-                  >
-                    <div className={styles.formHeading}>
-                      Edit &quot;{template.name}&quot; — saves as a new version
-                    </div>
-                    <div className={styles.field}>
-                      <label className={styles.label} htmlFor={`edit-subject-${template.id}`}>
-                        Subject
-                      </label>
-                      <input
-                        id={`edit-subject-${template.id}`}
-                        className={styles.input}
-                        required
-                        value={editForm.subject}
-                        onChange={(event) =>
-                          setEditForm({ ...editForm, subject: event.target.value })
-                        }
-                      />
-                    </div>
-                    <div className={styles.field}>
-                      <label className={styles.label} htmlFor={`edit-body-html-${template.id}`}>
-                        Body (HTML)
-                      </label>
-                      <textarea
-                        id={`edit-body-html-${template.id}`}
-                        className={styles.textarea}
-                        required
-                        value={editForm.body_html}
-                        onChange={(event) =>
-                          setEditForm({ ...editForm, body_html: event.target.value })
-                        }
-                      />
-                    </div>
-                    {editForm.body_html && (
-                      <div className={styles.previewPane}>
-                        <div className={styles.previewLabel}>Live preview</div>
-                        <iframe
-                          title="Edit template live preview"
-                          className={styles.previewFrame}
-                          sandbox=""
-                          srcDoc={editForm.body_html}
-                        />
-                      </div>
-                    )}
-                    <div className={styles.field}>
-                      <label className={styles.label} htmlFor={`edit-body-text-${template.id}`}>
-                        Body (plain text, optional)
-                      </label>
-                      <textarea
-                        id={`edit-body-text-${template.id}`}
-                        className={styles.textarea}
-                        value={editForm.body_text}
-                        onChange={(event) =>
-                          setEditForm({ ...editForm, body_text: event.target.value })
-                        }
-                      />
-                    </div>
-                    <div className={styles.formActions}>
-                      <button type="submit" className={styles.actionButton} disabled={savingEdit}>
-                        {savingEdit ? "Saving…" : "Save new version"}
-                      </button>
-                      <button
-                        type="button"
-                        className={styles.secondaryButton}
-                        onClick={() => setEditingId(null)}
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </form>
-                )}
               </div>
             ))}
           </div>
@@ -656,132 +509,377 @@ export function PlatformTemplatesPage() {
         {viewMode === "list" && visibleTemplates.length > 0 && (
           <div className={styles.list}>
             {visibleTemplates.map((template) => (
-              <div key={template.id}>
-                <div className={styles.row}>
-                  <div className={styles.rowMain}>
-                    <span className={styles.rowName}>{template.name}</span>
-                    <span className={styles.rowSubject}>
-                      {template.current_version?.subject ?? "No subject"}
-                    </span>
-                  </div>
-                  <span className={styles.badge}>
-                    v{template.current_version?.version_number ?? 0}
+              <div className={styles.row} key={template.id}>
+                <div className={styles.rowMain}>
+                  <span className={styles.rowName}>{template.name}</span>
+                  <span className={styles.rowSubject}>
+                    {template.current_version?.subject ?? "No subject"}
                   </span>
-                  <span className={styles.rowMeta}>Updated {formatDate(template.updated_at)}</span>
-                  <div className={styles.rowActions}>
-                    {template.current_version && (
-                      <button
-                        type="button"
-                        className={styles.secondaryButton}
-                        onClick={() => setPreviewingTemplate(template)}
-                      >
-                        Preview
-                      </button>
-                    )}
+                </div>
+                <span className={styles.badge}>
+                  v{template.current_version?.version_number ?? 0}
+                </span>
+                <span className={styles.rowMeta}>Updated {formatDate(template.updated_at)}</span>
+                <div className={styles.rowActions}>
+                  {template.current_version && (
                     <button
                       type="button"
                       className={styles.secondaryButton}
-                      onClick={() =>
-                        editingId === template.id ? setEditingId(null) : openEditForm(template)
-                      }
+                      onClick={() => setPreviewingTemplate(template)}
                     >
-                      {editingId === template.id ? "Cancel edit" : "Edit"}
+                      Preview
                     </button>
-                    <button
-                      type="button"
-                      className={styles.dangerButton}
-                      disabled={retiringId === template.id}
-                      onClick={() => handleRetire(template)}
-                    >
-                      {retiringId === template.id ? "Retiring…" : "Retire"}
-                    </button>
-                  </div>
+                  )}
+                  <button
+                    type="button"
+                    className={styles.secondaryButton}
+                    onClick={() => openEditForm(template)}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.dangerButton}
+                    disabled={retiringId === template.id}
+                    onClick={() => handleRetire(template)}
+                  >
+                    {retiringId === template.id ? "Retiring…" : "Retire"}
+                  </button>
                 </div>
-
-                {editingId === template.id && (
-                  <form onSubmit={handleEditSubmit} className={styles.form}>
-                    <div className={styles.formHeading}>
-                      Edit &quot;{template.name}&quot; — saves as a new version, existing clones are
-                      unaffected
-                    </div>
-                    <div className={styles.field}>
-                      <label className={styles.label} htmlFor={`edit-subject-list-${template.id}`}>
-                        Subject
-                      </label>
-                      <input
-                        id={`edit-subject-list-${template.id}`}
-                        className={styles.input}
-                        required
-                        value={editForm.subject}
-                        onChange={(event) =>
-                          setEditForm({ ...editForm, subject: event.target.value })
-                        }
-                      />
-                    </div>
-                    <div className={styles.field}>
-                      <label
-                        className={styles.label}
-                        htmlFor={`edit-body-html-list-${template.id}`}
-                      >
-                        Body (HTML)
-                      </label>
-                      <textarea
-                        id={`edit-body-html-list-${template.id}`}
-                        className={styles.textarea}
-                        required
-                        value={editForm.body_html}
-                        onChange={(event) =>
-                          setEditForm({ ...editForm, body_html: event.target.value })
-                        }
-                      />
-                    </div>
-                    {editForm.body_html && (
-                      <div className={styles.previewPane}>
-                        <div className={styles.previewLabel}>Live preview</div>
-                        <iframe
-                          title="Edit template live preview"
-                          className={styles.previewFrame}
-                          sandbox=""
-                          srcDoc={editForm.body_html}
-                        />
-                      </div>
-                    )}
-                    <div className={styles.field}>
-                      <label
-                        className={styles.label}
-                        htmlFor={`edit-body-text-list-${template.id}`}
-                      >
-                        Body (plain text, optional)
-                      </label>
-                      <textarea
-                        id={`edit-body-text-list-${template.id}`}
-                        className={styles.textarea}
-                        value={editForm.body_text}
-                        onChange={(event) =>
-                          setEditForm({ ...editForm, body_text: event.target.value })
-                        }
-                      />
-                    </div>
-                    <div className={styles.formActions}>
-                      <button type="submit" className={styles.actionButton} disabled={savingEdit}>
-                        {savingEdit ? "Saving…" : "Save new version"}
-                      </button>
-                      <button
-                        type="button"
-                        className={styles.secondaryButton}
-                        onClick={() => setEditingId(null)}
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </form>
-                )}
               </div>
             ))}
           </div>
         )}
       </div>
 
+      {/* =========================================================================
+         Side-by-Side Modal: Create New Default Template
+         ========================================================================= */}
+      {createFormOpen && (
+        <div
+          className={styles.editorModalBackdrop}
+          onClick={() => setCreateFormOpen(false)}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className={styles.editorModalCard} onClick={(e) => e.stopPropagation()}>
+            <form onSubmit={handleCreate} style={{ display: "contents" }}>
+              <div className={styles.editorModalHeader}>
+                <div className={styles.editorModalTitleGroup}>
+                  <h3 className={styles.editorModalTitle}>✨ New Default Template</h3>
+                  <p className={styles.editorModalSubtitle}>
+                    Published template will be available in the starter library for all accounts
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className={styles.closeButton}
+                  onClick={() => setCreateFormOpen(false)}
+                  aria-label="Close dialog"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className={styles.editorModalBody}>
+                {/* Left Form Column */}
+                <div className={styles.editorFormColumn}>
+                  <div className={styles.field}>
+                    <label className={styles.label} htmlFor="new-template-name">
+                      Template Name *
+                    </label>
+                    <input
+                      id="new-template-name"
+                      className={styles.input}
+                      required
+                      value={createForm.name}
+                      onChange={(event) =>
+                        setCreateForm({ ...createForm, name: event.target.value })
+                      }
+                      placeholder="e.g. Welcome Series Kickoff"
+                    />
+                  </div>
+
+                  <div className={styles.field}>
+                    <label className={styles.label} htmlFor="new-template-subject">
+                      Subject Line *
+                    </label>
+                    <input
+                      id="new-template-subject"
+                      className={styles.input}
+                      required
+                      value={createForm.subject}
+                      onChange={(event) =>
+                        setCreateForm({ ...createForm, subject: event.target.value })
+                      }
+                      placeholder="e.g. Welcome to Growixa, {{first_name}}!"
+                    />
+                  </div>
+
+                  <div className={styles.field}>
+                    <label className={styles.label} htmlFor="new-template-body-html">
+                      Body (HTML) *
+                    </label>
+                    <textarea
+                      id="new-template-body-html"
+                      className={styles.htmlTextarea}
+                      required
+                      value={createForm.body_html}
+                      onChange={(event) =>
+                        setCreateForm({ ...createForm, body_html: event.target.value })
+                      }
+                      placeholder="<p>Hi {{first_name}}...</p>"
+                    />
+                  </div>
+
+                  <div className={styles.field}>
+                    <label className={styles.label} htmlFor="new-template-body-text">
+                      Body (plain text, optional)
+                    </label>
+                    <textarea
+                      id="new-template-body-text"
+                      className={styles.textarea}
+                      value={createForm.body_text}
+                      onChange={(event) =>
+                        setCreateForm({ ...createForm, body_text: event.target.value })
+                      }
+                      placeholder="Plain text fallback..."
+                    />
+                  </div>
+
+                  <div className={styles.hint}>
+                    💡 Only standard recipient tokens are allowed: <code>{"{{first_name}}"}</code>,{" "}
+                    <code>{"{{last_name}}"}</code>, <code>{"{{email}}"}</code>,{" "}
+                    <code>{"{{company_name}}"}</code>.
+                  </div>
+                </div>
+
+                {/* Right Live Preview Column */}
+                <div className={styles.editorPreviewColumn}>
+                  <div className={styles.editorPreviewHeader}>
+                    <span className={styles.editorPreviewTitle}>Live Email Preview</span>
+                    <div className={styles.deviceToggleGroup}>
+                      <button
+                        type="button"
+                        className={`${styles.deviceButton} ${
+                          editorDeviceMode === "desktop" ? styles.deviceButtonActive : ""
+                        }`}
+                        onClick={() => setEditorDeviceMode("desktop")}
+                      >
+                        🖥️ Desktop
+                      </button>
+                      <button
+                        type="button"
+                        className={`${styles.deviceButton} ${
+                          editorDeviceMode === "mobile" ? styles.deviceButtonActive : ""
+                        }`}
+                        onClick={() => setEditorDeviceMode("mobile")}
+                      >
+                        📱 Mobile
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className={styles.editorPreviewFrameContainer}>
+                    {createForm.body_html ? (
+                      <iframe
+                        title="Create template live preview"
+                        className={
+                          editorDeviceMode === "desktop"
+                            ? styles.editorPreviewFrameDesktop
+                            : styles.editorPreviewFrameMobile
+                        }
+                        sandbox=""
+                        srcDoc={createForm.body_html}
+                      />
+                    ) : (
+                      <div className={styles.editorPreviewPlaceholder}>
+                        <p style={{ fontSize: "28px", margin: "0 0 8px 0" }}>✉️</p>
+                        <strong>No HTML entered yet</strong>
+                        <p style={{ margin: "4px 0 0 0", fontSize: "12.5px" }}>
+                          Type or paste HTML in the left editor to preview your email in real-time.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className={styles.editorModalFooter}>
+                <button
+                  type="button"
+                  className={styles.secondaryButton}
+                  onClick={() => setCreateFormOpen(false)}
+                >
+                  Cancel
+                </button>
+                <button type="submit" className={styles.actionButton} disabled={creating}>
+                  {creating ? "Publishing…" : "Publish Default Template"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+         Side-by-Side Modal: Edit Default Template (New Version)
+         ========================================================================= */}
+      {editingTemplate && (
+        <div
+          className={styles.editorModalBackdrop}
+          onClick={() => setEditingTemplate(null)}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className={styles.editorModalCard} onClick={(e) => e.stopPropagation()}>
+            <form onSubmit={handleEditSubmit} style={{ display: "contents" }}>
+              <div className={styles.editorModalHeader}>
+                <div className={styles.editorModalTitleGroup}>
+                  <h3 className={styles.editorModalTitle}>
+                    ✏️ Edit &quot;{editingTemplate.name}&quot;
+                  </h3>
+                  <p className={styles.editorModalSubtitle}>
+                    Saves as v{(editingTemplate.current_version?.version_number ?? 0) + 1}. Accounts
+                    that already cloned keep their independent copy.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className={styles.closeButton}
+                  onClick={() => setEditingTemplate(null)}
+                  aria-label="Close dialog"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className={styles.editorModalBody}>
+                {/* Left Form Column */}
+                <div className={styles.editorFormColumn}>
+                  <div className={styles.field}>
+                    <label className={styles.label} htmlFor={`edit-subject-${editingTemplate.id}`}>
+                      Subject Line *
+                    </label>
+                    <input
+                      id={`edit-subject-${editingTemplate.id}`}
+                      className={styles.input}
+                      required
+                      value={editForm.subject}
+                      onChange={(event) =>
+                        setEditForm({ ...editForm, subject: event.target.value })
+                      }
+                    />
+                  </div>
+
+                  <div className={styles.field}>
+                    <label
+                      className={styles.label}
+                      htmlFor={`edit-body-html-${editingTemplate.id}`}
+                    >
+                      Body (HTML) *
+                    </label>
+                    <textarea
+                      id={`edit-body-html-${editingTemplate.id}`}
+                      className={styles.htmlTextarea}
+                      required
+                      value={editForm.body_html}
+                      onChange={(event) =>
+                        setEditForm({ ...editForm, body_html: event.target.value })
+                      }
+                    />
+                  </div>
+
+                  <div className={styles.field}>
+                    <label
+                      className={styles.label}
+                      htmlFor={`edit-body-text-${editingTemplate.id}`}
+                    >
+                      Body (plain text, optional)
+                    </label>
+                    <textarea
+                      id={`edit-body-text-${editingTemplate.id}`}
+                      className={styles.textarea}
+                      value={editForm.body_text}
+                      onChange={(event) =>
+                        setEditForm({ ...editForm, body_text: event.target.value })
+                      }
+                    />
+                  </div>
+
+                  <div className={styles.hint}>
+                    💡 Only standard recipient tokens are allowed: <code>{"{{first_name}}"}</code>,{" "}
+                    <code>{"{{last_name}}"}</code>, <code>{"{{email}}"}</code>,{" "}
+                    <code>{"{{company_name}}"}</code>.
+                  </div>
+                </div>
+
+                {/* Right Live Preview Column */}
+                <div className={styles.editorPreviewColumn}>
+                  <div className={styles.editorPreviewHeader}>
+                    <span className={styles.editorPreviewTitle}>Live Email Preview</span>
+                    <div className={styles.deviceToggleGroup}>
+                      <button
+                        type="button"
+                        className={`${styles.deviceButton} ${
+                          editorDeviceMode === "desktop" ? styles.deviceButtonActive : ""
+                        }`}
+                        onClick={() => setEditorDeviceMode("desktop")}
+                      >
+                        🖥️ Desktop
+                      </button>
+                      <button
+                        type="button"
+                        className={`${styles.deviceButton} ${
+                          editorDeviceMode === "mobile" ? styles.deviceButtonActive : ""
+                        }`}
+                        onClick={() => setEditorDeviceMode("mobile")}
+                      >
+                        📱 Mobile
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className={styles.editorPreviewFrameContainer}>
+                    {editForm.body_html ? (
+                      <iframe
+                        title="Edit template live preview"
+                        className={
+                          editorDeviceMode === "desktop"
+                            ? styles.editorPreviewFrameDesktop
+                            : styles.editorPreviewFrameMobile
+                        }
+                        sandbox=""
+                        srcDoc={editForm.body_html}
+                      />
+                    ) : (
+                      <div className={styles.editorPreviewPlaceholder}>
+                        <p style={{ fontSize: "28px", margin: "0 0 8px 0" }}>✉️</p>
+                        <strong>No HTML entered</strong>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className={styles.editorModalFooter}>
+                <button
+                  type="button"
+                  className={styles.secondaryButton}
+                  onClick={() => setEditingTemplate(null)}
+                >
+                  Cancel
+                </button>
+                <button type="submit" className={styles.actionButton} disabled={savingEdit}>
+                  {savingEdit ? "Saving…" : "Save New Version"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Fullscreen Preview Modal */}
       {previewingTemplate && previewingTemplate.current_version && (
         <TemplatePreviewModal
           templateName={previewingTemplate.name}

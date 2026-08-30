@@ -96,10 +96,10 @@ describe("PlatformTemplatesPage", () => {
     await screen.findByText("No default templates published yet.");
 
     await user.click(screen.getByRole("button", { name: "+ New default template" }));
-    await user.type(screen.getByLabelText("Name"), "Welcome Series Kickoff");
-    await user.type(screen.getByLabelText("Subject"), "Welcome to Growixa");
-    await user.type(screen.getByLabelText("Body (HTML)"), "<p>Hello {{first_name}}</p>");
-    await user.click(screen.getByRole("button", { name: "Publish" }));
+    await user.type(screen.getByLabelText(/Template Name/i), "Welcome Series Kickoff");
+    await user.type(screen.getByLabelText(/Subject Line/i), "Welcome to Growixa");
+    await user.type(screen.getByLabelText(/Body \(HTML\)/i), "<p>Hello {{first_name}}</p>");
+    await user.click(screen.getByRole("button", { name: "Publish Default Template" }));
 
     expect(
       await screen.findByText('"Welcome Series Kickoff" published as a default template.'),
@@ -128,10 +128,10 @@ describe("PlatformTemplatesPage", () => {
     await screen.findByText("Welcome Series Kickoff");
 
     await user.click(screen.getByRole("button", { name: "Edit" }));
-    const subjectInput = screen.getByLabelText("Subject");
+    const subjectInput = screen.getByLabelText(/Subject Line/i);
     await user.clear(subjectInput);
     await user.type(subjectInput, "Updated subject");
-    await user.click(screen.getByRole("button", { name: "Save new version" }));
+    await user.click(screen.getByRole("button", { name: "Save New Version" }));
 
     expect(await screen.findByText('"Welcome Series Kickoff" updated to v2.')).toBeInTheDocument();
   });
@@ -197,7 +197,7 @@ describe("PlatformTemplatesPage", () => {
     expect(iframe).toHaveAttribute("srcdoc", "<p>Hello {{first_name}}</p>");
   });
 
-  it("shows a live preview iframe in the create form when HTML is typed", async () => {
+  it("shows a live preview iframe in the create modal when HTML is typed", async () => {
     const user = userEvent.setup();
     mockedApiFetch.mockImplementation((path: string) => {
       if (path === "/platform/templates") return Promise.resolve([]);
@@ -212,7 +212,7 @@ describe("PlatformTemplatesPage", () => {
     // Before typing, no live preview iframe should exist
     expect(screen.queryByTitle("Create template live preview")).not.toBeInTheDocument();
 
-    await user.type(screen.getByLabelText("Body (HTML)"), "<h1>Hello</h1>");
+    await user.type(screen.getByLabelText(/Body \(HTML\)/i), "<h1>Hello</h1>");
 
     // After typing, the live preview iframe should appear
     const previewIframe = screen.getByTitle("Create template live preview");
