@@ -197,7 +197,7 @@ describe("TemplatesPage", () => {
 
     renderTemplatesPage();
 
-    expect(await screen.findByText("No email templates yet.")).toBeInTheDocument();
+    expect(await screen.findByText("No custom templates yet.")).toBeInTheDocument();
   });
 
   it("filters the list by search query", async () => {
@@ -351,7 +351,8 @@ describe("TemplatesPage", () => {
     expect(screen.getByText("Welcome Onboarding email")).toBeInTheDocument();
   });
 
-  it("does not render the Default Templates section when there are none", async () => {
+  it("shows empty state on the Default Templates tab when there are none", async () => {
+    const user = userEvent.setup();
     mockedApiFetch.mockImplementation((path: string) => {
       if (path === "/auth/me") return Promise.resolve(meWithPermissions(["campaigns.view"]));
       if (path === "/templates") return Promise.resolve([TEMPLATE]);
@@ -362,10 +363,12 @@ describe("TemplatesPage", () => {
     renderTemplatesPage();
     await screen.findByText("Welcome Onboarding email");
 
-    expect(screen.queryByText("Default Templates")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("tab", { name: /Default Templates/i }));
+    expect(screen.getByText("No default templates available.")).toBeInTheDocument();
   });
 
-  it("shows platform default templates in a separate read-only section", async () => {
+  it("shows platform default templates when Default Templates tab is selected", async () => {
+    const user = userEvent.setup();
     mockedApiFetch.mockImplementation((path: string) => {
       if (path === "/auth/me")
         return Promise.resolve(meWithPermissions(["campaigns.view", "campaigns.manage"]));
@@ -375,15 +378,18 @@ describe("TemplatesPage", () => {
     });
 
     renderTemplatesPage();
-    await screen.findByText("Default Templates");
+    await screen.findByText("Welcome Onboarding email");
+
+    // Click Default Templates tab
+    await user.click(screen.getByRole("tab", { name: /Default Templates/i }));
 
     expect(screen.getByText("Platform Welcome Default")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Use this template" })).toBeInTheDocument();
-    // My Templates' own row is unaffected -- still just the account-owned template.
-    expect(screen.getByText("Welcome Onboarding email")).toBeInTheDocument();
+    expect(screen.getByText("Growixa Starter Library:")).toBeInTheDocument();
   });
 
-  it("hides the 'Use this template' action for a view-only user", async () => {
+  it("hides the 'Use this template' action for a view-only user on Default Templates tab", async () => {
+    const user = userEvent.setup();
     mockedApiFetch.mockImplementation((path: string) => {
       if (path === "/auth/me") return Promise.resolve(meWithPermissions(["campaigns.view"]));
       if (path === "/templates") return Promise.resolve([]);
@@ -392,7 +398,11 @@ describe("TemplatesPage", () => {
     });
 
     renderTemplatesPage();
-    await screen.findByText("Platform Welcome Default");
+    await screen.findByText("No custom templates yet.");
+
+    // Switch to Default Templates tab
+    await user.click(screen.getByRole("tab", { name: /Default Templates/i }));
+    expect(screen.getByText("Platform Welcome Default")).toBeInTheDocument();
 
     expect(screen.queryByRole("button", { name: "Use this template" })).not.toBeInTheDocument();
     // Preview stays available -- browse/preview only, per GRX-EMAIL-016.
@@ -417,6 +427,10 @@ describe("TemplatesPage", () => {
     });
 
     renderTemplatesPage();
+    await screen.findByText("No custom templates yet.");
+
+    // Switch to Default Templates tab
+    await user.click(screen.getByRole("tab", { name: /Default Templates/i }));
     await screen.findByText("Platform Welcome Default");
 
     await user.click(screen.getByRole("button", { name: "Use this template" }));
@@ -425,5 +439,88 @@ describe("TemplatesPage", () => {
       await screen.findByText('"Platform Welcome Default" added to your templates.'),
     ).toBeInTheDocument();
     expect(mockPush).toHaveBeenCalledWith("/dashboard/templates/cloned-1/edit");
+  });
+
+  it("switches tabs when clicking KPI stat cards", async () => {
+    const user = userEvent.setup();
+    mockedApiFetch.mockImplementation((path: string) => {
+      if (path === "/auth/me") return Promise.resolve(meWithPermissions(["campaigns.view"]));
+      if (path === "/templates") return Promise.resolve([TEMPLATE]);
+      if (path === "/templates/platform-defaults") return Promise.resolve([PLATFORM_TEMPLATE]);
+      throw new Error(`unexpected path: ${path}`);
+    });
+
+    renderTemplatesPage();
+    await screen.findByText("Welcome Onboarding email");
+
+    // Click Default Templates stat card
+    await user.click(screen.getByRole("button", { name: "View Default Templates" }));
+    expect(screen.getByText("Platform Welcome Default")).toBeInTheDocument();
+    expect(screen.queryByText("Welcome Onboarding email")).not.toBeInTheDocument();
+
+    // Click My Templates stat card
+    await user.click(screen.getByRole("button", { name: "View My Templates" }));
+    expect(screen.getByText("Welcome Onboarding email")).toBeInTheDocument();
+    expect(screen.queryByText("Platform Welcome Default")).not.toBeInTheDocument();
+  });
+
+  it("switches to Default Templates tab via the empty state CTA button", async () => {
+    const user = userEvent.setup();
+    mockedApiFetch.mockImplementation((path: string) => {
+      if (path === "/auth/me") return Promise.resolve(meWithPermissions(["campaigns.view"]));
+      if (path === "/templates") return Promise.resolve([]);
+      if (path === "/templates/platform-defaults") return Promise.resolve([PLATFORM_TEMPLATE]);
+      throw new Error(`unexpected path: ${path}`);
+    });
+
+    renderTemplatesPage();
+    await screen.findByText("No custom templates yet.");
+
+    // Click the CTA button inside the empty state
+    await user.click(screen.getByRole("button", { name: /Browse Default Templates/i }));
+
+    expect(screen.getByText("Platform Welcome Default")).toBeInTheDocument();
+  });
+
+  it("filters Default Templates by search query when Default Templates tab is active", async () => {
+    const user = userEvent.setup();
+    const OTHER_PLATFORM_TEMPLATE: EmailTemplate = {
+      id: "platform-template-2",
+      name: "Announcement Launch Template",
+      is_platform_default: true,
+      created_at: "2026-08-06T00:00:00Z",
+      updated_at: "2026-08-06T00:00:00Z",
+      current_version: {
+        id: "pv-2",
+        template_id: "platform-template-2",
+        version_number: 1,
+        subject: "Big news inside",
+        body_html: "<p>News</p>",
+        body_text: null,
+        created_at: "2026-08-06T00:00:00Z",
+      },
+    };
+
+    mockedApiFetch.mockImplementation((path: string) => {
+      if (path === "/auth/me") return Promise.resolve(meWithPermissions(["campaigns.view"]));
+      if (path === "/templates") return Promise.resolve([TEMPLATE]);
+      if (path === "/templates/platform-defaults")
+        return Promise.resolve([PLATFORM_TEMPLATE, OTHER_PLATFORM_TEMPLATE]);
+      throw new Error(`unexpected path: ${path}`);
+    });
+
+    renderTemplatesPage();
+    await screen.findByText("Welcome Onboarding email");
+
+    // Switch to Default Templates tab
+    await user.click(screen.getByRole("tab", { name: /Default Templates/i }));
+    expect(screen.getByText("Platform Welcome Default")).toBeInTheDocument();
+    expect(screen.getByText("Announcement Launch Template")).toBeInTheDocument();
+
+    // Type into search input
+    await user.type(screen.getByLabelText("Search templates"), "launch");
+
+    expect(screen.queryByText("Platform Welcome Default")).not.toBeInTheDocument();
+    expect(screen.getByText("Announcement Launch Template")).toBeInTheDocument();
   });
 });

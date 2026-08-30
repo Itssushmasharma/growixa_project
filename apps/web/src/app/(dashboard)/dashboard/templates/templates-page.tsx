@@ -10,7 +10,6 @@ import { TemplatePreviewModal } from "@/components/template-preview/template-pre
 import { useToast } from "@/components/toast/toast-context";
 import { ApiError, apiFetch } from "@/lib/api-client";
 
-import { TEMPLATE_PRESETS } from "./presets";
 import styles from "./templates-page.module.css";
 import type { EmailTemplate, MeResponse } from "./types";
 
@@ -19,6 +18,7 @@ const MANAGE_PERMISSION = "campaigns.manage";
 
 type SortOption = "updated" | "name";
 type ViewMode = "grid" | "list";
+type TemplateTab = "my-templates" | "default-templates";
 type CategoryFilter =
   "All" | "Marketing" | "Onboarding" | "Announcement" | "Newsletter" | "Transactional";
 
@@ -49,6 +49,7 @@ export function TemplatesPage() {
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [platformDefaults, setPlatformDefaults] = useState<EmailTemplate[]>([]);
 
+  const [activeTab, setActiveTab] = useState<TemplateTab>("my-templates");
   const [previewingTemplate, setPreviewingTemplate] = useState<EmailTemplate | null>(null);
   const [deletingTemplateId, setDeletingTemplateId] = useState<string | null>(null);
   const [cloningTemplateId, setCloningTemplateId] = useState<string | null>(null);
@@ -124,9 +125,13 @@ export function TemplatesPage() {
     }
   }
 
+  const currentTabItems = useMemo(() => {
+    return activeTab === "my-templates" ? templates : platformDefaults;
+  }, [activeTab, templates, platformDefaults]);
+
   const categoryCounts = useMemo(() => {
     const counts: Record<CategoryFilter, number> = {
-      All: templates.length,
+      All: currentTabItems.length,
       Marketing: 0,
       Onboarding: 0,
       Announcement: 0,
@@ -134,7 +139,7 @@ export function TemplatesPage() {
       Transactional: 0,
     };
 
-    for (const t of templates) {
+    for (const t of currentTabItems) {
       const nameLower = t.name.toLowerCase();
       if (
         nameLower.includes("marketing") ||
@@ -170,17 +175,17 @@ export function TemplatesPage() {
     }
 
     return counts;
-  }, [templates]);
+  }, [currentTabItems]);
 
   const visibleTemplates = useMemo(() => {
     const query = search.trim().toLowerCase();
     let filtered = query
-      ? templates.filter(
+      ? currentTabItems.filter(
           (t) =>
             t.name.toLowerCase().includes(query) ||
             (t.current_version?.subject.toLowerCase().includes(query) ?? false),
         )
-      : templates;
+      : currentTabItems;
 
     if (categoryFilter !== "All") {
       filtered = filtered.filter((t) => {
@@ -227,7 +232,7 @@ export function TemplatesPage() {
       sorted.sort((a, b) => b.updated_at.localeCompare(a.updated_at));
     }
     return sorted;
-  }, [templates, search, sortBy, categoryFilter]);
+  }, [currentTabItems, search, sortBy, categoryFilter]);
 
   const updatedThisMonthCount = useMemo(() => {
     const cutoff = new Date();
@@ -281,14 +286,32 @@ export function TemplatesPage() {
         }
       />
 
-      {/* Metric Summary Cards (Strictly Derived Data) */}
+      {/* Metric Summary Cards (Interactive & Strictly Derived Data) */}
       <section className={styles.statsDeck} aria-label="Template Library Overview KPIs">
-        <StatCard label="Total Templates" value={templates.length} subtext="Account library" />
-        <StatCard
-          label="Starter Presets"
-          value={TEMPLATE_PRESETS.length}
-          subtext="Built-in starter layouts"
-        />
+        <button
+          type="button"
+          className={styles.statCardClickable}
+          onClick={() => setActiveTab("my-templates")}
+          aria-label="View My Templates"
+        >
+          <StatCard
+            label="My Templates"
+            value={templates.length}
+            subtext="Custom account library"
+          />
+        </button>
+        <button
+          type="button"
+          className={styles.statCardClickable}
+          onClick={() => setActiveTab("default-templates")}
+          aria-label="View Default Templates"
+        >
+          <StatCard
+            label="Default Templates"
+            value={platformDefaults.length}
+            subtext="Growixa starter designs"
+          />
+        </button>
         <StatCard
           label="Updated (30d)"
           value={updatedThisMonthCount}
@@ -301,82 +324,47 @@ export function TemplatesPage() {
         />
       </section>
 
-      {/* Default Templates — platform-published, browse/preview only (GRX-EMAIL-016).
-          Separate from "My Templates" below: no Edit/Duplicate/Delete here, since these
-          are owned and maintained by Growixa's platform team, never by any account. */}
-      {platformDefaults.length > 0 && (
-        <div className={styles.card} data-testid="default-templates-section">
-          <div className={styles.sectionHeadingRow}>
-            <h3 className={styles.sectionHeading}>Default Templates</h3>
-            <p className={styles.hint}>
-              Built by Growixa. Use one to add an independent, fully editable copy to your own
-              library.
-            </p>
-          </div>
-
-          <div className={styles.gridContainer}>
-            {platformDefaults.map((template) => (
-              <div className={styles.templateCard} key={template.id}>
-                <div className={styles.cardPreviewArea}>
-                  {template.current_version ? (
-                    <iframe
-                      title={`Thumbnail for ${template.name}`}
-                      className={styles.cardPreviewIframe}
-                      sandbox=""
-                      srcDoc={template.current_version.body_html}
-                    />
-                  ) : (
-                    <div className={styles.hint} style={{ padding: "20px" }}>
-                      No preview available
-                    </div>
-                  )}
-                </div>
-
-                <div className={styles.cardBody}>
-                  <div className={styles.cardTitleRow}>
-                    <h4 className={styles.cardName}>{template.name}</h4>
-                  </div>
-
-                  <p className={styles.cardSubject}>
-                    {template.current_version?.subject ?? "No subject"}
-                  </p>
-
-                  <div className={styles.cardMetaRow}>
-                    <span />
-                    <div className={styles.cardActions}>
-                      {template.current_version && (
-                        <button
-                          type="button"
-                          className={styles.secondaryButton}
-                          onClick={() => setPreviewingTemplate(template)}
-                        >
-                          Preview
-                        </button>
-                      )}
-                      {canManage && (
-                        <button
-                          type="button"
-                          className={styles.actionButton}
-                          disabled={cloningTemplateId === template.id}
-                          onClick={() => handleUseTemplate(template)}
-                        >
-                          {cloningTemplateId === template.id ? "Adding…" : "Use this template"}
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* Main Templates Workspace */}
       <div className={styles.card}>
-        <div className={styles.sectionHeadingRow}>
-          <h3 className={styles.sectionHeading}>My Templates</h3>
+        {/* Top-Level Tabs */}
+        <div className={styles.tabNavContainer} role="tablist" aria-label="Template tabs">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === "my-templates"}
+            className={`${styles.tabButton} ${
+              activeTab === "my-templates" ? styles.tabButtonActive : ""
+            }`}
+            onClick={() => setActiveTab("my-templates")}
+          >
+            <span>📁 My Templates</span>
+            <span className={styles.tabBadge}>{templates.length}</span>
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === "default-templates"}
+            className={`${styles.tabButton} ${
+              activeTab === "default-templates" ? styles.tabButtonActive : ""
+            }`}
+            onClick={() => setActiveTab("default-templates")}
+          >
+            <span>🌟 Default Templates</span>
+            <span className={styles.tabBadge}>{platformDefaults.length}</span>
+          </button>
         </div>
+
+        {/* Info Banner when viewing Default Templates */}
+        {activeTab === "default-templates" && (
+          <div className={styles.platformDefaultBanner}>
+            <div>
+              <strong>Growixa Starter Library:</strong> Responsive templates built by Growixa. Click
+              &ldquo;Use this template&rdquo; to add an independent, fully editable copy to your own
+              library.
+            </div>
+            <span className={styles.platformDefaultBadge}>Read-Only</span>
+          </div>
+        )}
 
         {/* Toolbar & Filter Pills */}
         <div className={styles.toolbar}>
@@ -388,7 +376,11 @@ export function TemplatesPage() {
               <input
                 type="search"
                 className={styles.searchInput}
-                placeholder="Search by name or subject…"
+                placeholder={
+                  activeTab === "my-templates"
+                    ? "Search my templates…"
+                    : "Search default templates…"
+                }
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 aria-label="Search templates"
@@ -452,21 +444,52 @@ export function TemplatesPage() {
           </div>
         </div>
 
-        {templates.length === 0 && (
+        {/* Empty State when tab list is empty */}
+        {currentTabItems.length === 0 && activeTab === "my-templates" && (
           <div className={styles.emptyState}>
-            <p className={styles.emptyStateTitle}>No email templates yet.</p>
+            <p className={styles.emptyStateTitle}>No custom templates yet.</p>
             <p className={styles.emptyStateSubtitle}>
-              Get started by creating a new custom email template or selecting from ready presets.
+              Get started by creating a new custom email template or selecting from ready Growixa
+              presets.
             </p>
-            {canManage && (
-              <Link href="/dashboard/templates/new" className={styles.actionButton}>
-                + Create First Template
-              </Link>
-            )}
+            <div
+              style={{
+                display: "flex",
+                gap: "12px",
+                justifyContent: "center",
+                marginTop: "12px",
+                flexWrap: "wrap",
+              }}
+            >
+              {canManage && (
+                <Link href="/dashboard/templates/new" className={styles.actionButton}>
+                  + Create First Template
+                </Link>
+              )}
+              {platformDefaults.length > 0 && (
+                <button
+                  type="button"
+                  className={styles.secondaryButton}
+                  onClick={() => setActiveTab("default-templates")}
+                >
+                  🌟 Browse Default Templates ({platformDefaults.length})
+                </button>
+              )}
+            </div>
           </div>
         )}
 
-        {templates.length > 0 && visibleTemplates.length === 0 && (
+        {currentTabItems.length === 0 && activeTab === "default-templates" && (
+          <div className={styles.emptyState}>
+            <p className={styles.emptyStateTitle}>No default templates available.</p>
+            <p className={styles.emptyStateSubtitle}>
+              The platform team has not published any default templates yet.
+            </p>
+          </div>
+        )}
+
+        {/* Empty State when search/filter has no match */}
+        {currentTabItems.length > 0 && visibleTemplates.length === 0 && (
           <div className={styles.emptyState}>
             <p className={styles.emptyStateTitle}>No templates match &quot;{search}&quot;.</p>
             <p className={styles.emptyStateSubtitle}>
@@ -498,9 +521,13 @@ export function TemplatesPage() {
                 <div className={styles.cardBody}>
                   <div className={styles.cardTitleRow}>
                     <h4 className={styles.cardName}>{template.name}</h4>
-                    <span className={styles.versionBadge}>
-                      v{template.current_version?.version_number ?? 0}
-                    </span>
+                    {activeTab === "default-templates" ? (
+                      <span className={styles.platformDefaultBadge}>Default</span>
+                    ) : (
+                      <span className={styles.versionBadge}>
+                        v{template.current_version?.version_number ?? 0}
+                      </span>
+                    )}
                   </div>
 
                   <p className={styles.cardSubject}>
@@ -520,31 +547,46 @@ export function TemplatesPage() {
                           Preview
                         </button>
                       )}
-                      {canManage && (
-                        <Link
-                          href={`/dashboard/templates/${template.id}/edit`}
-                          className={styles.secondaryButton}
-                        >
-                          Edit
-                        </Link>
-                      )}
-                      {canManage && (
-                        <Link
-                          href={`/dashboard/templates/new?duplicateFrom=${template.id}`}
-                          className={styles.secondaryButton}
-                        >
-                          Duplicate
-                        </Link>
-                      )}
-                      {canManage && (
-                        <button
-                          type="button"
-                          className={styles.dangerButton}
-                          disabled={deletingTemplateId === template.id}
-                          onClick={() => handleDelete(template)}
-                        >
-                          {deletingTemplateId === template.id ? "Deleting…" : "Delete"}
-                        </button>
+                      {activeTab === "default-templates" ? (
+                        canManage && (
+                          <button
+                            type="button"
+                            className={styles.actionButton}
+                            disabled={cloningTemplateId === template.id}
+                            onClick={() => handleUseTemplate(template)}
+                          >
+                            {cloningTemplateId === template.id ? "Adding…" : "Use this template"}
+                          </button>
+                        )
+                      ) : (
+                        <>
+                          {canManage && (
+                            <Link
+                              href={`/dashboard/templates/${template.id}/edit`}
+                              className={styles.secondaryButton}
+                            >
+                              Edit
+                            </Link>
+                          )}
+                          {canManage && (
+                            <Link
+                              href={`/dashboard/templates/new?duplicateFrom=${template.id}`}
+                              className={styles.secondaryButton}
+                            >
+                              Duplicate
+                            </Link>
+                          )}
+                          {canManage && (
+                            <button
+                              type="button"
+                              className={styles.dangerButton}
+                              disabled={deletingTemplateId === template.id}
+                              onClick={() => handleDelete(template)}
+                            >
+                              {deletingTemplateId === template.id ? "Deleting…" : "Delete"}
+                            </button>
+                          )}
+                        </>
                       )}
                     </div>
                   </div>
@@ -567,9 +609,13 @@ export function TemplatesPage() {
                     </div>
                   </div>
                   <div className={styles.templateMeta}>
-                    <span className={styles.versionBadge}>
-                      v{template.current_version?.version_number ?? 0}
-                    </span>
+                    {activeTab === "default-templates" ? (
+                      <span className={styles.platformDefaultBadge}>Default</span>
+                    ) : (
+                      <span className={styles.versionBadge}>
+                        v{template.current_version?.version_number ?? 0}
+                      </span>
+                    )}
                     <span className={styles.hint}>Updated {formatDate(template.updated_at)}</span>
                     {template.current_version && (
                       <button
@@ -580,31 +626,46 @@ export function TemplatesPage() {
                         Preview
                       </button>
                     )}
-                    {canManage && (
-                      <Link
-                        href={`/dashboard/templates/${template.id}/edit`}
-                        className={styles.secondaryButton}
-                      >
-                        Edit
-                      </Link>
-                    )}
-                    {canManage && (
-                      <Link
-                        href={`/dashboard/templates/new?duplicateFrom=${template.id}`}
-                        className={styles.secondaryButton}
-                      >
-                        Duplicate
-                      </Link>
-                    )}
-                    {canManage && (
-                      <button
-                        type="button"
-                        className={styles.dangerButton}
-                        disabled={deletingTemplateId === template.id}
-                        onClick={() => handleDelete(template)}
-                      >
-                        {deletingTemplateId === template.id ? "Deleting…" : "Delete"}
-                      </button>
+                    {activeTab === "default-templates" ? (
+                      canManage && (
+                        <button
+                          type="button"
+                          className={styles.actionButton}
+                          disabled={cloningTemplateId === template.id}
+                          onClick={() => handleUseTemplate(template)}
+                        >
+                          {cloningTemplateId === template.id ? "Adding…" : "Use this template"}
+                        </button>
+                      )
+                    ) : (
+                      <>
+                        {canManage && (
+                          <Link
+                            href={`/dashboard/templates/${template.id}/edit`}
+                            className={styles.secondaryButton}
+                          >
+                            Edit
+                          </Link>
+                        )}
+                        {canManage && (
+                          <Link
+                            href={`/dashboard/templates/new?duplicateFrom=${template.id}`}
+                            className={styles.secondaryButton}
+                          >
+                            Duplicate
+                          </Link>
+                        )}
+                        {canManage && (
+                          <button
+                            type="button"
+                            className={styles.dangerButton}
+                            disabled={deletingTemplateId === template.id}
+                            onClick={() => handleDelete(template)}
+                          >
+                            {deletingTemplateId === template.id ? "Deleting…" : "Delete"}
+                          </button>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>
