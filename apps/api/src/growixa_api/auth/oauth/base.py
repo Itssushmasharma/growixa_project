@@ -23,7 +23,9 @@ class OAuthConfigurationError(OAuthError):
 class OAuthProvider(Protocol):
     provider_name: str
 
-    def get_authorize_url(self, state: str, redirect_uri: str) -> str:
+    def get_authorize_url(
+        self, state: str, redirect_uri: str, kc_idp_hint: str | None = None
+    ) -> str:
         """Returns the provider consent URL."""
         ...
 

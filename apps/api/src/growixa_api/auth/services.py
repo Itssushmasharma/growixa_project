@@ -334,9 +334,10 @@ async def create_oauth_authorize_url(
     *,
     redirect_uri: str,
     redirect_target: str | None = None,
+    kc_idp_hint: str | None = None,
 ) -> str:
-    """Generates a cryptographically random single-use state token stored in Redis
-    with a short TTL to defend against CSRF attacks, and returns the provider consent URL."""
+    """Generates an OAuth authorization URL with a secure, random CSRF state token
+    persisted in Redis."""
     provider = get_oauth_provider(provider_name)
     state = secrets.token_urlsafe(32)
     state_payload = {
@@ -344,12 +345,23 @@ async def create_oauth_authorize_url(
         "redirect_target": redirect_target,
     }
     settings = get_settings()
-    ttl = settings.google_oauth_state_ttl_seconds
+    ttl = (
+        settings.iam_oauth_state_ttl_seconds
+        if provider.provider_name in ("keycloak", "iam", "iitd")
+        else settings.google_oauth_state_ttl_seconds
+    )
     await redis_client.set(
         f"{_OAUTH_STATE_KEY_PREFIX}{state}",
         json.dumps(state_payload),
         ex=ttl,
     )
+    if hasattr(provider, "get_authorize_url") and kc_idp_hint:
+        try:
+            return provider.get_authorize_url(
+                state=state, redirect_uri=redirect_uri, kc_idp_hint=kc_idp_hint
+            )
+        except TypeError:
+            pass
     return provider.get_authorize_url(state=state, redirect_uri=redirect_uri)
 
 

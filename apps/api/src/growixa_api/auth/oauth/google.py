@@ -37,7 +37,9 @@ class GoogleOAuthProvider:
             return self._http_client
         return httpx.AsyncClient(timeout=10.0)
 
-    def get_authorize_url(self, state: str, redirect_uri: str) -> str:
+    def get_authorize_url(
+        self, state: str, redirect_uri: str, kc_idp_hint: str | None = None
+    ) -> str:
         client_id = self.effective_client_id
         if not client_id:
             raise OAuthConfigurationError("Google OAuth client_id is not configured")
