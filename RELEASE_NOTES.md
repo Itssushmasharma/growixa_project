@@ -20,6 +20,9 @@
   - Full toolbar (Search + Category Pills + Grid/List Views) added to `/platform/templates`.
 - **Reusable Template Preview Modal**:
   - Extracted shared presentational component into `apps/web/src/components/template-preview/`.
+- **Decoupled Database Infrastructure (`GRX-INFRA-005`)**:
+  - Connected Growixa's UAT & Production compose stacks directly to centralized `core-infra` networks (`iitd_data_network` and `iitd_edge_network`).
+  - Removed stateful database/queue containers from application rollout manifests, preventing volume collisions and enabling safe zero-downtime updates.
 
 ---
 

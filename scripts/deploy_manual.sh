@@ -201,34 +201,31 @@ sudo cp -r ${BUILD_DIR}/deploy/* ${TARGET_DIR}/deploy/
 # Step 4: Run database migrations
 echo ""
 echo "Step 4/6: Executing Alembic database migrations on ${ENV_CHOICE} DB..."
-ssh "${VPS_USER}@${VPS_HOST}" bash -c "'
+ssh "${VPS_USER}@${VPS_HOST}" bash -s << EOF
 set -euo pipefail
 cd ${TARGET_DIR}
-ENV_FILE=\"${TARGET_DIR}/.env\"
-export API_IMAGE=\"ghcr.io/iitdeveloper-git/growixa-api:${RELEASE_TAG}\"
-export WORKER_IMAGE=\"ghcr.io/iitdeveloper-git/growixa-worker:${RELEASE_TAG}\"
-export WEB_IMAGE=\"ghcr.io/iitdeveloper-git/growixa-web:${RELEASE_TAG}\"
+ENV_FILE="${TARGET_DIR}/.env"
+export API_IMAGE="ghcr.io/iitdeveloper-git/growixa-api:${RELEASE_TAG}"
+export WORKER_IMAGE="ghcr.io/iitdeveloper-git/growixa-worker:${RELEASE_TAG}"
+export WEB_IMAGE="ghcr.io/iitdeveloper-git/growixa-web:${RELEASE_TAG}"
 
-# Ensure backing services are up
-sudo docker compose --project-name \"${PROJECT_NAME}\" --env-file \"\${ENV_FILE}\" -f \"${COMPOSE_FILE}\" up -d postgres redis rabbitmq
-
-# Run Alembic migrations
-sudo docker compose --project-name \"${PROJECT_NAME}\" --env-file \"\${ENV_FILE}\" -f \"${COMPOSE_FILE}\" run --rm api alembic upgrade head
-'"
+# Run Alembic migrations against core-infra database
+sudo docker compose --project-name "${PROJECT_NAME}" --env-file "\${ENV_FILE}" -f "${COMPOSE_FILE}" run --rm api alembic upgrade head
+EOF
 
 # Step 5: Zero-downtime container rollout
 echo ""
 echo "Step 5/6: Performing zero-downtime rollout for API, Worker, and Web..."
-ssh "${VPS_USER}@${VPS_HOST}" bash -c "'
+ssh "${VPS_USER}@${VPS_HOST}" bash -s << EOF
 set -euo pipefail
 cd ${TARGET_DIR}
-ENV_FILE=\"${TARGET_DIR}/.env\"
-export API_IMAGE=\"ghcr.io/iitdeveloper-git/growixa-api:${RELEASE_TAG}\"
-export WORKER_IMAGE=\"ghcr.io/iitdeveloper-git/growixa-worker:${RELEASE_TAG}\"
-export WEB_IMAGE=\"ghcr.io/iitdeveloper-git/growixa-web:${RELEASE_TAG}\"
+ENV_FILE="${TARGET_DIR}/.env"
+export API_IMAGE="ghcr.io/iitdeveloper-git/growixa-api:${RELEASE_TAG}"
+export WORKER_IMAGE="ghcr.io/iitdeveloper-git/growixa-worker:${RELEASE_TAG}"
+export WEB_IMAGE="ghcr.io/iitdeveloper-git/growixa-web:${RELEASE_TAG}"
 
-sudo docker compose --project-name \"${PROJECT_NAME}\" --env-file \"\${ENV_FILE}\" -f \"${COMPOSE_FILE}\" up -d --no-deps api worker web
-'"
+sudo docker compose --project-name "${PROJECT_NAME}" --env-file "\${ENV_FILE}" -f "${COMPOSE_FILE}" up -d --remove-orphans api worker web
+EOF
 
 # Step 6: Health verification and disk cleanup
 echo ""
