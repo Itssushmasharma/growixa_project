@@ -16,12 +16,13 @@ export function GoogleAuthButton({ label = "Continue with Google" }: GoogleAuthB
 
   const apiUrl = getApiUrl();
   const queryParams = new URLSearchParams();
+  queryParams.set("kc_idp_hint", "google");
   if (next && next.startsWith("/") && !next.startsWith("//")) {
     queryParams.set("redirect_target", next);
   }
 
   const queryString = queryParams.toString();
-  const href = `${apiUrl}/auth/oauth/google${queryString ? `?${queryString}` : ""}`;
+  const href = `${apiUrl}/auth/oauth/iitd${queryString ? `?${queryString}` : ""}`;
 
   return (
     <a href={href} className={styles.googleButton} aria-label={label}>
