@@ -60,6 +60,7 @@ const SEGMENT: SegmentSummary = { id: "segment-1", name: "Active Users", member_
 const TEMPLATE: EmailTemplate = {
   id: "template-1",
   name: "Welcome email",
+  is_platform_default: false,
   created_at: "2026-08-06T00:00:00Z",
   updated_at: "2026-08-06T00:00:00Z",
   current_version: {

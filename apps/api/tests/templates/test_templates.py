@@ -21,6 +21,8 @@ from growixa_api.config import get_settings
 from growixa_api.db import async_session_factory
 from growixa_api.integrations.models import EmailProviderConnection, SenderIdentity
 from growixa_api.templates.models import EmailTemplate, EmailTemplateVersion
+from growixa_api.templates.schemas import EmailTemplateIn
+from growixa_api.templates.services import create_platform_template, retire_platform_template
 
 TEMPLATE_PAYLOAD = {
     "name": "Welcome Email",
@@ -58,6 +60,25 @@ async def _cleanup() -> None:
         await session.execute(delete(EmailTemplateVersion))
         await session.execute(delete(EmailTemplate))
         await session.commit()
+
+
+async def _create_platform_template(
+    *,
+    name: str = "Platform Welcome Default",
+    subject: str = "Welcome to Growixa",
+    body_html: str = "<p>Hello {{first_name}}</p>",
+) -> uuid.UUID:
+    """Direct service-layer creation (GRX-EMAIL-016) -- bypasses the platform-admin HTTP
+    API/auth entirely, same pattern as this file's other fixture setup
+    (_create_campaign_referencing_template), since these tests exercise the
+    customer-facing routes, not the platform-admin ones (covered separately in
+    tests/platform_admin/test_platform_templates.py)."""
+    async with async_session_factory() as session:
+        template, _version = await create_platform_template(
+            session, EmailTemplateIn(name=name, subject=subject, body_html=body_html)
+        )
+        await session.commit()
+        return template.id
 
 
 async def _create_campaign_referencing_template(
@@ -377,5 +398,166 @@ async def test_create_template_with_invalid_token_returns_422(
             assert "Invalid personalization token" in detail
             assert "typo_tag" in detail
             assert "Available tokens:" in detail
+    finally:
+        await _cleanup()
+
+
+# --- Platform-published default templates (GRX-EMAIL-016) -----------------------------
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_platform_defaults_route_lists_platform_templates_not_account_owned_ones(
+    user_factory: Callable[..., Awaitable[uuid.UUID]],
+) -> None:
+    manager_id = await user_factory(full_name="Test Manager", role_name="Marketing Manager")
+    cookies = _access_token_cookie(manager_id)
+    try:
+        platform_template_id = await _create_platform_template()
+        transport = ASGITransport(app=create_app())
+        async with AsyncClient(
+            transport=transport, base_url="http://test", cookies=cookies
+        ) as client:
+            own_create = await client.post("/templates", json=TEMPLATE_PAYLOAD)
+            own_template_id = own_create.json()["id"]
+
+            defaults_response = await client.get("/templates/platform-defaults")
+            own_response = await client.get("/templates")
+
+        assert defaults_response.status_code == 200
+        default_ids = {t["id"] for t in defaults_response.json()}
+        assert platform_template_id in {uuid.UUID(i) for i in default_ids}
+        assert own_template_id not in default_ids
+        assert all(t["is_platform_default"] for t in defaults_response.json())
+
+        assert own_response.status_code == 200
+        own_ids = {t["id"] for t in own_response.json()}
+        assert own_template_id in own_ids
+        assert str(platform_template_id) not in own_ids
+    finally:
+        await _cleanup()
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_clone_creates_independent_copy_unaffected_by_later_platform_edits(
+    user_factory: Callable[..., Awaitable[uuid.UUID]],
+) -> None:
+    manager_id = await user_factory(full_name="Test Manager", role_name="Marketing Manager")
+    cookies = _access_token_cookie(manager_id)
+    try:
+        platform_template_id = await _create_platform_template(
+            subject="Original Subject", body_html="<p>Original body</p>"
+        )
+        transport = ASGITransport(app=create_app())
+        async with AsyncClient(
+            transport=transport, base_url="http://test", cookies=cookies
+        ) as client:
+            clone_response = await client.post(f"/templates/{platform_template_id}/clone")
+            assert clone_response.status_code == 201
+            clone = clone_response.json()
+            assert clone["is_platform_default"] is False
+            assert clone["current_version"]["subject"] == "Original Subject"
+            clone_id = clone["id"]
+
+            # Retiring the platform original afterwards (GRX-EMAIL-016's own service, not
+            # the customer-facing API -- platform admins never authenticate as a customer)
+            async with async_session_factory() as session:
+                await retire_platform_template(session, platform_template_id)
+                await session.commit()
+
+            # The clone is a fully independent row -- retiring the original must not
+            # affect it at all.
+            get_clone_response = await client.get(f"/templates/{clone_id}")
+        assert get_clone_response.status_code == 200
+        assert get_clone_response.json()["current_version"]["subject"] == "Original Subject"
+    finally:
+        await _cleanup()
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_clone_requires_manage_permission(
+    user_factory: Callable[..., Awaitable[uuid.UUID]],
+) -> None:
+    analyst_id = await user_factory(full_name="Test Analyst", role_name="Analyst")
+    cookies = _access_token_cookie(analyst_id)
+    try:
+        platform_template_id = await _create_platform_template()
+        transport = ASGITransport(app=create_app())
+        async with AsyncClient(
+            transport=transport, base_url="http://test", cookies=cookies
+        ) as client:
+            response = await client.post(f"/templates/{platform_template_id}/clone")
+        assert response.status_code == 403
+    finally:
+        await _cleanup()
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_account_cannot_read_or_mutate_a_platform_template_via_account_scoped_routes(
+    user_factory: Callable[..., Awaitable[uuid.UUID]],
+) -> None:
+    """Account-isolation regression (GRX-EMAIL-016): the normal account-scoped
+    /templates/{id} routes filter by account_id, and a platform template's account_id is
+    the reserved platform system account, never the caller's -- so every one of these
+    must 404, not silently succeed or leak content."""
+    manager_id = await user_factory(full_name="Test Manager", role_name="Marketing Manager")
+    cookies = _access_token_cookie(manager_id)
+    try:
+        platform_template_id = await _create_platform_template()
+        transport = ASGITransport(app=create_app())
+        async with AsyncClient(
+            transport=transport, base_url="http://test", cookies=cookies
+        ) as client:
+            get_response = await client.get(f"/templates/{platform_template_id}")
+            versions_response = await client.get(f"/templates/{platform_template_id}/versions")
+            edit_response = await client.post(
+                f"/templates/{platform_template_id}/versions",
+                json={"subject": "Hijacked", "body_html": "<p>x</p>"},
+            )
+            delete_response = await client.delete(f"/templates/{platform_template_id}")
+
+        assert get_response.status_code == 404
+        assert versions_response.status_code == 404
+        assert edit_response.status_code == 404
+        assert delete_response.status_code == 404
+    finally:
+        await _cleanup()
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_clone_of_nonexistent_template_returns_404(
+    user_factory: Callable[..., Awaitable[uuid.UUID]],
+) -> None:
+    manager_id = await user_factory(full_name="Test Manager", role_name="Marketing Manager")
+    cookies = _access_token_cookie(manager_id)
+    transport = ASGITransport(app=create_app())
+    async with AsyncClient(transport=transport, base_url="http://test", cookies=cookies) as client:
+        response = await client.post(f"/templates/{uuid.uuid4()}/clone")
+    assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_clone_of_a_regular_account_owned_template_returns_404(
+    user_factory: Callable[..., Awaitable[uuid.UUID]],
+) -> None:
+    """The clone endpoint only ever clones a platform default -- a regular
+    account-owned template_id (even the account's own) is never a valid target, since the
+    "Use this template" action only exists for platform-published templates."""
+    manager_id = await user_factory(full_name="Test Manager", role_name="Marketing Manager")
+    cookies = _access_token_cookie(manager_id)
+    try:
+        transport = ASGITransport(app=create_app())
+        async with AsyncClient(
+            transport=transport, base_url="http://test", cookies=cookies
+        ) as client:
+            create_response = await client.post("/templates", json=TEMPLATE_PAYLOAD)
+            own_template_id = create_response.json()["id"]
+            clone_response = await client.post(f"/templates/{own_template_id}/clone")
+        assert clone_response.status_code == 404
     finally:
         await _cleanup()

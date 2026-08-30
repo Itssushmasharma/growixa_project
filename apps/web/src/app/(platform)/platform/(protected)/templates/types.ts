@@ -1,10 +1,3 @@
-export interface MeResponse {
-  id: string;
-  email: string;
-  full_name: string;
-  permissions: string[];
-}
-
 export interface EmailTemplateVersion {
   id: string;
   template_id: string;

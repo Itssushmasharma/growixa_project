@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Integer, Text, UniqueConstraint
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
@@ -20,6 +20,13 @@ class EmailTemplate(Base):
         index=True,
     )
     name: Mapped[str] = mapped_column(Text, nullable=False)
+    # GRX-EMAIL-016: platform-published default templates, owned by the reserved
+    # platform system account (accounts.is_platform_system). Every account can browse
+    # (read-only) and clone one; only platform.templates.manage can create/edit/retire
+    # the row this flag is set on. Never true for a real customer's own template.
+    is_platform_default: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default="false", index=True
+    )
     created_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
     )

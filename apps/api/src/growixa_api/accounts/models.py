@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Text
+from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Index, Text, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
@@ -21,6 +21,13 @@ class Account(Base):
             "selected_plan_slug IN ('free', 'starter', 'pro')",
             name="ck_accounts_selected_plan_slug",
         ),
+        # GRX-EMAIL-016: at most one row can ever have is_platform_system = true.
+        Index(
+            "ux_accounts_platform_system_singleton",
+            "is_platform_system",
+            unique=True,
+            postgresql_where=text("is_platform_system"),
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -33,6 +40,13 @@ class Account(Base):
     # account only actually changes plan via a real Razorpay checkout or a platform
     # admin override, never by what it selected at signup.
     selected_plan_slug: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # GRX-EMAIL-016: exactly one reserved row, enforced by a partial unique index on
+    # this column (WHERE is_platform_system) rather than a hardcoded UUID scattered
+    # through app code -- owns every platform-published default template. Never a real
+    # customer account; never logged into, never billed for real.
+    is_platform_system: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default="false"
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import { PageHeader } from "@/components/page-header/page-header";
@@ -112,15 +113,18 @@ function TemplatePreviewModal({
 }
 
 export function TemplatesPage() {
+  const router = useRouter();
   const { showToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [canView, setCanView] = useState(false);
   const [canManage, setCanManage] = useState(false);
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
+  const [platformDefaults, setPlatformDefaults] = useState<EmailTemplate[]>([]);
 
   const [previewingTemplate, setPreviewingTemplate] = useState<EmailTemplate | null>(null);
   const [deletingTemplateId, setDeletingTemplateId] = useState<string | null>(null);
+  const [cloningTemplateId, setCloningTemplateId] = useState<string | null>(null);
 
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<SortOption>("updated");
@@ -136,8 +140,12 @@ export function TemplatesPage() {
         setCanManage(me.permissions.includes(MANAGE_PERMISSION));
 
         if (hasView) {
-          const list = await apiFetch<EmailTemplate[]>("/templates");
+          const [list, defaults] = await Promise.all([
+            apiFetch<EmailTemplate[]>("/templates"),
+            apiFetch<EmailTemplate[]>("/templates/platform-defaults"),
+          ]);
           setTemplates(list);
+          setPlatformDefaults(defaults);
         }
       } catch {
         setLoadError("Could not load email templates.");
@@ -148,6 +156,21 @@ export function TemplatesPage() {
 
     void load();
   }, []);
+
+  async function handleUseTemplate(template: EmailTemplate) {
+    setCloningTemplateId(template.id);
+    try {
+      const clone = await apiFetch<EmailTemplate>(`/templates/${template.id}/clone`, {
+        method: "POST",
+      });
+      showToast("success", `"${template.name}" added to your templates.`);
+      router.push(`/dashboard/templates/${clone.id}/edit`);
+    } catch {
+      showToast("error", "Could not use that template. Please try again.");
+    } finally {
+      setCloningTemplateId(null);
+    }
+  }
 
   async function handleDelete(template: EmailTemplate) {
     if (!window.confirm(`Delete "${template.name}"? This can't be undone.`)) {
@@ -351,8 +374,83 @@ export function TemplatesPage() {
         />
       </section>
 
+      {/* Default Templates — platform-published, browse/preview only (GRX-EMAIL-016).
+          Separate from "My Templates" below: no Edit/Duplicate/Delete here, since these
+          are owned and maintained by Growixa's platform team, never by any account. */}
+      {platformDefaults.length > 0 && (
+        <div className={styles.card} data-testid="default-templates-section">
+          <div className={styles.sectionHeadingRow}>
+            <h3 className={styles.sectionHeading}>Default Templates</h3>
+            <p className={styles.hint}>
+              Built by Growixa. Use one to add an independent, fully editable copy to your own
+              library.
+            </p>
+          </div>
+
+          <div className={styles.gridContainer}>
+            {platformDefaults.map((template) => (
+              <div className={styles.templateCard} key={template.id}>
+                <div className={styles.cardPreviewArea}>
+                  {template.current_version ? (
+                    <iframe
+                      title={`Thumbnail for ${template.name}`}
+                      className={styles.cardPreviewIframe}
+                      sandbox=""
+                      srcDoc={template.current_version.body_html}
+                    />
+                  ) : (
+                    <div className={styles.hint} style={{ padding: "20px" }}>
+                      No preview available
+                    </div>
+                  )}
+                </div>
+
+                <div className={styles.cardBody}>
+                  <div className={styles.cardTitleRow}>
+                    <h4 className={styles.cardName}>{template.name}</h4>
+                  </div>
+
+                  <p className={styles.cardSubject}>
+                    {template.current_version?.subject ?? "No subject"}
+                  </p>
+
+                  <div className={styles.cardMetaRow}>
+                    <span />
+                    <div className={styles.cardActions}>
+                      {template.current_version && (
+                        <button
+                          type="button"
+                          className={styles.secondaryButton}
+                          onClick={() => setPreviewingTemplate(template)}
+                        >
+                          Preview
+                        </button>
+                      )}
+                      {canManage && (
+                        <button
+                          type="button"
+                          className={styles.actionButton}
+                          disabled={cloningTemplateId === template.id}
+                          onClick={() => handleUseTemplate(template)}
+                        >
+                          {cloningTemplateId === template.id ? "Adding…" : "Use this template"}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Main Templates Workspace */}
       <div className={styles.card}>
+        <div className={styles.sectionHeadingRow}>
+          <h3 className={styles.sectionHeading}>My Templates</h3>
+        </div>
+
         {/* Toolbar & Filter Pills */}
         <div className={styles.toolbar}>
           <div className={styles.toolbarLeft}>
