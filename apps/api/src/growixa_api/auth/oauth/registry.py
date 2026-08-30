@@ -1,8 +1,12 @@
 from growixa_api.auth.oauth.base import OAuthError, OAuthProvider
 from growixa_api.auth.oauth.google import GoogleOAuthProvider
+from growixa_api.auth.oauth.keycloak import KeycloakOAuthProvider
 
 _PROVIDERS: dict[str, OAuthProvider] = {
     "google": GoogleOAuthProvider(),
+    "keycloak": KeycloakOAuthProvider(),
+    "iam": KeycloakOAuthProvider(),
+    "iitd": KeycloakOAuthProvider(),
 }
 
 

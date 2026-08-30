@@ -249,6 +249,7 @@ async def oauth_authorize_route(
     provider: str,
     request: Request,
     redirect_target: str | None = Query(default=None),
+    kc_idp_hint: str | None = Query(default=None),
     redis_client: Redis = Depends(get_redis),
 ) -> RedirectResponse:
     settings = get_settings()
@@ -259,6 +260,7 @@ async def oauth_authorize_route(
             provider,
             redirect_uri=redirect_uri,
             redirect_target=redirect_target,
+            kc_idp_hint=kc_idp_hint,
         )
         return RedirectResponse(url=auth_url, status_code=status.HTTP_307_TEMPORARY_REDIRECT)
     except OAuthConfigurationError as exc:

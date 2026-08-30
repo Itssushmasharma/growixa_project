@@ -135,6 +135,12 @@ class Settings(BaseSettings):
     google_client_secret: str = ""
     google_oauth_state_ttl_seconds: int = 600
 
+    # IITD IAM / Keycloak Universal SSO (OIDC)
+    iam_oidc_issuer: str = "https://auth.iitdeveloper.com/realms/iitd"
+    iam_client_id: str = "growixa-app"
+    iam_client_secret: str = ""
+    iam_oauth_state_ttl_seconds: int = 600
+
     # Slice 5 media storage (DEC-GRX-024): Supabase Storage, called directly via its
     # REST API (growixa_api.files.storage_client) — no SDK, matching this codebase's
     # existing thin-provider-wrapper convention. The bucket is public-read by
