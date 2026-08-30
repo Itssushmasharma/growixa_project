@@ -10,7 +10,7 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
-## 2026-08-30 — Platform Default Templates & Tabbed Library Redesign (GRX-EMAIL-016)
+## 2026-08-30 — v0.5.8 production release
 
 - **`feat(templates)`** — **Tabbed Email Template Library Redesign**: Refactored customer-facing `/dashboard/templates` from stacked sections to top-level tabs (📁 *My Templates* vs 🌟 *Default Templates*) with dynamic count badges, interactive KPI stat cards for fast tab switching, and smart empty state CTA to explore Growixa defaults.
 - **`feat(templates)`** — **Unified Search & Category Filtering**: Added shared search bar, sort dropdown (*Last updated*, *Name*), category filter pills (*All*, *Marketing*, *Onboarding*, *Announcement*, *Newsletter*, *Transactional*), and Grid/List switcher across both tabs.
