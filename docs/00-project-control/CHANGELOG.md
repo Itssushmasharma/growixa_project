@@ -10,6 +10,15 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
+## 2026-08-30 — Platform Default Templates & Tabbed Library Redesign (GRX-EMAIL-016)
+
+- **`feat(templates)`** — **Tabbed Email Template Library Redesign**: Refactored customer-facing `/dashboard/templates` from stacked sections to top-level tabs (📁 *My Templates* vs 🌟 *Default Templates*) with dynamic count badges, interactive KPI stat cards for fast tab switching, and smart empty state CTA to explore Growixa defaults.
+- **`feat(templates)`** — **Unified Search & Category Filtering**: Added shared search bar, sort dropdown (*Last updated*, *Name*), category filter pills (*All*, *Marketing*, *Onboarding*, *Announcement*, *Newsletter*, *Transactional*), and Grid/List switcher across both tabs.
+- **`feat(platform-templates)`** — **Side-by-Side Live Preview Editor Modal**: Replaced inline expanding forms on `/platform/templates` with a 2-column modal featuring form inputs on the left and a live rendering email preview iframe on the right with Desktop 🖥️ / Mobile 📱 device frames.
+- **`feat(platform-templates)`** — **Platform Admin Toolbar & Visual Grid**: Brought instant search, sort selector, category filter pills, and visual thumbnail cards to `/platform/templates`.
+- **`refactor(templates)`** — Extracted shared `TemplatePreviewModal` into `components/template-preview/`, removing duplicated modal code and CSS between dashboard and platform routes.
+- **`test(templates)`** — Added 8 new unit tests covering tab switching, search filtering on default templates, stat card clicks, and side-by-side modal editor flows (319 vitest tests passing).
+
 ## 2026-08-28 — v0.5.7-rc1 UAT release candidate (Preview)
 
 > Tag `v0.5.7-rc1` was pushed as this work landed (retagged forward across the session as

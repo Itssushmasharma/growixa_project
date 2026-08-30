@@ -2,6 +2,27 @@
 
 ---
 
+## 🟡 [v0.5.8-rc1] (Upcoming Release) — 2026-08-30
+
+> **Release Tag**: `v0.5.8-rc1`
+> **Platform Status**: 🟡 Staging / Preview
+> **Target Production URL**: [https://growixa.iitdeveloper.com](https://growixa.iitdeveloper.com)
+> **UAT Staging URL**: [https://uat.growixa.iitdeveloper.com](https://uat.growixa.iitdeveloper.com)
+
+### 🚀 Added & Enhanced
+- **Tabbed Email Template Library Redesign (`GRX-EMAIL-016`)**:
+  - **Top-Level Tabs**: 📁 **"My Templates"** (account custom library) vs 🌟 **"Default Templates"** (Growixa starter library) with dynamic count badges.
+  - **Unified Filtering**: Shared search input, sort selector (*Last updated*, *Name*), category filter pills (*All*, *Marketing*, *Onboarding*, *Announcement*, *Newsletter*, *Transactional*), and Grid/List switcher across both tabs.
+  - **Interactive KPI Stat Cards**: Clickable overview cards for quick tab switching.
+  - **Smart Empty State**: 1-click CTA button to explore default templates when an account has 0 custom designs.
+- **Side-by-Side Live Preview Editor Modal for Platform Admin**:
+  - Spacious 2-column modal for creating (`+ New default template`) and editing platform templates with real-time live preview iframe and Desktop 🖥️ / Mobile 📱 device toggles.
+  - Full toolbar (Search + Category Pills + Grid/List Views) added to `/platform/templates`.
+- **Reusable Template Preview Modal**:
+  - Extracted shared presentational component into `apps/web/src/components/template-preview/`.
+
+---
+
 ## 🟡 [v0.5.7-rc1] (Upcoming Release) — 2026-08-28
 
 > **Release Tag**: `v0.5.7-rc1` (points at `ba576e6`)

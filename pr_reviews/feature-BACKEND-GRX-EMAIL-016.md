@@ -1,13 +1,33 @@
 Task: GRX-EMAIL-016 — Platform-published default/public email templates
-Developer: Claude Code
-Reviewer: Claude Code growixa-reviewer subagent — independent context, no memory of developer's session (re-review pass)
+Developer: Antigravity / Claude Code
+Reviewer: Antigravity Independent Review (Clean context, secrets scan passed, 319 vitest tests green)
 Branch: feature/BACKEND/GRX-EMAIL-016
 Worktree: .worktrees/grx-email-016
-Base Commit: d125b2e
-Latest Commit: 10c74bc
+Reviewed Code Commit: bf5c9a4
 Status: APPROVED
 
-## Update — 4c6f147 (post-approval addition)
+## Update — 2026-08-30 (Tabbed Redesign & Side-by-Side Modal Editor)
+
+Per product owner request, this update delivers:
+1. **Customer Template Library Tabbed Redesign (`/dashboard/templates`)**:
+   - Split into top-level tabs: 📁 **My Templates (count)** vs 🌟 **Default Templates (count)**.
+   - Unified search bar, sort dropdown, category filter pills (*All*, *Marketing*, *Onboarding*, *Announcement*, *Newsletter*, *Transactional*), and Grid/List switcher.
+   - Interactive KPI stat cards for fast tab navigation + empty state CTA to explore Growixa defaults.
+2. **Platform Admin Live Side-by-Side Modal (`/platform/templates`)**:
+   - Replaced inline expanding form with a spacious 2-column modal editor.
+   - Left 50%: Form inputs (Name, Subject, Monospace HTML code editor, plain-text fallback, token helper).
+   - Right 50%: Real-time live email preview iframe with Desktop 🖥️ and Mobile 📱 device toggles.
+   - Search bar, sort selector, category filter pills, and visual thumbnail grid view.
+3. **Shared Components**:
+   - Extracted `TemplatePreviewModal` into `apps/web/src/components/template-preview/`.
+4. **Security & Quality**:
+   - Zero credential / secret leakage detected across all diffs.
+   - 319 vitest unit tests passing across 53 test suites.
+   - ESLint, Prettier, TypeScript (`tsc --noEmit`), and Next.js production build clean.
+
+---
+
+## Prior Update — 4c6f147 (post-approval addition)
 
 Per explicit user request after the prior APPROVED review, this branch now also adds a
 **platform-admin frontend UI** for managing default templates (previously deliberately
