@@ -1,12 +1,27 @@
 "use client";
 
-import { type FormEvent, useEffect, useState } from "react";
+import { type FormEvent, useEffect, useMemo, useState } from "react";
 
+import { TemplatePreviewModal } from "@/components/template-preview/template-preview-modal";
 import { useToast } from "@/components/toast/toast-context";
 import { ApiError, apiFetch } from "@/lib/api-client";
 
 import styles from "./templates-page.module.css";
 import type { EmailTemplate } from "./types";
+
+type SortOption = "updated" | "name";
+type ViewMode = "grid" | "list";
+type CategoryFilter =
+  "All" | "Marketing" | "Onboarding" | "Announcement" | "Newsletter" | "Transactional";
+
+const CATEGORIES: CategoryFilter[] = [
+  "All",
+  "Marketing",
+  "Onboarding",
+  "Announcement",
+  "Newsletter",
+  "Transactional",
+];
 
 function errorDetail(error: unknown, fallback: string): string {
   if (error instanceof ApiError) {
@@ -55,7 +70,7 @@ export function PlatformTemplatesPage() {
   const [createForm, setCreateForm] = useState<CreateFormState>(blankCreateForm());
   const [creating, setCreating] = useState(false);
 
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingTemplate, setEditingTemplate] = useState<EmailTemplate | null>(null);
   const [editForm, setEditForm] = useState<EditFormState>({
     subject: "",
     body_html: "",
@@ -63,7 +78,14 @@ export function PlatformTemplatesPage() {
   });
   const [savingEdit, setSavingEdit] = useState(false);
 
+  const [editorDeviceMode, setEditorDeviceMode] = useState<"desktop" | "mobile">("desktop");
   const [retiringId, setRetiringId] = useState<string | null>(null);
+  const [previewingTemplate, setPreviewingTemplate] = useState<EmailTemplate | null>(null);
+
+  const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState<SortOption>("updated");
+  const [viewMode, setViewMode] = useState<ViewMode>("grid");
+  const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("All");
 
   useEffect(() => {
     async function load() {
@@ -84,8 +106,21 @@ export function PlatformTemplatesPage() {
     void load();
   }, []);
 
+  // Close modals on Escape key
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        if (createFormOpen) setCreateFormOpen(false);
+        if (editingTemplate) setEditingTemplate(null);
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [createFormOpen, editingTemplate]);
+
   function openCreateForm() {
     setCreateForm(blankCreateForm());
+    setEditorDeviceMode("desktop");
     setCreateFormOpen(true);
   }
 
@@ -113,7 +148,8 @@ export function PlatformTemplatesPage() {
   }
 
   function openEditForm(template: EmailTemplate) {
-    setEditingId(template.id);
+    setEditingTemplate(template);
+    setEditorDeviceMode("desktop");
     setEditForm({
       subject: template.current_version?.subject ?? "",
       body_html: template.current_version?.body_html ?? "",
@@ -123,23 +159,26 @@ export function PlatformTemplatesPage() {
 
   async function handleEditSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!editingId) return;
+    if (!editingTemplate) return;
     setSavingEdit(true);
     try {
-      const updated = await apiFetch<EmailTemplate>(`/platform/templates/${editingId}/versions`, {
-        method: "POST",
-        body: JSON.stringify({
-          subject: editForm.subject.trim(),
-          body_html: editForm.body_html,
-          body_text: editForm.body_text.trim() === "" ? null : editForm.body_text,
-        }),
-      });
+      const updated = await apiFetch<EmailTemplate>(
+        `/platform/templates/${editingTemplate.id}/versions`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            subject: editForm.subject.trim(),
+            body_html: editForm.body_html,
+            body_text: editForm.body_text.trim() === "" ? null : editForm.body_text,
+          }),
+        },
+      );
       setTemplates((current) => current.map((t) => (t.id === updated.id ? updated : t)));
       showToast(
         "success",
         `"${updated.name}" updated to v${updated.current_version?.version_number}.`,
       );
-      setEditingId(null);
+      setEditingTemplate(null);
     } catch (err) {
       showToast("error", errorDetail(err, "Could not update that template."));
     } finally {
@@ -166,6 +205,111 @@ export function PlatformTemplatesPage() {
       setRetiringId(null);
     }
   }
+
+  const categoryCounts = useMemo(() => {
+    const counts: Record<CategoryFilter, number> = {
+      All: templates.length,
+      Marketing: 0,
+      Onboarding: 0,
+      Announcement: 0,
+      Newsletter: 0,
+      Transactional: 0,
+    };
+
+    for (const t of templates) {
+      const nameLower = t.name.toLowerCase();
+      if (
+        nameLower.includes("marketing") ||
+        nameLower.includes("promo") ||
+        nameLower.includes("sale")
+      ) {
+        counts.Marketing += 1;
+      }
+      if (nameLower.includes("onboarding") || nameLower.includes("welcome")) {
+        counts.Onboarding += 1;
+      }
+      if (
+        nameLower.includes("announcement") ||
+        nameLower.includes("update") ||
+        nameLower.includes("launch")
+      ) {
+        counts.Announcement += 1;
+      }
+      if (
+        nameLower.includes("newsletter") ||
+        nameLower.includes("digest") ||
+        nameLower.includes("roundup")
+      ) {
+        counts.Newsletter += 1;
+      }
+      if (
+        nameLower.includes("transactional") ||
+        nameLower.includes("receipt") ||
+        nameLower.includes("alert")
+      ) {
+        counts.Transactional += 1;
+      }
+    }
+
+    return counts;
+  }, [templates]);
+
+  const visibleTemplates = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    let filtered = query
+      ? templates.filter(
+          (t) =>
+            t.name.toLowerCase().includes(query) ||
+            (t.current_version?.subject.toLowerCase().includes(query) ?? false),
+        )
+      : templates;
+
+    if (categoryFilter !== "All") {
+      filtered = filtered.filter((t) => {
+        const nameLower = t.name.toLowerCase();
+        if (categoryFilter === "Marketing") {
+          return (
+            nameLower.includes("marketing") ||
+            nameLower.includes("promo") ||
+            nameLower.includes("sale")
+          );
+        }
+        if (categoryFilter === "Onboarding") {
+          return nameLower.includes("onboarding") || nameLower.includes("welcome");
+        }
+        if (categoryFilter === "Announcement") {
+          return (
+            nameLower.includes("announcement") ||
+            nameLower.includes("update") ||
+            nameLower.includes("launch")
+          );
+        }
+        if (categoryFilter === "Newsletter") {
+          return (
+            nameLower.includes("newsletter") ||
+            nameLower.includes("digest") ||
+            nameLower.includes("roundup")
+          );
+        }
+        if (categoryFilter === "Transactional") {
+          return (
+            nameLower.includes("transactional") ||
+            nameLower.includes("receipt") ||
+            nameLower.includes("alert")
+          );
+        }
+        return true;
+      });
+    }
+
+    const sorted = [...filtered];
+    if (sortBy === "name") {
+      sorted.sort((a, b) => a.name.localeCompare(b.name));
+    } else {
+      sorted.sort((a, b) => b.updated_at.localeCompare(a.updated_at));
+    }
+    return sorted;
+  }, [templates, search, sortBy, categoryFilter]);
 
   if (loading) {
     return (
@@ -200,89 +344,172 @@ export function PlatformTemplatesPage() {
           </button>
         </div>
 
-        {createFormOpen && (
-          <form onSubmit={handleCreate} className={styles.form}>
-            <div className={styles.formHeading}>New default template</div>
-            <div className={styles.field}>
-              <label className={styles.label} htmlFor="new-template-name">
-                Name
-              </label>
+        {/* Toolbar & Filter Pills */}
+        <div className={styles.toolbar}>
+          <div className={styles.toolbarLeft}>
+            <div className={styles.searchWrapper}>
+              <span className={styles.searchIcon} aria-hidden="true">
+                🔍
+              </span>
               <input
-                id="new-template-name"
-                className={styles.input}
-                required
-                value={createForm.name}
-                onChange={(event) => setCreateForm({ ...createForm, name: event.target.value })}
-                placeholder="e.g. Welcome Series Kickoff"
+                type="search"
+                className={styles.searchInput}
+                placeholder="Search default templates…"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                aria-label="Search default templates"
               />
             </div>
-            <div className={styles.field}>
-              <label className={styles.label} htmlFor="new-template-subject">
-                Subject
-              </label>
-              <input
-                id="new-template-subject"
-                className={styles.input}
-                required
-                value={createForm.subject}
-                onChange={(event) => setCreateForm({ ...createForm, subject: event.target.value })}
-                placeholder="e.g. Welcome to Growixa, {{first_name}}!"
-              />
+
+            <select
+              className={styles.sortSelect}
+              value={sortBy}
+              onChange={(event) => setSortBy(event.target.value as SortOption)}
+              aria-label="Sort default templates"
+            >
+              <option value="updated">Sort by: Last updated</option>
+              <option value="name">Sort by: Name</option>
+            </select>
+
+            <div className={styles.categoryPills} role="tablist" aria-label="Template categories">
+              {CATEGORIES.map((cat) => (
+                <button
+                  key={cat}
+                  type="button"
+                  role="tab"
+                  aria-selected={categoryFilter === cat}
+                  className={`${styles.categoryPill} ${
+                    categoryFilter === cat ? styles.categoryPillActive : ""
+                  }`}
+                  onClick={() => setCategoryFilter(cat)}
+                >
+                  <span>{cat}</span>
+                  {categoryCounts[cat] > 0 && (
+                    <span className={styles.categoryBadge}>{categoryCounts[cat]}</span>
+                  )}
+                </button>
+              ))}
             </div>
-            <div className={styles.field}>
-              <label className={styles.label} htmlFor="new-template-body-html">
-                Body (HTML)
-              </label>
-              <textarea
-                id="new-template-body-html"
-                className={styles.textarea}
-                required
-                value={createForm.body_html}
-                onChange={(event) =>
-                  setCreateForm({ ...createForm, body_html: event.target.value })
-                }
-                placeholder="<p>Hi {{first_name}}...</p>"
-              />
-            </div>
-            <div className={styles.field}>
-              <label className={styles.label} htmlFor="new-template-body-text">
-                Body (plain text, optional)
-              </label>
-              <textarea
-                id="new-template-body-text"
-                className={styles.textarea}
-                value={createForm.body_text}
-                onChange={(event) =>
-                  setCreateForm({ ...createForm, body_text: event.target.value })
-                }
-              />
-            </div>
-            <div className={styles.hint}>
-              Only standard recipient/account tokens are allowed (no account-specific custom fields)
-              — a default template must render the same for every account.
-            </div>
-            <div className={styles.formActions}>
-              <button type="submit" className={styles.actionButton} disabled={creating}>
-                {creating ? "Publishing…" : "Publish"}
-              </button>
-              <button
-                type="button"
-                className={styles.secondaryButton}
-                onClick={() => setCreateFormOpen(false)}
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
+          </div>
+
+          <div className={styles.viewModeToggle} role="group" aria-label="View Mode">
+            <button
+              type="button"
+              className={`${styles.viewModeBtn} ${
+                viewMode === "grid" ? styles.viewModeBtnActive : ""
+              }`}
+              onClick={() => setViewMode("grid")}
+              aria-label="Grid View"
+              aria-pressed={viewMode === "grid"}
+            >
+              🎴 Grid
+            </button>
+            <button
+              type="button"
+              className={`${styles.viewModeBtn} ${
+                viewMode === "list" ? styles.viewModeBtnActive : ""
+              }`}
+              onClick={() => setViewMode("list")}
+              aria-label="List View"
+              aria-pressed={viewMode === "list"}
+            >
+              📋 List
+            </button>
+          </div>
+        </div>
+
+        {/* Empty States */}
+        {templates.length === 0 && !createFormOpen && (
+          <div className={styles.emptyState}>
+            <p className={styles.emptyStateTitle}>No default templates published yet.</p>
+            <p className={styles.emptyStateSubtitle}>
+              Click &quot;+ New default template&quot; to publish the first responsive email design.
+            </p>
+          </div>
         )}
 
-        <div className={styles.list}>
-          {templates.length === 0 && !createFormOpen && (
-            <div className={styles.rowSubject}>No default templates published yet.</div>
-          )}
-          {templates.map((template) => (
-            <div key={template.id}>
-              <div className={styles.row}>
+        {templates.length > 0 && visibleTemplates.length === 0 && (
+          <div className={styles.emptyState}>
+            <p className={styles.emptyStateTitle}>No templates match &quot;{search}&quot;.</p>
+            <p className={styles.emptyStateSubtitle}>
+              Try refining your search terms or clearing the filter.
+            </p>
+          </div>
+        )}
+
+        {/* Visual Card Grid View */}
+        {viewMode === "grid" && visibleTemplates.length > 0 && (
+          <div className={styles.gridContainer}>
+            {visibleTemplates.map((template) => (
+              <div className={styles.templateCard} key={template.id}>
+                <div className={styles.cardPreviewArea}>
+                  {template.current_version ? (
+                    <iframe
+                      title={`Thumbnail for ${template.name}`}
+                      className={styles.cardPreviewIframe}
+                      sandbox=""
+                      srcDoc={template.current_version.body_html}
+                    />
+                  ) : (
+                    <div className={styles.hint} style={{ padding: "20px" }}>
+                      No preview available
+                    </div>
+                  )}
+                </div>
+
+                <div className={styles.cardBody}>
+                  <div className={styles.cardTitleRow}>
+                    <h4 className={styles.cardName}>{template.name}</h4>
+                    <span className={styles.badge}>
+                      v{template.current_version?.version_number ?? 0}
+                    </span>
+                  </div>
+
+                  <p className={styles.cardSubject}>
+                    {template.current_version?.subject ?? "No subject"}
+                  </p>
+
+                  <div className={styles.cardMetaRow}>
+                    <span className={styles.hint}>Updated {formatDate(template.updated_at)}</span>
+
+                    <div className={styles.cardActions}>
+                      {template.current_version && (
+                        <button
+                          type="button"
+                          className={styles.secondaryButton}
+                          onClick={() => setPreviewingTemplate(template)}
+                        >
+                          Preview
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        className={styles.secondaryButton}
+                        onClick={() => openEditForm(template)}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.dangerButton}
+                        disabled={retiringId === template.id}
+                        onClick={() => handleRetire(template)}
+                      >
+                        {retiringId === template.id ? "Retiring…" : "Retire"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Table List View */}
+        {viewMode === "list" && visibleTemplates.length > 0 && (
+          <div className={styles.list}>
+            {visibleTemplates.map((template) => (
+              <div className={styles.row} key={template.id}>
                 <div className={styles.rowMain}>
                   <span className={styles.rowName}>{template.name}</span>
                   <span className={styles.rowSubject}>
@@ -294,14 +521,21 @@ export function PlatformTemplatesPage() {
                 </span>
                 <span className={styles.rowMeta}>Updated {formatDate(template.updated_at)}</span>
                 <div className={styles.rowActions}>
+                  {template.current_version && (
+                    <button
+                      type="button"
+                      className={styles.secondaryButton}
+                      onClick={() => setPreviewingTemplate(template)}
+                    >
+                      Preview
+                    </button>
+                  )}
                   <button
                     type="button"
                     className={styles.secondaryButton}
-                    onClick={() =>
-                      editingId === template.id ? setEditingId(null) : openEditForm(template)
-                    }
+                    onClick={() => openEditForm(template)}
                   >
-                    {editingId === template.id ? "Cancel edit" : "Edit"}
+                    Edit
                   </button>
                   <button
                     type="button"
@@ -313,19 +547,222 @@ export function PlatformTemplatesPage() {
                   </button>
                 </div>
               </div>
+            ))}
+          </div>
+        )}
+      </div>
 
-              {editingId === template.id && (
-                <form onSubmit={handleEditSubmit} className={styles.form}>
-                  <div className={styles.formHeading}>
-                    Edit &quot;{template.name}&quot; — saves as a new version, existing clones are
-                    unaffected
-                  </div>
+      {/* =========================================================================
+         Side-by-Side Modal: Create New Default Template
+         ========================================================================= */}
+      {createFormOpen && (
+        <div
+          className={styles.editorModalBackdrop}
+          onClick={() => setCreateFormOpen(false)}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className={styles.editorModalCard} onClick={(e) => e.stopPropagation()}>
+            <form onSubmit={handleCreate} style={{ display: "contents" }}>
+              <div className={styles.editorModalHeader}>
+                <div className={styles.editorModalTitleGroup}>
+                  <h3 className={styles.editorModalTitle}>✨ New Default Template</h3>
+                  <p className={styles.editorModalSubtitle}>
+                    Published template will be available in the starter library for all accounts
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className={styles.closeButton}
+                  onClick={() => setCreateFormOpen(false)}
+                  aria-label="Close dialog"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className={styles.editorModalBody}>
+                {/* Left Form Column */}
+                <div className={styles.editorFormColumn}>
                   <div className={styles.field}>
-                    <label className={styles.label} htmlFor={`edit-subject-${template.id}`}>
-                      Subject
+                    <label className={styles.label} htmlFor="new-template-name">
+                      Template Name *
                     </label>
                     <input
-                      id={`edit-subject-${template.id}`}
+                      id="new-template-name"
+                      className={styles.input}
+                      required
+                      value={createForm.name}
+                      onChange={(event) =>
+                        setCreateForm({ ...createForm, name: event.target.value })
+                      }
+                      placeholder="e.g. Welcome Series Kickoff"
+                    />
+                  </div>
+
+                  <div className={styles.field}>
+                    <label className={styles.label} htmlFor="new-template-subject">
+                      Subject Line *
+                    </label>
+                    <input
+                      id="new-template-subject"
+                      className={styles.input}
+                      required
+                      value={createForm.subject}
+                      onChange={(event) =>
+                        setCreateForm({ ...createForm, subject: event.target.value })
+                      }
+                      placeholder="e.g. Welcome to Growixa, {{first_name}}!"
+                    />
+                  </div>
+
+                  <div className={styles.field}>
+                    <label className={styles.label} htmlFor="new-template-body-html">
+                      Body (HTML) *
+                    </label>
+                    <textarea
+                      id="new-template-body-html"
+                      className={styles.htmlTextarea}
+                      required
+                      value={createForm.body_html}
+                      onChange={(event) =>
+                        setCreateForm({ ...createForm, body_html: event.target.value })
+                      }
+                      placeholder="<p>Hi {{first_name}}...</p>"
+                    />
+                  </div>
+
+                  <div className={styles.field}>
+                    <label className={styles.label} htmlFor="new-template-body-text">
+                      Body (plain text, optional)
+                    </label>
+                    <textarea
+                      id="new-template-body-text"
+                      className={styles.textarea}
+                      value={createForm.body_text}
+                      onChange={(event) =>
+                        setCreateForm({ ...createForm, body_text: event.target.value })
+                      }
+                      placeholder="Plain text fallback..."
+                    />
+                  </div>
+
+                  <div className={styles.hint}>
+                    💡 Only standard recipient tokens are allowed: <code>{"{{first_name}}"}</code>,{" "}
+                    <code>{"{{last_name}}"}</code>, <code>{"{{email}}"}</code>,{" "}
+                    <code>{"{{company_name}}"}</code>.
+                  </div>
+                </div>
+
+                {/* Right Live Preview Column */}
+                <div className={styles.editorPreviewColumn}>
+                  <div className={styles.editorPreviewHeader}>
+                    <span className={styles.editorPreviewTitle}>Live Email Preview</span>
+                    <div className={styles.deviceToggleGroup}>
+                      <button
+                        type="button"
+                        className={`${styles.deviceButton} ${
+                          editorDeviceMode === "desktop" ? styles.deviceButtonActive : ""
+                        }`}
+                        onClick={() => setEditorDeviceMode("desktop")}
+                      >
+                        🖥️ Desktop
+                      </button>
+                      <button
+                        type="button"
+                        className={`${styles.deviceButton} ${
+                          editorDeviceMode === "mobile" ? styles.deviceButtonActive : ""
+                        }`}
+                        onClick={() => setEditorDeviceMode("mobile")}
+                      >
+                        📱 Mobile
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className={styles.editorPreviewFrameContainer}>
+                    {createForm.body_html ? (
+                      <iframe
+                        title="Create template live preview"
+                        className={
+                          editorDeviceMode === "desktop"
+                            ? styles.editorPreviewFrameDesktop
+                            : styles.editorPreviewFrameMobile
+                        }
+                        sandbox=""
+                        srcDoc={createForm.body_html}
+                      />
+                    ) : (
+                      <div className={styles.editorPreviewPlaceholder}>
+                        <p style={{ fontSize: "28px", margin: "0 0 8px 0" }}>✉️</p>
+                        <strong>No HTML entered yet</strong>
+                        <p style={{ margin: "4px 0 0 0", fontSize: "12.5px" }}>
+                          Type or paste HTML in the left editor to preview your email in real-time.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className={styles.editorModalFooter}>
+                <button
+                  type="button"
+                  className={styles.secondaryButton}
+                  onClick={() => setCreateFormOpen(false)}
+                >
+                  Cancel
+                </button>
+                <button type="submit" className={styles.actionButton} disabled={creating}>
+                  {creating ? "Publishing…" : "Publish Default Template"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+         Side-by-Side Modal: Edit Default Template (New Version)
+         ========================================================================= */}
+      {editingTemplate && (
+        <div
+          className={styles.editorModalBackdrop}
+          onClick={() => setEditingTemplate(null)}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className={styles.editorModalCard} onClick={(e) => e.stopPropagation()}>
+            <form onSubmit={handleEditSubmit} style={{ display: "contents" }}>
+              <div className={styles.editorModalHeader}>
+                <div className={styles.editorModalTitleGroup}>
+                  <h3 className={styles.editorModalTitle}>
+                    ✏️ Edit &quot;{editingTemplate.name}&quot;
+                  </h3>
+                  <p className={styles.editorModalSubtitle}>
+                    Saves as v{(editingTemplate.current_version?.version_number ?? 0) + 1}. Accounts
+                    that already cloned keep their independent copy.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className={styles.closeButton}
+                  onClick={() => setEditingTemplate(null)}
+                  aria-label="Close dialog"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className={styles.editorModalBody}>
+                {/* Left Form Column */}
+                <div className={styles.editorFormColumn}>
+                  <div className={styles.field}>
+                    <label className={styles.label} htmlFor={`edit-subject-${editingTemplate.id}`}>
+                      Subject Line *
+                    </label>
+                    <input
+                      id={`edit-subject-${editingTemplate.id}`}
                       className={styles.input}
                       required
                       value={editForm.subject}
@@ -334,13 +771,17 @@ export function PlatformTemplatesPage() {
                       }
                     />
                   </div>
+
                   <div className={styles.field}>
-                    <label className={styles.label} htmlFor={`edit-body-html-${template.id}`}>
-                      Body (HTML)
+                    <label
+                      className={styles.label}
+                      htmlFor={`edit-body-html-${editingTemplate.id}`}
+                    >
+                      Body (HTML) *
                     </label>
                     <textarea
-                      id={`edit-body-html-${template.id}`}
-                      className={styles.textarea}
+                      id={`edit-body-html-${editingTemplate.id}`}
+                      className={styles.htmlTextarea}
                       required
                       value={editForm.body_html}
                       onChange={(event) =>
@@ -348,12 +789,16 @@ export function PlatformTemplatesPage() {
                       }
                     />
                   </div>
+
                   <div className={styles.field}>
-                    <label className={styles.label} htmlFor={`edit-body-text-${template.id}`}>
+                    <label
+                      className={styles.label}
+                      htmlFor={`edit-body-text-${editingTemplate.id}`}
+                    >
                       Body (plain text, optional)
                     </label>
                     <textarea
-                      id={`edit-body-text-${template.id}`}
+                      id={`edit-body-text-${editingTemplate.id}`}
                       className={styles.textarea}
                       value={editForm.body_text}
                       onChange={(event) =>
@@ -361,24 +806,88 @@ export function PlatformTemplatesPage() {
                       }
                     />
                   </div>
-                  <div className={styles.formActions}>
-                    <button type="submit" className={styles.actionButton} disabled={savingEdit}>
-                      {savingEdit ? "Saving…" : "Save new version"}
-                    </button>
-                    <button
-                      type="button"
-                      className={styles.secondaryButton}
-                      onClick={() => setEditingId(null)}
-                    >
-                      Cancel
-                    </button>
+
+                  <div className={styles.hint}>
+                    💡 Only standard recipient tokens are allowed: <code>{"{{first_name}}"}</code>,{" "}
+                    <code>{"{{last_name}}"}</code>, <code>{"{{email}}"}</code>,{" "}
+                    <code>{"{{company_name}}"}</code>.
                   </div>
-                </form>
-              )}
-            </div>
-          ))}
+                </div>
+
+                {/* Right Live Preview Column */}
+                <div className={styles.editorPreviewColumn}>
+                  <div className={styles.editorPreviewHeader}>
+                    <span className={styles.editorPreviewTitle}>Live Email Preview</span>
+                    <div className={styles.deviceToggleGroup}>
+                      <button
+                        type="button"
+                        className={`${styles.deviceButton} ${
+                          editorDeviceMode === "desktop" ? styles.deviceButtonActive : ""
+                        }`}
+                        onClick={() => setEditorDeviceMode("desktop")}
+                      >
+                        🖥️ Desktop
+                      </button>
+                      <button
+                        type="button"
+                        className={`${styles.deviceButton} ${
+                          editorDeviceMode === "mobile" ? styles.deviceButtonActive : ""
+                        }`}
+                        onClick={() => setEditorDeviceMode("mobile")}
+                      >
+                        📱 Mobile
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className={styles.editorPreviewFrameContainer}>
+                    {editForm.body_html ? (
+                      <iframe
+                        title="Edit template live preview"
+                        className={
+                          editorDeviceMode === "desktop"
+                            ? styles.editorPreviewFrameDesktop
+                            : styles.editorPreviewFrameMobile
+                        }
+                        sandbox=""
+                        srcDoc={editForm.body_html}
+                      />
+                    ) : (
+                      <div className={styles.editorPreviewPlaceholder}>
+                        <p style={{ fontSize: "28px", margin: "0 0 8px 0" }}>✉️</p>
+                        <strong>No HTML entered</strong>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className={styles.editorModalFooter}>
+                <button
+                  type="button"
+                  className={styles.secondaryButton}
+                  onClick={() => setEditingTemplate(null)}
+                >
+                  Cancel
+                </button>
+                <button type="submit" className={styles.actionButton} disabled={savingEdit}>
+                  {savingEdit ? "Saving…" : "Save New Version"}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* Fullscreen Preview Modal */}
+      {previewingTemplate && previewingTemplate.current_version && (
+        <TemplatePreviewModal
+          templateName={previewingTemplate.name}
+          subject={previewingTemplate.current_version.subject}
+          bodyHtml={previewingTemplate.current_version.body_html}
+          onClose={() => setPreviewingTemplate(null)}
+        />
+      )}
     </div>
   );
 }

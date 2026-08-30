@@ -462,139 +462,107 @@
   cursor: not-allowed;
 }
 
-/* Modal Preview Component Styles */
-.modalBackdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(15, 23, 42, 0.65);
-  backdrop-filter: blur(4px);
-  z-index: 999;
+/* Tab Navigation Bar */
+.tabNavContainer {
   display: flex;
   align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid rgba(15, 42, 86, 0.08);
+  padding-bottom: 0;
+  margin-bottom: 4px;
+}
+
+.tabButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 18px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-slate, #64748b);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  margin-bottom: -1px;
+}
+
+.tabButton:hover {
+  color: var(--color-dark-text, #0f172a);
+}
+
+.tabButtonActive {
+  color: #2563eb;
+  font-weight: 700;
+  border-bottom-color: #2563eb;
+}
+
+.tabBadge {
+  display: inline-flex;
+  align-items: center;
   justify-content: center;
-  padding: 20px;
-  animation: fadeIn 0.2s ease;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  background: #f1f5f9;
+  color: #475569;
 }
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+.tabButtonActive .tabBadge {
+  background: #eff6ff;
+  color: #2563eb;
 }
 
-.modalCard {
-  background: #fff;
-  width: 100%;
-  max-width: 900px;
-  height: 85vh;
-  border-radius: 16px;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.modalHeader {
+/* Info Banner inside Default Templates tab */
+.platformDefaultBanner {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 20px;
-  border-bottom: 1px solid rgba(15, 42, 86, 0.1);
-  background: #f8fafc;
-}
-
-.modalTitleGroup {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.modalTitle {
-  font-size: 15px;
-  font-weight: 700;
-  color: #0f172a;
-  margin: 0;
-}
-
-.modalSubject {
-  font-size: 12px;
-  color: #64748b;
-}
-
-.deviceToggleGroup {
-  display: flex;
-  background: #e2e8f0;
-  padding: 3px;
-  border-radius: 8px;
-  gap: 2px;
-}
-
-.deviceButton {
-  padding: 6px 14px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 600;
-  border: none;
-  background: transparent;
-  color: #475569;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.deviceButtonActive {
-  background: #fff;
-  color: #2563eb;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.closeButton {
-  background: transparent;
-  border: none;
-  font-size: 20px;
-  color: #64748b;
-  cursor: pointer;
-  padding: 4px 8px;
-  border-radius: 6px;
-  transition: background 0.15s;
-}
-
-.closeButton:hover {
-  background: #e2e8f0;
-  color: #0f172a;
-}
-
-.modalBody {
-  flex: 1;
-  background: #f1f5f9;
-  padding: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: auto;
-}
-
-.modalIframeDesktop {
-  width: 100%;
-  max-width: 680px;
-  height: 100%;
-  min-height: 480px;
-  border: none;
+  gap: 16px;
+  padding: 12px 16px;
   border-radius: 12px;
-  background: #fff;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
-  transition: width 0.3s ease;
+  background: #eff6ff;
+  border: 1px solid rgba(37, 99, 235, 0.15);
+  font-size: 13px;
+  color: #1e40af;
 }
 
-.modalIframeMobile {
-  width: 375px;
-  height: 100%;
-  min-height: 480px;
-  border: 12px solid #1e293b;
-  border-radius: 36px;
-  background: #fff;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
-  transition: width 0.3s ease;
+.platformDefaultBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #2563eb;
+  font-size: 11px;
+  font-weight: 700;
+  border: 1px solid rgba(37, 99, 235, 0.2);
 }
+
+/* Stat card clickable wrapper */
+.statCardClickable {
+  background: none;
+  border: none;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+  display: contents;
+}
+
+.statCardClickable > div {
+  cursor: pointer;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.statCardClickable:hover > div {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px -4px rgba(15, 23, 42, 0.1);
+}
+
+/* Modal Preview Component Styles */
