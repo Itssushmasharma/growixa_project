@@ -2,10 +2,11 @@
 
 ---
 
-## 🟡 [v0.5.8-rc1] (Upcoming Release) — 2026-08-30
+## 🟢 [v0.5.8] — 2026-08-30
 
-> **Release Tag**: `v0.5.8-rc1`
-> **Platform Status**: 🟡 Staging / Preview
+> **Release Tag**: `v0.5.8`
+> **Release Date**: August 30, 2026
+> **Platform Status**: 🟢 Promoted to Production
 > **Target Production URL**: [https://growixa.iitdeveloper.com](https://growixa.iitdeveloper.com)
 > **UAT Staging URL**: [https://uat.growixa.iitdeveloper.com](https://uat.growixa.iitdeveloper.com)
 
@@ -23,6 +24,7 @@
 - **Decoupled Database Infrastructure (`GRX-INFRA-005`)**:
   - Connected Growixa's UAT & Production compose stacks directly to centralized `core-infra` networks (`iitd_data_network` and `iitd_edge_network`).
   - Removed stateful database/queue containers from application rollout manifests, preventing volume collisions and enabling safe zero-downtime updates.
+  - Migrated existing production database data into `core_postgres` with zero downtime and verified row integrity across all tables.
 
 ---
 
