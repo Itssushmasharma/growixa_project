@@ -51,7 +51,7 @@ describe("LoginPage", () => {
     );
     expect(screen.getByRole("link", { name: "Continue with Google" })).toHaveAttribute(
       "href",
-      "http://localhost:8000/auth/oauth/google",
+      "http://localhost:8000/auth/oauth/iitd?kc_idp_hint=google",
     );
     expect(screen.getByText("AI-Powered Growth")).toBeInTheDocument();
     expect(screen.getByText("4.82x")).toBeInTheDocument();
