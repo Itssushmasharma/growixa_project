@@ -2,6 +2,23 @@
 
 ---
 
+## 🟡 [v0.5.9-rc6] (UAT Release Candidate) — 2026-09-01
+
+> **Release Tag**: `v0.5.9-rc6`
+> **Release Date**: September 1, 2026
+> **Platform Status**: 🟡 Active on UAT Staging
+> **Target Production URL**: [https://growixa.iitdeveloper.com](https://growixa.iitdeveloper.com)
+> **UAT Staging URL**: [https://uat.growixa.iitdeveloper.com](https://uat.growixa.iitdeveloper.com)
+
+### 🚀 Added & Enhanced
+- **Unified 5-Stage Dashboard Design System (`PR #65`)**: Injected `website-tokens.css` and `website-base.css` across all dashboard routes, bringing precision variable typography (`Bricolage Grotesque`, `Instrument Sans`, `JetBrains Mono`).
+- **Precision Vector SVG Sidebar**: Replaced emoji glyphs with clean 18px SVG icons featuring 5-stage engine color glow indicators (`find`, `qualify`, `create`, `send`, `manage`).
+- **Vibrant Area Gradient Trend Charts**: Replaced dark static curves with glowing Azure-to-Violet gradient area charts and interactive point markers.
+- **Frosted Topbar & Multi-Stage Quota Meters**: Upgraded topbars with frosted glass blur, gradient pill badges, and multi-stage quota progress bars (`Azure ➔ Violet` OK, `Amber ➔ Coral` Warning).
+- **Platform Operator Login Redesign**: Enhanced `/platform/login` with Aurora mesh backdrop, glassmorphic card, and interactive show/hide password toggle.
+
+---
+
 ## 🟡 [v0.5.9-rc5] (UAT Release Candidate) — 2026-08-31
 
 > **Release Tag**: `v0.5.9-rc5`
