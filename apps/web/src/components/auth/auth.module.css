@@ -1,502 +1,339 @@
 /* ==========================================================================
-   Growixa Auth — Full-Page Unified Background, Floating Auth Card
+   Growixa Auth Design System — Aurora Mesh & Elevated Glass Cards
    ========================================================================== */
 
-/*
-  ONE unified page canvas — no grid split.
-  The showcase fills the whole viewport, waves span full width.
-  The auth card is overlaid on the right via absolute positioning.
-*/
 .splitLayout {
   min-height: 100vh;
   position: relative;
-  background: #ffffff;
-  font-family: var(--font-sans, system-ui, -apple-system, sans-serif);
-  overflow: hidden;
+  background: var(--paper, #ffffff);
+  color: var(--ink, #0b0c16);
+  font-family: var(--font-body, system-ui, sans-serif);
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(460px, 0.85fr);
+  overflow-x: hidden;
 }
 
 /* --------------------------------------------------------------------------
-   SHOWCASE — Full-page canvas, no column restriction
+   Aurora Ambient Mesh Canvas (Left & Global Background)
+   -------------------------------------------------------------------------- */
+
+.auroraCanvas {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.auroraMesh {
+  position: absolute;
+  inset: -20%;
+  background:
+    radial-gradient(
+      ellipse 55% 45% at 18% 22%,
+      var(--find-l, rgba(0, 169, 224, 0.14)) 0%,
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 50% 40% at 75% 15%,
+      var(--create-l, rgba(123, 77, 255, 0.12)) 0%,
+      transparent 65%
+    ),
+    radial-gradient(
+      ellipse 60% 45% at 30% 78%,
+      var(--send-l, rgba(255, 63, 115, 0.1)) 0%,
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 45% 40% at 82% 80%,
+      var(--qualify-l, rgba(255, 138, 0, 0.1)) 0%,
+      transparent 65%
+    ),
+    radial-gradient(
+      ellipse 50% 40% at 50% 50%,
+      var(--manage-l, rgba(0, 184, 135, 0.08)) 0%,
+      transparent 70%
+    );
+  filter: blur(50px);
+}
+
+.filmGrain {
+  position: absolute;
+  inset: 0;
+  background-image: var(--grain);
+  opacity: 0.25;
+  pointer-events: none;
+}
+
+/* --------------------------------------------------------------------------
+   Left Showcase Section
    -------------------------------------------------------------------------- */
 
 .showcase {
   position: relative;
-  /* left portion content — takes ~60% of width, rest is for cards */
-  padding: 44px 0 0 52px;
+  z-index: 1;
+  padding: 48px 56px 48px 64px;
   display: flex;
   flex-direction: column;
-  /* NO background — uses the splitLayout white bg */
+  justify-content: space-between;
   min-height: 100vh;
-  width: 100%;
 }
 
-/* Wave layer — spans the ENTIRE page width behind everything */
-.waveCanvas {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-  width: 100vw;
-  height: 100vh;
+.showcaseTop {
+  display: flex;
+  flex-direction: column;
+  gap: 36px;
 }
-
-/* Wave SVG covers full page width */
-.ribbonSvg {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  /* 100vw so it always spans the full page, not just the showcase column */
-  width: 100vw;
-  height: 60%;
-  pointer-events: none;
-}
-
-/* --------------------------------------------------------------------------
-   Brand header
-   -------------------------------------------------------------------------- */
 
 .showcaseHeader {
-  position: relative;
-  z-index: 5;
-  margin-bottom: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .showcaseBrand {
   display: inline-flex;
   align-items: center;
+  gap: 10px;
   text-decoration: none;
+  font-family: var(--font-display, inherit);
+  font-weight: 700;
+  font-size: 1.35rem;
+  letter-spacing: -0.035em;
+  color: var(--ink, #0b0c16);
 }
 
-.showcaseLogo {
-  display: block;
-  object-fit: contain;
+.brandMark {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: conic-gradient(
+    from 210deg,
+    var(--find),
+    var(--create),
+    var(--send),
+    var(--qualify),
+    var(--manage),
+    var(--find)
+  );
+  box-shadow: 0 4px 12px -3px rgba(123, 77, 255, 0.45);
 }
 
-.showcaseBrandName {
-  font-size: 21px;
-  font-weight: 800;
-  color: #0b1727;
-  letter-spacing: -0.02em;
+.brandMark svg {
+  background: #ffffff;
+  border-radius: 7px;
+  padding: 4px;
+  width: 22px;
+  height: 22px;
 }
 
-/* --------------------------------------------------------------------------
-   Hero text block — sits left, takes about 46% width of the showcase
-   -------------------------------------------------------------------------- */
+.backPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8438rem;
+  font-weight: 600;
+  color: var(--mut, #5c6070);
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid var(--line, #e2e4eb);
+  padding: 6px 14px;
+  border-radius: 999px;
+  text-decoration: none;
+  backdrop-filter: blur(10px);
+  transition:
+    background var(--t-fast) ease,
+    color var(--t-fast) ease,
+    transform var(--t-fast) ease;
+}
 
+.backPill:hover {
+  background: #ffffff;
+  color: var(--ink, #0b0c16);
+  transform: translateX(-2px);
+}
+
+/* Headline */
 .showcaseHero {
-  position: relative;
-  z-index: 5;
-  max-width: 420px;
+  max-width: 540px;
 }
 
 .showcaseTitle {
-  font-size: 40px;
-  line-height: 1.15;
-  font-weight: 900;
-  color: #0b1727;
-  letter-spacing: -0.04em;
+  font-family: var(--font-display, inherit);
+  font-size: clamp(2rem, 3.2vw, 2.75rem);
+  font-weight: 800;
+  line-height: 1.08;
+  letter-spacing: -0.038em;
+  color: var(--ink, #0b0c16);
   margin: 0 0 16px;
 }
 
 .showcaseGradientTitle {
-  background: linear-gradient(90deg, #00c8ff 0%, #0099e6 50%, #5b5be6 100%);
+  display: block;
+  background: linear-gradient(
+    120deg,
+    var(--create, #7b4dff) 0%,
+    var(--find, #00a9e0) 50%,
+    var(--send, #ff3f73) 100%
+  );
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  display: block;
 }
 
 .showcaseSubtitle {
-  font-size: 14px;
+  font-size: 1rem;
   line-height: 1.6;
-  color: #6b7c96;
-  margin: 0 0 32px;
+  color: var(--mut, #5c6070);
+  margin: 0 0 28px;
 }
 
-/* Feature pills */
-.featureList {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
+/* Telemetry Activity Rail */
+.telemetryCard {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(18px);
+  border: 1px solid var(--line, #e2e4eb);
+  border-radius: var(--r-l, 18px);
+  padding: 20px 24px;
+  box-shadow: var(--sh-2, 0 10px 30px -10px rgba(11, 12, 22, 0.08));
+  max-width: 520px;
+  margin-bottom: 24px;
 }
 
-.featurePill {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-
-.featureIconBox {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.featureIconGreen {
-  background: #ecfdf5;
-  color: #10b981;
-}
-
-.featureIconBlue {
-  background: #eff6ff;
-  color: #3b82f6;
-}
-
-.featureIconPurple {
-  background: #f5f3ff;
-  color: #8b5cf6;
-}
-
-.featureName {
-  font-size: 14px;
-  font-weight: 700;
-  color: #0b1727;
-}
-
-.featureDesc {
-  font-size: 12.5px;
-  color: #6b7c96;
-  margin-top: 1px;
-}
-
-/* --------------------------------------------------------------------------
-   Floating Cards Area — absolute within showcase, right side of it
-   -------------------------------------------------------------------------- */
-
-.showcaseCardsArea {
-  position: absolute;
-  /*
-    Cards live in the CENTER of the full page (between the hero text and auth card).
-    The showcase is 100vw wide, auth card starts at ~60% from left.
-    Cards fill the 28%–60% zone (roughly).
-  */
-  left: 28%;
-  top: 0;
-  width: 32%;
-  height: 100%;
-  z-index: 4;
-  pointer-events: none;
-}
-
-/* Floating accent orbs */
-.floatingPaperplaneOrb {
-  position: absolute;
-  top: 80px;
-  right: 28px;
-  width: 50px;
-  height: 50px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #00c8ff 0%, #0099d6 100%);
-  color: #ffffff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow:
-    0 12px 28px rgba(0, 180, 255, 0.45),
-    0 0 0 5px rgba(255, 255, 255, 0.7);
-  animation: floatOrb 6s ease-in-out infinite;
-}
-
-.floatingSparkleOrb {
-  position: absolute;
-  top: 58%;
-  right: 20px;
-  width: 46px;
-  height: 46px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
-  color: #ffffff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow:
-    0 12px 28px rgba(139, 92, 246, 0.45),
-    0 0 0 5px rgba(255, 255, 255, 0.7);
-  animation: floatOrb 8s ease-in-out infinite reverse;
-}
-
-/* Floating Glass Cards */
-.floatingCard {
-  position: absolute;
-  background: rgba(255, 255, 255, 0.96);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.98);
-  box-shadow:
-    0 20px 48px -8px rgba(15, 23, 42, 0.1),
-    0 2px 4px rgba(15, 23, 42, 0.04);
-  border-radius: 18px;
-  padding: 18px 20px;
-  transition: transform 0.3s ease;
-}
-
-/* Card 1: Campaign Performance — upper middle area */
-.performanceCard {
-  top: 90px;
-  left: 8%;
-  width: 200px;
-  animation: floatCard1 7s ease-in-out infinite;
-}
-
-.cardHeaderRow {
+.telemetryHeader {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 6px;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.7188rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--faint, #8d91a5);
+  margin-bottom: 16px;
 }
 
-.cardHeaderLabel {
-  font-size: 11px;
+.liveBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--manage, #00b887);
   font-weight: 600;
-  color: #6b7c96;
-  letter-spacing: 0.01em;
+  background: var(--manage-l, rgba(0, 184, 135, 0.12));
+  padding: 3px 8px;
+  border-radius: 999px;
 }
 
-.growthBadge {
-  width: 22px;
-  height: 22px;
-  border-radius: 6px;
-  background: #ecfdf5;
-  color: #10b981;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-  font-weight: 700;
+.pulseDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--manage, #00b887);
+  box-shadow: 0 0 0 0 rgba(0, 184, 135, 0.6);
+  animation: livePulse 2s infinite;
 }
 
-.diagonalArrow {
-  line-height: 1;
+@keyframes livePulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(0, 184, 135, 0.6);
+  }
+  70% {
+    box-shadow: 0 0 0 8px rgba(0, 184, 135, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(0, 184, 135, 0);
+  }
 }
 
-.growthValue {
-  font-size: 26px;
-  font-weight: 900;
-  color: #0b1727;
-  line-height: 1.05;
-  letter-spacing: -0.03em;
+.telemetryGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
 }
 
-.cardSublabel {
-  font-size: 11px;
-  color: #6b7c96;
-  margin-bottom: 8px;
-  margin-top: 2px;
-}
-
-.sparklineContainer {
-  width: 100%;
-  height: 44px;
-}
-
-.sparklineSvg {
-  width: 100%;
-  height: 100%;
-  overflow: visible;
-}
-
-/* Card 2: 99.4% Gauge — overlapping right of Card 1 */
-.gaugeCard {
-  top: 210px;
-  left: 44%;
-  width: 145px;
-  height: 145px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 14px;
-  animation: floatCard2 9s ease-in-out infinite 1.2s;
-}
-
-.gaugeContent {
-  position: relative;
-  width: 96px;
-  height: 96px;
-}
-
-.gaugeSvg {
-  width: 100%;
-  height: 100%;
-}
-
-.gaugeFill {
-  transition: stroke-dashoffset 1.2s ease-out;
-}
-
-.gaugeTextCenter {
-  position: absolute;
-  inset: 0;
+.telemetryItem {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
+  gap: 4px;
 }
 
-.gaugeValue {
-  font-size: 16px;
-  font-weight: 900;
-  color: #0b1727;
-  line-height: 1;
-  letter-spacing: -0.02em;
+.telemetryItem:nth-child(1) .telemetryValue {
+  color: var(--find, #00a9e0);
+}
+.telemetryItem:nth-child(2) .telemetryValue {
+  color: var(--create, #7b4dff);
+}
+.telemetryItem:nth-child(3) .telemetryValue {
+  color: var(--manage, #00b887);
 }
 
-.gaugeLabel {
-  font-size: 10px;
-  font-weight: 700;
-  color: #10b981;
-  margin-top: 3px;
-}
-
-/* Card 3: AI Audience Score — middle left of cards area */
-.audienceCard {
-  top: 43%;
-  left: 2%;
-  width: 175px;
-  animation: floatCard1 10s ease-in-out infinite 0.5s;
-}
-
-.audienceHeader {
-  font-size: 11px;
-  font-weight: 600;
-  color: #6b7c96;
-  margin-bottom: 4px;
-}
-
-.audienceTag {
-  font-size: 14px;
+.telemetryValue {
+  font-family: var(--font-display, inherit);
+  font-size: 1.35rem;
   font-weight: 800;
-  color: #0b1727;
-  line-height: 1.2;
+  letter-spacing: -0.03em;
+  line-height: 1;
 }
 
-.audienceSegment {
-  font-size: 11px;
-  color: #6b7c96;
-  margin-bottom: 12px;
-}
-
-.avatarStack {
-  display: flex;
-  align-items: center;
-}
-
-.avatarCircle {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 16px;
-  border: 2.5px solid #ffffff;
-  margin-left: -9px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  overflow: hidden;
-  background: #f0f4f8;
-}
-
-.avatarCircle:first-child {
-  margin-left: 0;
-}
-
-.avatarPhoto1 {
-  background: #fde8d8;
-}
-
-.avatarPhoto2 {
-  background: #dde8ff;
-}
-
-.avatarPhoto3 {
-  background: #fde8f0;
-}
-
-/* Card 4: Testimonial — bottom center of cards area */
-.testimonialCard {
-  bottom: 13%;
-  left: 10%;
-  width: 280px;
-  animation: floatCard2 8s ease-in-out infinite 2s;
-}
-
-.ratingStars {
-  display: flex;
-  gap: 3px;
-  margin-bottom: 8px;
-}
-
-.starActive {
-  fill: #f59e0b;
-  color: #f59e0b;
-  width: 14px;
-  height: 14px;
-}
-
-.testimonialQuote {
-  font-size: 13px;
-  line-height: 1.5;
-  color: #1e293b;
+.telemetryLabel {
+  font-size: 0.7813rem;
   font-weight: 500;
-  margin: 0 0 10px;
+  color: var(--mut, #5c6070);
 }
 
-.testimonialAuthor {
+/* Proof Pills & Metrics */
+.proofRow {
   display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.proofBadge {
+  display: inline-flex;
   align-items: center;
   gap: 8px;
+  background: rgba(255, 255, 255, 0.75);
+  border: 1px solid var(--line, #e2e4eb);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--ink, #0b0c16);
+  backdrop-filter: blur(8px);
 }
 
-.brightscaleLogoIcon {
-  width: 20px;
-  height: 20px;
+.proofDot {
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #00c8ff, #2563eb);
+}
+
+.showcaseFooter {
   display: flex;
   align-items: center;
-  justify-content: center;
-  font-size: 11px;
-  font-weight: 900;
-  color: #fff;
-  flex-shrink: 0;
-}
-
-.brightscaleG {
-  line-height: 1;
-}
-
-.brightscaleText {
-  font-size: 13px;
-  font-weight: 700;
-  color: #1e293b;
+  justify-content: space-between;
+  font-size: 0.8125rem;
+  color: var(--faint, #8d91a5);
+  padding-top: 24px;
+  border-top: 1px solid rgba(11, 12, 22, 0.06);
 }
 
 /* --------------------------------------------------------------------------
-   RIGHT SECTION — auth card on white/very-light background
+   Right Auth Card Section
    -------------------------------------------------------------------------- */
 
-/* Auth card section — absolutely overlaid on the RIGHT of the unified page canvas */
 .authSection {
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 46%;
-  min-width: 480px;
-  height: 100%;
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 40px 48px;
-  background: transparent;
-  z-index: 10;
+  padding: 40px 36px;
 }
 
 .cardContainer {
   width: 100%;
-  max-width: 520px;
+  max-width: 460px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -504,60 +341,56 @@
 
 .authCard {
   width: 100%;
-  background: #ffffff;
-  border-radius: 28px;
-  padding: 42px 46px;
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(20px) saturate(1.4);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+  border: 1px solid var(--line, #e2e4eb);
+  border-radius: var(--r-xl, 24px);
+  padding: 36px 36px 32px;
   box-shadow:
-    0 24px 64px -12px rgba(15, 23, 42, 0.12),
-    0 0 0 1px rgba(15, 23, 42, 0.05);
+    0 1px 2px rgba(11, 12, 22, 0.04),
+    0 24px 60px -15px rgba(11, 12, 22, 0.1);
 }
 
-/* --------------------------------------------------------------------------
-   Tab switcher
-   -------------------------------------------------------------------------- */
-
+/* Pill Tabs */
 .tabContainer {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0;
-  margin-bottom: 30px;
-  border-bottom: 1.5px solid #f1f5f9;
-  padding: 0 8px;
+  background: var(--paper-2, #f8f9fd);
+  border: 1px solid var(--line, #e2e4eb);
+  border-radius: 999px;
+  padding: 4px;
+  gap: 4px;
+  margin-bottom: 24px;
 }
 
 .tab {
-  position: relative;
-  padding: 12px 32px 16px;
-  font-size: 15px;
-  font-weight: 500;
-  color: #94a3b8;
-  text-decoration: none;
-  transition: color 0.2s ease;
-  display: flex;
-  flex-direction: column;
+  flex: 1;
+  display: inline-flex;
   align-items: center;
+  justify-content: center;
+  padding: 9px 18px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--mut, #5c6070);
+  border-radius: 999px;
+  text-decoration: none;
+  transition:
+    background var(--t-fast) ease,
+    color var(--t-fast) ease,
+    box-shadow var(--t-fast) ease;
+}
+
+.tab:hover {
+  color: var(--ink, #0b0c16);
 }
 
 .tabActive {
-  color: #2563eb;
-  font-weight: 700;
+  background: var(--ink, #0b0c16);
+  color: #ffffff !important;
+  box-shadow: 0 2px 8px -1px rgba(11, 12, 22, 0.25);
 }
 
-.tabIndicator {
-  position: absolute;
-  bottom: -2px;
-  left: 8px;
-  right: 8px;
-  height: 2.5px;
-  background: #2563eb;
-  border-radius: 2px 2px 0 0;
-}
-
-/* --------------------------------------------------------------------------
-   Card brand header
-   -------------------------------------------------------------------------- */
-
+/* Card Brand Header & Title */
 .cardBrandHeader {
   display: flex;
   justify-content: center;
@@ -567,108 +400,96 @@
 .cardBrandLink {
   display: inline-flex;
   align-items: center;
-  gap: 9px;
+  gap: 8px;
   text-decoration: none;
+  font-family: var(--font-display, inherit);
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--ink, #0b0c16);
 }
-
-.cardLogo {
-  border-radius: 6px;
-}
-
-.cardBrandName {
-  font-size: 22px;
-  font-weight: 800;
-  color: #0b1727;
-  letter-spacing: -0.02em;
-}
-
-/* --------------------------------------------------------------------------
-   Card title + subtitle
-   -------------------------------------------------------------------------- */
 
 .cardTitle {
-  font-size: 32px;
-  font-weight: 900;
-  color: #0b1727;
+  font-family: var(--font-display, inherit);
+  font-size: 1.5625rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--ink, #0b0c16);
   text-align: center;
-  letter-spacing: -0.035em;
-  margin: 0 0 10px;
-  line-height: 1.2;
+  margin: 0 0 8px;
+  line-height: 1.15;
 }
 
 .cardTitleGradient {
-  background: linear-gradient(90deg, #00c8ff 0%, #5b5be6 100%);
+  background: linear-gradient(120deg, var(--create, #7b4dff) 0%, var(--find, #00a9e0) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
 .cardSubtitle {
-  font-size: 15px;
-  line-height: 1.6;
-  color: #6b7c96;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--mut, #5c6070);
   text-align: center;
-  margin: 0 auto 26px;
-  max-width: 380px;
+  margin: 0 auto 24px;
 }
 
-/* --------------------------------------------------------------------------
-   Google SSO button
-   -------------------------------------------------------------------------- */
-
+/* Google Auth Button */
 .googleButton {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 12px;
   width: 100%;
-  height: 52px;
+  padding: 12px 20px;
   background: #ffffff;
-  border: 1.5px solid #e2e8f0;
-  border-radius: 14px;
-  color: #1e293b;
-  font-size: 15px;
+  border: 1px solid var(--line, #e2e4eb);
+  border-radius: 999px;
+  font-family: var(--font-body, inherit);
+  font-size: 0.9063rem;
   font-weight: 600;
+  color: var(--ink, #0b0c16) !important;
   text-decoration: none;
-  transition: all 0.2s ease;
+  box-shadow: var(--sh-1, 0 2px 6px rgba(11, 12, 22, 0.04));
+  transition:
+    transform var(--t-fast) var(--ease-out),
+    box-shadow var(--t-fast) ease,
+    background var(--t-fast) ease;
 }
 
 .googleButton:hover {
-  background: #f8fafc;
-  border-color: #cbd5e1;
+  transform: translateY(-2px);
+  background: var(--paper-2, #f8f9fd);
+  box-shadow: var(--sh-2, 0 8px 20px -6px rgba(11, 12, 22, 0.08));
 }
 
 .googleIcon {
   flex-shrink: 0;
 }
 
-/* --------------------------------------------------------------------------
-   Divider
-   -------------------------------------------------------------------------- */
-
+/* Divider */
 .dividerRow {
   display: flex;
   align-items: center;
-  margin: 18px 0;
   gap: 14px;
+  margin: 20px 0;
 }
 
 .dividerLine {
   flex: 1;
   height: 1px;
-  background: #f1f5f9;
+  background: var(--line, #e2e4eb);
 }
 
 .dividerText {
-  font-size: 11px;
-  font-weight: 700;
-  color: #94a3b8;
-  letter-spacing: 0.08em;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.6875rem;
+  letter-spacing: 0.14em;
+  font-weight: 600;
+  color: var(--faint, #8d91a5);
+  text-transform: uppercase;
 }
 
-/* --------------------------------------------------------------------------
-   Form fields
-   -------------------------------------------------------------------------- */
-
+/* Form Fields */
 .form {
   display: flex;
   flex-direction: column;
@@ -678,7 +499,7 @@
 .twoColumnGrid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  gap: 14px;
 }
 
 .fieldGroup {
@@ -688,9 +509,9 @@
 }
 
 .label {
-  font-size: 14px;
-  font-weight: 650;
-  color: #1e293b;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--ink, #0b0c16);
 }
 
 .inputWrapper {
@@ -702,7 +523,7 @@
 .inputIcon {
   position: absolute;
   left: 14px;
-  color: #94a3b8;
+  color: var(--faint, #8d91a5);
   display: flex;
   align-items: center;
   pointer-events: none;
@@ -710,25 +531,27 @@
 
 .inputWithIcons {
   width: 100%;
-  height: 50px;
-  padding: 0 44px 0 42px;
-  background: #f8fafc;
-  border: 1.5px solid #e8edf3;
-  border-radius: 13px;
-  font-size: 15px;
-  color: #0f172a;
-  transition: all 0.18s ease;
+  padding: 11px 14px 11px 40px;
+  background: var(--paper, #ffffff);
+  border: 1px solid var(--line, #e2e4eb);
+  border-radius: 12px;
+  font-family: var(--font-body, inherit);
+  font-size: 0.9063rem;
+  color: var(--ink, #0b0c16);
   outline: none;
+  transition:
+    border-color var(--t-fast) ease,
+    box-shadow var(--t-fast) ease,
+    background var(--t-fast) ease;
 }
 
 .inputWithIcons:focus {
-  background: #ffffff;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+  border-color: var(--create, #7b4dff);
+  box-shadow: 0 0 0 3px var(--create-l, rgba(123, 77, 255, 0.15));
 }
 
 .inputWithIcons::placeholder {
-  color: #b0bec5;
+  color: var(--faint, #8d91a5);
 }
 
 .passwordToggle {
@@ -736,256 +559,138 @@
   right: 12px;
   background: none;
   border: none;
-  color: #94a3b8;
+  color: var(--faint, #8d91a5);
   cursor: pointer;
-  padding: 4px;
   display: flex;
   align-items: center;
+  padding: 4px;
   border-radius: 6px;
-  transition: color 0.18s ease;
+  transition: color var(--t-fast) ease;
 }
 
 .passwordToggle:hover {
-  color: #475569;
+  color: var(--ink, #0b0c16);
 }
 
-/* --------------------------------------------------------------------------
-   Options row (remember me + forgot password)
-   -------------------------------------------------------------------------- */
-
+/* Options & Checkbox */
 .optionsRow {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-top: -4px;
+  font-size: 0.8125rem;
+  margin-top: 2px;
 }
 
 .checkboxLabel {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-size: 13px;
-  color: #475569;
   cursor: pointer;
+  font-size: 0.8125rem;
+  color: var(--mut, #5c6070);
   user-select: none;
 }
 
 .checkbox {
+  accent-color: var(--create, #7b4dff);
   width: 16px;
   height: 16px;
-  accent-color: #2563eb;
   cursor: pointer;
 }
 
 .forgotLink {
-  font-size: 13px;
-  font-weight: 700;
-  color: #2563eb;
+  color: var(--create, #7b4dff);
+  font-weight: 600;
   text-decoration: none;
+  transition: opacity var(--t-fast) ease;
 }
 
 .forgotLink:hover {
   text-decoration: underline;
 }
 
-/* --------------------------------------------------------------------------
-   CTA submit button — cyan to indigo/purple gradient
-   -------------------------------------------------------------------------- */
+.termsRow {
+  font-size: 0.7813rem;
+  line-height: 1.4;
+  color: var(--mut, #5c6070);
+}
 
+.termsText {
+  font-size: 0.7813rem;
+  color: var(--mut, #5c6070);
+}
+
+.inlineLink {
+  color: var(--create, #7b4dff);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.inlineLink:hover {
+  text-decoration: underline;
+}
+
+/* Submit Button */
 .submitButton {
   width: 100%;
-  height: 56px;
-  background: linear-gradient(90deg, #00c8ff 0%, #0099e0 20%, #4f46e5 70%, #7c3aed 100%);
-  border: none;
-  border-radius: 14px;
-  color: #ffffff;
-  font-size: 16px;
-  font-weight: 700;
+  padding: 13px 28px;
+  border-radius: 999px;
+  background: var(--ink, #0b0c16);
+  color: #ffffff !important;
+  font-family: var(--font-body, inherit);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  border: 1px solid transparent;
   cursor: pointer;
-  transition: all 0.22s ease;
-  box-shadow: 0 8px 24px -4px rgba(79, 70, 229, 0.45);
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 8px;
   text-decoration: none;
-  letter-spacing: -0.01em;
+  box-shadow:
+    0 1px 2px rgba(11, 12, 22, 0.2),
+    0 12px 26px -10px rgba(11, 12, 22, 0.5);
+  transition:
+    transform var(--t-fast) var(--ease-out),
+    box-shadow var(--t-fast) ease,
+    background var(--t-fast) ease;
   margin-top: 6px;
 }
 
 .submitButton:hover:not(:disabled) {
-  opacity: 0.93;
-  transform: translateY(-1px);
-  box-shadow: 0 12px 28px -4px rgba(79, 70, 229, 0.55);
-}
-
-.submitButton:active:not(:disabled) {
-  transform: translateY(0);
+  transform: translateY(-2px);
+  box-shadow:
+    0 1px 2px rgba(11, 12, 22, 0.2),
+    0 16px 32px -10px rgba(11, 12, 22, 0.6);
 }
 
 .submitButton:disabled {
-  opacity: 0.65;
+  opacity: 0.7;
   cursor: not-allowed;
 }
 
-.buttonContent {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-}
-
-.buttonArrow {
-  transition: transform 0.2s ease;
-}
-
-.submitButton:hover .buttonArrow {
-  transform: translateX(3px);
-}
-
+.buttonContent,
 .buttonSpinnerContent {
   display: inline-flex;
   align-items: center;
   gap: 8px;
 }
 
+.buttonArrow {
+  transition: transform var(--t-fast) ease;
+}
+
+.submitButton:hover .buttonArrow {
+  transform: translateX(3px);
+}
+
 .spinner {
   width: 16px;
   height: 16px;
-  border: 2px solid rgba(255, 255, 255, 0.4);
+  border: 2px solid rgba(255, 255, 255, 0.3);
   border-top-color: #ffffff;
   border-radius: 50%;
-  animation: spin 0.75s linear infinite;
-}
-
-/* --------------------------------------------------------------------------
-   Switch row
-   -------------------------------------------------------------------------- */
-
-.switchRow {
-  text-align: center;
-  font-size: 13.5px;
-  color: #64748b;
-  margin-top: 10px;
-}
-
-.switchLink {
-  color: #2563eb;
-  font-weight: 700;
-  text-decoration: none;
-}
-
-.switchLink:hover {
-  text-decoration: underline;
-}
-
-/* --------------------------------------------------------------------------
-   Terms
-   -------------------------------------------------------------------------- */
-
-.termsRow {
-  margin-top: -2px;
-}
-
-.termsText {
-  font-size: 12px;
-  color: #64748b;
-  line-height: 1.45;
-}
-
-.inlineLink {
-  color: #2563eb;
-  text-decoration: underline;
-}
-
-/* --------------------------------------------------------------------------
-   Success card
-   -------------------------------------------------------------------------- */
-
-.successCard {
-  text-align: center;
-  padding: 16px 0;
-}
-
-.successIconCircle {
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  background: #ecfdf5;
-  color: #10b981;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0 auto 18px;
-}
-
-.successTitle {
-  font-size: 22px;
-  font-weight: 800;
-  color: #0b1727;
-  margin: 0 0 10px;
-}
-
-.successBody {
-  font-size: 14px;
-  line-height: 1.6;
-  color: #64748b;
-  margin: 0 0 24px;
-}
-
-/* --------------------------------------------------------------------------
-   Security trust badge (below auth card)
-   -------------------------------------------------------------------------- */
-
-.securityBadge {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  font-size: 12px;
-  color: #94a3b8;
-  margin-top: 18px;
-  text-align: center;
-}
-
-.securityIcon {
-  color: #94a3b8;
-  flex-shrink: 0;
-  width: 15px;
-  height: 15px;
-}
-
-/* --------------------------------------------------------------------------
-   Animations
-   -------------------------------------------------------------------------- */
-
-@keyframes floatCard1 {
-  0%,
-  100% {
-    transform: translateY(0px);
-  }
-  50% {
-    transform: translateY(-9px);
-  }
-}
-
-@keyframes floatCard2 {
-  0%,
-  100% {
-    transform: translateY(0px);
-  }
-  50% {
-    transform: translateY(-11px);
-  }
-}
-
-@keyframes floatOrb {
-  0%,
-  100% {
-    transform: translateY(0) scale(1);
-  }
-  50% {
-    transform: translateY(-14px) scale(1.06);
-  }
+  animation: spin 0.7s linear infinite;
 }
 
 @keyframes spin {
@@ -994,55 +699,100 @@
   }
 }
 
-/* --------------------------------------------------------------------------
-   Responsive
-   -------------------------------------------------------------------------- */
-
-@media (max-width: 1100px) {
-  /* authSection narrows slightly on medium screens */
-  .authSection {
-    width: 44%;
-  }
-
-  .showcaseTitle {
-    font-size: 34px;
-  }
-
-  .performanceCard {
-    width: 175px;
-  }
+/* Switch Row */
+.switchRow {
+  text-align: center;
+  font-size: 0.8438rem;
+  color: var(--mut, #5c6070);
+  margin-top: 4px;
 }
 
-@media (max-width: 900px) {
-  /* On mobile: showcase content hidden, auth card takes full page */
-  .showcaseHero,
-  .showcaseCardsArea,
-  .showcaseHeader {
-    display: none;
-  }
+.switchLink {
+  color: var(--create, #7b4dff);
+  font-weight: 600;
+  text-decoration: none;
+}
 
-  .authSection {
-    position: relative;
-    width: 100%;
-    min-width: unset;
-    height: auto;
-    min-height: 100vh;
-    padding: 32px 20px;
-    background: #ffffff;
-    z-index: 10;
-  }
+.switchLink:hover {
+  text-decoration: underline;
+}
 
-  .authCard {
-    padding: 28px 22px;
-    border-radius: 20px;
-    box-shadow: none;
-  }
+/* Success Card */
+.successCard {
+  text-align: center;
+  padding: 12px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
 
-  .twoColumnGrid {
+.successIconCircle {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--manage-l, rgba(0, 184, 135, 0.15));
+  color: var(--manage, #00b887);
+  display: grid;
+  place-items: center;
+  margin-bottom: 16px;
+}
+
+.successTitle {
+  font-family: var(--font-display, inherit);
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--ink, #0b0c16);
+  margin: 0 0 8px;
+}
+
+.successBody {
+  font-size: 0.9063rem;
+  line-height: 1.55;
+  color: var(--mut, #5c6070);
+  margin: 0 0 24px;
+}
+
+/* Security Trust Badge */
+.securityBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--faint, #8d91a5);
+  margin-top: 20px;
+}
+
+.securityIcon {
+  width: 14px;
+  height: 14px;
+  color: var(--manage, #00b887);
+}
+
+/* --------------------------------------------------------------------------
+   Responsive Breakpoints
+   -------------------------------------------------------------------------- */
+
+@media (max-width: 1040px) {
+  .splitLayout {
     grid-template-columns: 1fr;
   }
 
-  .waveCanvas {
+  .showcase {
     display: none;
+  }
+
+  .authSection {
+    padding: 60px 24px;
+  }
+
+  .authCard {
+    padding: 32px 24px;
+  }
+}
+
+@media (max-width: 520px) {
+  .twoColumnGrid {
+    grid-template-columns: 1fr;
   }
 }

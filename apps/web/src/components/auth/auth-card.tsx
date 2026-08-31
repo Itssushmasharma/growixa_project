@@ -1,10 +1,7 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
-
-import iconMark from "@/assets/icon/growixa-icon-mark.png";
 
 import { ShieldCheckIcon } from "./auth-icons";
 import { AuthTabs } from "./auth-tabs";
@@ -26,8 +23,19 @@ export function AuthCard({ mode, children }: AuthCardProps) {
         {/* Card Brand Header */}
         <div className={styles.cardBrandHeader}>
           <Link href="/" className={styles.cardBrandLink} aria-label="Growixa Home">
-            <Image src={iconMark} alt="" width={30} height={30} className={styles.cardLogo} />
-            <span className={styles.cardBrandName}>Growixa</span>
+            <div className={styles.brandMark} aria-hidden="true">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+              </svg>
+            </div>
+            <span>Growixa</span>
           </Link>
         </div>
 
@@ -58,7 +66,7 @@ export function AuthCard({ mode, children }: AuthCardProps) {
       {/* Security Trust Badge */}
       <div className={styles.securityBadge}>
         <ShieldCheckIcon className={styles.securityIcon} />
-        <span>Your data is safe with us. We never share your information.</span>
+        <span>Enterprise-grade 256-bit encryption &bull; SOC2 compliant</span>
       </div>
     </div>
   );

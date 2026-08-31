@@ -1,10 +1,8 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { type FormEvent, useState } from "react";
 
-import iconMark from "@/assets/icon/growixa-icon-mark.png";
 import { useToast } from "@/components/toast/toast-context";
 import { ApiError, apiFetch } from "@/lib/api-client";
 
@@ -42,7 +40,7 @@ export default function ForgotPasswordPage() {
       <main className={styles.page}>
         <div className={styles.card}>
           <div className={styles.successIcon}>✓</div>
-          <div className={styles.successTitle}>Check your email</div>
+          <h1 className={styles.successTitle}>Check your email</h1>
           <p className={styles.successBody}>
             If an account with <strong>{submittedEmail}</strong> exists, we sent a password reset
             link. It expires in 30 minutes and can be used once.
@@ -60,13 +58,24 @@ export default function ForgotPasswordPage() {
   return (
     <main className={styles.page}>
       <div className={styles.card}>
-        <div className={styles.brand}>
-          <Image src={iconMark} alt="" width={36} height={36} />
+        <Link href="/" className={styles.brand}>
+          <div className={styles.brandMark} aria-hidden="true">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+            </svg>
+          </div>
           <div>
             <div className={styles.brandName}>Growixa</div>
             <div className={styles.brandCaption}>BY IITDEVELOPER</div>
           </div>
-        </div>
+        </Link>
 
         <form onSubmit={handleSubmit}>
           <div className={styles.field}>

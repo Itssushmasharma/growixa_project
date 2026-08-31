@@ -1,43 +1,116 @@
+/* ==========================================================================
+   Growixa Auth Secondary Pages — Glass Cards & Aurora Backdrop
+   ========================================================================== */
+
 .page {
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--gradient-login-bg);
-  padding: 24px;
+  padding: 40px 24px;
+  position: relative;
+  background: var(--paper, #ffffff);
+  color: var(--ink, #0b0c16);
+  font-family: var(--font-body, system-ui, sans-serif);
+  overflow: hidden;
+}
+
+.page::before {
+  content: "";
+  position: absolute;
+  inset: -20%;
+  background:
+    radial-gradient(
+      ellipse 55% 45% at 20% 25%,
+      var(--find-l, rgba(0, 169, 224, 0.14)) 0%,
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 50% 40% at 80% 20%,
+      var(--create-l, rgba(123, 77, 255, 0.12)) 0%,
+      transparent 65%
+    ),
+    radial-gradient(
+      ellipse 60% 45% at 35% 80%,
+      var(--send-l, rgba(255, 63, 115, 0.1)) 0%,
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 45% 40% at 75% 75%,
+      var(--qualify-l, rgba(255, 138, 0, 0.1)) 0%,
+      transparent 65%
+    );
+  filter: blur(50px);
+  pointer-events: none;
+  z-index: 0;
 }
 
 .card {
+  position: relative;
+  z-index: 1;
   width: 100%;
-  max-width: 400px;
+  max-width: 440px;
   padding: 40px 36px;
-  border-radius: 24px;
-  background: rgba(255, 255, 255, 0.06);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+  border-radius: var(--r-xl, 24px);
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(20px) saturate(1.4);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+  border: 1px solid var(--line, #e2e4eb);
+  box-shadow:
+    0 1px 2px rgba(11, 12, 22, 0.04),
+    0 24px 60px -15px rgba(11, 12, 22, 0.1);
 }
 
 .brand {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 32px;
+  margin-bottom: 28px;
+  text-decoration: none;
+}
+
+.brandMark {
+  width: 34px;
+  height: 34px;
+  border-radius: 11px;
+  display: grid;
+  place-items: center;
+  background: conic-gradient(
+    from 210deg,
+    var(--find),
+    var(--create),
+    var(--send),
+    var(--qualify),
+    var(--manage),
+    var(--find)
+  );
+  box-shadow: 0 4px 12px -3px rgba(123, 77, 255, 0.45);
+}
+
+.brandMark svg {
+  background: #ffffff;
+  border-radius: 8px;
+  padding: 5px;
+  width: 24px;
+  height: 24px;
 }
 
 .brandName {
-  font-size: 20px;
-  font-weight: 800;
-  color: #fff;
+  font-family: var(--font-display, inherit);
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--ink, #0b0c16);
   line-height: 1.1;
+  letter-spacing: -0.03em;
 }
 
 .brandCaption {
-  font-size: 11px;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.6875rem;
   font-weight: 600;
-  letter-spacing: 0.04em;
-  color: var(--color-nav-inactive);
+  letter-spacing: 0.12em;
+  color: var(--faint, #8d91a5);
+  text-transform: uppercase;
 }
 
 .field {
@@ -46,88 +119,123 @@
 
 .label {
   display: block;
-  font-size: 13px;
+  font-size: 0.8125rem;
   font-weight: 600;
-  color: var(--color-nav-inactive);
+  color: var(--ink, #0b0c16);
   margin-bottom: 6px;
 }
 
 .input {
   width: 100%;
-  padding: 12px 14px;
+  padding: 11px 14px;
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  background: rgba(255, 255, 255, 0.06);
-  color: #fff;
-  font-size: 14px;
+  border: 1px solid var(--line, #e2e4eb);
+  background: var(--paper, #ffffff);
+  color: var(--ink, #0b0c16);
+  font-family: var(--font-body, inherit);
+  font-size: 0.9063rem;
+  outline: none;
+  transition:
+    border-color var(--t-fast) ease,
+    box-shadow var(--t-fast) ease;
 }
 
 .input:focus {
-  outline: 2px solid var(--color-mint);
-  outline-offset: 1px;
+  border-color: var(--create, #7b4dff);
+  box-shadow: 0 0 0 3px var(--create-l, rgba(123, 77, 255, 0.15));
 }
 
 .input::placeholder {
-  color: rgba(255, 255, 255, 0.35);
+  color: var(--faint, #8d91a5);
 }
 
 .error {
   margin: 0 0 18px;
   padding: 10px 14px;
   border-radius: 10px;
-  background: rgba(244, 63, 94, 0.14);
-  border: 1px solid rgba(244, 63, 94, 0.3);
-  color: #fecdd3;
-  font-size: 13px;
+  background: rgba(244, 63, 94, 0.1);
+  border: 1px solid rgba(244, 63, 94, 0.25);
+  color: #e11d48;
+  font-size: 0.8125rem;
+  font-weight: 500;
 }
 
 .submit {
   width: 100%;
-  padding: 13px 16px;
-  border: none;
-  border-radius: var(--pill-radius);
-  background: var(--gradient-primary);
-  color: #fff;
-  font-weight: 700;
-  font-size: 14px;
+  padding: 13px 24px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: var(--ink, #0b0c16);
+  color: #ffffff !important;
+  font-family: var(--font-body, inherit);
+  font-weight: 600;
+  font-size: 0.9375rem;
   cursor: pointer;
   margin-top: 8px;
+  box-shadow:
+    0 1px 2px rgba(11, 12, 22, 0.2),
+    0 12px 26px -10px rgba(11, 12, 22, 0.5);
+  transition:
+    transform var(--t-fast) var(--ease-out),
+    box-shadow var(--t-fast) ease;
+}
+
+.submit:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow:
+    0 1px 2px rgba(11, 12, 22, 0.2),
+    0 16px 32px -10px rgba(11, 12, 22, 0.6);
 }
 
 .submit:disabled {
-  opacity: 0.6;
+  opacity: 0.7;
   cursor: not-allowed;
 }
 
 .footer {
-  margin-top: 20px;
+  margin-top: 24px;
   text-align: center;
-  font-size: 13px;
-  color: var(--color-nav-inactive);
+  font-size: 0.8438rem;
+  color: var(--mut, #5c6070);
 }
 
 .footerLink {
-  color: var(--color-mint);
+  color: var(--create, #7b4dff);
   font-weight: 600;
+  text-decoration: none;
+}
+
+.footerLink:hover {
+  text-decoration: underline;
 }
 
 .successIcon {
-  font-size: 40px;
-  margin-bottom: 12px;
-  text-align: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--manage-l, rgba(0, 184, 135, 0.15));
+  color: var(--manage, #00b887);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0 auto 16px;
 }
 
 .successTitle {
-  font-size: 18px;
-  font-weight: 700;
-  color: #fff;
+  font-family: var(--font-display, inherit);
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--ink, #0b0c16);
   margin-bottom: 8px;
   text-align: center;
+  letter-spacing: -0.025em;
 }
 
 .successBody {
-  font-size: 14px;
-  color: var(--color-nav-inactive);
+  font-size: 0.875rem;
+  color: var(--mut, #5c6070);
   line-height: 1.6;
   text-align: center;
 }

@@ -14,7 +14,13 @@ interface AuthSplitLayoutProps {
 export function AuthSplitLayout({ mode, children }: AuthSplitLayoutProps) {
   return (
     <main className={styles.splitLayout}>
-      {/* Left Showcase (Brand Highlights, Floating Metric Cards, Flowing Ribbon Wave) */}
+      {/* Aurora Mesh Ambient Background Canvas */}
+      <div className={styles.auroraCanvas} aria-hidden="true">
+        <div className={styles.auroraMesh} />
+        <div className={styles.filmGrain} />
+      </div>
+
+      {/* Left Showcase (Brand, Display Headline, Live Engine Telemetry, Proof Badges) */}
       <AuthShowcase />
 
       {/* Right Floating Authentication Card */}

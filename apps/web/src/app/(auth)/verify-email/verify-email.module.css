@@ -3,43 +3,105 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--gradient-login-bg);
-  padding: 24px;
+  padding: 40px 24px;
+  position: relative;
+  background: var(--paper, #ffffff);
+  color: var(--ink, #0b0c16);
+  font-family: var(--font-body, system-ui, sans-serif);
+  overflow: hidden;
+}
+
+.page::before {
+  content: "";
+  position: absolute;
+  inset: -20%;
+  background:
+    radial-gradient(
+      ellipse 55% 45% at 20% 25%,
+      var(--find-l, rgba(0, 169, 224, 0.14)) 0%,
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 50% 40% at 80% 20%,
+      var(--create-l, rgba(123, 77, 255, 0.12)) 0%,
+      transparent 65%
+    ),
+    radial-gradient(
+      ellipse 60% 45% at 35% 80%,
+      var(--send-l, rgba(255, 63, 115, 0.1)) 0%,
+      transparent 70%
+    );
+  filter: blur(50px);
+  pointer-events: none;
+  z-index: 0;
 }
 
 .card {
+  position: relative;
+  z-index: 1;
   width: 100%;
-  max-width: 400px;
+  max-width: 440px;
   padding: 40px 36px;
-  border-radius: 24px;
-  background: rgba(255, 255, 255, 0.06);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+  border-radius: var(--r-xl, 24px);
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(20px) saturate(1.4);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+  border: 1px solid var(--line, #e2e4eb);
+  box-shadow:
+    0 1px 2px rgba(11, 12, 22, 0.04),
+    0 24px 60px -15px rgba(11, 12, 22, 0.1);
   text-align: center;
 }
 
 .icon {
-  font-size: 40px;
-  margin-bottom: 12px;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--manage-l, rgba(0, 184, 135, 0.15));
+  color: var(--manage, #00b887);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0 auto 16px;
 }
 
 .title {
-  font-size: 18px;
-  font-weight: 700;
-  color: #fff;
+  font-family: var(--font-display, inherit);
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--ink, #0b0c16);
   margin-bottom: 8px;
+  letter-spacing: -0.025em;
 }
 
 .body {
-  font-size: 14px;
-  color: var(--color-nav-inactive);
+  font-size: 0.9063rem;
+  color: var(--mut, #5c6070);
   line-height: 1.6;
-  margin-bottom: 20px;
+  margin-bottom: 24px;
 }
 
 .link {
-  color: var(--color-mint);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 11px 28px;
+  border-radius: 999px;
+  background: var(--ink, #0b0c16);
+  color: #ffffff !important;
   font-weight: 600;
+  font-size: 0.9063rem;
+  text-decoration: none;
+  box-shadow:
+    0 1px 2px rgba(11, 12, 22, 0.2),
+    0 12px 26px -10px rgba(11, 12, 22, 0.5);
+  transition:
+    transform var(--t-fast) var(--ease-out),
+    box-shadow var(--t-fast) ease;
+}
+
+.link:hover {
+  transform: translateY(-2px);
 }

@@ -1,11 +1,9 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { type FormEvent, Suspense, useState } from "react";
 
-import iconMark from "@/assets/icon/growixa-icon-mark.png";
 import { useToast } from "@/components/toast/toast-context";
 import { apiFetch } from "@/lib/api-client";
 
@@ -50,8 +48,6 @@ function AcceptInvitationContent() {
       });
       setStatus("success");
     } catch {
-      // The API deliberately returns one indistinguishable error for missing, unknown,
-      // expired, and already-accepted tokens, so there is nothing more specific to say.
       setStatus("expired");
     } finally {
       setSubmitting(false);
@@ -63,7 +59,7 @@ function AcceptInvitationContent() {
       <main className={styles.page}>
         <div className={styles.card}>
           <div className={styles.successIcon}>✓</div>
-          <div className={styles.successTitle}>Account ready</div>
+          <h1 className={styles.successTitle}>Account ready</h1>
           <p className={styles.successBody}>Your account has been created. You can now sign in.</p>
           <div className={styles.footer}>
             <Link href="/login" className={styles.footerLink}>
@@ -79,11 +75,13 @@ function AcceptInvitationContent() {
     return (
       <main className={styles.page}>
         <div className={styles.card}>
-          <div className={styles.successIcon}>✕</div>
-          <div className={styles.successTitle}>Invitation unavailable</div>
+          <div className={styles.successIcon} style={{ color: "var(--send)" }}>
+            ✕
+          </div>
+          <h1 className={styles.successTitle}>Invitation unavailable</h1>
           <p className={styles.successBody}>
-            This invitation link is invalid, expired, or has already been used. Ask an administrator
-            on your team to send a new one.
+            This invitation link is invalid, expired, or has already been used. Please ask your team
+            admin to send a new invitation.
           </p>
           <div className={styles.footer}>
             <Link href="/login" className={styles.footerLink}>
@@ -98,13 +96,24 @@ function AcceptInvitationContent() {
   return (
     <main className={styles.page}>
       <div className={styles.card}>
-        <div className={styles.brand}>
-          <Image src={iconMark} alt="" width={36} height={36} />
+        <Link href="/" className={styles.brand}>
+          <div className={styles.brandMark} aria-hidden="true">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+            </svg>
+          </div>
           <div>
             <div className={styles.brandName}>Growixa</div>
             <div className={styles.brandCaption}>BY IITDEVELOPER</div>
           </div>
-        </div>
+        </Link>
 
         <form onSubmit={handleSubmit}>
           <div className={styles.field}>

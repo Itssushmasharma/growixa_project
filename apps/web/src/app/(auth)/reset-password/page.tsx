@@ -1,11 +1,9 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { type FormEvent, Suspense, useState } from "react";
 
-import iconMark from "@/assets/icon/growixa-icon-mark.png";
 import { useToast } from "@/components/toast/toast-context";
 import { apiFetch } from "@/lib/api-client";
 
@@ -60,7 +58,7 @@ function ResetPasswordContent() {
       <main className={styles.page}>
         <div className={styles.card}>
           <div className={styles.successIcon}>✓</div>
-          <div className={styles.successTitle}>Password updated</div>
+          <h1 className={styles.successTitle}>Password updated</h1>
           <p className={styles.successBody}>Your password has been reset. You can now sign in.</p>
           <div className={styles.footer}>
             <Link href="/login" className={styles.footerLink}>
@@ -76,8 +74,10 @@ function ResetPasswordContent() {
     return (
       <main className={styles.page}>
         <div className={styles.card}>
-          <div className={styles.successIcon}>✕</div>
-          <div className={styles.successTitle}>Link expired</div>
+          <div className={styles.successIcon} style={{ color: "var(--send)" }}>
+            ✕
+          </div>
+          <h1 className={styles.successTitle}>Link expired</h1>
           <p className={styles.successBody}>
             This password reset link is invalid, expired, or has already been used.
           </p>
@@ -94,13 +94,24 @@ function ResetPasswordContent() {
   return (
     <main className={styles.page}>
       <div className={styles.card}>
-        <div className={styles.brand}>
-          <Image src={iconMark} alt="" width={36} height={36} />
+        <Link href="/" className={styles.brand}>
+          <div className={styles.brandMark} aria-hidden="true">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+            </svg>
+          </div>
           <div>
             <div className={styles.brandName}>Growixa</div>
             <div className={styles.brandCaption}>BY IITDEVELOPER</div>
           </div>
-        </div>
+        </Link>
 
         <form onSubmit={handleSubmit}>
           <div className={styles.field}>
