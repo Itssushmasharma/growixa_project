@@ -10,6 +10,10 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
+## 2026-08-31 — v0.5.9-rc5 UAT release candidate
+
+- **`feat(website)`** — **Standardized Next.js 15 Website Redesign (`PR #62`)**: Replaced legacy `(marketing)` group with standardized `src/app/(website)` App Router architecture. Features 17 pre-rendered routes, 5-stage engine deep dives (`/platform/[stage]`), Interactive Sandbox simulator, dynamic Stack Calculator, multi-currency/annual pricing switcher, and direct linking to `/register` & `/login`. Relocated platform admin dashboard to `/platform/overview`. Full frontend test suite: 62 test files, 368 tests passing (100%). (`#62`)
+
 ## 2026-08-31 — v0.5.9-rc4 UAT release candidate
 
 - **`fix(FRONTEND)`** — **Login/register test fix for IITD IAM Google button URL**: `v0.5.9-rc3`'s own UAT deploy test gate caught 2 stale tests still asserting the pre-IAM direct-Google-OAuth href; the button itself had already correctly moved to `/auth/oauth/iitd?kc_idp_hint=google` on 2026-08-30 (`GRX-AUTH-007-iam-button-flow`, formalized under `DEC-GRX-037`) but that PR's review only checked `next build` compiles, never the full test suite. Full frontend suite: 322 passed, 0 failed (was 320 passed, 2 failed). No behavior change — assertion-only fix. (`#60`)

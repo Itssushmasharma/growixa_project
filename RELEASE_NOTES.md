@@ -2,6 +2,21 @@
 
 ---
 
+## 🟡 [v0.5.9-rc5] (UAT Release Candidate) — 2026-08-31
+
+> **Release Tag**: `v0.5.9-rc5`
+> **Release Date**: August 31, 2026
+> **Platform Status**: 🟡 Active on UAT Staging
+> **Target Production URL**: [https://growixa.iitdeveloper.com](https://growixa.iitdeveloper.com)
+> **UAT Staging URL**: [https://uat.growixa.iitdeveloper.com](https://uat.growixa.iitdeveloper.com)
+
+### 🚀 Added & Enhanced
+- **Standardized Next.js 15 Website Architecture (`PR #62`)**: Unified public website under `src/app/(website)` with 17 pre-rendered static/SSG routes, official variable font packages (`Bricolage Grotesque`, `Instrument Sans`, `JetBrains Mono`), 5-stage engine deep-dives (`/platform/[stage]`), Interactive Sandbox simulator, dynamic Stack Calculator, and multi-currency/annual pricing switcher.
+- **SaaS CTA Authentication Routing**: Connected all primary CTAs ("Start free", "Get started", "Log in") directly to `/register` and `/login`.
+- **Platform Overview Conflict Resolution**: Relocated platform admin overview to `/platform/overview`, preserving the public `/platform` marketing engine showcase.
+
+---
+
 ## 🟡 [v0.5.9-rc4] (UAT Release Candidate) — 2026-08-31
 
 > **Release Tag**: `v0.5.9-rc4`
