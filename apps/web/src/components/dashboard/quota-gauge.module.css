@@ -8,44 +8,48 @@
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  font-size: 12.5px;
 }
 
 .label {
-  font-weight: 700;
-  color: var(--color-dark-text);
+  font-family: var(--font-body, inherit);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--ink, #0b0c16);
 }
 
 .usage {
-  color: var(--color-slate);
+  font-family: var(--font-mono, monospace);
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--mut, #5c6070);
   font-variant-numeric: tabular-nums;
 }
 
 .track {
-  height: 8px;
+  height: 6px;
   border-radius: 999px;
-  background: rgba(15, 42, 86, 0.08);
+  background: var(--line, #e2e4eb);
   overflow: hidden;
 }
 
 .fill {
   height: 100%;
   border-radius: 999px;
-  transition: width 0.3s ease;
+  transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .ok {
-  background: var(--gradient-primary);
+  background: linear-gradient(90deg, var(--find, #00a9e0), var(--create, #7b4dff));
 }
 
 .warning {
-  background: linear-gradient(135deg, #f59e0b, #f97316);
+  background: linear-gradient(90deg, var(--qualify, #ff8a00), var(--send, #ff3f73));
 }
 
 .danger {
-  background: var(--color-error);
+  background: var(--send, #ff3f73);
 }
 
 .unlimited {
-  background: var(--color-success);
+  background: var(--manage, #00b887);
 }

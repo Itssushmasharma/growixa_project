@@ -1,7 +1,8 @@
 .card {
-  background: #fff;
-  border-radius: var(--card-radius);
-  box-shadow: var(--card-shadow);
+  background: var(--paper, #ffffff);
+  border-radius: var(--r-l, 18px);
+  border: 1px solid var(--line, #e2e4eb);
+  box-shadow: var(--sh-1);
   padding: 24px 28px;
 }
 
@@ -15,24 +16,31 @@
 .primaryButton {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   padding: 9px 18px;
   border: none;
-  border-radius: var(--pill-radius, 999px);
-  background: linear-gradient(135deg, var(--color-primary-blue, #1457e6) 0%, #6366f1 100%);
-  color: #ffffff;
-  font-weight: 700;
-  font-size: 13px;
+  border-radius: 999px;
+  background: var(--ink, #0b0c16);
+  color: #ffffff !important;
+  font-family: var(--font-body, inherit);
+  font-weight: 600;
+  font-size: 0.8438rem;
   cursor: pointer;
   text-decoration: none;
   white-space: nowrap;
-  box-shadow: 0 2px 10px rgba(20, 87, 230, 0.25);
-  transition: all 0.15s;
+  box-shadow:
+    0 1px 2px rgba(11, 12, 22, 0.2),
+    0 12px 26px -10px rgba(11, 12, 22, 0.5);
+  transition:
+    transform var(--t-fast) var(--ease-out),
+    box-shadow var(--t-fast) ease;
 }
 
 .primaryButton:hover {
-  opacity: 0.95;
-  transform: translateY(-1px);
+  transform: translateY(-2px);
+  box-shadow:
+    0 1px 2px rgba(11, 12, 22, 0.2),
+    0 16px 32px -10px rgba(11, 12, 22, 0.6);
 }
 
 .statusTabs {
@@ -49,63 +57,68 @@
   align-items: center;
   gap: 6px;
   padding: 7px 14px;
-  border-radius: var(--pill-radius, 999px);
-  font-size: 13px;
+  border-radius: 999px;
+  font-family: var(--font-body, inherit);
+  font-size: 0.8125rem;
   font-weight: 600;
   cursor: pointer;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  color: var(--color-slate, #64748b);
+  background: var(--paper, #ffffff);
+  border: 1px solid var(--line, #e2e4eb);
+  color: var(--mut, #5c6070);
   transition: all 0.15s ease;
 }
 
 .statusTab:hover {
-  background: #f8fafc;
-  border-color: #cbd5e1;
-  color: var(--color-dark-text, #0b1b33);
+  background: var(--paper-2, #f8f9fd);
+  border-color: var(--line, #e2e4eb);
+  color: var(--ink, #0b0c16);
 }
 
 .statusTabActive {
-  background: linear-gradient(135deg, var(--color-primary-blue, #1457e6) 0%, #6366f1 100%);
+  background: var(--ink, #0b0c16);
   border-color: transparent;
-  color: #ffffff;
-  box-shadow: 0 2px 8px rgba(20, 87, 230, 0.25);
+  color: #ffffff !important;
+  box-shadow: 0 2px 8px rgba(11, 12, 22, 0.2);
 }
 
 .statusTabCount {
-  font-size: 10.5px;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.6875rem;
   font-weight: 700;
-  padding: 1px 5px;
+  padding: 1px 6px;
   border-radius: 999px;
   background: rgba(0, 0, 0, 0.08);
 }
 
 .statusTabActive .statusTabCount {
-  background: rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.22);
   color: #ffffff;
 }
 
 .metricCard {
-  background: #fff;
-  border-radius: 12px;
+  background: var(--paper, #ffffff);
+  border-radius: var(--r-m, 12px);
   padding: 16px 20px;
-  box-shadow: var(--card-shadow);
-  border: 1px solid rgba(15, 42, 86, 0.08);
+  box-shadow: var(--sh-1);
+  border: 1px solid var(--line, #e2e4eb);
 }
 
 .metricLabel {
-  font-size: 11.5px;
-  font-weight: 800;
-  color: var(--color-slate);
+  font-family: var(--font-mono, monospace);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: var(--faint, #8d91a5);
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.12em;
   margin-bottom: 4px;
 }
 
 .metricValue {
-  font-size: 24px;
+  font-family: var(--font-display, inherit);
+  font-size: 1.5rem;
   font-weight: 800;
-  color: var(--color-dark-text);
+  color: var(--ink, #0b0c16);
+  letter-spacing: -0.03em;
 }
 
 .toolbar {
@@ -293,17 +306,20 @@
   text-align: center;
 }
 
-.contactBlock {
-  border-top: 1px solid rgba(15, 42, 86, 0.08);
-}
-
 .row {
   display: grid;
   grid-template-columns: 2fr 1fr 1fr 1fr 100px;
   align-items: center;
   padding: 12px 16px;
   gap: 12px;
-  transition: background 0.15s ease;
+  border-bottom: 1px solid var(--line, #e2e4eb);
+  transition:
+    background var(--t-fast) ease,
+    border-color var(--t-fast) ease;
+}
+
+.row:hover {
+  background: rgba(0, 169, 224, 0.035);
 }
 
 .rowManage {
@@ -311,7 +327,7 @@
 }
 
 .rowSelected {
-  background: rgba(59, 130, 246, 0.05);
+  background: rgba(0, 169, 224, 0.07);
 }
 
 .avatar {
@@ -322,10 +338,12 @@
   align-items: center;
   justify-content: center;
   color: #fff;
+  font-family: var(--font-display, inherit);
   font-weight: 700;
-  font-size: 13px;
+  font-size: 0.8125rem;
   flex-shrink: 0;
-  background: var(--gradient-primary);
+  background: linear-gradient(135deg, var(--find, #00a9e0), var(--create, #7b4dff));
+  box-shadow: 0 2px 6px rgba(0, 169, 224, 0.25);
 }
 
 .identity {
@@ -338,12 +356,13 @@
 
 .name {
   font-weight: 600;
-  font-size: 14px;
+  font-size: 0.875rem;
+  color: var(--ink, #0b0c16);
 }
 
 .email {
-  font-size: 13px;
-  color: var(--color-slate);
+  font-size: 0.8125rem;
+  color: var(--mut, #5c6070);
 }
 
 .rowActions {
@@ -354,42 +373,47 @@
 }
 
 .statusBadge {
-  display: inline-block;
-  padding: 4px 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px 9px;
   border-radius: 999px;
-  font-size: 12px;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.6875rem;
   font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 
 .statusSubscribed {
-  background: rgba(34, 160, 107, 0.12);
-  color: var(--color-success);
+  background: var(--manage-l, rgba(0, 184, 135, 0.12));
+  color: var(--manage, #00b887);
 }
 
 .statusUnsubscribed {
-  background: rgba(245, 158, 11, 0.15);
-  color: #d97706;
+  background: var(--qualify-l, rgba(255, 138, 0, 0.12));
+  color: var(--qualify, #ff8a00);
 }
 
 .statusBounced {
-  background: rgba(244, 63, 94, 0.12);
-  color: var(--color-error);
+  background: var(--send-l, rgba(255, 63, 115, 0.12));
+  color: var(--send, #ff3f73);
 }
 
 .statusActive {
-  background: rgba(34, 160, 107, 0.12);
-  color: var(--color-success);
+  background: var(--manage-l, rgba(0, 184, 135, 0.12));
+  color: var(--manage, #00b887);
 }
 
 .statusArchived {
-  background: rgba(148, 163, 184, 0.2);
-  color: var(--color-slate);
+  background: var(--paper-2, #f8f9fd);
+  color: var(--faint, #8d91a5);
 }
 
 .statusDeleted {
-  background: rgba(239, 68, 68, 0.12);
-  color: #dc2626;
-  border: 1px solid rgba(239, 68, 68, 0.25);
+  background: var(--send-l, rgba(255, 63, 115, 0.12));
+  color: var(--send, #ff3f73);
+  border: 1px solid rgba(255, 63, 115, 0.25);
 }
 
 .restoreButton {

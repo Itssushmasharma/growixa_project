@@ -1,57 +1,67 @@
 .page {
   display: flex;
   flex-direction: column;
-  gap: 22px;
+  gap: 24px;
 }
 
 .actionButton {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   padding: 9px 18px;
-  border: none;
-  border-radius: var(--pill-radius, 999px);
-  background: linear-gradient(135deg, var(--color-primary-blue, #1457e6) 0%, #6366f1 100%);
-  color: #ffffff;
-  font-weight: 700;
-  font-size: 13px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--create, #7b4dff) 0%, var(--find, #00a9e0) 100%);
+  color: #ffffff !important;
+  font-family: var(--font-body, inherit);
+  font-weight: 600;
+  font-size: 0.8438rem;
   cursor: pointer;
   text-decoration: none;
   white-space: nowrap;
-  box-shadow: 0 2px 10px rgba(20, 87, 230, 0.25);
-  transition: all 0.15s ease;
+  box-shadow:
+    0 2px 10px rgba(123, 77, 255, 0.3),
+    0 12px 26px -10px rgba(0, 169, 224, 0.4);
+  transition:
+    transform var(--t-fast) var(--ease-out),
+    box-shadow var(--t-fast) ease;
 }
 
 .actionButton:hover {
-  opacity: 0.95;
-  transform: translateY(-1px);
+  transform: translateY(-2px);
+  box-shadow:
+    0 4px 16px rgba(123, 77, 255, 0.4),
+    0 16px 32px -10px rgba(0, 169, 224, 0.5);
 }
 
 .actionButtonSecondary {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   padding: 8px 16px;
-  border-radius: var(--pill-radius, 999px);
-  border: 1px solid #e2e8f0;
-  background: #ffffff;
-  color: var(--color-dark-text, #0b1b33);
-  font-weight: 700;
-  font-size: 13px;
+  border-radius: 999px;
+  border: 1px solid rgba(123, 77, 255, 0.3);
+  background: rgba(123, 77, 255, 0.06);
+  color: var(--create, #7b4dff);
+  font-family: var(--font-body, inherit);
+  font-weight: 600;
+  font-size: 0.8438rem;
   cursor: pointer;
   text-decoration: none;
   white-space: nowrap;
-  transition: all 0.15s ease;
+  transition:
+    transform var(--t-fast) var(--ease-out),
+    background var(--t-fast) ease;
 }
 
 .actionButtonSecondary:hover {
-  background: #f8fafc;
-  border-color: #cbd5e1;
+  background: rgba(123, 77, 255, 0.12);
+  transform: translateY(-1px);
 }
 
 .metricsGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 16px;
 }
 
@@ -68,10 +78,10 @@
 }
 
 .card {
-  background: #ffffff;
-  border-radius: var(--card-radius, 18px);
-  border: 1px solid #eef2f6;
-  box-shadow: var(--card-shadow, 0 4px 24px rgba(15, 42, 86, 0.04));
+  background: var(--paper, #ffffff);
+  border-radius: var(--r-l, 18px);
+  border: 1px solid var(--line, #e2e4eb);
+  box-shadow: var(--sh-1, 0 2px 6px rgba(11, 12, 22, 0.03));
   padding: 22px 24px;
   display: flex;
   flex-direction: column;
@@ -80,9 +90,11 @@
 
 .cardTitle {
   margin: 0;
-  font-size: 15.5px;
-  font-weight: 800;
-  color: var(--color-dark-text, #0b1b33);
+  font-family: var(--font-display, inherit);
+  font-size: 1.0625rem;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  color: var(--ink, #0b0c16);
 }
 
 .chartHeader {
@@ -92,9 +104,10 @@
 }
 
 .chartTotal {
-  font-size: 13px;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.75rem;
   font-weight: 700;
-  color: var(--color-slate, #64748b);
+  color: var(--faint, #8d91a5);
 }
 
 .gauges {
@@ -105,13 +118,13 @@
 
 .hint {
   margin: 0;
-  font-size: 12.5px;
-  color: var(--color-slate, #64748b);
+  font-size: 0.8125rem;
+  color: var(--mut, #5c6070);
 }
 
 .hint a {
-  color: var(--color-primary-blue, #1457e6);
-  font-weight: 700;
+  color: var(--create, #7b4dff);
+  font-weight: 600;
   text-decoration: none;
 }
 
@@ -125,93 +138,83 @@
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 
 .statusRow {
   display: flex;
   align-items: center;
-  gap: 10px;
-  font-size: 13.5px;
+  gap: 12px;
+  font-size: 0.8438rem;
   padding: 6px 0;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid var(--line, #e2e4eb);
 }
 
 .statusRow:last-child {
   border-bottom: none;
 }
 
-.statusDot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  flex-shrink: 0;
+.statusPill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 84px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
 
 .toneSuccess {
-  background: #10b981;
-}
-
-.toneInfo {
-  background: var(--color-primary-blue, #1457e6);
+  background: var(--manage-l, rgba(0, 184, 135, 0.12));
+  color: var(--manage, #00b887);
 }
 
 .toneDanger {
-  background: #ef4444;
+  background: var(--send-l, rgba(255, 63, 115, 0.12));
+  color: var(--send, #ff3f73);
+}
+
+.toneInfo {
+  background: var(--find-l, rgba(0, 169, 224, 0.12));
+  color: var(--find, #00a9e0);
 }
 
 .toneNeutral {
-  background: #94a3b8;
+  background: var(--paper-2, #f8f9fd);
+  color: var(--mut, #5c6070);
 }
 
-.statusLabel {
-  font-weight: 600;
-  color: var(--color-dark-text, #0b1b33);
+.statusTrack {
   flex: 1;
+  height: 6px;
+  background: var(--line, #e2e4eb);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.statusFill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.3s ease;
 }
 
 .statusCount {
-  font-weight: 800;
-  color: var(--color-slate, #64748b);
-  background: #f8fafc;
-  padding: 2px 8px;
-  border-radius: 999px;
-  font-size: 12px;
-}
-
-.table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.table tr td {
-  padding: 12px 0;
-  border-bottom: 1px solid #f1f5f9;
-  font-size: 13.5px;
-}
-
-.table tr:last-child td {
-  border-bottom: none;
-}
-
-.table tr td a {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.8125rem;
   font-weight: 700;
-  color: var(--color-dark-text, #0b1b33);
-  text-decoration: none;
-}
-
-.table tr td a:hover {
-  color: var(--color-primary-blue, #1457e6);
-}
-
-.tableStatus {
-  color: var(--color-slate, #64748b);
-  font-weight: 600;
-  font-size: 12px;
-}
-
-.tableNumeric {
+  color: var(--ink, #0b0c16);
+  min-width: 36px;
   text-align: right;
-  font-size: 12.5px;
-  color: var(--color-slate, #64748b);
+}
+
+.statusPct {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.75rem;
+  color: var(--faint, #8d91a5);
+  min-width: 44px;
+  text-align: right;
 }

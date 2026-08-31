@@ -1,25 +1,27 @@
-:root {
-  --color-primary-blue: #1457e6;
-  --color-teal: #12b8b0;
-  --color-mint: #5eead4;
-  --color-success: #22a06b;
-  --color-error: #f43f5e;
-  --color-purple: #8b5cf6;
-  --color-slate: #64748b;
-  --color-slate-light: #94a3b8;
-  --color-dark-text: #0b1b33;
-  --color-nav-inactive: #9ca9c7;
+@import "@/styles/website-tokens.css";
 
-  --gradient-primary: linear-gradient(135deg, var(--color-primary-blue), var(--color-teal));
-  --gradient-sidebar: linear-gradient(150deg, #0b1e3f, #0a2a2c);
-  --gradient-login-bg: linear-gradient(160deg, #0b1e3f 0%, #081428 55%, #052a2e 100%);
-  --gradient-hero-card: linear-gradient(135deg, #0b1e3f, #0a3a3c);
+:root {
+  --color-primary-blue: var(--find, #00a9e0);
+  --color-teal: var(--manage, #00b887);
+  --color-mint: var(--manage, #00b887);
+  --color-success: var(--manage, #00b887);
+  --color-error: var(--send, #ff3f73);
+  --color-purple: var(--create, #7b4dff);
+  --color-slate: #5c6070;
+  --color-slate-light: #8d91a5;
+  --color-dark-text: #0b0c16;
+  --color-nav-inactive: rgba(255, 255, 255, 0.7);
+
+  --gradient-primary: linear-gradient(135deg, var(--create, #7b4dff) 0%, var(--find, #00a9e0) 100%);
+  --gradient-sidebar: linear-gradient(180deg, #0b0c16 0%, #121424 100%);
+  --gradient-login-bg: #ffffff;
+  --gradient-hero-card: linear-gradient(135deg, #0b0c16, #1e2030);
 
   --card-radius: 18px;
-  --card-shadow: 0 4px 24px rgba(15, 42, 86, 0.07);
-  --pill-radius: 14px;
+  --card-shadow: var(--sh-1);
+  --pill-radius: 999px;
 
-  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-sans: var(--font-body, system-ui, -apple-system, sans-serif);
 }
 
 * {
@@ -34,10 +36,12 @@ body {
 
 body {
   font-family: var(--font-sans);
-  color: var(--color-dark-text);
-  background: #f4f6fb;
+  color: var(--ink, #0b0c16);
+  background: var(--paper-2, #f8f9fd);
+  -webkit-font-smoothing: antialiased;
 }
 
 a {
   color: inherit;
+  text-decoration: none;
 }

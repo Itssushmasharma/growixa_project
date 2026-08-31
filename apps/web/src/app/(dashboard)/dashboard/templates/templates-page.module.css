@@ -140,36 +140,38 @@
   gap: 6px;
   padding: 6px 14px;
   border-radius: 999px;
-  border: 1px solid rgba(15, 42, 86, 0.12);
-  background: #f8fafc;
-  color: #475569;
-  font-size: 12px;
+  border: 1px solid var(--line, #e2e4eb);
+  background: var(--paper-2, #f8f9fd);
+  color: var(--mut, #5c6070);
+  font-family: var(--font-body, inherit);
+  font-size: 0.75rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
 .categoryPill:hover {
-  background: #f1f5f9;
-  border-color: rgba(15, 42, 86, 0.2);
-  color: #1e293b;
+  background: var(--paper, #ffffff);
+  border-color: var(--line, #e2e4eb);
+  color: var(--ink, #0b0c16);
 }
 
 .categoryPillActive {
-  background: #2563eb;
-  color: #fff;
-  border-color: #2563eb;
-  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
+  background: var(--ink, #0b0c16);
+  color: #ffffff !important;
+  border-color: var(--ink, #0b0c16);
+  box-shadow: 0 2px 8px rgba(11, 12, 22, 0.2);
 }
 
 .categoryPillActive:hover {
-  background: #1d4ed8;
-  border-color: #1d4ed8;
-  color: #fff;
+  background: var(--ink, #0b0c16);
+  border-color: var(--ink, #0b0c16);
+  color: #ffffff !important;
 }
 
 .categoryBadge {
-  font-size: 11px;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.6875rem;
   font-weight: 700;
   padding: 1px 6px;
   border-radius: 999px;
@@ -185,29 +187,29 @@
 /* View Mode Switcher */
 .viewModeToggle {
   display: flex;
-  background: #f1f5f9;
+  background: var(--paper-2, #f8f9fd);
   padding: 3px;
   border-radius: 8px;
   gap: 2px;
-  border: 1px solid rgba(15, 42, 86, 0.08);
+  border: 1px solid var(--line, #e2e4eb);
 }
 
 .viewModeBtn {
   padding: 6px 12px;
   border-radius: 6px;
-  font-size: 12.5px;
+  font-size: 0.7813rem;
   font-weight: 600;
   border: none;
   background: transparent;
-  color: #64748b;
+  color: var(--mut, #5c6070);
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
 .viewModeBtnActive {
-  background: #fff;
-  color: #2563eb;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  background: var(--paper, #ffffff);
+  color: var(--ink, #0b0c16);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
 }
 
 /* Empty State */

@@ -4,7 +4,7 @@
   justify-content: space-between;
   gap: 16px;
   flex-wrap: wrap;
-  margin-bottom: 20px;
+  margin-bottom: 22px;
 }
 
 .titleArea {
@@ -16,7 +16,7 @@
 .titleRow {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 
 .icon {
@@ -28,26 +28,30 @@
 
 .title {
   margin: 0;
-  font-size: 22px;
+  font-family: var(--font-display, inherit);
+  font-size: 1.5rem;
   font-weight: 800;
-  letter-spacing: -0.02em;
-  color: var(--color-dark-text, #0b1b33);
+  letter-spacing: -0.03em;
+  color: var(--ink, #0b0c16);
 }
 
 .badge {
-  font-size: 11px;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.6875rem;
   font-weight: 700;
-  padding: 2px 8px;
+  padding: 3px 10px;
   border-radius: 999px;
-  background: rgba(20, 87, 230, 0.1);
-  color: #1457e6;
+  background: var(--create-l, rgba(123, 77, 255, 0.12));
+  color: var(--create, #7b4dff);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 .description {
   margin: 0;
-  font-size: 13px;
-  color: var(--color-slate, #64748b);
-  line-height: 1.4;
+  font-size: 0.875rem;
+  color: var(--mut, #5c6070);
+  line-height: 1.45;
 }
 
 .actionsArea {
