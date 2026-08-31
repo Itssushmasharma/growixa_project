@@ -2,9 +2,9 @@
 
 ---
 
-## 🟡 [v0.5.9-rc6] (UAT Release Candidate) — 2026-09-01
+## 🟡 [v0.5.9-rc7] (UAT Release Candidate) — 2026-09-01
 
-> **Release Tag**: `v0.5.9-rc6`
+> **Release Tag**: `v0.5.9-rc7`
 > **Release Date**: September 1, 2026
 > **Platform Status**: 🟡 Active on UAT Staging
 > **Target Production URL**: [https://growixa.iitdeveloper.com](https://growixa.iitdeveloper.com)
