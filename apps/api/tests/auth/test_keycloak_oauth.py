@@ -128,3 +128,20 @@ async def test_exchange_code_failure_raises_oauth_error() -> None:
         )
 
     assert "invalid_grant" in str(exc_info.value)
+
+
+@pytest.mark.asyncio
+async def test_keycloak_provider_alias_state_validation() -> None:
+    """Tests that state payload created for 'iitd' alias matches 'keycloak' provider_name."""
+    iitd_provider = get_oauth_provider("iitd")
+    iam_provider = get_oauth_provider("iam")
+    kc_provider = get_oauth_provider("keycloak")
+
+    assert iitd_provider.provider_name == "keycloak"
+    assert iam_provider.provider_name == "keycloak"
+    assert kc_provider.provider_name == "keycloak"
+
+    state_payload = {"provider": iitd_provider.provider_name, "redirect_target": None}
+    assert state_payload["provider"] == get_oauth_provider("iitd").provider_name
+    assert state_payload["provider"] == get_oauth_provider("iam").provider_name
+    assert state_payload["provider"] == get_oauth_provider("keycloak").provider_name
