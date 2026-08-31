@@ -18,7 +18,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   {
     label: "Overview",
-    href: "/platform",
+    href: "/platform/overview",
     icon: "📊",
     requiresPermission: "platform.usage.manage",
   },

@@ -1,0 +1,39 @@
+.sec {
+  padding: clamp(64px, 7vw, 112px) 0;
+  position: relative;
+}
+
+.tint {
+  background: var(--paper-2);
+}
+
+.dark {
+  background: var(--stage);
+  color: var(--stage-fg);
+  overflow: hidden;
+}
+
+/* hue wash + grain: what separates a considered gradient from a plain blur */
+.dark::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(760px 420px at 12% 8%, var(--hue, var(--create)), transparent 62%);
+  opacity: 0.26;
+}
+
+.dark::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: var(--grain);
+  opacity: 0.3;
+  mix-blend-mode: overlay;
+}
+
+.dark > * {
+  position: relative;
+  z-index: 2;
+}

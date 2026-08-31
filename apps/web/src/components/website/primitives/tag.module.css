@@ -1,0 +1,25 @@
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-mono);
+  font-size: 0.5938rem;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+
+.live {
+  background: var(--manage-l);
+  color: var(--manage-d);
+}
+.beta {
+  background: var(--qualify-l);
+  color: var(--qualify-d);
+}
+.soon {
+  background: var(--paper-3);
+  color: var(--faint);
+}

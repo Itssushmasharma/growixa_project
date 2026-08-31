@@ -1,0 +1,60 @@
+:root {
+  /* stage hues — base for fills, -l for tints, -d for text on light */
+  --find: #00a9e0;
+  --find-l: #e4f6fd;
+  --find-d: #00688a;
+  --qualify: #ff9500;
+  --qualify-l: #fff2e0;
+  --qualify-d: #a15f00;
+  --create: #7b4dff;
+  --create-l: #eee9ff;
+  --create-d: #5b2cff;
+  --send: #ff3f73;
+  --send-l: #ffe7ee;
+  --send-d: #c81e4c;
+  --manage: #00b884;
+  --manage-l: #dff7ef;
+  --manage-d: #007d5a;
+
+  /* ground */
+  --ink: #0b0c16;
+  --paper: #ffffff;
+  --paper-2: #f6f6fb;
+  --paper-3: #ededf5;
+  --line: #e4e4ef;
+  --mut: #5c6076;
+  --faint: #656a82;
+
+  /* dark bands */
+  --stage: #08080f;
+  --stage-fg: #f2f2f8;
+  --stage-mut: #9096b0;
+  --stage-line: #22223a;
+
+  /* radius */
+  --r-m: 16px;
+  --r-l: 24px;
+  --r-xl: 34px;
+
+  /* elevation: sh-1 resting, sh-2 hover, sh-3 hero surfaces only */
+  --sh-1: 0 1px 2px rgba(11, 12, 22, 0.06), 0 4px 12px -4px rgba(11, 12, 22, 0.08);
+  --sh-2: 0 2px 4px rgba(11, 12, 22, 0.05), 0 18px 40px -12px rgba(11, 12, 22, 0.16);
+  --sh-3: 0 4px 10px rgba(11, 12, 22, 0.06), 0 44px 90px -22px rgba(11, 12, 22, 0.3);
+
+  /* layout */
+  --gut: clamp(20px, 3.6vw, 60px);
+  --maxw: 1560px;
+
+  /* type */
+  --font-display: "Bricolage Grotesque Variable", "Instrument Sans", sans-serif;
+  --font-body: "Instrument Sans Variable", -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: "JetBrains Mono Variable", ui-monospace, monospace;
+
+  /* motion */
+  --ease-out: cubic-bezier(0.2, 0.8, 0.3, 1);
+  --t-fast: 180ms;
+  --t-base: 220ms;
+
+  /* grain overlay for gradients and dark bands */
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='.4'/%3E%3C/svg%3E");
+}

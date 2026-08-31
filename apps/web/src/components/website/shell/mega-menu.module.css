@@ -1,0 +1,140 @@
+.item {
+  position: relative;
+}
+
+.trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 15px;
+  border-radius: 999px;
+  font-family: var(--font-body);
+  font-size: 0.9063rem;
+  font-weight: 500;
+  color: var(--mut);
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition:
+    background var(--t-fast) ease,
+    color var(--t-fast) ease;
+}
+
+.trigger:hover,
+.open .trigger {
+  background: var(--paper-2);
+  color: var(--ink);
+}
+
+.caret {
+  transition: transform var(--t-base) ease;
+}
+.open .caret {
+  transform: rotate(180deg);
+}
+
+.panel {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 760px;
+  max-width: 92vw;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--r-l);
+  box-shadow: var(--sh-3);
+  padding: 12px;
+  z-index: 300;
+}
+
+.panel[hidden] {
+  display: none;
+}
+
+/* Transparent bridge across the 10px gap. Without it the pointer leaves
+   .item mid-travel, fires mouseleave, and the panel closes before the
+   cursor reaches it. */
+.panel::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -10px;
+  height: 10px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+}
+
+.entry {
+  display: flex;
+  gap: 13px;
+  padding: 13px;
+  border-radius: 14px;
+  align-items: flex-start;
+  text-decoration: none;
+  transition: background var(--t-fast) ease;
+}
+.entry:hover {
+  background: var(--hue-l);
+}
+
+.plate {
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
+  flex: none;
+  background: var(--hue-l);
+  border: 1px solid var(--hue);
+}
+
+.text {
+  display: block;
+}
+
+.name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9063rem;
+  font-weight: 650;
+  letter-spacing: -0.015em;
+  color: var(--ink);
+}
+
+.blurb {
+  display: block;
+  font-size: 0.8125rem;
+  color: var(--mut);
+  line-height: 1.45;
+  margin-top: 2px;
+}
+
+.footer {
+  margin-top: 8px;
+  border-top: 1px solid var(--line);
+  padding: 14px 13px 6px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 900px) {
+  .panel {
+    position: static;
+    transform: none;
+    width: 100%;
+    box-shadow: none;
+    border: none;
+    padding: 0;
+  }
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}

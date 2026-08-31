@@ -1,0 +1,77 @@
+@import "@fontsource-variable/bricolage-grotesque";
+@import "@fontsource-variable/instrument-sans";
+@import "@fontsource-variable/jetbrains-mono";
+@import "./website-tokens.css";
+
+.website-root {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.website-root *,
+.website-root *::before,
+.website-root *::after {
+  box-sizing: border-box;
+}
+
+.website-root h1,
+.website-root h2,
+.website-root h3,
+.website-root h4 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.038em;
+  line-height: 1.03;
+  text-wrap: balance;
+}
+
+:where(.website-root) a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.website-root :focus-visible {
+  outline: 2px solid var(--create);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+.website-root [tabindex="-1"]:focus,
+.website-root [tabindex="-1"]:focus-visible {
+  outline: none;
+}
+
+.website-skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 400;
+  padding: 12px 20px;
+  background: var(--ink);
+  color: var(--paper);
+  border-radius: 0 0 var(--r-m) 0;
+  font-weight: 600;
+}
+
+.website-skip-link:focus {
+  left: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .website-root *,
+  .website-root *::before,
+  .website-root *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

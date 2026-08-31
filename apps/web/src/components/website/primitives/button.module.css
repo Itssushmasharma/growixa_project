@@ -1,0 +1,75 @@
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: var(--font-body);
+  font-weight: 600;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  line-height: 1.2;
+  white-space: nowrap;
+  text-decoration: none;
+  transition:
+    transform var(--t-fast) var(--ease-out),
+    box-shadow var(--t-fast) ease,
+    background var(--t-fast) ease;
+}
+
+.md {
+  padding: 14px 28px;
+  font-size: 0.9375rem;
+}
+.sm {
+  padding: 9px 18px;
+  font-size: 0.8438rem;
+}
+
+/* Primary is always ink, never a hue — see Global Constraints. */
+.primary {
+  background: var(--ink);
+  color: #fff !important;
+  box-shadow:
+    0 1px 2px rgba(11, 12, 22, 0.2),
+    0 12px 26px -10px rgba(11, 12, 22, 0.5);
+}
+.primary:hover {
+  transform: translateY(-2px);
+  color: #fff !important;
+}
+
+.glass {
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--ink) !important;
+  border-color: rgba(11, 12, 22, 0.1);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: var(--sh-1);
+}
+.glass:hover {
+  transform: translateY(-2px);
+  background: #fff;
+  color: var(--ink) !important;
+}
+
+/* onstage / ghoststage are the dark-band inversions */
+.onstage {
+  background: #fff;
+  color: var(--ink) !important;
+}
+.onstage:hover {
+  transform: translateY(-2px);
+  color: var(--ink) !important;
+}
+
+.ghoststage {
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff !important;
+  border-color: rgba(255, 255, 255, 0.22);
+}
+.ghoststage:hover {
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff !important;
+  transform: translateY(-2px);
+}
