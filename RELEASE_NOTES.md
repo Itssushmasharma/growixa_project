@@ -2,6 +2,21 @@
 
 ---
 
+## 🟡 [v0.5.9-rc8] (UAT Release Candidate) — 2026-09-01
+
+> **Release Tag**: `v0.5.9-rc8`
+> **Release Date**: September 1, 2026
+> **Platform Status**: 🟡 Active on UAT Staging
+> **Target Production URL**: [https://growixa.iitdeveloper.com](https://growixa.iitdeveloper.com)
+> **UAT Staging URL**: [https://uat.growixa.iitdeveloper.com](https://uat.growixa.iitdeveloper.com)
+
+### 🐛 Fixed & Improved
+- **Resolved OAuth Provider Alias Mismatch (`PR #68`)**: Fixed a validation mismatch in `complete_oauth_callback` where comparing the request route provider alias (`"iitd"`) directly with the stored state provider (`"keycloak"`) triggered `OAuthStateInvalidError`. Resolves canonical provider instance via `get_oauth_provider(provider_name)` first before checking `state_data.get("provider") == provider.provider_name`.
+- **Enabled Google IdP Trust Email**: Configured `trustEmail = true` in Keycloak to seamlessly bypass manual email verification prompts for verified Google OAuth accounts.
+- **Added Reverse Proxy Header Forwarding in Caddy**: Added `header_up X-Forwarded-Host {host}` and `header_up X-Forwarded-Port {server_port}` in Caddy to ensure Keycloak URI builder operates reliably.
+
+---
+
 ## 🟡 [v0.5.9-rc7] (UAT Release Candidate) — 2026-09-01
 
 > **Release Tag**: `v0.5.9-rc7`

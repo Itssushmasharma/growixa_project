@@ -10,6 +10,10 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
+## 2026-09-01 — v0.5.9-rc8 UAT release candidate
+
+- **`fix(auth)`** — **Resolve OAuth Provider Alias Mismatch in Callback (`PR #68`)**: Fixed an issue in `complete_oauth_callback` where comparing the request route provider alias (`"iitd"`) directly with the stored state provider (`"keycloak"`) resulted in a false `OAuthStateInvalidError`. Resolved provider instance canonically first via `get_oauth_provider(provider_name)` before verifying `state_data.get("provider") == provider.provider_name`. Added unit test coverage for provider alias state validation. (`#68`)
+
 ## 2026-09-01 — v0.5.9-rc7 UAT release candidate
 
 - **`feat(dashboard)`** — **Unified 5-Stage Dashboard Design System (`PR #65`)**: Integrated `website-tokens.css` and `website-base.css` across all dashboard routes, bringing variable fonts (`Bricolage Grotesque`, `Instrument Sans`, `JetBrains Mono`). Upgraded the sidebar with 18px SVG vector icons and stage glow indicators (`overview`, `find`, `qualify`, `create`, `send`, `manage`), added glowing Azure-to-Violet gradient area charts, frosted glass topbars, and multi-stage quota progress bars. Redesigned `/platform/login` with Aurora mesh and accessible show/hide password toggle. Full frontend test suite: 62 test files, 368 tests passing (100%). (`#65`)
