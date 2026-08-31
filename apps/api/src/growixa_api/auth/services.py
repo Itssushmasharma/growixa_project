@@ -390,13 +390,13 @@ async def complete_oauth_callback(
     except (json.JSONDecodeError, TypeError) as exc:
         raise OAuthStateInvalidError("Invalid OAuth state payload") from exc
 
-    if state_data.get("provider") != provider_name.lower():
+    provider = get_oauth_provider(provider_name)
+    if state_data.get("provider") != provider.provider_name:
         raise OAuthStateInvalidError("OAuth state provider mismatch")
 
     redirect_target = state_data.get("redirect_target")
 
     # 2. Exchange code for user profile
-    provider = get_oauth_provider(provider_name)
     profile = await provider.exchange_code_and_get_profile(code, redirect_uri)
 
     if not profile.is_email_verified:
