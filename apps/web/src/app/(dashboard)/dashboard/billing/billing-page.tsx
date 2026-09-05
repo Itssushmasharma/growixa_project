@@ -268,22 +268,29 @@ export function BillingPage() {
 
   return (
     <div className={styles.page}>
-      <div className={styles.currencyToggle} role="group" aria-label="Currency">
-        <button
-          type="button"
-          className={currency === "INR" ? styles.currencyPillActive : styles.currencyPill}
-          onClick={() => setCurrency("INR")}
-        >
-          ₹ INR
-        </button>
-        <button
-          type="button"
-          className={currency === "USD" ? styles.currencyPillActive : styles.currencyPill}
-          onClick={() => setCurrency("USD")}
-        >
-          $ USD
-        </button>
-      </div>
+      <header className={styles.pageHeader}>
+        <div>
+          <span className={styles.eyebrow}>WORKSPACE BILLING</span>
+          <h1>Plan, usage &amp; payments</h1>
+          <p>Manage your subscription and credits from one secure billing workspace.</p>
+        </div>
+        <div className={styles.currencyToggle} role="group" aria-label="Currency">
+          <button
+            type="button"
+            className={currency === "INR" ? styles.currencyPillActive : styles.currencyPill}
+            onClick={() => setCurrency("INR")}
+          >
+            ₹ INR
+          </button>
+          <button
+            type="button"
+            className={currency === "USD" ? styles.currencyPillActive : styles.currencyPill}
+            onClick={() => setCurrency("USD")}
+          >
+            $ USD
+          </button>
+        </div>
+      </header>
 
       <div className={styles.card}>
         <div className={styles.currentPlanHeader}>
