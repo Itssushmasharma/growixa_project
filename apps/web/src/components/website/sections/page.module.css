@@ -3,7 +3,9 @@
   position: relative;
   overflow: hidden;
   padding: clamp(56px, 7vw, 100px) 0;
-  background: var(--paper);
+  isolation: isolate;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(247, 246, 255, 0.9)), var(--paper);
 }
 
 .phero::before {
@@ -11,16 +13,25 @@
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: radial-gradient(820px 440px at 16% 0%, var(--hue-l), transparent 66%);
+  background:
+    radial-gradient(820px 440px at 16% 0%, var(--hue-l), transparent 66%),
+    radial-gradient(520px 360px at 88% 18%, rgba(0, 169, 224, 0.12), transparent 70%),
+    radial-gradient(460px 320px at 72% 92%, rgba(123, 77, 255, 0.12), transparent 72%);
   opacity: 0.95;
+  animation: heroAurora 12s ease-in-out infinite alternate;
 }
 
 .phero::after {
   content: "";
   position: absolute;
   inset: 0;
-  background-image: var(--grain);
-  opacity: 0.28;
+  background-image:
+    radial-gradient(circle at 1px 1px, rgba(91, 44, 255, 0.14) 1px, transparent 0), var(--grain);
+  background-size:
+    24px 24px,
+    140px 140px;
+  mask-image: linear-gradient(to bottom, #000, transparent 90%);
+  opacity: 0.3;
   mix-blend-mode: overlay;
   pointer-events: none;
 }
@@ -46,7 +57,8 @@
   gap: 10px;
   padding: 6px 14px 6px 12px;
   border-radius: 999px;
-  background: var(--paper);
+  background: rgba(255, 255, 255, 0.76);
+  backdrop-filter: blur(14px);
   border: 1px solid var(--line);
   box-shadow: var(--sh-1);
   margin-bottom: 24px;
@@ -66,6 +78,7 @@
   letter-spacing: -0.045em;
   line-height: 1;
   margin-bottom: 20px;
+  max-width: 18ch;
 }
 
 .lede {
@@ -207,6 +220,16 @@
   border-radius: var(--r-xl);
   background: var(--paper);
   box-shadow: var(--sh-1);
+  transition:
+    transform var(--t-base) var(--ease-out),
+    box-shadow var(--t-base) ease,
+    border-color var(--t-base) ease;
+}
+
+.step:hover {
+  transform: translateY(-5px);
+  border-color: color-mix(in srgb, var(--hue) 28%, var(--line));
+  box-shadow: var(--sh-2);
 }
 
 .sn {
@@ -256,6 +279,15 @@
   transition:
     transform var(--t-base) var(--ease-out),
     box-shadow var(--t-base) ease;
+}
+
+@keyframes heroAurora {
+  0% {
+    transform: translate3d(-1%, -1%, 0) scale(1);
+  }
+  100% {
+    transform: translate3d(1.5%, 1%, 0) scale(1.04);
+  }
 }
 
 .fcard:hover {
@@ -593,5 +625,11 @@
   }
   .pnRight .pnH {
     justify-content: flex-start;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .phero::before {
+    animation: none;
   }
 }

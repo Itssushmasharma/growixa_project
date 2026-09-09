@@ -18,6 +18,7 @@ export const metadata: Metadata = {
   title: "The Growixa Engine — Five GTM Stages in One System",
   description:
     "Five jobs a go-to-market team does. One system that does all five: Find, Qualify, Create, Send, and Manage.",
+  alternates: { canonical: "/platform" },
 };
 
 const STATUS_ROWS = [
