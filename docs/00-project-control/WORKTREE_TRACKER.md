@@ -8,6 +8,7 @@ This document maintains a real-time record of all parallel Git worktrees, active
 
 | Worktree Path | Branch Name | Feature / Task | Preview URL | Status | Created |
 |---|---|---|---|---|---|
+| `.worktrees/grx-dashboard-006` | `feature/FRONTEND/GRX-DASHBOARD-006` | `GRX-DASHBOARD-006` — Growth Command Center UX | `http://localhost:3003` | READY_FOR_REVIEW — tests/build pass, product-owner direction applied | 2026-09-09 |
 | — | `main` | Production & Integration Baseline | `http://localhost:3000` | ACTIVE | 2026-08-24 |
 
 ---
