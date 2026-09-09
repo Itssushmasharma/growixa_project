@@ -34,7 +34,7 @@ const FEATURES = [
   ],
 ] as const;
 
-const FAQS = [
+export const FAQS = [
   [
     "Can I start without a credit card?",
     "Yes. Create a workspace and explore the available free plan before choosing a paid plan.",
@@ -59,51 +59,57 @@ export function ClassicHome() {
       <section className={styles.hero}>
         <div className={styles.heroGlow} aria-hidden="true" />
         <div className={styles.wrap}>
-          <div className={styles.badge}>NEW · GROWTH COMMAND CENTER</div>
+          <div className={styles.badge}>AI-POWERED MARKETING EXECUTION</div>
           <h1>
-            Marketing execution,
-            <br />
-            <em>made beautifully simple.</em>
+            Turn marketing goals into
+            <br /> <em>approved growth campaigns.</em>
           </h1>
           <p className={styles.heroCopy}>
-            Plan campaigns, create brand-ready content, approve every important action and
-            understand what to improve next.
+            Growixa brings audience data, brand-aware content, campaign execution and actionable
+            insights into one clear workspace—so your team always knows the next best action.
           </p>
           <div className={styles.actions}>
             <Link className={styles.primary} href="/register">
               Start free <span>→</span>
             </Link>
-            <Link className={styles.secondary} href="/contact">
-              Talk to us
+            <Link className={styles.secondary} href="#how-it-works">
+              See how it works
             </Link>
           </div>
           <p className={styles.assurance}>
-            No credit card required · Human approval controls · Cancel anytime
+            No credit card required · Human approval before publishing · Your draft stays yours
           </p>
           <ProductPreview />
         </div>
       </section>
 
-      <section className={styles.intro}>
+      <section className={styles.intro} aria-labelledby="connected-heading">
         <div className={styles.narrow}>
-          <span className={styles.kicker}>WHY GROWIXA</span>
-          <h2>One calm workspace for the work that drives growth.</h2>
+          <span className={styles.kicker}>ONE CONNECTED GROWTH SYSTEM</span>
+          <h2 id="connected-heading">Know what to do. Get it approved. Improve what works.</h2>
           <p>
-            Replace scattered campaign steps with a connected loop: goal, audience, content,
-            approval, execution and learning.
+            Replace disconnected marketing tools with one understandable loop that connects your
+            goal, audience, message, human approval, execution and learning.
           </p>
           <div className={styles.trustRow}>
-            <span>Email</span>
-            <span>Contacts</span>
-            <span>Campaigns</span>
-            <span>Social</span>
-            <span>AI</span>
-            <span>Analytics</span>
+            {[
+              ["01", "Plan"],
+              ["02", "Create"],
+              ["03", "Approve"],
+              ["04", "Execute"],
+              ["05", "Measure"],
+              ["06", "Improve"],
+            ].map(([number, label]) => (
+              <span key={label}>
+                <small>{number}</small>
+                {label}
+              </span>
+            ))}
           </div>
         </div>
       </section>
 
-      <section className={styles.steps}>
+      <section className={styles.steps} id="how-it-works">
         <div className={styles.wrap}>
           <SectionHead
             kicker="GET STARTED"
@@ -220,7 +226,7 @@ export function ClassicHome() {
               <span className={styles.kicker}>FAQ</span>
               <h2>Questions, answered clearly.</h2>
               <p>Need help choosing a workflow or plan?</p>
-              <Link href="/contact">Contact Growixa →</Link>
+              <Link href="/contact">Talk to a Growixa specialist →</Link>
             </div>
             <div className={styles.faqList}>
               {FAQS.map(([q, a], i) => (
@@ -283,7 +289,7 @@ function ProductPreview() {
           <i />
           <i />
         </div>
-        <span>Growixa · Command Center</span>
+        <span>Growixa · Illustrative product preview</span>
         <b>SS</b>
       </div>
       <div className={styles.productBody}>
@@ -301,19 +307,21 @@ function ProductPreview() {
               <small>GOOD MORNING</small>
               <h3>What do you want to grow today?</h3>
             </div>
-            <button>Create campaign</button>
+            <Link className={styles.previewButton} href="/register">
+              Create campaign
+            </Link>
           </header>
           <div className={styles.metrics}>
             {[
-              ["CONTACTS", "1,338"],
-              ["ACTIVE", "4"],
-              ["CLICK RATE", "8.4%"],
-              ["APPROVALS", "3"],
+              ["AUDIENCE", "Organized"],
+              ["CAMPAIGN", "Planned"],
+              ["CONTENT", "Reviewed"],
+              ["INSIGHTS", "Actionable"],
             ].map(([l, v]) => (
               <article key={l}>
                 <span>{l}</span>
                 <strong>{v}</strong>
-                <small>Live workspace</small>
+                <small>Connected workflow</small>
               </article>
             ))}
           </div>
@@ -336,7 +344,9 @@ function ProductPreview() {
               <span>BEST NEXT ACTION</span>
               <strong>Review 3 campaign drafts</strong>
               <p>Content is ready for your approval.</p>
-              <button>Open approval queue</button>
+              <Link className={styles.previewAction} href="/register">
+                Open approval queue
+              </Link>
             </article>
           </div>
         </main>
@@ -353,7 +363,7 @@ function MiniCalendar() {
           <small>SEPTEMBER 2026</small>
           <strong>Marketing calendar</strong>
         </div>
-        <button>+ New campaign</button>
+        <Link href="/register">+ New campaign</Link>
       </div>
       <div className={styles.days}>
         {["MON", "TUE", "WED", "THU", "FRI"].map((x) => (

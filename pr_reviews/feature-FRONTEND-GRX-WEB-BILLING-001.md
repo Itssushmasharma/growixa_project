@@ -9,6 +9,8 @@
 
 - Replaces the public homepage with the product-owner-approved light blue/lavender and violet SaaS direction.
 - Adds honest product, onboarding, capability, calendar, plan-guide, FAQ and CTA sections.
+- Refines the homepage around a connected Plan → Create → Approve → Execute → Measure → Improve loop after current HubSpot and Cloudflare pattern research.
+- Converts illustrative preview controls into real links, labels demo content honestly, and adds canonical/Open Graph plus SoftwareApplication and FAQ structured data.
 - Restyles the existing billing workspace while preserving Razorpay subscription, top-up, coupon, permission and currency behavior.
 - Fixes local preview reliability by documenting that `next build` must not run concurrently with `next dev` in the same worktree.
 
@@ -19,6 +21,7 @@
 - Targeted ESLint on changed TS/TSX — passed.
 - `npm run build` — passed (two pre-existing `<img>` warnings in social post form).
 - Homepage, pricing, login, register, contact, platform and billing routes — HTTP 200.
+- The same seven routes returned HTTP 200 again after the latest conversion and SEO refinement.
 - Secret-pattern scan of the diff — no findings.
 
 ## Review focus

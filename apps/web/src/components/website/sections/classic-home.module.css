@@ -207,13 +207,19 @@
   font-size: 0.55rem;
   letter-spacing: 0.1em;
 }
-.product button {
+.previewButton,
+.previewAction {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   padding: 9px 12px;
   border: 0;
   border-radius: 8px;
   background: #7642dc;
   color: #fff;
   font-size: 0.68rem;
+  font-weight: 700;
+  text-decoration: none;
 }
 .metrics {
   display: grid;
@@ -286,7 +292,7 @@
   font-size: 0.72rem;
   line-height: 1.5;
 }
-.nextAction button {
+.nextAction .previewAction {
   margin-top: 18px;
   background: #fff;
   color: #4f277f;
@@ -334,9 +340,25 @@
   margin-top: 42px;
   padding-top: 28px;
   border-top: 1px solid #eeeaf4;
-  color: #948c9d;
-  font-size: 0.76rem;
+  color: #443b51;
+  font-size: 0.78rem;
   font-weight: 700;
+}
+.trustRow span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.trustRow small {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #f0e9ff;
+  color: #6f3dcc;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.55rem;
 }
 .steps {
   background: #fcfbfe;
@@ -482,13 +504,15 @@
   font-family: var(--font-mono, monospace);
   font-size: 0.55rem;
 }
-.calendarTop button {
+.calendarTop a {
   padding: 8px 10px;
   border: 0;
   border-radius: 7px;
   background: #7542d8;
   color: #fff;
   font-size: 0.62rem;
+  font-weight: 700;
+  text-decoration: none;
 }
 .days,
 .calendarGrid {
