@@ -57,6 +57,9 @@ export function ClassicHome() {
   return (
     <div className={styles.page}>
       <section className={styles.hero}>
+        <span className={styles.heroWatermark} aria-hidden="true">
+          GROWIXA
+        </span>
         <div className={styles.heroGlow} aria-hidden="true" />
         <div className={styles.wrap}>
           <div className={styles.badge}>AI-POWERED MARKETING EXECUTION</div>

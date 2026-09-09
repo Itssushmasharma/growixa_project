@@ -26,6 +26,9 @@ export interface PageHeroProps {
 export function PageHero({ hue, eyebrow, tag, title, lede, actions, foot, aside }: PageHeroProps) {
   return (
     <section className={styles.phero} style={hueVars(hue)}>
+      <span className={styles.brandWatermark} aria-hidden="true">
+        GROWIXA
+      </span>
       <Wrap className={styles.pheroWrap}>
         <div className={aside ? styles.pheroGrid : styles.pheroSolo}>
           <div>
@@ -249,6 +252,9 @@ export interface ClosingCtaProps {
 export function ClosingCta({ title, body, primary, secondary, foot }: ClosingCtaProps) {
   return (
     <section className={styles.cta}>
+      <span className={styles.ctaWatermark} aria-hidden="true">
+        GROWIXA
+      </span>
       <Wrap className={styles.ctaWrap}>
         <h2 className={styles.ctaH2}>{title}</h2>
         <p className={styles.ctaP}>{body}</p>
