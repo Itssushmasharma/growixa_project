@@ -110,6 +110,8 @@
   font-size: 0.7rem;
 }
 .product {
+  position: relative;
+  z-index: 2;
   overflow: hidden;
   width: min(1020px, 100%);
   margin: 55px auto 0;
@@ -118,6 +120,134 @@
   background: #fff;
   text-align: left;
   box-shadow: 0 35px 80px -40px rgba(64, 37, 113, 0.36);
+}
+.productScene {
+  position: relative;
+  width: min(1160px, 100%);
+  margin: 48px auto 0;
+  padding: 22px 70px 38px;
+}
+.productScene .product {
+  margin-top: 0;
+  animation: productFloat 7s ease-in-out infinite;
+}
+.sceneOrb {
+  position: absolute;
+  left: 50%;
+  top: 48%;
+  width: 80%;
+  height: 70%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: linear-gradient(100deg, rgba(50, 170, 255, 0.22), rgba(142, 75, 239, 0.3));
+  filter: blur(52px);
+  animation: orbBreathe 8s ease-in-out infinite;
+}
+.motionChip {
+  position: absolute;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 11px 14px;
+  border: 1px solid rgba(93, 58, 151, 0.14);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.88);
+  color: #2e2340;
+  box-shadow: 0 18px 40px -24px rgba(51, 29, 91, 0.58);
+  backdrop-filter: blur(16px);
+  font-size: 0.67rem;
+}
+.motionChip > span:first-child {
+  color: #7441d3;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.53rem;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+}
+.motionChip i {
+  display: grid;
+  place-items: center;
+  width: 25px;
+  height: 25px;
+  border-radius: 8px;
+  background: #eee6ff;
+  color: #7040cf;
+  font-style: normal;
+  font-weight: 800;
+}
+.goalChip {
+  left: 5px;
+  top: 105px;
+  flex-direction: column;
+  align-items: flex-start;
+  animation: chipFloatA 5.8s ease-in-out infinite;
+}
+.aiChip {
+  right: 4px;
+  top: 76px;
+  animation: chipFloatB 6.4s ease-in-out infinite;
+}
+.approvalChip {
+  right: 1px;
+  bottom: 145px;
+  animation: chipFloatA 6.8s ease-in-out -1.2s infinite;
+}
+.insightChip {
+  left: 0;
+  bottom: 110px;
+  flex-direction: column;
+  align-items: flex-start;
+  animation: chipFloatB 6.2s ease-in-out -0.8s infinite;
+}
+.motionTrack {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: min(700px, calc(100% - 40px));
+  margin: -1px auto 0;
+  padding: 13px 20px;
+  border: 1px solid rgba(93, 58, 151, 0.12);
+  border-radius: 0 0 15px 15px;
+  background: rgba(255, 255, 255, 0.78);
+  color: #635770;
+  box-shadow: 0 18px 35px -30px rgba(64, 37, 113, 0.7);
+  font-size: 0.62rem;
+  font-weight: 700;
+}
+.motionTrack i {
+  position: relative;
+  overflow: hidden;
+  width: 34px;
+  height: 1px;
+  background: #d8cbea;
+}
+.motionTrack i::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: #7b4dff;
+  transform: translateX(-100%);
+  animation: flowLine 2.8s ease-in-out infinite;
+}
+.motionTrack i:nth-of-type(2)::after {
+  animation-delay: 0.3s;
+}
+.motionTrack i:nth-of-type(3)::after {
+  animation-delay: 0.6s;
+}
+.motionTrack i:nth-of-type(4)::after {
+  animation-delay: 0.9s;
+}
+.motionNote {
+  position: relative;
+  z-index: 2;
+  margin: 18px 0 0;
+  color: #746b7c;
+  font-size: 0.7rem;
 }
 .productBar {
   height: 46px;
@@ -269,6 +399,9 @@
   fill: none;
   stroke: #7542db;
   stroke-width: 3;
+  stroke-dasharray: 720;
+  stroke-dashoffset: 720;
+  animation: drawChart 4.5s ease-in-out infinite;
 }
 .chart .area {
   fill: url(#none);
@@ -278,6 +411,7 @@
 .nextAction {
   background: linear-gradient(145deg, #1c1131, #42216e);
   color: #fff;
+  animation: actionGlow 5s ease-in-out infinite;
 }
 .nextAction > span {
   color: #cfb9f8;
@@ -671,7 +805,84 @@
 .finalCta .actions {
   margin-top: 28px;
 }
+@keyframes productFloat {
+  0%,
+  100% {
+    transform: translateY(0) rotateX(0.01deg);
+  }
+  50% {
+    transform: translateY(-8px) rotateX(0.01deg);
+  }
+}
+@keyframes orbBreathe {
+  0%,
+  100% {
+    opacity: 0.62;
+    transform: translate(-50%, -50%) scale(0.94);
+  }
+  50% {
+    opacity: 0.95;
+    transform: translate(-50%, -50%) scale(1.06);
+  }
+}
+@keyframes chipFloatA {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) rotate(-1deg);
+  }
+  50% {
+    transform: translate3d(0, -11px, 0) rotate(1deg);
+  }
+}
+@keyframes chipFloatB {
+  0%,
+  100% {
+    transform: translate3d(0, -5px, 0) rotate(1deg);
+  }
+  50% {
+    transform: translate3d(0, 7px, 0) rotate(-1deg);
+  }
+}
+@keyframes flowLine {
+  0% {
+    transform: translateX(-100%);
+  }
+  55%,
+  100% {
+    transform: translateX(100%);
+  }
+}
+@keyframes drawChart {
+  0% {
+    stroke-dashoffset: 720;
+    opacity: 0.35;
+  }
+  45%,
+  82% {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+  100% {
+    stroke-dashoffset: -720;
+    opacity: 0.4;
+  }
+}
+@keyframes actionGlow {
+  0%,
+  100% {
+    box-shadow: inset 0 0 0 1px rgba(181, 137, 255, 0);
+  }
+  50% {
+    box-shadow: inset 0 0 0 1px rgba(181, 137, 255, 0.34);
+  }
+}
 @media (max-width: 900px) {
+  .productScene {
+    padding-inline: 28px;
+  }
+  .motionChip {
+    display: none;
+  }
   .productBody {
     grid-template-columns: 110px 1fr;
   }
@@ -705,6 +916,10 @@
   .productBody {
     display: block;
   }
+  .productScene {
+    margin-top: 36px;
+    padding: 12px 0 26px;
+  }
   .product aside {
     display: none;
   }
@@ -720,6 +935,15 @@
   }
   .chart {
     display: none;
+  }
+  .motionTrack {
+    gap: 6px;
+    width: calc(100% - 22px);
+    padding-inline: 10px;
+    font-size: 0.54rem;
+  }
+  .motionTrack i {
+    width: 14px;
   }
   .stepGrid,
   .featureGrid,
@@ -748,5 +972,16 @@
 @media (prefers-reduced-motion: reduce) {
   .page * {
     scroll-behavior: auto !important;
+  }
+  .productScene .product,
+  .sceneOrb,
+  .motionChip,
+  .motionTrack i::after,
+  .chart path,
+  .nextAction {
+    animation: none !important;
+  }
+  .chart path {
+    stroke-dashoffset: 0;
   }
 }

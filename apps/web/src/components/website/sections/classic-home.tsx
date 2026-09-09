@@ -282,75 +282,108 @@ function SectionHead({ kicker, title, copy }: { kicker: string; title: string; c
 
 function ProductPreview() {
   return (
-    <div className={styles.product}>
-      <div className={styles.productBar}>
-        <div>
-          <i />
-          <i />
-          <i />
+    <div className={styles.productScene}>
+      <div className={styles.sceneOrb} aria-hidden="true" />
+      <div className={[styles.motionChip, styles.goalChip].join(" ")} aria-hidden="true">
+        <span>GOAL</span>
+        <strong>Generate qualified leads</strong>
+      </div>
+      <div className={[styles.motionChip, styles.aiChip].join(" ")} aria-hidden="true">
+        <i>✦</i>
+        <span>AI draft ready</span>
+      </div>
+      <div className={[styles.motionChip, styles.approvalChip].join(" ")} aria-hidden="true">
+        <i>✓</i>
+        <span>Human approved</span>
+      </div>
+      <div className={[styles.motionChip, styles.insightChip].join(" ")} aria-hidden="true">
+        <span>NEXT ACTION</span>
+        <strong>Optimize the campaign</strong>
+      </div>
+      <div className={styles.product}>
+        <div className={styles.productBar}>
+          <div>
+            <i />
+            <i />
+            <i />
+          </div>
+          <span>Growixa · Illustrative product preview</span>
+          <b>SS</b>
         </div>
-        <span>Growixa · Illustrative product preview</span>
-        <b>SS</b>
-      </div>
-      <div className={styles.productBody}>
-        <aside>
-          <strong>G</strong>
-          {["Overview", "Audience", "Campaigns", "Content", "Calendar"].map((x, i) => (
-            <span className={i === 0 ? styles.activeNav : undefined} key={x}>
-              {x}
-            </span>
-          ))}
-        </aside>
-        <main>
-          <header>
-            <div>
-              <small>GOOD MORNING</small>
-              <h3>What do you want to grow today?</h3>
-            </div>
-            <Link className={styles.previewButton} href="/register">
-              Create campaign
-            </Link>
-          </header>
-          <div className={styles.metrics}>
-            {[
-              ["AUDIENCE", "Organized"],
-              ["CAMPAIGN", "Planned"],
-              ["CONTENT", "Reviewed"],
-              ["INSIGHTS", "Actionable"],
-            ].map(([l, v]) => (
-              <article key={l}>
-                <span>{l}</span>
-                <strong>{v}</strong>
-                <small>Connected workflow</small>
-              </article>
+        <div className={styles.productBody}>
+          <aside>
+            <strong>G</strong>
+            {["Overview", "Audience", "Campaigns", "Content", "Calendar"].map((x, i) => (
+              <span className={i === 0 ? styles.activeNav : undefined} key={x}>
+                {x}
+              </span>
             ))}
-          </div>
-          <div className={styles.previewGrid}>
-            <article className={styles.chart}>
-              <span>Campaign performance</span>
-              <svg
-                viewBox="0 0 500 150"
-                preserveAspectRatio="none"
-                aria-label="Campaign performance trend"
-              >
-                <path d="M0 125 C70 120 70 80 140 90 S230 40 300 65 S390 20 500 30" />
-                <path
-                  className={styles.area}
-                  d="M0 125 C70 120 70 80 140 90 S230 40 300 65 S390 20 500 30 L500 150 L0 150 Z"
-                />
-              </svg>
-            </article>
-            <article className={styles.nextAction}>
-              <span>BEST NEXT ACTION</span>
-              <strong>Review 3 campaign drafts</strong>
-              <p>Content is ready for your approval.</p>
-              <Link className={styles.previewAction} href="/register">
-                Open approval queue
+          </aside>
+          <main>
+            <header>
+              <div>
+                <small>GOOD MORNING</small>
+                <h3>What do you want to grow today?</h3>
+              </div>
+              <Link className={styles.previewButton} href="/register">
+                Create campaign
               </Link>
-            </article>
-          </div>
-        </main>
+            </header>
+            <div className={styles.metrics}>
+              {[
+                ["AUDIENCE", "Organized"],
+                ["CAMPAIGN", "Planned"],
+                ["CONTENT", "Reviewed"],
+                ["INSIGHTS", "Actionable"],
+              ].map(([l, v]) => (
+                <article key={l}>
+                  <span>{l}</span>
+                  <strong>{v}</strong>
+                  <small>Connected workflow</small>
+                </article>
+              ))}
+            </div>
+            <div className={styles.previewGrid}>
+              <article className={styles.chart}>
+                <span>Campaign performance</span>
+                <svg
+                  viewBox="0 0 500 150"
+                  preserveAspectRatio="none"
+                  aria-label="Illustrative campaign performance trend"
+                >
+                  <path d="M0 125 C70 120 70 80 140 90 S230 40 300 65 S390 20 500 30" />
+                  <path
+                    className={styles.area}
+                    d="M0 125 C70 120 70 80 140 90 S230 40 300 65 S390 20 500 30 L500 150 L0 150 Z"
+                  />
+                </svg>
+              </article>
+              <article className={styles.nextAction}>
+                <span>BEST NEXT ACTION</span>
+                <strong>Review 3 campaign drafts</strong>
+                <p>Content is ready for your approval.</p>
+                <Link className={styles.previewAction} href="/register">
+                  Open approval queue
+                </Link>
+              </article>
+            </div>
+          </main>
+        </div>
       </div>
+      <div className={styles.motionTrack} aria-hidden="true">
+        <span>Goal</span>
+        <i />
+        <span>Audience</span>
+        <i />
+        <span>Create</span>
+        <i />
+        <span>Approve</span>
+        <i />
+        <span>Measure</span>
+      </div>
+      <p className={styles.motionNote}>
+        One connected flow from business goal to measurable next action.
+      </p>
     </div>
   );
 }
