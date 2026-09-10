@@ -4,7 +4,7 @@ Reviewer:
 Branch: feature/FRONTEND/GRX-CHART-ANALYTICS-001
 Worktree:
 Base Commit: 504714d9375c56b20bfe4f9455a8868a900d24c8
-Latest Commit: 737c3f83369043e847c45e64616f6b05646c45cd
+Latest Commit: c3c166ec75787b3c376c2848998db7efa2d08aa6
 Status: READY_FOR_REVIEW
 
 ## What Changed
@@ -17,7 +17,12 @@ Status: READY_FOR_REVIEW
   - Live execution telemetry event stream and institutional quant indicators (Sharpe Growth Ratio, Delivery Alpha, CAC Delta).
 - Integrated chart analysis into the authenticated Growth Command Center dashboard (`apps/web/src/app/(dashboard)/dashboard/dashboard-page.tsx`):
   - Added seamless toggle between Overview Pulse and 📈 Expert Chart Analysis view modes.
-- Added institutional telemetry showcase section to the classic homepage (`apps/web/src/components/website/sections/classic-home.tsx`).
+- Added institutional telemetry showcase section to the classic homepage (`apps/web/src/components/website/sections/classic-home.tsx`):
+  - Enhanced Platform Capabilities with interactive bento cards, badges, and hover glow.
+  - Added luminous white/cyan contrast styling to the Growth Chart Terminal section.
+  - Added interactive preview switcher (`⚡ 3D Automation Engine` vs. `📅 Campaign Timeline`) in Campaign Clarity section.
+  - Upgraded Pricing Plans section with transparent tiers (Free $0, Starter $29, Growth $89), feature checklists, and enterprise scale banner.
+  - Extracted static data into `classic-home-data.ts` for clean Next.js App Router RSC metadata support.
 - Documented chart analysis terminal architecture in `README.md`.
 - Added unit test suite `growth-chart-terminal.test.tsx` covering initial rendering, tab switching, timeframe controls, mode toggling, and indicator state.
 
@@ -62,7 +67,7 @@ Status: READY_FOR_REVIEW
 
 ## Reviewed Code Commit
 
-737c3f83369043e847c45e64616f6b05646c45cd
+c3c166ec75787b3c376c2848998db7efa2d08aa6
 
 ## Review Record Commit
 
