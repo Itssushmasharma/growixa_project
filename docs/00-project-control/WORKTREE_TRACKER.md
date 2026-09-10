@@ -8,7 +8,6 @@ This document maintains a real-time record of all parallel Git worktrees, active
 
 | Worktree Path | Branch Name | Feature / Task | Preview URL | Status | Created |
 |---|---|---|---|---|---|
-| `.worktrees/grx-web-billing-001` | `feature/FRONTEND/GRX-WEB-BILLING-001` | `GRX-WEB-BILLING-001` — Classic website + billing visual foundation | `http://localhost:3002` | IN REVIEW — preview verified | 2026-09-05 |
 | — | `main` | Production & Integration Baseline | `http://localhost:3000` | ACTIVE | 2026-08-24 |
 
 ---
@@ -17,6 +16,8 @@ This document maintains a real-time record of all parallel Git worktrees, active
 
 | Worktree Directory | Branch | Feature Delivered | Merged Commit | Merged Date |
 |---|---|---|---|---|
+| `.worktrees/grx-web-billing-001` | `feature/FRONTEND/GRX-WEB-BILLING-001` | `GRX-WEB-BILLING-001` — Classic website + billing visual foundation | `7ef5357` | 2026-09-10 |
+| `.worktrees/grx-dashboard-006` | `feature/FRONTEND/GRX-DASHBOARD-006` | `GRX-DASHBOARD-006` — Growth Command Center UX | `3634d8e` | 2026-09-10 |
 | `.worktrees/grx-dashboard-redesign` | `feature/FRONTEND/GRX-DASHBOARD-REDESIGN` | `GRX-DASHBOARD-005` — Unified 5-Stage Dashboard Redesign (SVG Sidebar, Trend Charts, Quota Meters, Platform Login) | `c7e0425` | 2026-09-01 |
 | `.worktrees/grx-dashboard-analytics-overview` | `feature/FRONTEND/GRX-DASHBOARD-004` | `GRX-DASHBOARD-004` — Executive Analytics Overview (CTOR StatCard, Live Activity Stream Feed) | `f769b5c` | 2026-08-25 |
 | `.worktrees/grx-campaign-total-metrics` | `feature/SHARED/GRX-CAMP-010` | `GRX-CAMP-010` — Total vs Unique Email Engagement Metrics (Total Opens, Total Clicks, CTOR) | `8876bcf` | 2026-08-25 |
