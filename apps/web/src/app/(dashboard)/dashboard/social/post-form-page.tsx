@@ -373,6 +373,7 @@ export function PostFormPage({ mode, postId }: PostFormPageProps) {
               <span className={styles.label}>Image</span>
               {post?.media.map((media) => (
                 <div className={styles.mediaRow} key={media.id}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={media.public_url} alt="" className={styles.mediaThumb} />
                   {editable && (
                     <button
@@ -432,6 +433,7 @@ export function PostFormPage({ mode, postId }: PostFormPageProps) {
             {post.media[0] && (
               <div className={styles.previewCard}>
                 <h3 className={styles.previewHeading}>Preview</h3>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={post.media[0].public_url} alt="" className={styles.previewImage} />
               </div>
             )}
