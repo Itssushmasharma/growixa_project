@@ -5,12 +5,30 @@
 .splitLayout {
   min-height: 100vh;
   position: relative;
-  background: var(--paper, #ffffff);
+  background: var(--brand-night, #05050d);
   color: var(--ink, #0b0c16);
   font-family: var(--font-body, system-ui, sans-serif);
   display: grid;
   grid-template-columns: minmax(0, 1.15fr) minmax(460px, 0.85fr);
   overflow-x: hidden;
+}
+
+.splitLayout::before {
+  content: "GROWIXA";
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  z-index: 0;
+  transform: translate(-50%, -50%);
+  color: transparent;
+  -webkit-text-stroke: 1px rgba(217, 182, 111, 0.1);
+  font-family: var(--font-display, sans-serif);
+  font-size: clamp(7rem, 22vw, 20rem);
+  font-weight: 850;
+  letter-spacing: -0.08em;
+  line-height: 0.8;
+  white-space: nowrap;
+  pointer-events: none;
 }
 
 /* --------------------------------------------------------------------------
@@ -29,32 +47,21 @@
   position: absolute;
   inset: -20%;
   background:
-    radial-gradient(
-      ellipse 55% 45% at 18% 22%,
-      var(--find-l, rgba(0, 169, 224, 0.14)) 0%,
-      transparent 70%
-    ),
-    radial-gradient(
-      ellipse 50% 40% at 75% 15%,
-      var(--create-l, rgba(123, 77, 255, 0.12)) 0%,
-      transparent 65%
-    ),
-    radial-gradient(
-      ellipse 60% 45% at 30% 78%,
-      var(--send-l, rgba(255, 63, 115, 0.1)) 0%,
-      transparent 70%
-    ),
-    radial-gradient(
-      ellipse 45% 40% at 82% 80%,
-      var(--qualify-l, rgba(255, 138, 0, 0.1)) 0%,
-      transparent 65%
-    ),
-    radial-gradient(
-      ellipse 50% 40% at 50% 50%,
-      var(--manage-l, rgba(0, 184, 135, 0.08)) 0%,
-      transparent 70%
-    );
+    radial-gradient(ellipse 55% 45% at 12% 18%, rgba(53, 72, 255, 0.56), transparent 70%),
+    radial-gradient(ellipse 52% 42% at 72% 28%, rgba(64, 109, 255, 0.3), transparent 68%),
+    radial-gradient(ellipse 58% 48% at 82% 84%, rgba(239, 41, 77, 0.4), transparent 70%),
+    radial-gradient(ellipse 30% 24% at 64% 8%, rgba(217, 182, 111, 0.17), transparent 72%);
   filter: blur(50px);
+  animation: authAurora 14s ease-in-out infinite alternate;
+}
+
+@keyframes authAurora {
+  from {
+    transform: translate3d(-1.5%, -1%, 0) scale(1);
+  }
+  to {
+    transform: translate3d(2%, 1.5%, 0) scale(1.06);
+  }
 }
 
 .filmGrain {
@@ -100,7 +107,7 @@
   font-weight: 700;
   font-size: 1.35rem;
   letter-spacing: -0.035em;
-  color: var(--ink, #0b0c16);
+  color: #f7f5ff;
 }
 
 .brandMark {
@@ -165,7 +172,7 @@
   font-weight: 800;
   line-height: 1.08;
   letter-spacing: -0.038em;
-  color: var(--ink, #0b0c16);
+  color: #f7f5ff;
   margin: 0 0 16px;
 }
 
@@ -184,7 +191,7 @@
 .showcaseSubtitle {
   font-size: 1rem;
   line-height: 1.6;
-  color: var(--mut, #5c6070);
+  color: #b8bdd1;
   margin: 0 0 28px;
 }
 
@@ -313,7 +320,7 @@
   align-items: center;
   justify-content: space-between;
   font-size: 0.8125rem;
-  color: var(--faint, #8d91a5);
+  color: #949ab2;
   padding-top: 24px;
   border-top: 1px solid rgba(11, 12, 22, 0.06);
 }
@@ -350,6 +357,18 @@
   box-shadow:
     0 1px 2px rgba(11, 12, 22, 0.04),
     0 24px 60px -15px rgba(11, 12, 22, 0.1);
+  animation: cardArrive 620ms var(--ease-out) both;
+}
+
+@keyframes cardArrive {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 /* Pill Tabs */
@@ -794,5 +813,13 @@
 @media (max-width: 520px) {
   .twoColumnGrid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auroraMesh,
+  .authCard,
+  .pulseDot {
+    animation: none;
   }
 }

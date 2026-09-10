@@ -3,8 +3,10 @@ import { PageHero, Sec } from "@/components/website/sections/page-kit";
 import own from "@/styles/simple-pages.module.css";
 
 export const metadata: Metadata = {
-  title: "Contact Us — Growixa",
-  description: "There's no sales team. You'll get one of the founders directly.",
+  title: "Contact Growixa — Product, Support and Security",
+  description:
+    "Contact Growixa for campaign support, product questions, migration help, security or privacy requests.",
+  alternates: { canonical: "/contact" },
 };
 
 const ROUTES_TO: Array<[string, string, string, string]> = [

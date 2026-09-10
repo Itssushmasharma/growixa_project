@@ -3,7 +3,9 @@
   position: relative;
   overflow: hidden;
   padding: clamp(56px, 7vw, 100px) 0;
-  background: var(--paper);
+  isolation: isolate;
+  color: var(--stage-fg);
+  background: var(--brand-night);
 }
 
 .phero::before {
@@ -11,17 +13,46 @@
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: radial-gradient(820px 440px at 16% 0%, var(--hue-l), transparent 66%);
-  opacity: 0.95;
+  background:
+    radial-gradient(760px 420px at 12% 8%, rgba(53, 72, 255, 0.55), transparent 66%),
+    radial-gradient(620px 400px at 58% 84%, rgba(64, 109, 255, 0.28), transparent 70%),
+    radial-gradient(540px 380px at 96% 76%, rgba(239, 41, 77, 0.38), transparent 72%),
+    radial-gradient(300px 220px at 76% 8%, rgba(217, 182, 111, 0.16), transparent 74%);
+  opacity: 0.9;
+  animation: heroAurora 12s ease-in-out infinite alternate;
 }
 
 .phero::after {
   content: "";
   position: absolute;
   inset: 0;
-  background-image: var(--grain);
-  opacity: 0.28;
+  background-image:
+    radial-gradient(circle at 1px 1px, rgba(217, 182, 111, 0.2) 1px, transparent 0), var(--grain);
+  background-size:
+    24px 24px,
+    140px 140px;
+  mask-image: linear-gradient(to bottom, #000, transparent 90%);
+  opacity: 0.3;
   mix-blend-mode: overlay;
+  pointer-events: none;
+}
+
+.brandWatermark,
+.ctaWatermark {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 0;
+  transform: translate(-50%, -50%);
+  color: transparent;
+  -webkit-text-stroke: 1px rgba(217, 182, 111, 0.12);
+  font-family: var(--font-display);
+  font-size: clamp(6rem, 20vw, 18rem);
+  font-weight: 800;
+  letter-spacing: -0.075em;
+  line-height: 0.8;
+  white-space: nowrap;
+  user-select: none;
   pointer-events: none;
 }
 
@@ -46,8 +77,9 @@
   gap: 10px;
   padding: 6px 14px 6px 12px;
   border-radius: 999px;
-  background: var(--paper);
-  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.16);
   box-shadow: var(--sh-1);
   margin-bottom: 24px;
   font-size: 0.8125rem;
@@ -58,7 +90,7 @@
   font-family: var(--font-mono);
   font-size: 0.6875rem;
   letter-spacing: 0.1em;
-  color: var(--hue-d);
+  color: #e3c98f;
 }
 
 .h1 {
@@ -66,11 +98,12 @@
   letter-spacing: -0.045em;
   line-height: 1;
   margin-bottom: 20px;
+  max-width: 18ch;
 }
 
 .lede {
   font-size: clamp(1.0625rem, 1.5vw, 1.25rem);
-  color: var(--mut);
+  color: #b8bdd1;
   max-width: 50ch;
   margin: 0 0 30px;
   line-height: 1.55;
@@ -85,7 +118,7 @@
 
 .foot {
   font-size: 0.8438rem;
-  color: var(--faint);
+  color: #949ab2;
   margin: 0;
 }
 
@@ -207,6 +240,16 @@
   border-radius: var(--r-xl);
   background: var(--paper);
   box-shadow: var(--sh-1);
+  transition:
+    transform var(--t-base) var(--ease-out),
+    box-shadow var(--t-base) ease,
+    border-color var(--t-base) ease;
+}
+
+.step:hover {
+  transform: translateY(-5px);
+  border-color: color-mix(in srgb, var(--hue) 28%, var(--line));
+  box-shadow: var(--sh-2);
 }
 
 .sn {
@@ -256,6 +299,15 @@
   transition:
     transform var(--t-base) var(--ease-out),
     box-shadow var(--t-base) ease;
+}
+
+@keyframes heroAurora {
+  0% {
+    transform: translate3d(-1%, -1%, 0) scale(1);
+  }
+  100% {
+    transform: translate3d(1.5%, 1%, 0) scale(1.04);
+  }
 }
 
 .fcard:hover {
@@ -537,6 +589,11 @@
   z-index: 2;
 }
 
+.ctaWatermark {
+  top: 54%;
+  opacity: 0.72;
+}
+
 .ctaH2 {
   font-size: clamp(2rem, 5vw, 3.8rem);
   color: var(--paper);
@@ -593,5 +650,11 @@
   }
   .pnRight .pnH {
     justify-content: flex-start;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .phero::before {
+    animation: none;
   }
 }

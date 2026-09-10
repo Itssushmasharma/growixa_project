@@ -1,7 +1,6 @@
 import Link from "next/link";
 import Wrap from "../layout/wrap";
 import Button from "../primitives/button";
-import WordRotator from "./word-rotator";
 import styles from "./hero.module.css";
 
 const LEADS = [
@@ -78,28 +77,22 @@ export default function Hero() {
       <Wrap className={styles.top}>
         <div className={styles.grid}>
           <div>
-            <p className={styles.eyebrow}>
-              <i className={styles.pulse} aria-hidden="true" />
-              <span>
-                The engine ran <b>1,204 times</b> last night
-              </span>
-              <span className={styles.stamp}>02:41</span>
-            </p>
+            <p className={styles.eyebrow}>✦ AI growth execution platform</p>
 
             <h1 className={styles.h1}>
-              Your AI <WordRotator /> team.
+              Your AI growth platform.
               <br />
               <span className={styles.line2}>Working while you sleep.</span>
             </h1>
 
             <p className={styles.sub}>
-              It finds your buyers, spots who&rsquo;s ready to talk, writes the outreach and runs
-              the campaigns &mdash; replacing 25 tools and the team you haven&rsquo;t hired yet.
+              Plan, create, approve, execute and improve your marketing from one intelligent
+              workspace built for real teams.
             </p>
 
             <div className={styles.actions}>
               <Button as={Link} href="/register">
-                Start free
+                Start your free workspace
                 <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
                   <path
                     d="M3 8h10M9 4l4 4-4 4"
@@ -111,12 +104,12 @@ export default function Hero() {
                 </svg>
               </Button>
               <Button as="a" href="#engine" variant="glass">
-                Watch the engine run
+                Explore the platform
               </Button>
             </div>
 
             <p className={styles.foot}>
-              No credit card &middot; <b>Email campaigns live today</b> &middot; Lead finder in beta
+              ✓ No credit card &nbsp;&nbsp; ✓ Human approval controls &nbsp;&nbsp; ✓ Cancel anytime
             </p>
           </div>
 

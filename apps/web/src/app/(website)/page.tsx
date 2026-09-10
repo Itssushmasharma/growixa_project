@@ -1,28 +1,62 @@
 import type { Metadata } from "next";
-import Hero from "@/components/website/sections/hero";
-import Marquee from "@/components/website/sections/marquee";
-import Sprawl from "@/components/website/sections/sprawl";
-import EngineBento from "@/components/website/sections/engine-bento";
-import { AiSection, CtaBand } from "@/components/website/sections/ai-and-cta";
+import { ClassicHome, FAQS } from "@/components/website/sections/classic-home";
 
 export const metadata: Metadata = {
-  title: "Growixa — Your AI GTM Team Working While You Sleep",
+  title: "Growixa — AI Growth Execution Platform",
   description:
-    "The all-in-one go-to-market engine for companies without a GTM team. It finds your buyers, spots who is ready to talk, writes the outreach and runs the campaigns — replacing 25 tools.",
+    "Plan, create, approve, execute and improve email and social campaigns from one intelligent growth workspace.",
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    title: "Growixa — AI Growth Execution Platform",
+    description:
+      "Turn marketing goals into approved, measurable campaigns from one intelligent workspace.",
+    type: "website",
+  },
 };
 
 export default function HomePage() {
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "SoftwareApplication",
+        name: "Growixa",
+        applicationCategory: "BusinessApplication",
+        operatingSystem: "Web",
+        description:
+          "An AI-powered workspace for planning, creating, approving, executing and improving marketing campaigns.",
+        offers: {
+          "@type": "Offer",
+          price: "0",
+          priceCurrency: "USD",
+          category: "Free plan",
+        },
+      },
+      {
+        "@type": "FAQPage",
+        mainEntity: FAQS.map(([question, answer]) => ({
+          "@type": "Question",
+          name: question,
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: answer,
+          },
+        })),
+      },
+    ],
+  };
+
   return (
     <>
-      {/* 1. State the wedge, and show the whole engine at once. */}
-      <Hero />
-      {/* 2. Make the sprawl visceral before explaining the alternative. */}
-      <Marquee />
-      <Sprawl />
-      {/* 3. Explain the product, then prove the AI claims are checkable. */}
-      <EngineBento />
-      <AiSection />
-      <CtaBand />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(structuredData).replace(/</g, "\\u003c"),
+        }}
+      />
+      <ClassicHome />
     </>
   );
 }

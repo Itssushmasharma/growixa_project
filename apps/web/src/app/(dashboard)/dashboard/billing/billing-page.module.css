@@ -1,280 +1,339 @@
 .page {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 26px;
+  max-width: 1400px;
+  margin: 0 auto;
 }
-
+.pageHeader {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 28px 30px;
+  border: 1px solid #dfe5f2;
+  border-radius: 22px;
+  background: linear-gradient(110deg, #fff 0%, #f6f8ff 72%, #eef4ff 100%);
+  box-shadow: 0 18px 50px -38px #12368d;
+}
+.pageHeader h1 {
+  margin: 5px 0 7px;
+  font-family: var(--font-display, inherit);
+  font-size: clamp(1.7rem, 3vw, 2.35rem);
+  letter-spacing: -0.045em;
+  color: #101b38;
+}
+.pageHeader p {
+  margin: 0;
+  color: #667085;
+  font-size: 0.88rem;
+}
+.eyebrow {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  color: #235de4;
+}
 .card {
   background: #fff;
-  border-radius: var(--card-radius);
-  box-shadow: var(--card-shadow);
-  padding: 24px;
+  border: 1px solid #dfe5f2;
+  border-radius: 22px;
+  box-shadow: 0 14px 40px -34px rgba(16, 39, 94, 0.55);
+  padding: 28px;
 }
-
 .currencyToggle {
   display: flex;
   gap: 4px;
-  align-self: flex-start;
+  padding: 4px;
+  border: 1px solid #dfe5f2;
+  border-radius: 12px;
+  background: #fff;
 }
-
 .currencyPill,
 .currencyPillActive {
-  padding: 7px 14px;
-  border: none;
-  border-radius: var(--pill-radius);
-  font-size: 13px;
-  font-weight: 600;
+  min-width: 70px;
+  padding: 8px 13px;
+  border: 0;
+  border-radius: 9px;
+  font-size: 0.76rem;
+  font-weight: 700;
   cursor: pointer;
-  background: #fff;
-  color: var(--color-slate);
-  box-shadow: var(--card-shadow);
+  background: transparent;
+  color: #667085;
 }
-
 .currencyPillActive {
-  background: var(--gradient-primary);
+  background: #1f57e7;
   color: #fff;
+  box-shadow: 0 6px 16px -8px #1f57e7;
 }
-
 .currentPlanHeader {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
+  gap: 16px;
   flex-wrap: wrap;
 }
-
 .heading {
   margin: 0;
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--color-dark-text);
+  font-family: var(--font-display, inherit);
+  font-size: 1.35rem;
+  letter-spacing: -0.03em;
+  color: #101b38;
 }
-
 .hint {
-  margin: 4px 0 0;
-  font-size: 12px;
-  color: var(--color-slate-light);
+  margin: 5px 0 0;
+  font-size: 0.76rem;
+  line-height: 1.5;
+  color: #7b8499;
 }
-
 .statusActive,
 .statusPending,
-.statusAtRisk {
-  align-self: flex-start;
-  padding: 4px 10px;
+.statusAtRisk,
+.currentBadge {
+  display: inline-flex;
+  padding: 5px 10px;
   border-radius: 999px;
-  font-size: 11.5px;
-  font-weight: 700;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
-
 .statusActive {
-  background: rgba(34, 197, 94, 0.12);
-  color: #15803d;
+  background: #e6f8f1;
+  color: #087e5c;
 }
-
 .statusPending {
-  background: rgba(217, 158, 30, 0.12);
-  color: #a16207;
+  background: #fff4dc;
+  color: #976208;
 }
-
 .statusAtRisk {
-  background: rgba(239, 68, 68, 0.12);
-  color: #dc2626;
+  background: #ffe8ed;
+  color: #bc2949;
 }
-
 .usageSection {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  margin-top: 20px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 24px;
 }
-
 .usageRow {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 9px;
+  padding: 17px;
+  border: 1px solid #e7ebf3;
+  border-radius: 14px;
+  background: #fafbfe;
 }
-
 .usageLabelRow {
   display: flex;
   justify-content: space-between;
-  font-size: 12.5px;
+  gap: 15px;
+  font-size: 0.75rem;
 }
-
 .usageLabel {
-  color: var(--color-dark-text);
-  font-weight: 600;
+  color: #26334f;
+  font-weight: 700;
 }
-
 .usageValue {
-  color: var(--color-slate-light);
+  color: #7b8499;
+  font-variant-numeric: tabular-nums;
 }
-
 .usageBar {
-  height: 8px;
+  height: 7px;
   border-radius: 999px;
-  background: rgba(15, 42, 86, 0.08);
+  background: #e8ecf5;
   overflow: hidden;
 }
-
-.usageBarFill {
-  height: 100%;
-  border-radius: 999px;
-  background: var(--gradient-primary);
-}
-
+.usageBarFill,
 .usageBarFillFull {
   height: 100%;
   border-radius: 999px;
-  background: var(--color-error);
+  background: linear-gradient(90deg, #225fe8, #4e8eff);
 }
-
+.usageBarFillFull {
+  background: #e13f5f;
+}
 .creditsSection {
   margin-top: 24px;
-  padding-top: 20px;
-  border-top: 1px solid rgba(15, 42, 86, 0.08);
+  padding-top: 22px;
+  border-top: 1px solid #e7ebf3;
 }
-
-.subheading {
-  margin: 0 0 12px;
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--color-dark-text);
+.subheading,
+.sectionHeading {
+  margin: 0 0 13px;
+  font-family: var(--font-display, inherit);
+  font-size: 1.05rem;
+  letter-spacing: -0.025em;
+  color: #101b38;
 }
-
 .creditsList {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 11px;
 }
-
 .creditRow {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 10px 14px;
-  border-radius: var(--pill-radius);
-  background: rgba(15, 42, 86, 0.04);
-  font-size: 12px;
-  color: var(--color-slate);
+  gap: 7px;
+  padding: 15px;
+  border: 1px solid #e7ebf3;
+  border-radius: 13px;
+  background: #fff;
+  color: #667085;
+  font-size: 0.7rem;
 }
-
 .creditValue {
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--color-dark-text);
+  font-family: var(--font-display, inherit);
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: #101b38;
 }
-
-.sectionHeading {
-  margin: 0 0 12px;
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--color-dark-text);
-}
-
 .plansGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 15px;
 }
-
 .planCard {
-  background: #fff;
-  border-radius: var(--card-radius);
-  box-shadow: var(--card-shadow);
-  padding: 20px;
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
+  min-height: 260px;
+  padding: 22px;
+  border: 1px solid #dfe5f2;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 14px 38px -34px rgba(16, 39, 94, 0.7);
+  transition:
+    border-color 0.18s ease,
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
 }
-
+.planCard:hover {
+  transform: translateY(-3px);
+  border-color: #9eb9fb;
+  box-shadow: 0 20px 45px -32px rgba(30, 79, 200, 0.5);
+}
 .planCardHeader {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
 }
-
 .planName {
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--color-dark-text);
+  font-family: var(--font-display, inherit);
+  font-size: 1.02rem;
+  font-weight: 800;
+  color: #101b38;
 }
-
 .currentBadge {
-  padding: 3px 10px;
-  border-radius: 999px;
-  background: rgba(20, 87, 230, 0.1);
-  color: var(--color-primary-blue);
-  font-size: 11px;
-  font-weight: 700;
+  background: #eaf0ff;
+  color: #2459d9;
 }
-
 .planPrice {
   margin: 0;
-  font-size: 22px;
+  font-family: var(--font-display, inherit);
+  font-size: 1.7rem;
   font-weight: 800;
-  color: var(--color-dark-text);
+  letter-spacing: -0.04em;
+  color: #101b38;
 }
-
 .planFeatures {
   margin: 0;
-  padding: 0 0 0 18px;
-  font-size: 12.5px;
-  color: var(--color-slate);
+  padding: 0;
+  list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 8px;
+  color: #667085;
+  font-size: 0.76rem;
 }
-
-.actionButton {
-  margin-top: auto;
-  padding: 9px 16px;
-  border: none;
-  border-radius: var(--pill-radius);
-  background: var(--gradient-primary);
-  color: #fff;
-  font-weight: 700;
-  font-size: 13px;
-  cursor: pointer;
+.planFeatures li::before {
+  content: "✓";
+  margin-right: 8px;
+  color: #1b9d74;
+  font-weight: 900;
 }
-
-.actionButton:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
+.actionButton,
 .secondaryButton {
   margin-top: auto;
-  padding: 9px 16px;
-  border-radius: var(--pill-radius);
-  border: 1px solid rgba(15, 42, 86, 0.14);
-  background: #fff;
-  color: var(--color-dark-text);
-  font-weight: 600;
-  font-size: 13px;
+  min-height: 40px;
+  padding: 9px 15px;
+  border-radius: 10px;
+  font-size: 0.78rem;
+  font-weight: 750;
   cursor: pointer;
 }
-
+.actionButton {
+  border: 0;
+  background: #2159e6;
+  color: #fff;
+  box-shadow: 0 9px 20px -12px #2159e6;
+}
+.secondaryButton {
+  border: 1px solid #cad3e5;
+  background: #fff;
+  color: #203050;
+}
+.actionButton:disabled,
 .secondaryButton:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+  box-shadow: none;
 }
-
 .couponRow {
   display: flex;
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
+  margin-top: 14px;
 }
-
 .couponInput {
-  padding: 9px 12px;
-  border-radius: 8px;
-  border: 1px solid rgba(15, 42, 86, 0.14);
-  font-size: 13.5px;
-  font-family: inherit;
-  color: var(--color-dark-text);
+  min-width: 190px;
+  padding: 10px 12px;
+  border: 1px solid #cad3e5;
+  border-radius: 10px;
   background: #fff;
-  min-width: 180px;
+  color: #101b38;
+  font-family: inherit;
+  font-size: 0.8rem;
   text-transform: uppercase;
+}
+.couponInput:focus {
+  outline: 2px solid rgba(33, 89, 230, 0.2);
+  border-color: #2159e6;
+}
+@media (max-width: 860px) {
+  .pageHeader {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .usageSection {
+    grid-template-columns: 1fr;
+  }
+  .creditsList {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (max-width: 520px) {
+  .pageHeader,
+  .card {
+    padding: 20px;
+  }
+  .creditsList {
+    grid-template-columns: 1fr;
+  }
+  .currencyToggle {
+    width: 100%;
+  }
+  .currencyPill,
+  .currencyPillActive {
+    flex: 1;
+  }
+  .plansGrid {
+    grid-template-columns: 1fr;
+  }
 }

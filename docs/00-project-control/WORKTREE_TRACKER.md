@@ -8,6 +8,7 @@ This document maintains a real-time record of all parallel Git worktrees, active
 
 | Worktree Path | Branch Name | Feature / Task | Preview URL | Status | Created |
 |---|---|---|---|---|---|
+| `.worktrees/grx-web-billing-001` | `feature/FRONTEND/GRX-WEB-BILLING-001` | `GRX-WEB-BILLING-001` — Classic website + billing visual foundation | `http://localhost:3002` | IN REVIEW — preview verified | 2026-09-05 |
 | — | `main` | Production & Integration Baseline | `http://localhost:3000` | ACTIVE | 2026-08-24 |
 
 ---
