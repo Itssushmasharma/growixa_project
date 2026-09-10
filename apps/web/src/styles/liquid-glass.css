@@ -1,0 +1,271 @@
+/* ==========================================================================
+   Liquid Glass & 3D Tactile Design Tokens & Component Utilities
+   Inspired by contemporary ultra-glossy glassmorphic and neumorphic trends.
+   ========================================================================== */
+
+:root {
+  /* Liquid Glass Palette */
+  --lg-glass-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.03) 100%);
+  --lg-glass-bg-dark: linear-gradient(135deg, rgba(20, 24, 44, 0.7) 0%, rgba(8, 10, 22, 0.85) 100%);
+  --lg-glass-border: rgba(255, 255, 255, 0.22);
+  --lg-glass-border-hover: rgba(255, 255, 255, 0.55);
+  --lg-glass-highlight: inset 0 1.5px 1.5px 0 rgba(255, 255, 255, 0.75), inset 0 -1.5px 2px 0 rgba(0, 0, 0, 0.4);
+  
+  /* Chromatic Caustic Sheen */
+  --lg-caustic-blue: rgba(53, 110, 255, 0.45);
+  --lg-caustic-purple: rgba(168, 85, 247, 0.45);
+  --lg-caustic-cyan: rgba(6, 182, 212, 0.45);
+  --lg-caustic-pink: rgba(244, 63, 94, 0.45);
+  --lg-caustic-amber: rgba(245, 158, 11, 0.45);
+  --lg-caustic-emerald: rgba(16, 185, 129, 0.45);
+
+  /* Tactile 3D Shadows */
+  --lg-shadow-card: 0 24px 48px -12px rgba(0, 0, 0, 0.5), 0 0 1px 1px rgba(255, 255, 255, 0.12);
+  --lg-shadow-card-hover: 0 32px 64px -16px rgba(0, 0, 0, 0.65), 0 0 2px 1px rgba(255, 255, 255, 0.28);
+  --lg-shadow-tactile: 0 6px 16px -2px rgba(0, 0, 0, 0.35), inset 0 2px 2px rgba(255, 255, 255, 0.6), inset 0 -2px 3px rgba(0, 0, 0, 0.25);
+  --lg-shadow-inset-track: inset 0 2px 4px rgba(0, 0, 0, 0.5), inset 0 -1px 1px rgba(255, 255, 255, 0.15);
+
+  /* Radius standards */
+  --lg-radius-pill: 9999px;
+  --lg-radius-card: 26px;
+  --lg-radius-inner: 18px;
+}
+
+/* --------------------------------------------------------------------------
+   1. Liquid Glass Pill Capsule Buttons & Actions
+   -------------------------------------------------------------------------- */
+.liquidPill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  position: relative;
+  padding: 12px 28px;
+  border-radius: var(--lg-radius-pill);
+  font-size: 0.96rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  text-decoration: none;
+  cursor: pointer;
+  background: var(--lg-glass-bg);
+  backdrop-filter: blur(24px) saturate(190%);
+  -webkit-backdrop-filter: blur(24px) saturate(190%);
+  border: 1px solid var(--lg-glass-border);
+  box-shadow: var(--lg-glass-highlight), 0 10px 25px -5px rgba(0, 0, 0, 0.4);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
+  user-select: none;
+}
+
+.liquidPill::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.35), transparent);
+  transition: transform 0.6s ease;
+  pointer-events: none;
+}
+
+.liquidPill:hover {
+  transform: translateY(-2px) scale(1.02);
+  border-color: var(--lg-glass-border-hover);
+}
+
+.liquidPill:hover::before {
+  transform: translateX(200%);
+}
+
+.liquidPill:active {
+  transform: translateY(1px) scale(0.99);
+}
+
+/* Liquid Pill Variations */
+.liquidPillPrimary {
+  background: linear-gradient(135deg, rgba(46, 85, 250, 0.85) 0%, rgba(138, 43, 226, 0.75) 100%);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.4);
+  box-shadow: var(--lg-glass-highlight), 0 12px 28px -4px rgba(46, 85, 250, 0.5), 0 0 20px rgba(138, 43, 226, 0.35);
+}
+.liquidPillPrimary:hover {
+  box-shadow: var(--lg-glass-highlight), 0 16px 36px -4px rgba(46, 85, 250, 0.7), 0 0 28px rgba(138, 43, 226, 0.55);
+}
+
+.liquidPillSecondary {
+  background: rgba(255, 255, 255, 0.08);
+  color: #f1f3f9;
+  border-color: rgba(255, 255, 255, 0.22);
+}
+.liquidPillSecondary:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.45);
+  box-shadow: var(--lg-glass-highlight), 0 12px 24px -4px rgba(0, 0, 0, 0.5), 0 0 16px rgba(255, 255, 255, 0.15);
+}
+
+.liquidPillCoral {
+  background: linear-gradient(135deg, rgba(255, 75, 43, 0.9) 0%, rgba(255, 65, 108, 0.8) 100%);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.45);
+  box-shadow: var(--lg-glass-highlight), 0 12px 28px -4px rgba(255, 75, 43, 0.45);
+}
+
+.liquidPillEmerald {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.85) 0%, rgba(5, 150, 105, 0.75) 100%);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.4);
+  box-shadow: var(--lg-glass-highlight), 0 12px 28px -4px rgba(16, 185, 129, 0.45);
+}
+
+/* --------------------------------------------------------------------------
+   2. Tactile 3D Pills & Badges (Image 1 Style)
+   -------------------------------------------------------------------------- */
+.tactileBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 18px;
+  border-radius: var(--lg-radius-pill);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #ffffff;
+  box-shadow: var(--lg-shadow-tactile);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.tactileBadge:hover {
+  transform: translateY(-1px) scale(1.04);
+}
+
+.tactileBadgeCyan {
+  background: linear-gradient(180deg, #38bdf8 0%, #0284c7 100%);
+  box-shadow: 0 6px 14px rgba(2, 132, 199, 0.45), inset 0 2px 2px rgba(255, 255, 255, 0.6), inset 0 -2px 3px rgba(0, 0, 0, 0.25);
+}
+
+.tactileBadgePurple {
+  background: linear-gradient(180deg, #c084fc 0%, #9333ea 100%);
+  box-shadow: 0 6px 14px rgba(147, 51, 234, 0.45), inset 0 2px 2px rgba(255, 255, 255, 0.6), inset 0 -2px 3px rgba(0, 0, 0, 0.25);
+}
+
+.tactileBadgeAmber {
+  background: linear-gradient(180deg, #fbbf24 0%, #d97706 100%);
+  box-shadow: 0 6px 14px rgba(217, 119, 6, 0.45), inset 0 2px 2px rgba(255, 255, 255, 0.6), inset 0 -2px 3px rgba(0, 0, 0, 0.25);
+}
+
+.tactileBadgePink {
+  background: linear-gradient(180deg, #f472b6 0%, #db2777 100%);
+  box-shadow: 0 6px 14px rgba(219, 39, 119, 0.45), inset 0 2px 2px rgba(255, 255, 255, 0.6), inset 0 -2px 3px rgba(0, 0, 0, 0.25);
+}
+
+.tactileBadgeEmerald {
+  background: linear-gradient(180deg, #34d399 0%, #059669 100%);
+  box-shadow: 0 6px 14px rgba(5, 150, 105, 0.45), inset 0 2px 2px rgba(255, 255, 255, 0.6), inset 0 -2px 3px rgba(0, 0, 0, 0.25);
+}
+
+/* --------------------------------------------------------------------------
+   3. Liquid Glass 3D Tactile Cards
+   -------------------------------------------------------------------------- */
+.liquidGlassCard {
+  background: var(--lg-glass-bg-dark);
+  backdrop-filter: blur(28px) saturate(190%);
+  -webkit-backdrop-filter: blur(28px) saturate(190%);
+  border: 1px solid var(--lg-glass-border);
+  border-radius: var(--lg-radius-card);
+  box-shadow: var(--lg-shadow-card);
+  position: relative;
+  overflow: hidden;
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.liquidGlassCard::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: var(--lg-radius-card);
+  padding: 1px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0.05) 50%, rgba(99, 102, 241, 0.3) 100%);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+.liquidGlassCard:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--lg-shadow-card-hover);
+  border-color: rgba(255, 255, 255, 0.38);
+}
+
+/* --------------------------------------------------------------------------
+   4. Tactile Sliders & Switch Controls (Image 1 & 3 Style)
+   -------------------------------------------------------------------------- */
+.tactileTrack {
+  position: relative;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(10, 14, 30, 0.85);
+  box-shadow: var(--lg-shadow-inset-track);
+  display: flex;
+  align-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.tactileProgress {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #38bdf8 0%, #818cf8 100%);
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.6);
+}
+
+.tactileKnob {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #ffffff 0%, #cbd5e1 100%);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4), inset 0 1px 1px #ffffff, inset 0 -1px 1px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  transition: transform 0.15s ease;
+}
+.tactileKnob:hover {
+  transform: translate(-50%, -50%) scale(1.15);
+}
+
+/* --------------------------------------------------------------------------
+   5. 3D Floating Animations
+   -------------------------------------------------------------------------- */
+@keyframes float3d {
+  0%, 100% {
+    transform: translateY(0) rotateX(0deg) rotateY(0deg);
+  }
+  50% {
+    transform: translateY(-10px) rotateX(2deg) rotateY(-1.5deg);
+  }
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    opacity: 0.65;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.95;
+    transform: scale(1.05);
+  }
+}
+
+.floating3D {
+  animation: float3d 7s ease-in-out infinite;
+}
+
+.glowingOrb {
+  animation: pulseGlow 5s ease-in-out infinite alternate;
+}

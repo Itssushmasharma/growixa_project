@@ -199,27 +199,45 @@ export function DashboardPage() {
         </div>
         <div className={styles.pulseGrid}>
           <article className={styles.pulseCard}>
-            <span>Audience</span>
+            <div className={styles.pulseHeaderRow}>
+              <span>Audience</span>
+              <span className="tactileBadge tactileBadgeCyan">UI</span>
+            </div>
             <strong>{overview.total_contacts.toLocaleString()}</strong>
             <small>Total contacts</small>
           </article>
           <article className={styles.pulseCard}>
-            <span>Campaigns</span>
+            <div className={styles.pulseHeaderRow}>
+              <span>Campaigns</span>
+              <span className="tactileBadge tactileBadgePurple">UX</span>
+            </div>
             <strong>{overview.active_campaigns}</strong>
             <small>Live &amp; scheduled</small>
           </article>
           <article className={`${styles.pulseCard} ${styles.featuredPulse}`}>
-            <span>Email clicks</span>
+            <div className={styles.pulseHeaderRow}>
+              <span>Email clicks</span>
+              <span className="tactileBadge tactileBadgeAmber">Growth</span>
+            </div>
             <strong>{formatPct(overview.email_click_rate_pct)}</strong>
+            <div className="tactileTrack" style={{ marginTop: "4px" }}>
+              <div className="tactileProgress" style={{ width: `${Math.min((overview.email_click_rate_pct || 0) * 8, 100)}%` }} />
+            </div>
             <small>Delivered campaigns</small>
           </article>
           <article className={styles.pulseCard}>
-            <span>Click-to-open</span>
+            <div className={styles.pulseHeaderRow}>
+              <span>Click-to-open</span>
+              <span className="tactileBadge tactileBadgePink">Audience</span>
+            </div>
             <strong>{formatPct(overview.email_ctor_pct)}</strong>
             <small>Unique CTOR</small>
           </article>
           <article className={styles.pulseCard}>
-            <span>Email opens</span>
+            <div className={styles.pulseHeaderRow}>
+              <span>Email opens</span>
+              <span className="tactileBadge tactileBadgeEmerald">Delivery</span>
+            </div>
             <strong>{formatPct(overview.email_open_rate_pct)}</strong>
             <small>Directional signal</small>
           </article>

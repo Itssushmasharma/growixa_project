@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import styles from "./classic-home.module.css";
 
@@ -82,6 +83,12 @@ export function ClassicHome() {
           <p className={styles.assurance}>
             No credit card required · Human approval before publishing · Your draft stays yours
           </p>
+          <div className={styles.tactileDeck} aria-label="Engine Capabilities">
+            <span className={[styles.tactilePill, styles.pillUi].join(" ")}>UI Engine</span>
+            <span className={[styles.tactilePill, styles.pillUx].join(" ")}>UX Automation</span>
+            <span className={[styles.tactilePill, styles.pillGrowth].join(" ")}>3D Growth</span>
+            <span className={[styles.tactilePill, styles.pillAudience].join(" ")}>Audience AI</span>
+          </div>
           <ProductPreview />
         </div>
       </section>
@@ -170,7 +177,18 @@ export function ClassicHome() {
       <section className={styles.split}>
         <div className={styles.wrap}>
           <div className={styles.splitGrid}>
-            <MiniCalendar />
+            <div>
+              <div className={styles.automation3DCard}>
+                <Image
+                  src="/assets/3d/growixa_3d_tactile_automation.jpg"
+                  alt="Marketing Automation 3D Workflow"
+                  width={600}
+                  height={450}
+                  unoptimized
+                />
+              </div>
+              <MiniCalendar />
+            </div>
             <div className={styles.splitCopy}>
               <span className={styles.kicker}>BUILT FOR CLARITY</span>
               <h2>See the whole campaign before it goes live.</h2>
@@ -303,75 +321,94 @@ function ProductPreview() {
         <span>NEXT ACTION</span>
         <strong>Optimize the campaign</strong>
       </div>
-      <div className={styles.product}>
-        <div className={styles.productBar}>
-          <div>
-            <i />
-            <i />
-            <i />
+      <div className={styles.sceneWith3DFluid}>
+        <div className={styles.product}>
+          <div className={styles.productBar}>
+            <div>
+              <i />
+              <i />
+              <i />
+            </div>
+            <span>Growixa · Illustrative product preview</span>
+            <b>SS</b>
           </div>
-          <span>Growixa · Illustrative product preview</span>
-          <b>SS</b>
-        </div>
-        <div className={styles.productBody}>
-          <aside>
-            <strong>G</strong>
-            {["Overview", "Audience", "Campaigns", "Content", "Calendar"].map((x, i) => (
-              <span className={i === 0 ? styles.activeNav : undefined} key={x}>
-                {x}
-              </span>
-            ))}
-          </aside>
-          <main>
-            <header>
-              <div>
-                <small>GOOD MORNING</small>
-                <h3>What do you want to grow today?</h3>
-              </div>
-              <Link className={styles.previewButton} href="/register">
-                Create campaign
-              </Link>
-            </header>
-            <div className={styles.metrics}>
-              {[
-                ["AUDIENCE", "Organized"],
-                ["CAMPAIGN", "Planned"],
-                ["CONTENT", "Reviewed"],
-                ["INSIGHTS", "Actionable"],
-              ].map(([l, v]) => (
-                <article key={l}>
-                  <span>{l}</span>
-                  <strong>{v}</strong>
-                  <small>Connected workflow</small>
-                </article>
+          <div className={styles.productBody}>
+            <aside>
+              <strong>G</strong>
+              {["Overview", "Audience", "Campaigns", "Content", "Calendar"].map((x, i) => (
+                <span className={i === 0 ? styles.activeNav : undefined} key={x}>
+                  {x}
+                </span>
               ))}
-            </div>
-            <div className={styles.previewGrid}>
-              <article className={styles.chart}>
-                <span>Campaign performance</span>
-                <svg
-                  viewBox="0 0 500 150"
-                  preserveAspectRatio="none"
-                  aria-label="Illustrative campaign performance trend"
-                >
-                  <path d="M0 125 C70 120 70 80 140 90 S230 40 300 65 S390 20 500 30" />
-                  <path
-                    className={styles.area}
-                    d="M0 125 C70 120 70 80 140 90 S230 40 300 65 S390 20 500 30 L500 150 L0 150 Z"
-                  />
-                </svg>
-              </article>
-              <article className={styles.nextAction}>
-                <span>BEST NEXT ACTION</span>
-                <strong>Review 3 campaign drafts</strong>
-                <p>Content is ready for your approval.</p>
-                <Link className={styles.previewAction} href="/register">
-                  Open approval queue
+            </aside>
+            <main>
+              <header>
+                <div>
+                  <small>GOOD MORNING</small>
+                  <h3>What do you want to grow today?</h3>
+                </div>
+                <Link className={styles.previewButton} href="/register">
+                  Create campaign
                 </Link>
-              </article>
-            </div>
-          </main>
+              </header>
+              <div className={styles.metrics}>
+                {[
+                  ["AUDIENCE", "Organized"],
+                  ["CAMPAIGN", "Planned"],
+                  ["CONTENT", "Reviewed"],
+                  ["INSIGHTS", "Actionable"],
+                ].map(([l, v]) => (
+                  <article key={l}>
+                    <span>{l}</span>
+                    <strong>{v}</strong>
+                    <small>Connected workflow</small>
+                  </article>
+                ))}
+              </div>
+              <div className={styles.previewGrid}>
+                <article className={styles.chart}>
+                  <span>Campaign performance</span>
+                  <svg
+                    viewBox="0 0 500 150"
+                    preserveAspectRatio="none"
+                    aria-label="Illustrative campaign performance trend"
+                  >
+                    <path d="M0 125 C70 120 70 80 140 90 S230 40 300 65 S390 20 500 30" />
+                    <path
+                      className={styles.area}
+                      d="M0 125 C70 120 70 80 140 90 S230 40 300 65 S390 20 500 30 L500 150 L0 150 Z"
+                    />
+                  </svg>
+                </article>
+                <article className={styles.nextAction}>
+                  <span>BEST NEXT ACTION</span>
+                  <strong>Review 3 campaign drafts</strong>
+                  <p>Content is ready for your approval.</p>
+                  <Link className={styles.previewAction} href="/register">
+                    Open approval queue
+                  </Link>
+                </article>
+              </div>
+            </main>
+          </div>
         </div>
+
+        <aside className={styles.fluidCardContainer}>
+          <span className={styles.fluidBadge}>✦ 3D FLUID ENGINE</span>
+          <div className={styles.fluidImageWrapper}>
+            <Image
+              src="/assets/3d/growixa_3d_fluid_core.jpg"
+              alt="Growixa 3D Dynamic Fluid Ribbon Core"
+              width={340}
+              height={380}
+              unoptimized
+            />
+          </div>
+          <div className={styles.fluidInfo}>
+            <h4>Dynamic 3D Flow</h4>
+            <p>Conveying continuous depth, energy and automated campaign momentum.</p>
+          </div>
+        </aside>
       </div>
       <div className={styles.motionTrack} aria-hidden="true">
         <span>Goal</span>
