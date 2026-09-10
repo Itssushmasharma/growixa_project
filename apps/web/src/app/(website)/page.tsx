@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { ClassicHome, FAQS } from "@/components/website/sections/classic-home";
+import { ClassicHome } from "@/components/website/sections/classic-home";
+import { FAQS } from "@/components/website/sections/classic-home-data";
 
 export const metadata: Metadata = {
   title: "Growixa — AI Growth Execution Platform",

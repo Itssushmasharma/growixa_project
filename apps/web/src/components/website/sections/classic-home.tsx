@@ -1,61 +1,16 @@
+"use client";
+
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import styles from "./classic-home.module.css";
 import { GrowthChartTerminal } from "@/components/chart-terminal";
 
-const FEATURES = [
-  [
-    "◎",
-    "Audience intelligence",
-    "Organize contacts, lists and behavior-based segments in one reliable workspace.",
-  ],
-  [
-    "✉",
-    "Email campaigns",
-    "Create, review, schedule and measure campaigns with suppression protection built in.",
-  ],
-  [
-    "✦",
-    "AI Content Studio",
-    "Generate brand-aware drafts, then edit and approve before anything goes out.",
-  ],
-  [
-    "◫",
-    "Marketing calendar",
-    "See campaigns and scheduled social content together before you publish.",
-  ],
-  [
-    "✓",
-    "Human approvals",
-    "Keep consequential actions under team control with clear review states.",
-  ],
-  [
-    "↗",
-    "Actionable analytics",
-    "Move from what happened to why it matters and what to improve next.",
-  ],
-] as const;
-
-export const FAQS = [
-  [
-    "Can I start without a credit card?",
-    "Yes. Create a workspace and explore the available free plan before choosing a paid plan.",
-  ],
-  [
-    "Does AI publish automatically?",
-    "No. Growixa keeps a human review and approval step before consequential external actions.",
-  ],
-  [
-    "Can I import my existing contacts?",
-    "Yes. Growixa supports CSV contact import, field mapping, lists, segments and suppression handling.",
-  ],
-  [
-    "Which marketing channels are available?",
-    "Email campaign workflows are available now. Social publishing depends on the integrations enabled for your workspace.",
-  ],
-] as const;
+import { FEATURES, FAQS } from "./classic-home-data";
 
 export function ClassicHome() {
+  const [splitPreview, setSplitPreview] = useState<"automation" | "calendar">("automation");
+
   return (
     <div className={styles.page}>
       <section className={styles.hero}>
@@ -158,17 +113,22 @@ export function ClassicHome() {
       <section className={styles.features} id="features">
         <div className={styles.wrap}>
           <SectionHead
-            kicker="PLATFORM"
-            title="Everything your marketing team needs to move"
-            copy="Powerful enough for real execution, simple enough to understand without training."
+            kicker="PLATFORM CAPABILITIES"
+            title="Everything your marketing team needs to move fast & scale"
+            copy="Powerful enough for real execution, simple enough for your entire team to operate without training."
           />
           <div className={styles.featureGrid}>
-            {FEATURES.map(([icon, title, copy]) => (
-              <article key={title}>
-                <span className={styles.featureIcon}>{icon}</span>
-                <h3>{title}</h3>
-                <p>{copy}</p>
-                <Link href="/platform">Learn more →</Link>
+            {FEATURES.map((item) => (
+              <article key={item.title} className={styles.featureCard}>
+                <div className={styles.featureTopRow}>
+                  <span className={styles.featureIcon}>{item.icon}</span>
+                  <span className={styles.featureTag}>{item.tag}</span>
+                </div>
+                <h3>{item.title}</h3>
+                <p>{item.copy}</p>
+                <Link href="/platform">
+                  Learn more <span>→</span>
+                </Link>
               </article>
             ))}
           </div>
@@ -182,7 +142,7 @@ export function ClassicHome() {
       >
         <div className={styles.wrap}>
           <SectionHead
-            kicker="REAL-TIME TELEMETRY"
+            kicker="INSTITUTIONAL TELEMETRY"
             title="Institutional Growth Telemetry & Chart Analysis Terminal"
             copy="Analyze campaign velocity, conversion depth, and deliverability with precision candlestick charting, technical indicators, and real-time execution telemetry."
           />
@@ -193,30 +153,67 @@ export function ClassicHome() {
       <section className={styles.split}>
         <div className={styles.wrap}>
           <div className={styles.splitGrid}>
-            <div>
-              <div className={styles.automation3DCard}>
-                <Image
-                  src="/assets/3d/growixa_3d_tactile_automation.jpg"
-                  alt="Marketing Automation 3D Workflow"
-                  width={600}
-                  height={450}
-                  unoptimized
-                />
+            <div className={styles.splitVisualCol}>
+              <div
+                className={styles.previewToggleRow}
+                role="group"
+                aria-label="Campaign Preview Mode"
+              >
+                <button
+                  type="button"
+                  onClick={() => setSplitPreview("automation")}
+                  className={`${styles.previewToggleBtn} ${splitPreview === "automation" ? styles.previewToggleBtnActive : ""}`}
+                >
+                  ⚡ 3D Automation Engine
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSplitPreview("calendar")}
+                  className={`${styles.previewToggleBtn} ${splitPreview === "calendar" ? styles.previewToggleBtnActive : ""}`}
+                >
+                  📅 Campaign Timeline
+                </button>
               </div>
-              <MiniCalendar />
+
+              {splitPreview === "automation" ? (
+                <div className={styles.automation3DCard}>
+                  <div className={styles.visualCardBadge}>
+                    <span className={styles.badgeLiveDot} />
+                    <span>AUTONOMOUS ENGINE · LIVE WORKFLOW</span>
+                  </div>
+                  <Image
+                    src="/assets/3d/growixa_3d_tactile_automation.jpg"
+                    alt="Marketing Automation 3D Workflow"
+                    width={600}
+                    height={420}
+                    unoptimized
+                  />
+                  <div className={styles.visualCardCaption}>
+                    <strong>Tactile multi-step automation</strong>
+                    <p>
+                      Orchestrate email sequences, condition-based branching, and real-time
+                      verification.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <MiniCalendar />
+              )}
             </div>
+
             <div className={styles.splitCopy}>
               <span className={styles.kicker}>BUILT FOR CLARITY</span>
               <h2>See the whole campaign before it goes live.</h2>
               <p>
-                Bring email, social content and campaign milestones into one planning surface.
-                Filter by status, channel and owner so your team always knows what is ready.
+                Bring email sequences, social content, and campaign milestones into one planning
+                surface. Filter by status, channel, and owner so your team always knows what is
+                ready, what is approved, and what performs best.
               </p>
               <ul>
-                <li>Unified campaign planning</li>
-                <li>Explicit approval states</li>
-                <li>Clear publishing status</li>
-                <li>Responsive team workspace</li>
+                <li>Unified campaign planning &amp; timeline</li>
+                <li>Explicit deterministic approval states</li>
+                <li>Clear publishing &amp; deliverability status</li>
+                <li>Responsive team collaboration workspace</li>
               </ul>
               <Link className={styles.primary} href="/register">
                 Create your workspace →
@@ -226,32 +223,128 @@ export function ClassicHome() {
         </div>
       </section>
 
-      <section className={styles.pricing}>
+      <section className={styles.pricing} id="pricing">
         <div className={styles.wrap}>
           <SectionHead
             kicker="SIMPLE PLANS"
             title="Start small. Upgrade when growth demands it."
-            copy="Choose the plan that fits your contact, email and AI usage."
+            copy="Choose the plan that fits your contact, email and AI usage. Transparent pricing built to scale."
           />
           <div className={styles.priceGrid}>
-            {[
-              ["Free", "Explore Growixa", "For evaluating the workflow"],
-              ["Starter", "Launch campaigns", "For small teams getting consistent"],
-              ["Pro", "Scale execution", "For growing marketing operations"],
-            ].map(([name, title, copy], i) => (
-              <article key={name} className={i === 1 ? styles.featuredPlan : undefined}>
-                {i === 1 && <span className={styles.popular}>POPULAR</span>}
-                <span className={styles.planName}>{name}</span>
-                <h3>{title}</h3>
-                <p>{copy}</p>
-                <ul>
-                  <li>Campaign workspace</li>
-                  <li>Audience management</li>
-                  <li>Team approval controls</li>
-                </ul>
-                <Link href="/pricing">View current pricing →</Link>
-              </article>
-            ))}
+            <article className={styles.planCard}>
+              <div className={styles.planBadgeRow}>
+                <span className={styles.planName}>FREE</span>
+                <span className={styles.planTierTag}>FOREVER</span>
+              </div>
+              <h3>Explore Growixa</h3>
+              <p>Everything you need to verify contacts and launch your first campaign.</p>
+              <div className={styles.priceAmountRow}>
+                <span className={styles.priceCurrency}>$</span>
+                <span className={styles.priceValue}>0</span>
+                <span className={styles.pricePeriod}>/ month</span>
+              </div>
+              <ul className={styles.planFeatureList}>
+                <li>
+                  <strong>1,000</strong> contacts
+                </li>
+                <li>
+                  <strong>2,000</strong> emails / month
+                </li>
+                <li>
+                  <strong>1</strong> sending domain
+                </li>
+                <li>Campaigns &amp; templates studio</li>
+                <li>Human-in-the-loop approvals</li>
+              </ul>
+              <Link className={styles.planCtaOutline} href="/register">
+                Start free forever →
+              </Link>
+              <Link className={styles.planDetailsLink} href="/pricing">
+                View current pricing →
+              </Link>
+            </article>
+
+            <article className={`${styles.planCard} ${styles.featuredPlan}`}>
+              <div className={styles.planBadgeRow}>
+                <span className={styles.planName}>STARTER</span>
+                <span className={styles.popular}>POPULAR</span>
+              </div>
+              <h3>Launch Campaigns</h3>
+              <p>For founders and small growth teams driving consistent outbound.</p>
+              <div className={styles.priceAmountRow}>
+                <span className={styles.priceCurrency}>$</span>
+                <span className={styles.priceValue}>29</span>
+                <span className={styles.pricePeriod}>/ month</span>
+              </div>
+              <ul className={styles.planFeatureList}>
+                <li>
+                  <strong>5,000</strong> contacts
+                </li>
+                <li>
+                  <strong>25,000</strong> emails / month
+                </li>
+                <li>
+                  <strong>3</strong> sending domains + warm-up
+                </li>
+                <li>Sequences &amp; automated follow-ups</li>
+                <li>
+                  <strong>500</strong> Find lead credits / month
+                </li>
+              </ul>
+              <Link className={styles.planCtaPrimary} href="/register">
+                Choose Starter →
+              </Link>
+              <Link className={styles.planDetailsLink} href="/pricing">
+                View current pricing →
+              </Link>
+            </article>
+
+            <article className={styles.planCard}>
+              <div className={styles.planBadgeRow}>
+                <span className={styles.planName}>GROWTH</span>
+                <span className={styles.planTierTag}>SCALE AI</span>
+              </div>
+              <h3>Scale Execution</h3>
+              <p>The complete engine with brand-voice AI studio and high volume.</p>
+              <div className={styles.priceAmountRow}>
+                <span className={styles.priceCurrency}>$</span>
+                <span className={styles.priceValue}>89</span>
+                <span className={styles.pricePeriod}>/ month</span>
+              </div>
+              <ul className={styles.planFeatureList}>
+                <li>
+                  <strong>25,000</strong> contacts
+                </li>
+                <li>
+                  <strong>150,000</strong> emails / month
+                </li>
+                <li>
+                  <strong>Unlimited</strong> sending domains
+                </li>
+                <li>Full AI Studio with brand voice guardrails</li>
+                <li>
+                  <strong>2,500</strong> Find credits + Chart Terminal
+                </li>
+              </ul>
+              <Link className={styles.planCtaOutline} href="/register">
+                Choose Growth →
+              </Link>
+              <Link className={styles.planDetailsLink} href="/pricing">
+                View current pricing →
+              </Link>
+            </article>
+          </div>
+
+          <div className={styles.pricingEnterpriseBanner}>
+            <div>
+              <strong>Need custom enterprise scale, dedicated IP pools, or custom SLAs?</strong>
+              <p>
+                We provide dedicated SMTP infrastructure, SSO/SAML, and custom volume contracts.
+              </p>
+            </div>
+            <Link className={styles.enterpriseBtn} href="/contact">
+              Talk to enterprise sales →
+            </Link>
           </div>
         </div>
       </section>
