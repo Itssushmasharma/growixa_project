@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { LiveActivityStream } from "@/components/dashboard/live-activity-stream";
 import { QuotaGauge } from "@/components/dashboard/quota-gauge";
 import { TrendChart } from "@/components/dashboard/trend-chart";
+import { GrowthChartTerminal } from "@/components/chart-terminal";
 import { ApiError, apiFetch } from "@/lib/api-client";
 import styles from "./dashboard-page.module.css";
 import type { CampaignStatusBreakdown, DashboardOverview } from "./types";
@@ -99,6 +100,7 @@ export function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [overview, setOverview] = useState<DashboardOverview | null>(null);
+  const [viewMode, setViewMode] = useState<"standard" | "chart-terminal">("standard");
 
   useEffect(() => {
     apiFetch<DashboardOverview>("/dashboard/overview")
@@ -195,53 +197,84 @@ export function DashboardPage() {
             <span className={styles.sectionKicker}>REAL WORKSPACE DATA</span>
             <h2 id="growth-pulse-heading">Growth pulse</h2>
           </div>
+          <div className={styles.terminalSwitchBar}>
+            <div
+              className={styles.viewModeToggle}
+              role="group"
+              aria-label="Dashboard Analytics View"
+            >
+              <button
+                type="button"
+                onClick={() => setViewMode("standard")}
+                className={`${styles.viewToggleBtn} ${viewMode === "standard" ? styles.viewToggleBtnActive : ""}`}
+              >
+                Overview Pulse
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode("chart-terminal")}
+                className={`${styles.viewToggleBtn} ${viewMode === "chart-terminal" ? styles.viewToggleBtnActive : ""}`}
+              >
+                📈 Expert Chart Analysis
+              </button>
+            </div>
+          </div>
           <Link href="/dashboard/campaigns">View campaign details →</Link>
         </div>
-        <div className={styles.pulseGrid}>
-          <article className={styles.pulseCard}>
-            <div className={styles.pulseHeaderRow}>
-              <span>Audience</span>
-              <span className="tactileBadge tactileBadgeCyan">UI</span>
-            </div>
-            <strong>{overview.total_contacts.toLocaleString()}</strong>
-            <small>Total contacts</small>
-          </article>
-          <article className={styles.pulseCard}>
-            <div className={styles.pulseHeaderRow}>
-              <span>Campaigns</span>
-              <span className="tactileBadge tactileBadgePurple">UX</span>
-            </div>
-            <strong>{overview.active_campaigns}</strong>
-            <small>Live &amp; scheduled</small>
-          </article>
-          <article className={`${styles.pulseCard} ${styles.featuredPulse}`}>
-            <div className={styles.pulseHeaderRow}>
-              <span>Email clicks</span>
-              <span className="tactileBadge tactileBadgeAmber">Growth</span>
-            </div>
-            <strong>{formatPct(overview.email_click_rate_pct)}</strong>
-            <div className="tactileTrack" style={{ marginTop: "4px" }}>
-              <div className="tactileProgress" style={{ width: `${Math.min((overview.email_click_rate_pct || 0) * 8, 100)}%` }} />
-            </div>
-            <small>Delivered campaigns</small>
-          </article>
-          <article className={styles.pulseCard}>
-            <div className={styles.pulseHeaderRow}>
-              <span>Click-to-open</span>
-              <span className="tactileBadge tactileBadgePink">Audience</span>
-            </div>
-            <strong>{formatPct(overview.email_ctor_pct)}</strong>
-            <small>Unique CTOR</small>
-          </article>
-          <article className={styles.pulseCard}>
-            <div className={styles.pulseHeaderRow}>
-              <span>Email opens</span>
-              <span className="tactileBadge tactileBadgeEmerald">Delivery</span>
-            </div>
-            <strong>{formatPct(overview.email_open_rate_pct)}</strong>
-            <small>Directional signal</small>
-          </article>
-        </div>
+        {viewMode === "chart-terminal" ? (
+          <div style={{ marginTop: "16px" }}>
+            <GrowthChartTerminal initialMetric="GROWTH_VELOCITY" initialTimeframe="24H" />
+          </div>
+        ) : (
+          <div className={styles.pulseGrid}>
+            <article className={styles.pulseCard}>
+              <div className={styles.pulseHeaderRow}>
+                <span>Audience</span>
+                <span className="tactileBadge tactileBadgeCyan">UI</span>
+              </div>
+              <strong>{overview.total_contacts.toLocaleString()}</strong>
+              <small>Total contacts</small>
+            </article>
+            <article className={styles.pulseCard}>
+              <div className={styles.pulseHeaderRow}>
+                <span>Campaigns</span>
+                <span className="tactileBadge tactileBadgePurple">UX</span>
+              </div>
+              <strong>{overview.active_campaigns}</strong>
+              <small>Live &amp; scheduled</small>
+            </article>
+            <article className={`${styles.pulseCard} ${styles.featuredPulse}`}>
+              <div className={styles.pulseHeaderRow}>
+                <span>Email clicks</span>
+                <span className="tactileBadge tactileBadgeAmber">Growth</span>
+              </div>
+              <strong>{formatPct(overview.email_click_rate_pct)}</strong>
+              <div className="tactileTrack" style={{ marginTop: "4px" }}>
+                <div
+                  className="tactileProgress"
+                  style={{ width: `${Math.min((overview.email_click_rate_pct || 0) * 8, 100)}%` }}
+                />
+              </div>
+              <small>Delivered campaigns</small>
+            </article>
+            <article className={styles.pulseCard}>
+              <div className={styles.pulseHeaderRow}>
+                <span>Click-to-open</span>
+                <span className="tactileBadge tactileBadgePink">Audience</span>
+              </div>
+              <strong>{formatPct(overview.email_ctor_pct)}</strong>
+              <small>Unique CTOR</small>
+            </article>
+            <article className={styles.pulseCard}>
+              <div className={styles.pulseHeaderRow}>
+                <span>Email opens</span>
+                <span className="tactileBadge tactileBadgeEmerald">Delivery</span>
+              </div>
+              <strong>{formatPct(overview.email_open_rate_pct)}</strong>
+              <small>Directional signal</small>
+            </article>
+          </div>
+        )}
       </section>
 
       <section className={styles.insightCard} aria-labelledby="recommendation-heading">

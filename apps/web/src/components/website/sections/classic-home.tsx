@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import styles from "./classic-home.module.css";
+import { GrowthChartTerminal } from "@/components/chart-terminal";
 
 const FEATURES = [
   [
@@ -171,6 +172,21 @@ export function ClassicHome() {
               </article>
             ))}
           </div>
+        </div>
+      </section>
+
+      <section
+        className={styles.terminalSection}
+        id="growth-terminal"
+        aria-label="Institutional Growth Telemetry & Chart Analysis"
+      >
+        <div className={styles.wrap}>
+          <SectionHead
+            kicker="REAL-TIME TELEMETRY"
+            title="Institutional Growth Telemetry & Chart Analysis Terminal"
+            copy="Analyze campaign velocity, conversion depth, and deliverability with precision candlestick charting, technical indicators, and real-time execution telemetry."
+          />
+          <GrowthChartTerminal initialMetric="GROWTH_VELOCITY" initialTimeframe="24H" />
         </div>
       </section>
 
