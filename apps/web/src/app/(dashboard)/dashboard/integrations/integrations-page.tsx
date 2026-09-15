@@ -3,6 +3,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 
+import { PageHeader } from "@/components/page-header/page-header";
 import { useToast } from "@/components/toast/toast-context";
 import { ApiError, apiFetch } from "@/lib/api-client";
 import { getApiUrl } from "@/lib/env";
@@ -472,6 +473,12 @@ export function IntegrationsPage() {
 
   return (
     <div className={styles.page}>
+      <PageHeader
+        icon="🔌"
+        title="Integrations & Transports"
+        description="Configure verified email relays, sending identities, AI engine credentials, and social accounts."
+      />
+
       {/* Metric Summary Cards */}
       <div className={styles.metricsGrid}>
         <div className={styles.metricCard}>

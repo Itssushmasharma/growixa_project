@@ -1,7 +1,23 @@
+/* ==========================================================================
+   Growixa Audit Log — The Nest Palette
+   Peacock Blue (#0F6B6D), Off-White (#F8F8F5), and Gold (#D4AF37)
+   ========================================================================== */
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
 .card {
-  background: #fff;
-  border-radius: var(--card-radius);
-  box-shadow: var(--card-shadow);
+  background: linear-gradient(145deg, rgba(15, 107, 109, 0.22) 0%, rgba(6, 23, 24, 0.88) 100%);
+  backdrop-filter: blur(28px) saturate(190%);
+  -webkit-backdrop-filter: blur(28px) saturate(190%);
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  border-radius: 22px;
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.12),
+    0 20px 45px -12px rgba(2, 8, 8, 0.75);
   padding: 32px;
 }
 
@@ -10,34 +26,50 @@
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 20px;
+  margin-bottom: 22px;
   flex-wrap: wrap;
 }
 
 .headerTitle {
   margin: 0;
-  font-size: 16px;
+  font-family: var(--font-display, inherit);
+  font-size: 1.25rem;
   font-weight: 800;
+  color: #F8F8F5;
 }
 
 .headerCount {
   font-weight: 400;
-  color: var(--color-slate);
+  color: #dce8e8;
 }
 
 .filterSelect {
-  padding: 8px 12px;
+  padding: 8px 14px;
   border-radius: 10px;
-  border: 1px solid rgba(15, 42, 86, 0.14);
+  border: 1px solid rgba(212, 175, 55, 0.25);
   font-size: 13px;
   font-family: inherit;
-  color: var(--color-dark-text);
-  background: #fff;
+  color: #F8F8F5;
+  background: rgba(4, 18, 19, 0.85);
+  outline: none;
+  cursor: pointer;
+}
+
+.filterSelect:focus {
+  border-color: #D4AF37;
+  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.2);
+}
+
+.filterSelect option {
+  background: #041213;
+  color: #F8F8F5;
 }
 
 .emptyState {
-  color: var(--color-slate);
+  color: #dce8e8;
   font-size: 14px;
+  text-align: center;
+  padding: 30px 0;
 }
 
 .row {
@@ -45,8 +77,8 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
-  padding: 12px 0;
-  border-top: 1px solid rgba(15, 42, 86, 0.08);
+  padding: 14px 0;
+  border-top: 1px solid rgba(212, 175, 55, 0.15);
 }
 
 .identity {
@@ -55,23 +87,29 @@
 }
 
 .name {
-  font-weight: 600;
+  font-weight: 700;
   font-size: 14px;
+  color: #F8F8F5;
 }
 
 .description {
   font-size: 13px;
-  color: var(--color-slate);
-  margin-top: 2px;
+  color: #dce8e8;
+  margin-top: 3px;
   word-break: break-word;
+  line-height: 1.5;
 }
 
 .typeBadge {
-  padding: 4px 10px;
+  padding: 4px 12px;
   border-radius: 999px;
-  font-size: 12px;
-  font-weight: 600;
-  background: rgba(37, 99, 235, 0.1);
-  color: #1d4ed8;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.6875rem;
+  font-weight: 800;
+  background: rgba(212, 175, 55, 0.15);
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  color: #F5DE87;
   white-space: nowrap;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }

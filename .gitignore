@@ -64,3 +64,6 @@ data/
 
 # Claude-Flow daemon & session state (local tooling, never source)
 .claude-flow/
+
+# Local PostgreSQL data
+.pgdata/

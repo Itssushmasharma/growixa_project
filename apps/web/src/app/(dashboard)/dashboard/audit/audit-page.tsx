@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 
+import { PageHeader } from "@/components/page-header/page-header";
 import { apiFetch } from "@/lib/api-client";
 
 import styles from "./audit-page.module.css";
@@ -72,7 +73,13 @@ export function AuditPage() {
   }
 
   return (
-    <div className={styles.card}>
+    <div className={styles.page}>
+      <PageHeader
+        icon="📋"
+        title="Audit Log"
+        description="Track all workspace operations, security events, and user authentication logs."
+      />
+      <div className={styles.card}>
       <div className={styles.header}>
         <h2 className={styles.headerTitle}>
           Audit log <span className={styles.headerCount}>· {filteredEvents.length}</span>
@@ -110,6 +117,7 @@ export function AuditPage() {
           <span className={styles.typeBadge}>{event.entity_type}</span>
         </div>
       ))}
+      </div>
     </div>
   );
 }

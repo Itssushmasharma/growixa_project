@@ -2,6 +2,7 @@
 
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 
+import { PageHeader } from "@/components/page-header/page-header";
 import { useToast } from "@/components/toast/toast-context";
 import { apiFetch } from "@/lib/api-client";
 
@@ -166,6 +167,12 @@ export function TeamPage() {
 
   return (
     <div className={styles.page}>
+      <PageHeader
+        icon="👥"
+        title="Team & Roles"
+        description="Manage workspace collaborators, invitations, and role-based access control."
+      />
+
       {/* Metric Summary Cards */}
       <div className={styles.metricsGrid}>
         <div className={styles.metricCard}>

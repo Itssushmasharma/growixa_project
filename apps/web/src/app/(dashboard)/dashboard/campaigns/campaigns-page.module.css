@@ -32,45 +32,45 @@
 .tabActive {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px 16px;
+  gap: 8px;
+  padding: 8px 18px;
   border-radius: 999px;
-  font-family: var(--font-body, inherit);
+  font-family: inherit;
   font-size: 0.8438rem;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
-  background: var(--paper, #ffffff);
-  border: 1px solid var(--line, #e2e4eb);
-  color: var(--mut, #5c6070);
-  transition:
-    background var(--t-fast) ease,
-    color var(--t-fast) ease;
+  background: rgba(15, 107, 109, 0.18);
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  color: #dce8e8;
+  backdrop-filter: blur(16px);
+  transition: all 0.2s ease;
 }
 
 .tab:hover {
-  background: var(--paper-2, #f8f9fd);
-  color: var(--ink, #0b0c16);
+  background: rgba(15, 107, 109, 0.32);
+  color: #F8F8F5;
+  border-color: rgba(212, 175, 55, 0.4);
 }
 
 .tabActive {
-  background: var(--ink, #0b0c16);
-  border-color: transparent;
-  color: #ffffff !important;
-  box-shadow: 0 2px 8px rgba(11, 12, 22, 0.2);
+  background: linear-gradient(135deg, #D4AF37 0%, #F5DE87 50%, #B89225 100%);
+  border-color: #D4AF37;
+  color: #061819 !important;
+  box-shadow: 0 4px 16px rgba(212, 175, 55, 0.45);
 }
 
 .tabCount {
   font-family: var(--font-mono, monospace);
   font-size: 0.6875rem;
-  font-weight: 700;
-  padding: 1px 6px;
+  font-weight: 800;
+  padding: 1px 7px;
   border-radius: 999px;
-  background: rgba(0, 0, 0, 0.08);
+  background: rgba(255, 255, 255, 0.14);
 }
 
 .tabActive .tabCount {
-  background: rgba(255, 255, 255, 0.22);
-  color: #ffffff;
+  background: rgba(6, 24, 25, 0.3);
+  color: #061819;
 }
 
 .toolbarActions {
@@ -88,29 +88,33 @@
 
 .searchInput {
   min-width: 240px;
-  padding: 8px 12px 8px 34px;
+  padding: 9px 14px 9px 36px;
   border-radius: 999px;
-  border: 1px solid var(--line, #e2e4eb);
-  font-size: 0.8125rem;
-  font-family: var(--font-body, inherit);
-  color: var(--ink, #0b0c16);
-  background: var(--paper, #ffffff);
+  border: 1px solid rgba(212, 175, 55, 0.22);
+  font-size: 0.8438rem;
+  font-family: inherit;
+  color: #F8F8F5;
+  background: rgba(8, 28, 30, 0.75);
+  backdrop-filter: blur(16px);
   outline: none;
-  transition:
-    border-color var(--t-fast) ease,
-    box-shadow var(--t-fast) ease;
+  transition: all 0.2s ease;
+}
+
+.searchInput::placeholder {
+  color: #8fa8a8;
 }
 
 .searchInput:focus {
-  border-color: var(--create, #7b4dff);
-  box-shadow: 0 0 0 3px var(--create-l, rgba(123, 77, 255, 0.15));
+  border-color: #D4AF37;
+  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.2);
+  background: rgba(11, 36, 38, 0.9);
 }
 
 .searchIcon {
   position: absolute;
-  left: 12px;
-  font-size: 13px;
-  color: var(--faint, #8d91a5);
+  left: 14px;
+  font-size: 14px;
+  color: #a3c2c2;
   pointer-events: none;
 }
 
@@ -118,62 +122,60 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 9px 18px;
+  padding: 9px 20px;
   border: none;
   border-radius: 999px;
-  background: var(--ink, #0b0c16);
-  color: #ffffff !important;
-  font-family: var(--font-body, inherit);
-  font-weight: 600;
+  background: linear-gradient(135deg, #D4AF37 0%, #F5DE87 50%, #B89225 100%);
+  color: #061819 !important;
+  font-family: inherit;
+  font-weight: 800;
   font-size: 0.8438rem;
   cursor: pointer;
   text-decoration: none;
   white-space: nowrap;
-  box-shadow:
-    0 1px 2px rgba(11, 12, 22, 0.2),
-    0 12px 26px -10px rgba(11, 12, 22, 0.5);
-  transition:
-    transform var(--t-fast) var(--ease-out),
-    box-shadow var(--t-fast) ease;
+  box-shadow: 0 4px 16px rgba(212, 175, 55, 0.4);
+  transition: all 0.2s ease;
 }
 
 .actionButton:hover {
   transform: translateY(-2px);
-  box-shadow:
-    0 1px 2px rgba(11, 12, 22, 0.2),
-    0 16px 32px -10px rgba(11, 12, 22, 0.6);
+  box-shadow: 0 6px 22px rgba(212, 175, 55, 0.6);
 }
 
 /* Empty State Card */
 .emptyState {
-  background: var(--paper, #ffffff);
-  border-radius: var(--r-l, 18px);
-  box-shadow: var(--sh-1);
-  border: 1px solid var(--line, #e2e4eb);
+  background: linear-gradient(145deg, rgba(15, 107, 109, 0.25) 0%, rgba(7, 26, 28, 0.9) 100%);
+  border-radius: 20px;
+  box-shadow: inset 0 1px 1px rgba(248, 248, 245, 0.12), 0 20px 45px -12px rgba(4, 15, 16, 0.85);
+  border: 1px solid rgba(212, 175, 55, 0.22);
+  backdrop-filter: blur(24px) saturate(180%);
   padding: 48px 24px;
   text-align: center;
 }
 
 .emptyStateTitle {
-  font-family: var(--font-display, inherit);
-  font-size: 1.125rem;
-  font-weight: 700;
-  color: var(--ink, #0b0c16);
+  font-family: inherit;
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: #F8F8F5;
   margin-top: 12px;
+  letter-spacing: -0.02em;
 }
 
 .emptyStateHint {
-  font-size: 0.8438rem;
-  color: var(--mut, #5c6070);
-  margin: 6px 0 16px;
+  font-size: 0.875rem;
+  color: #dce8e8;
+  margin: 8px 0 20px;
+  line-height: 1.5;
 }
 
 /* Modern Campaigns Table Card */
 .tableCard {
-  background: var(--paper, #ffffff);
-  border-radius: var(--r-l, 18px);
-  border: 1px solid var(--line, #e2e4eb);
-  box-shadow: var(--sh-1);
+  background: linear-gradient(145deg, rgba(15, 107, 109, 0.25) 0%, rgba(7, 26, 28, 0.9) 100%);
+  border-radius: 20px;
+  border: 1px solid rgba(212, 175, 55, 0.22);
+  backdrop-filter: blur(24px) saturate(180%);
+  box-shadow: inset 0 1px 1px rgba(248, 248, 245, 0.12), 0 20px 45px -12px rgba(4, 15, 16, 0.85);
   overflow: hidden;
 }
 
@@ -189,22 +191,22 @@
 }
 
 .table th {
-  padding: 14px 18px;
-  background: var(--paper-2, #f8f9fd);
-  border-bottom: 1px solid var(--line, #e2e4eb);
+  padding: 16px 20px;
+  background: rgba(7, 26, 28, 0.92);
+  border-bottom: 1px solid rgba(212, 175, 55, 0.18);
   font-family: var(--font-mono, monospace);
   font-size: 0.6875rem;
-  font-weight: 700;
+  font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--faint, #8d91a5);
+  letter-spacing: 0.1em;
+  color: #D4AF37;
 }
 
 .table td {
-  padding: 16px 18px;
-  border-bottom: 1px solid var(--line, #e2e4eb);
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.12);
   font-size: 0.8438rem;
-  color: var(--ink, #0b0c16);
+  color: #dce8e8;
   vertical-align: middle;
 }
 
@@ -213,43 +215,46 @@
 }
 
 .table tr:hover td {
-  background: var(--paper-2, #f8f9fd);
+  background: rgba(15, 107, 109, 0.15);
 }
 
 .campaignTitleCell {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
 }
 
 .campaignIcon {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  background: var(--send-l, rgba(255, 63, 115, 0.12));
-  color: var(--send, #ff3f73);
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  background: rgba(15, 107, 109, 0.3);
+  color: #D4AF37;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
+  font-size: 18px;
   flex-shrink: 0;
+  box-shadow: 0 0 12px rgba(212, 175, 55, 0.25);
 }
 
 .campaignName {
-  font-weight: 600;
-  font-size: 0.875rem;
-  color: var(--ink, #0b0c16);
+  font-weight: 700;
+  font-size: 0.9375rem;
+  color: #F8F8F5;
   text-decoration: none;
+  transition: color 0.15s ease;
 }
 
 .campaignName:hover {
-  color: var(--create, #7b4dff);
+  color: #D4AF37;
 }
 
 .campaignSubject {
-  font-size: 0.75rem;
-  color: var(--mut, #5c6070);
-  margin-top: 2px;
+  font-size: 0.7813rem;
+  color: #dce8e8;
+  margin-top: 3px;
+  line-height: 1.4;
 }
 
 /* Status Badges */
@@ -257,77 +262,84 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 3px 9px;
+  padding: 4px 10px;
   border-radius: 999px;
   font-family: var(--font-mono, monospace);
   font-size: 0.6875rem;
-  font-weight: 700;
+  font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
 
 .statusDraft {
-  background: var(--paper-2, #f8f9fd);
-  color: var(--mut, #5c6070);
+  background: rgba(148, 197, 255, 0.12);
+  border: 1px solid rgba(148, 197, 255, 0.2);
+  color: #cbd5e1;
 }
 
 .statusScheduled {
-  background: var(--create-l, rgba(123, 77, 255, 0.12));
-  color: var(--create, #7b4dff);
+  background: rgba(168, 85, 247, 0.15);
+  border: 1px solid rgba(168, 85, 247, 0.35);
+  color: #c084fc;
 }
 
 .statusDispatching {
-  background: var(--find-l, rgba(0, 169, 224, 0.12));
-  color: var(--find, #00a9e0);
+  background: rgba(56, 189, 248, 0.15);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  color: #38bdf8;
 }
 
 .statusSending {
-  background: var(--qualify-l, rgba(255, 138, 0, 0.12));
-  color: var(--qualify, #ff8a00);
+  background: rgba(251, 191, 36, 0.15);
+  border: 1px solid rgba(251, 191, 36, 0.35);
+  color: #fbbf24;
 }
 
 .statusSent {
-  background: var(--manage-l, rgba(0, 184, 135, 0.12));
-  color: var(--manage, #00b887);
+  background: rgba(52, 211, 153, 0.15);
+  border: 1px solid rgba(52, 211, 153, 0.35);
+  color: #34d399;
 }
 
 .statusCancelled {
-  background: var(--paper-2, #f8f9fd);
-  color: var(--faint, #8d91a5);
+  background: rgba(148, 197, 255, 0.08);
+  border: 1px solid rgba(148, 197, 255, 0.15);
+  color: #94a3b8;
 }
 
 .statusFailed {
-  background: var(--send-l, rgba(255, 63, 115, 0.12));
-  color: var(--send, #ff3f73);
+  background: rgba(248, 113, 113, 0.15);
+  border: 1px solid rgba(248, 113, 113, 0.35);
+  color: #f87171;
 }
 
 .typeBadge {
   display: inline-block;
-  padding: 2px 8px;
-  border-radius: 6px;
+  padding: 3px 9px;
+  border-radius: 8px;
   font-family: var(--font-mono, monospace);
   font-size: 0.6875rem;
-  font-weight: 600;
-  background: var(--paper-2, #f8f9fd);
-  border: 1px solid var(--line, #e2e4eb);
-  color: var(--mut, #5c6070);
+  font-weight: 700;
+  background: rgba(148, 197, 255, 0.1);
+  border: 1px solid rgba(148, 197, 255, 0.2);
+  color: #cbd5e1;
 }
 
 .cancelButton {
   font-family: var(--font-mono, monospace);
   font-size: 0.6875rem;
   font-weight: 700;
-  color: var(--send, #ff3f73);
-  background: var(--send-l, rgba(255, 63, 115, 0.12));
-  border: 1px solid rgba(255, 63, 115, 0.25);
-  border-radius: 6px;
-  padding: 4px 10px;
+  color: #f87171;
+  background: rgba(248, 113, 113, 0.12);
+  border: 1px solid rgba(248, 113, 113, 0.3);
+  border-radius: 8px;
+  padding: 5px 12px;
   cursor: pointer;
   transition: all 0.15s;
 }
 
 .cancelButton:hover:not(:disabled) {
-  background: rgba(255, 63, 115, 0.2);
+  background: rgba(248, 113, 113, 0.22);
 }
 
 .cancelButton:disabled {
@@ -336,14 +348,14 @@
 }
 
 .tableFooter {
-  padding: 14px 18px;
-  background: var(--paper, #ffffff);
-  border-top: 1px solid var(--line, #e2e4eb);
+  padding: 16px 20px;
+  background: rgba(10, 18, 44, 0.6);
+  border-top: 1px solid rgba(148, 197, 255, 0.12);
   display: flex;
   align-items: center;
   justify-content: space-between;
   font-size: 0.8125rem;
-  color: var(--mut, #5c6070);
+  color: #cbd5e1;
 }
 
 /* Performance Metrics Cell */
@@ -364,35 +376,36 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 2px 7px;
-  background: var(--paper-2, #f8f9fd);
-  border: 1px solid var(--line, #e2e4eb);
+  padding: 3px 8px;
+  background: rgba(12, 22, 52, 0.7);
+  border: 1px solid rgba(148, 197, 255, 0.18);
   border-radius: 6px;
   font-family: var(--font-mono, monospace);
   font-size: 0.6875rem;
   font-weight: 700;
-  color: var(--ink, #0b0c16);
+  color: #ffffff;
   white-space: nowrap;
 }
 
 .metricPillOpen {
-  background: var(--find-l, rgba(0, 169, 224, 0.12));
-  border-color: rgba(0, 169, 224, 0.25);
-  color: var(--find, #00a9e0);
+  background: rgba(56, 189, 248, 0.14);
+  border-color: rgba(56, 189, 248, 0.3);
+  color: #38bdf8;
 }
 
 .metricPillClick {
-  background: var(--manage-l, rgba(0, 184, 135, 0.12));
-  border-color: rgba(0, 184, 135, 0.25);
-  color: var(--manage, #00b887);
+  background: rgba(52, 211, 153, 0.14);
+  border-color: rgba(52, 211, 153, 0.3);
+  color: #34d399;
 }
 
 .metricsSubtext {
   font-size: 0.6875rem;
-  color: var(--faint, #8d91a5);
+  color: #94a3b8;
 }
 
 .metricsPlaceholder {
   font-size: 0.8125rem;
-  color: var(--faint, #8d91a5);
+  color: #94a3b8;
 }
+

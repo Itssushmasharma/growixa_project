@@ -11,20 +11,20 @@
   padding: 9px 18px;
   border: none;
   border-radius: var(--pill-radius, 999px);
-  background: linear-gradient(135deg, var(--color-primary-blue, #1457e6) 0%, #6366f1 100%);
-  color: #ffffff;
-  font-weight: 700;
+  background: linear-gradient(135deg, #D4AF37 0%, #F5DE87 50%, #B89225 100%);
+  color: #041213;
+  font-weight: 800;
   font-size: 13px;
   cursor: pointer;
   text-decoration: none;
   white-space: nowrap;
-  box-shadow: 0 2px 10px rgba(20, 87, 230, 0.25);
-  transition: all 0.15s;
+  box-shadow: 0 4px 16px rgba(212, 175, 55, 0.35);
+  transition: all 0.2s ease;
 }
 
 .primaryButton:hover {
-  opacity: 0.95;
-  transform: translateY(-1px);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 22px rgba(212, 175, 55, 0.55);
 }
 
 .secondaryButton {
@@ -33,35 +33,38 @@
   gap: 6px;
   padding: 8px 16px;
   border-radius: var(--pill-radius, 999px);
-  border: 1px solid #e2e8f0;
-  background: #ffffff;
-  color: var(--color-dark-text, #0b1b33);
+  border: 1px solid rgba(212, 175, 55, 0.25);
+  background: rgba(15, 107, 109, 0.25);
+  color: #F8F8F5;
   font-weight: 700;
   font-size: 13px;
   cursor: pointer;
   text-decoration: none;
   white-space: nowrap;
-  transition: all 0.15s ease;
+  transition: all 0.2s ease;
 }
 
 .secondaryButton:hover {
-  background: #f8fafc;
-  border-color: #cbd5e1;
+  background: rgba(15, 107, 109, 0.45);
+  border-color: #D4AF37;
+  color: #ffffff;
 }
 
 .card {
-  background: #ffffff;
+  background: linear-gradient(145deg, rgba(15, 107, 109, 0.22) 0%, rgba(6, 23, 24, 0.88) 100%);
   border-radius: var(--card-radius, 18px);
-  border: 1px solid #eef2f6;
-  box-shadow: var(--card-shadow, 0 4px 24px rgba(15, 42, 86, 0.04));
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.1), 0 14px 34px -8px rgba(2, 8, 8, 0.7);
+  backdrop-filter: blur(20px);
   padding: 24px;
 }
 
 .emptyState {
-  background: #ffffff;
+  background: linear-gradient(145deg, rgba(15, 107, 109, 0.22) 0%, rgba(6, 23, 24, 0.88) 100%);
   border-radius: var(--card-radius, 18px);
-  box-shadow: var(--card-shadow, 0 4px 24px rgba(15, 42, 86, 0.04));
-  border: 1px solid #eef2f6;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.1), 0 14px 34px -8px rgba(2, 8, 8, 0.7);
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  backdrop-filter: blur(20px);
   padding: 48px 24px;
   text-align: center;
 }
@@ -69,13 +72,13 @@
 .emptyStateTitle {
   font-size: 16px;
   font-weight: 800;
-  color: var(--color-dark-text, #0b1b33);
+  color: #F8F8F5;
   margin-top: 12px;
 }
 
 .emptyStateHint {
   font-size: 13px;
-  color: var(--color-slate, #64748b);
+  color: #dce8e8;
   margin: 6px 0 16px;
 }
 
@@ -86,10 +89,11 @@
 }
 
 .dateGroup {
-  background: #ffffff;
+  background: linear-gradient(145deg, rgba(15, 107, 109, 0.22) 0%, rgba(6, 23, 24, 0.88) 100%);
   border-radius: var(--card-radius, 18px);
-  border: 1px solid #eef2f6;
-  box-shadow: var(--card-shadow, 0 4px 24px rgba(15, 42, 86, 0.04));
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.1), 0 14px 34px -8px rgba(2, 8, 8, 0.7);
+  backdrop-filter: blur(20px);
   padding: 20px 24px;
 }
 
@@ -97,7 +101,7 @@
   margin: 0 0 16px;
   font-size: 14.5px;
   font-weight: 800;
-  color: var(--color-dark-text, #0b1b33);
+  color: #D4AF37;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -116,29 +120,30 @@
   gap: 16px;
   padding: 12px 16px;
   border-radius: 12px;
-  background: #f8fafc;
-  border: 1px solid #eef2f6;
+  background: rgba(4, 18, 19, 0.65);
+  border: 1px solid rgba(212, 175, 55, 0.15);
   text-decoration: none;
   color: inherit;
-  transition: all 0.15s ease;
+  transition: all 0.2s ease;
 }
 
 .calendarEntry:hover {
-  background: #f1f5f9;
-  border-color: #cbd5e1;
+  background: rgba(15, 107, 109, 0.3);
+  border-color: rgba(212, 175, 55, 0.4);
+  transform: translateX(3px);
 }
 
 .entryTime {
   font-size: 12.5px;
-  font-weight: 700;
-  color: var(--color-primary-blue, #1457e6);
+  font-weight: 800;
+  color: #D4AF37;
   min-width: 80px;
 }
 
 .entryCaption {
   font-size: 13.5px;
   font-weight: 500;
-  color: var(--color-dark-text, #0b1b33);
+  color: #F8F8F5;
   flex: 1;
   white-space: nowrap;
   overflow: hidden;
@@ -155,11 +160,13 @@
 }
 
 .statusScheduled {
-  background: rgba(99, 102, 241, 0.1);
-  color: #6366f1;
+  background: rgba(15, 107, 109, 0.3);
+  border: 1px solid rgba(15, 107, 109, 0.6);
+  color: #7ee7e8;
 }
 
 .statusSent {
-  background: rgba(16, 185, 129, 0.1);
-  color: #10b981;
+  background: rgba(16, 185, 129, 0.18);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  color: #6ee7b7;
 }

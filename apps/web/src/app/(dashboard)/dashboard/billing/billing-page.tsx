@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+import { PageHeader } from "@/components/page-header/page-header";
 import { useToast } from "@/components/toast/toast-context";
 import { ApiError, apiFetch } from "@/lib/api-client";
 import { openRazorpayCheckout } from "@/lib/razorpay";
@@ -268,12 +269,12 @@ export function BillingPage() {
 
   return (
     <div className={styles.page}>
-      <header className={styles.pageHeader}>
-        <div>
-          <span className={styles.eyebrow}>WORKSPACE BILLING</span>
-          <h1>Plan, usage &amp; payments</h1>
-          <p>Manage your subscription and credits from one secure billing workspace.</p>
-        </div>
+      <div className={styles.headerRow}>
+        <PageHeader
+          icon="💳"
+          title="Plan, usage & payments"
+          description="Manage your subscription, credits, and invoices from one secure workspace."
+        />
         <div className={styles.currencyToggle} role="group" aria-label="Currency">
           <button
             type="button"
@@ -290,7 +291,7 @@ export function BillingPage() {
             $ USD
           </button>
         </div>
-      </header>
+      </div>
 
       <div className={styles.card}>
         <div className={styles.currentPlanHeader}>

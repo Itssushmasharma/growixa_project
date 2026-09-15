@@ -361,10 +361,10 @@ export function HistoryPage() {
   if (loading) {
     return (
       <div className={styles.page}>
-        <div
-          style={{ background: "#fff", padding: "40px", borderRadius: "18px", textAlign: "center" }}
-        >
-          Loading AI Assistant…
+        <div className={styles.emptyStateCard}>
+          <div style={{ fontSize: "32px", marginBottom: "8px" }}>✨</div>
+          <h3 className={styles.emptyStateTitle}>Loading AI Assistant…</h3>
+          <p className={styles.emptyStateSubtitle}>Connecting to AI intelligence engine.</p>
         </div>
       </div>
     );
@@ -373,10 +373,10 @@ export function HistoryPage() {
   if (loadError) {
     return (
       <div className={styles.page}>
-        <div
-          style={{ background: "#fff", padding: "40px", borderRadius: "18px", textAlign: "center" }}
-        >
-          {loadError}
+        <div className={styles.emptyStateCard}>
+          <div style={{ fontSize: "32px", marginBottom: "8px" }}>⚠️</div>
+          <h3 className={styles.emptyStateTitle}>Unable to Load AI Assistant</h3>
+          <p className={styles.emptyStateSubtitle}>{loadError}</p>
         </div>
       </div>
     );
@@ -385,11 +385,10 @@ export function HistoryPage() {
   if (!canView) {
     return (
       <div className={styles.page}>
-        <div
-          style={{ background: "#fff", padding: "40px", borderRadius: "18px", textAlign: "center" }}
-        >
-          <h2>Access Denied</h2>
-          <p>You don&apos;t have access to the AI Studio.</p>
+        <div className={styles.emptyStateCard}>
+          <div style={{ fontSize: "32px", marginBottom: "8px" }}>🔒</div>
+          <h3 className={styles.emptyStateTitle}>Access Denied</h3>
+          <p className={styles.emptyStateSubtitle}>You don&apos;t have access to the AI Studio.</p>
         </div>
       </div>
     );
@@ -711,32 +710,12 @@ export function HistoryPage() {
 
             {/* Empty State */}
             {generations.length === 0 && (
-              <div
-                style={{
-                  background: "#fff",
-                  padding: "48px 24px",
-                  borderRadius: "18px",
-                  textAlign: "center",
-                }}
-              >
+              <div className={styles.emptyStateCard}>
                 <div style={{ fontSize: "32px", marginBottom: "8px" }}>✨</div>
-                <h4
-                  style={{
-                    margin: 0,
-                    fontSize: "16px",
-                    fontWeight: 800,
-                    color: "var(--color-dark-text, #0b1b33)",
-                  }}
-                >
+                <h4 className={styles.emptyStateTitle}>
                   Ready to create with AI
                 </h4>
-                <p
-                  style={{
-                    margin: "6px 0 0",
-                    fontSize: "13px",
-                    color: "var(--color-slate, #64748b)",
-                  }}
-                >
+                <p className={styles.emptyStateSubtitle}>
                   Select a suggestion above or enter a prompt on the left to generate content in
                   seconds.
                 </p>

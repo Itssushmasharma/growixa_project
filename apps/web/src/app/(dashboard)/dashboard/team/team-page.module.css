@@ -1,3 +1,8 @@
+/* ==========================================================================
+   Growixa Team & Roles — The Nest Palette
+   Peacock Blue (#0F6B6D), Off-White (#F8F8F5), and Gold (#D4AF37)
+   ========================================================================== */
+
 .page {
   display: flex;
   flex-direction: column;
@@ -12,57 +17,69 @@
 }
 
 .metricCard {
-  background: #fff;
-  border-radius: var(--card-radius);
-  box-shadow: var(--card-shadow);
-  padding: 18px 20px;
+  background: linear-gradient(145deg, rgba(15, 107, 109, 0.22) 0%, rgba(6, 23, 24, 0.88) 100%);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  border-radius: 20px;
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.12),
+    0 16px 36px -12px rgba(2, 8, 8, 0.7);
+  padding: 20px 22px;
   display: flex;
   align-items: center;
   gap: 14px;
 }
 
 .metricIcon {
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
-  background: rgba(37, 99, 235, 0.08);
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  background: rgba(15, 107, 109, 0.3);
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  color: #D4AF37;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 20px;
+  font-size: 22px;
   flex-shrink: 0;
 }
 
 .metricContent {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
 }
 
 .metricLabel {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--color-slate);
+  font-size: 11px;
+  font-weight: 700;
+  color: #D4AF37;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.08em;
 }
 
 .metricValue {
   font-size: 22px;
   font-weight: 800;
-  color: var(--color-dark-text);
+  color: #F8F8F5;
   line-height: 1.2;
 }
 
 /* Main Container Card */
 .card {
-  background: #fff;
-  border-radius: var(--card-radius);
-  box-shadow: var(--card-shadow);
-  padding: 24px;
+  background: linear-gradient(145deg, rgba(15, 107, 109, 0.22) 0%, rgba(6, 23, 24, 0.88) 100%);
+  backdrop-filter: blur(28px) saturate(190%);
+  -webkit-backdrop-filter: blur(28px) saturate(190%);
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  border-radius: 22px;
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.12),
+    0 20px 45px -12px rgba(2, 8, 8, 0.75);
+  padding: 26px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 22px;
   width: 100%;
 }
 
@@ -75,21 +92,23 @@
 
 .headerTitle {
   margin: 0;
-  font-size: 16px;
+  font-family: var(--font-display, inherit);
+  font-size: 1.2rem;
   font-weight: 800;
+  color: #F8F8F5;
 }
 
 .headerSubtitle {
   margin: 4px 0 0;
-  font-size: 13px;
-  color: var(--color-slate);
+  font-size: 0.8125rem;
+  color: #dce8e8;
 }
 
 .toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 14px;
   flex-wrap: wrap;
 }
 
@@ -104,13 +123,23 @@
 .searchInput {
   flex: 1;
   min-width: 200px;
-  padding: 9px 12px;
-  border-radius: 10px;
-  border: 1px solid rgba(15, 42, 86, 0.14);
-  font-size: 14px;
+  padding: 9px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(212, 175, 55, 0.25);
+  font-size: 13.5px;
   font-family: inherit;
-  color: var(--color-dark-text);
-  background: #fff;
+  color: #F8F8F5;
+  background: rgba(4, 18, 19, 0.85);
+  outline: none;
+}
+
+.searchInput:focus {
+  border-color: #D4AF37;
+  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.2);
+}
+
+.searchInput::placeholder {
+  color: #64748b;
 }
 
 .rolePills {
@@ -121,50 +150,66 @@
 }
 
 .rolePill {
-  padding: 5px 12px;
+  padding: 6px 14px;
   border-radius: 999px;
-  border: 1px solid rgba(15, 42, 86, 0.14);
-  background: #fff;
-  color: #475569;
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  background: rgba(4, 18, 19, 0.75);
+  color: #a3c2c2;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
+.rolePill:hover {
+  background: rgba(15, 107, 109, 0.35);
+  color: #ffffff;
+  border-color: rgba(212, 175, 55, 0.45);
+}
+
 .rolePillActive {
-  background: #2563eb;
-  color: #fff;
-  border-color: #2563eb;
+  background: linear-gradient(135deg, #D4AF37 0%, #F5DE87 50%, #B89225 100%);
+  color: #041213;
+  border: 1px solid transparent;
+  box-shadow: 0 2px 10px rgba(212, 175, 55, 0.4);
 }
 
 .inviteButton {
-  padding: 9px 16px;
+  padding: 10px 20px;
   border: none;
-  border-radius: var(--pill-radius);
-  background: var(--gradient-primary);
-  color: #fff;
-  font-weight: 700;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #D4AF37 0%, #F5DE87 50%, #B89225 100%);
+  color: #041213;
+  font-weight: 800;
   font-size: 13px;
   cursor: pointer;
   flex-shrink: 0;
+  box-shadow: 0 4px 14px rgba(212, 175, 55, 0.35);
+  transition: all 0.15s ease;
+}
+
+.inviteButton:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(212, 175, 55, 0.55);
 }
 
 /* Invite Form Card */
 .inviteFormCard {
-  background: #f8fafc;
-  border: 1px solid rgba(37, 99, 235, 0.2);
-  border-radius: 14px;
-  padding: 20px;
+  background: rgba(4, 18, 19, 0.85);
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  border-radius: 16px;
+  padding: 22px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
 }
 
 .inviteFormTitle {
-  font-size: 14.5px;
-  font-weight: 700;
-  color: #0f172a;
+  font-family: var(--font-display, inherit);
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #F8F8F5;
   margin: 0;
 }
 
@@ -188,74 +233,79 @@
 }
 
 .label {
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: 700;
-  color: var(--color-dark-text);
+  color: #dce8e8;
 }
 
-.input {
-  padding: 9px 12px;
-  border-radius: 10px;
-  border: 1px solid rgba(15, 42, 86, 0.14);
-  font-size: 14px;
-  font-family: inherit;
-  color: var(--color-dark-text);
-  background: #fff;
-}
-
+.input,
 .select {
   padding: 9px 12px;
   border-radius: 10px;
-  border: 1px solid rgba(15, 42, 86, 0.14);
-  font-size: 14px;
+  border: 1px solid rgba(212, 175, 55, 0.25);
+  font-size: 13.5px;
   font-family: inherit;
-  color: var(--color-dark-text);
-  background: #fff;
+  color: #F8F8F5;
+  background: rgba(6, 23, 24, 0.9);
+  outline: none;
+}
+
+.input:focus,
+.select:focus {
+  border-color: #D4AF37;
+  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.2);
+}
+
+.select option {
+  background: #041213;
+  color: #F8F8F5;
 }
 
 .submit {
   padding: 9px 18px;
-  border-radius: var(--pill-radius);
+  border-radius: 999px;
   border: none;
-  background: #2563eb;
-  color: #fff;
-  font-weight: 700;
+  background: linear-gradient(135deg, #D4AF37 0%, #F5DE87 50%, #B89225 100%);
+  color: #041213;
+  font-weight: 800;
   font-size: 13px;
   cursor: pointer;
   height: 40px;
+  box-shadow: 0 4px 14px rgba(212, 175, 55, 0.35);
 }
 
 .cancel {
-  padding: 9px 14px;
-  border-radius: var(--pill-radius);
-  border: 1px solid rgba(15, 42, 86, 0.14);
-  background: #fff;
-  color: var(--color-dark-text);
-  font-weight: 600;
+  padding: 9px 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(212, 175, 55, 0.25);
+  background: rgba(15, 107, 109, 0.25);
+  color: #F8F8F5;
+  font-weight: 700;
   font-size: 13px;
   cursor: pointer;
   height: 40px;
 }
 
 .inviteSuccess {
-  background: rgba(34, 197, 94, 0.1);
-  border: 1px solid rgba(34, 197, 94, 0.3);
-  border-radius: 10px;
-  padding: 14px;
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  border-radius: 12px;
+  padding: 16px;
   font-size: 13px;
-  color: #15803d;
+  color: #6ee7b7;
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
 .inviteSuccess code {
-  background: #fff;
-  padding: 6px 10px;
-  border-radius: 6px;
+  background: rgba(4, 18, 19, 0.9);
+  border: 1px solid rgba(212, 175, 55, 0.25);
+  padding: 8px 12px;
+  border-radius: 8px;
   font-family: monospace;
   word-break: break-all;
-  color: #0f172a;
+  color: #D4AF37;
 }
 
 /* Member Cards Grid */
@@ -267,22 +317,20 @@
 }
 
 .memberCard {
-  border: 1px solid rgba(15, 42, 86, 0.1);
-  border-radius: 14px;
-  background: #fff;
+  border: 1px solid rgba(212, 175, 55, 0.18);
+  border-radius: 16px;
+  background: rgba(4, 18, 19, 0.65);
   padding: 18px;
   display: flex;
   flex-direction: column;
   gap: 14px;
-  transition:
-    transform 0.15s ease,
-    box-shadow 0.15s ease;
+  transition: all 0.18s ease;
 }
 
 .memberCard:hover {
   transform: translateY(-2px);
-  box-shadow: 0 10px 20px -5px rgba(15, 23, 42, 0.1);
-  border-color: rgba(37, 99, 235, 0.3);
+  box-shadow: 0 10px 24px -5px rgba(0, 0, 0, 0.6);
+  border-color: rgba(212, 175, 55, 0.45);
 }
 
 .memberHeader {
@@ -295,14 +343,15 @@
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  color: #fff;
+  color: #041213;
+  background: linear-gradient(135deg, #D4AF37, #B89225);
   font-weight: 800;
   font-size: 15px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 2px 8px rgba(212, 175, 55, 0.35);
 }
 
 .identity {
@@ -316,7 +365,7 @@
 .memberName {
   font-weight: 700;
   font-size: 14.5px;
-  color: var(--color-dark-text);
+  color: #F8F8F5;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -324,7 +373,7 @@
 
 .memberEmail {
   font-size: 12.5px;
-  color: var(--color-slate);
+  color: #dce8e8;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -333,8 +382,9 @@
 .statusActive {
   padding: 3px 10px;
   border-radius: 999px;
-  background: rgba(34, 197, 94, 0.12);
-  color: #15803d;
+  background: rgba(16, 185, 129, 0.18);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  color: #6ee7b7;
   font-size: 11px;
   font-weight: 700;
 }
@@ -342,8 +392,9 @@
 .statusDisabled {
   padding: 3px 10px;
   border-radius: 999px;
-  background: rgba(239, 68, 68, 0.1);
-  color: #b91c1c;
+  background: rgba(244, 63, 94, 0.18);
+  border: 1px solid rgba(244, 63, 94, 0.35);
+  color: #fda4af;
   font-size: 11px;
   font-weight: 700;
 }
@@ -354,29 +405,41 @@
   justify-content: space-between;
   gap: 10px;
   padding-top: 12px;
-  border-top: 1px solid rgba(15, 42, 86, 0.08);
+  border-top: 1px solid rgba(212, 175, 55, 0.15);
 }
 
 .roleSelect {
-  padding: 6px 10px;
+  padding: 6px 12px;
   border-radius: 8px;
-  border: 1px solid rgba(15, 42, 86, 0.14);
+  border: 1px solid rgba(212, 175, 55, 0.25);
   font-size: 12.5px;
   font-weight: 600;
-  color: var(--color-dark-text);
-  background: #fff;
+  color: #F8F8F5;
+  background: rgba(6, 23, 24, 0.9);
   cursor: pointer;
 }
 
+.roleSelect option {
+  background: #041213;
+  color: #F8F8F5;
+}
+
 .toggleButton {
-  padding: 6px 12px;
+  padding: 6px 14px;
   border-radius: 8px;
-  border: 1px solid rgba(15, 42, 86, 0.14);
-  background: #fff;
-  color: var(--color-dark-text);
+  border: 1px solid rgba(212, 175, 55, 0.25);
+  background: rgba(15, 107, 109, 0.25);
+  color: #dce8e8;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.toggleButton:hover:not(:disabled) {
+  background: rgba(15, 107, 109, 0.45);
+  color: #ffffff;
+  border-color: #D4AF37;
 }
 
 .toggleButton:disabled {
@@ -386,6 +449,6 @@
 
 .hint {
   font-size: 13px;
-  color: var(--color-slate-light);
+  color: #a3c2c2;
   margin: 0;
 }

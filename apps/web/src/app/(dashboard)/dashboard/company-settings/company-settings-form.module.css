@@ -1,3 +1,8 @@
+/* ==========================================================================
+   Growixa Company Settings Form — The Nest Palette
+   Peacock Blue (#0F6B6D), Off-White (#F8F8F5), and Gold (#D4AF37)
+   ========================================================================== */
+
 .page {
   display: flex;
   flex-direction: column;
@@ -6,21 +11,23 @@
 }
 
 .loadingCard {
-  background: #fff;
-  border-radius: var(--card-radius);
-  box-shadow: var(--card-shadow);
+  background: linear-gradient(145deg, rgba(15, 107, 109, 0.22) 0%, rgba(6, 23, 24, 0.88) 100%);
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  border-radius: 20px;
+  box-shadow: 0 20px 45px -12px rgba(2, 8, 8, 0.75);
   padding: 24px;
-  color: var(--color-slate);
+  color: #dce8e8;
+  font-weight: 600;
 }
 
 .readOnlyNote {
   padding: 10px 14px;
-  border-radius: 8px;
-  background: rgba(245, 158, 11, 0.1);
-  border: 1px solid rgba(245, 158, 11, 0.3);
-  color: #b45309;
+  border-radius: 10px;
+  background: rgba(212, 175, 55, 0.15);
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  color: #F5DE87;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
   margin: 0;
 }
 
@@ -56,77 +63,102 @@
 .label {
   font-size: 13px;
   font-weight: 700;
-  color: var(--color-dark-text);
+  color: #F8F8F5;
+  letter-spacing: -0.01em;
 }
 
 .input {
-  padding: 11px 12px;
+  padding: 11px 14px;
   min-height: 44px;
-  border-radius: 10px;
-  border: 1px solid var(--line, #e2e4eb);
+  border-radius: 12px;
+  border: 1px solid rgba(212, 175, 55, 0.25);
   font-size: 14px;
-  font-family: var(--font-body, inherit);
-  color: var(--ink, #0b0c16);
-  background: var(--paper, #ffffff);
+  font-family: inherit;
+  color: #F8F8F5;
+  background: rgba(4, 18, 19, 0.75);
+  backdrop-filter: blur(12px);
   width: 100%;
+  transition: all 0.2s ease;
+}
+
+.input::placeholder {
+  color: #64748b;
 }
 
 .input:focus {
   outline: none;
-  border-color: var(--create, #7b4dff);
-  box-shadow: 0 0 0 3px var(--create-l, rgba(123, 77, 255, 0.15));
+  border-color: #D4AF37;
+  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.2);
+  background: rgba(6, 23, 24, 0.95);
 }
 
 .input:disabled {
-  background: var(--paper-2, #f8f9fd);
-  color: var(--faint, #8d91a5);
+  background: rgba(4, 18, 19, 0.4);
+  color: #a3c2c2;
+  border-color: rgba(212, 175, 55, 0.1);
 }
 
 .select {
-  padding: 11px 12px;
+  padding: 11px 14px;
   min-height: 44px;
-  border-radius: 10px;
-  border: 1px solid var(--line, #e2e4eb);
+  border-radius: 12px;
+  border: 1px solid rgba(212, 175, 55, 0.25);
   font-size: 14px;
-  font-family: var(--font-body, inherit);
-  color: var(--ink, #0b0c16);
-  background: var(--paper, #ffffff);
+  font-family: inherit;
+  color: #F8F8F5;
+  background: rgba(4, 18, 19, 0.85);
+  backdrop-filter: blur(12px);
   width: 100%;
+  transition: all 0.2s ease;
+}
+
+.select option {
+  background: #041213;
+  color: #F8F8F5;
 }
 
 .select:focus {
   outline: none;
-  border-color: var(--create, #7b4dff);
-  box-shadow: 0 0 0 3px var(--create-l, rgba(123, 77, 255, 0.15));
+  border-color: #D4AF37;
+  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.2);
 }
 
 .textarea {
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 1px solid var(--line, #e2e4eb);
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(212, 175, 55, 0.25);
   font-size: 13.5px;
-  font-family: var(--font-body, inherit);
-  color: var(--ink, #0b0c16);
-  background: var(--paper, #ffffff);
+  font-family: inherit;
+  color: #F8F8F5;
+  background: rgba(4, 18, 19, 0.75);
+  backdrop-filter: blur(12px);
   width: 100%;
   min-height: 90px;
   resize: vertical;
-  line-height: 1.5;
+  line-height: 1.6;
+  transition: all 0.2s ease;
+}
+
+.textarea::placeholder {
+  color: #64748b;
 }
 
 .textarea:focus {
   outline: none;
-  border-color: var(--create, #7b4dff);
-  box-shadow: 0 0 0 3px var(--create-l, rgba(123, 77, 255, 0.15));
+  border-color: #D4AF37;
+  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.2);
+  background: rgba(6, 23, 24, 0.95);
 }
 
 .textarea:disabled {
-  background: var(--paper-2, #f8f9fd);
-  color: var(--faint, #8d91a5);
+  background: rgba(4, 18, 19, 0.4);
+  color: #a3c2c2;
+  border-color: rgba(212, 175, 55, 0.1);
 }
 
 .hint {
   font-size: 12px;
-  color: var(--faint, #8d91a5);
+  color: #dce8e8;
   margin: 0;
+  line-height: 1.5;
 }

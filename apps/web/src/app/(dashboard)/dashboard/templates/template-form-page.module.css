@@ -6,12 +6,13 @@
 
 .breadcrumb {
   font-size: 13px;
-  color: var(--color-slate);
+  color: #cbd5e1;
 }
 
 .breadcrumb a {
-  color: var(--color-slate);
+  color: #38bdf8;
   text-decoration: none;
+  font-weight: 600;
 }
 
 .breadcrumb a:hover {
@@ -19,9 +20,11 @@
 }
 
 .card {
-  background: #fff;
-  border-radius: var(--card-radius);
-  box-shadow: var(--card-shadow);
+  background: linear-gradient(145deg, rgba(15, 107, 109, 0.25) 0%, rgba(7, 26, 28, 0.9) 100%);
+  border-radius: 20px;
+  border: 1px solid rgba(212, 175, 55, 0.22);
+  backdrop-filter: blur(24px) saturate(180%);
+  box-shadow: inset 0 1px 1px rgba(248, 248, 245, 0.12), 0 20px 45px -12px rgba(4, 15, 16, 0.85);
   padding: 24px;
   width: 100%;
 }
@@ -43,9 +46,11 @@
 
 .formCard,
 .previewCard {
-  background: #fff;
-  border-radius: var(--card-radius);
-  box-shadow: var(--card-shadow);
+  background: linear-gradient(145deg, rgba(15, 107, 109, 0.25) 0%, rgba(7, 26, 28, 0.9) 100%);
+  border-radius: 20px;
+  border: 1px solid rgba(212, 175, 55, 0.22);
+  backdrop-filter: blur(24px) saturate(180%);
+  box-shadow: inset 0 1px 1px rgba(248, 248, 245, 0.12), 0 20px 45px -12px rgba(4, 15, 16, 0.85);
   padding: 24px;
 }
 
@@ -58,21 +63,24 @@
   margin: 0 0 16px;
   font-size: 18px;
   font-weight: 800;
+  color: #F8F8F5;
+  letter-spacing: -0.02em;
 }
 
 .previewHeading {
   margin: 0 0 12px;
   font-size: 12px;
-  font-weight: 700;
-  color: var(--color-slate);
+  font-weight: 800;
+  color: #D4AF37;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.08em;
 }
 
 .hint {
   margin: 0 0 16px;
-  font-size: 12px;
-  color: var(--color-slate-light);
+  font-size: 12.5px;
+  color: #dce8e8;
+  line-height: 1.5;
 }
 
 .field {
@@ -82,8 +90,8 @@
 .label {
   display: block;
   font-size: 13px;
-  font-weight: 600;
-  color: var(--color-slate);
+  font-weight: 700;
+  color: #F8F8F5;
   margin-bottom: 6px;
 }
 
@@ -105,37 +113,55 @@
 }
 
 .miniButton {
-  padding: 3px 9px;
+  padding: 4px 10px;
   border-radius: 999px;
-  border: 1px solid rgba(15, 42, 86, 0.14);
-  background: #fff;
-  color: var(--color-slate);
-  font-weight: 600;
+  border: 1px solid rgba(212, 175, 55, 0.25);
+  background: rgba(15, 107, 109, 0.2);
+  color: #F8F8F5;
+  font-weight: 700;
   font-size: 11px;
   cursor: pointer;
+  transition: all 0.2s ease;
 }
 
 .miniButton:hover {
-  color: var(--color-dark-text);
-  border-color: rgba(15, 42, 86, 0.28);
+  color: #061819;
+  border-color: #D4AF37;
+  background: linear-gradient(135deg, #D4AF37, #F5DE87);
 }
 
 .input,
 .textarea,
 .codeTextarea {
   width: 100%;
-  padding: 9px 12px;
-  border-radius: 10px;
-  border: 1px solid rgba(15, 42, 86, 0.14);
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(212, 175, 55, 0.22);
   font-size: 14px;
   font-family: inherit;
-  color: var(--color-dark-text);
-  background: #fff;
+  color: #F8F8F5;
+  background: rgba(6, 22, 24, 0.75);
+  backdrop-filter: blur(12px);
+  transition: all 0.2s ease;
+}
+
+.input::placeholder,
+.textarea::placeholder {
+  color: #8fa8a8;
+}
+
+.input:focus,
+.textarea:focus {
+  outline: none;
+  border-color: #D4AF37;
+  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.2);
+  background: rgba(11, 36, 38, 0.9);
 }
 
 .input:disabled {
-  background: #f4f6fb;
-  color: var(--color-slate);
+  background: rgba(6, 22, 24, 0.4);
+  color: #8fa8a8;
+  border-color: rgba(212, 175, 55, 0.12);
 }
 
 .textarea {
@@ -148,61 +174,75 @@
   resize: vertical;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
   font-size: 13px;
-  background: #0f172a;
-  color: #e2e8f0;
-  border-color: #1e293b;
+  background: #061819;
+  color: #F8F8F5;
+  border-color: rgba(212, 175, 55, 0.25);
+}
+
+.codeTextarea:focus {
+  outline: none;
+  border-color: #D4AF37;
+  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.2);
 }
 
 .formActions {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 10px;
-  margin-top: 4px;
+  gap: 12px;
+  margin-top: 8px;
 }
 
 .actionButton {
-  padding: 9px 16px;
+  padding: 10px 22px;
   border: none;
-  border-radius: var(--pill-radius);
-  background: var(--gradient-primary);
-  color: #fff;
-  font-weight: 700;
-  font-size: 13px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #D4AF37 0%, #F5DE87 50%, #B89225 100%);
+  color: #061819 !important;
+  font-weight: 800;
+  font-size: 13.5px;
   cursor: pointer;
+  box-shadow: 0 4px 14px rgba(212, 175, 55, 0.4);
+  transition: all 0.2s ease;
+}
+
+.actionButton:hover:not(:disabled) {
+  box-shadow: 0 6px 20px rgba(212, 175, 55, 0.6);
+  transform: translateY(-1px);
 }
 
 .actionButton:disabled {
-  opacity: 0.6;
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
 .secondaryButton {
-  padding: 9px 16px;
-  border-radius: var(--pill-radius);
-  border: 1px solid rgba(15, 42, 86, 0.14);
-  background: #fff;
-  color: var(--color-dark-text);
-  font-weight: 600;
+  padding: 9px 18px;
+  border-radius: 999px;
+  border: 1px solid rgba(212, 175, 55, 0.25);
+  background: rgba(15, 107, 109, 0.2);
+  color: #F8F8F5;
+  font-weight: 700;
   font-size: 13px;
   cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.secondaryButton:hover:not(:disabled) {
+  background: rgba(15, 107, 109, 0.35);
+  border-color: #D4AF37;
 }
 
 .previewFrame {
   width: 100%;
-  /* Responsive height: grows with content on desktop, stays readable on tablet/mobile.
-     min-height keeps it usable when the template has little content;
-     max-height prevents it from becoming a never-ending scroll on very tall emails. */
   min-height: 420px;
   max-height: 680px;
   height: 55vh;
-  border: 1px solid rgba(15, 42, 86, 0.14);
-  border-radius: 10px;
-  background: #fff;
+  border: 1px solid rgba(148, 197, 255, 0.2);
+  border-radius: 12px;
+  background: #ffffff;
 }
 
-/* When stacked (single-column, ≤1100px) the preview sits below the form —
-   a viewport-relative height would be enormous; cap it sensibly. */
 @media (max-width: 1100px) {
   .previewFrame {
     min-height: 320px;
@@ -213,28 +253,29 @@
 
 .modeToggleGroup {
   display: inline-flex;
-  background: #f1f5f9;
-  border-radius: 8px;
-  padding: 3px;
-  gap: 3px;
+  background: rgba(10, 18, 44, 0.7);
+  border-radius: 10px;
+  padding: 4px;
+  gap: 4px;
+  border: 1px solid rgba(148, 197, 255, 0.18);
 }
 
 .modeButton {
-  padding: 5px 12px;
+  padding: 6px 14px;
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
   background: transparent;
-  color: var(--color-slate);
+  color: #cbd5e1;
   font-size: 12px;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.2s ease;
 }
 
 .modeButtonActive {
-  background: #fff;
-  color: var(--color-dark-text);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  background: rgba(56, 189, 248, 0.2);
+  color: #38bdf8;
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.25);
 }
 
 .tokenToolbar {
@@ -243,41 +284,41 @@
   gap: 8px;
   margin-bottom: 12px;
   flex-wrap: wrap;
-  padding: 8px 12px;
-  background: #f8fafc;
-  border: 1px solid rgba(15, 42, 86, 0.08);
-  border-radius: 8px;
+  padding: 10px 14px;
+  background: rgba(10, 18, 44, 0.6);
+  border: 1px solid rgba(148, 197, 255, 0.15);
+  border-radius: 12px;
 }
 
 .tokenLabel {
   font-size: 11.5px;
-  font-weight: 700;
-  color: var(--color-slate);
+  font-weight: 800;
+  color: #38bdf8;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.08em;
 }
 
 .tokenPill {
-  padding: 4px 10px;
-  border-radius: 99px;
-  border: 1px solid #cbd5e1;
-  background: #fff;
-  color: #2563eb;
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  background: rgba(56, 189, 248, 0.12);
+  color: #38bdf8;
   font-weight: 700;
   font-size: 11.5px;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.2s ease;
 }
 
 .tokenPill:hover {
-  background: #eff6ff;
-  border-color: #93c5fd;
+  background: rgba(56, 189, 248, 0.22);
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
 }
 
 .visualEditorContainer {
-  border: 1px solid rgba(15, 42, 86, 0.14);
-  border-radius: 10px;
-  background: #fff;
+  border: 1px solid rgba(148, 197, 255, 0.2);
+  border-radius: 12px;
+  background: #ffffff;
   min-height: 280px;
   max-height: 480px;
   overflow-y: auto;
@@ -291,3 +332,4 @@
   line-height: 1.6;
   color: #0f2a56;
 }
+

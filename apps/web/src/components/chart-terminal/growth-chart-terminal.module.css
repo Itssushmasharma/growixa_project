@@ -1,15 +1,15 @@
 .terminalContainer {
   position: relative;
   width: 100%;
-  background: radial-gradient(120% 120% at 50% 0%, #0d1527 0%, #070a12 60%, #04060a 100%);
-  border: 1px solid rgba(56, 189, 248, 0.2);
+  background: radial-gradient(120% 120% at 50% 0%, rgba(15, 107, 109, 0.3) 0%, #07191a 60%, #041011 100%);
+  border: 1px solid rgba(212, 175, 55, 0.25);
   border-radius: 20px;
   box-shadow:
-    0 25px 60px -15px rgba(0, 0, 0, 0.8),
-    0 0 35px rgba(14, 165, 233, 0.15),
-    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    0 25px 60px -15px rgba(0, 0, 0, 0.9),
+    0 0 35px rgba(212, 175, 55, 0.12),
+    inset 0 1px 0 rgba(248, 248, 245, 0.15);
   overflow: hidden;
-  color: #f1f5f9;
+  color: #F8F8F5;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
 }
 
@@ -20,8 +20,8 @@
   overflow-x: auto;
   gap: 1.5rem;
   padding: 0.6rem 1.25rem;
-  background: rgba(11, 17, 29, 0.85);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(6, 20, 22, 0.88);
+  border-bottom: 1px solid rgba(212, 175, 55, 0.15);
   backdrop-filter: blur(12px);
   scrollbar-width: none;
 }
@@ -35,14 +35,14 @@
   align-items: center;
   gap: 0.4rem;
   padding: 0.2rem 0.65rem;
-  background: rgba(16, 185, 129, 0.15);
-  border: 1px solid rgba(16, 185, 129, 0.35);
+  background: rgba(15, 107, 109, 0.25);
+  border: 1px solid rgba(212, 175, 55, 0.35);
   border-radius: 9999px;
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: #34d399;
+  color: #D4AF37;
   white-space: nowrap;
 }
 
@@ -50,8 +50,8 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #10b981;
-  box-shadow: 0 0 8px #10b981;
+  background: #D4AF37;
+  box-shadow: 0 0 8px #D4AF37;
   animation: pulseLight 1.8s infinite ease-in-out;
 }
 
@@ -77,12 +77,12 @@
 }
 
 .tickerSymbol {
-  color: #94a3b8;
+  color: #a3c2c2;
   font-weight: 600;
 }
 
 .tickerVal {
-  color: #f8fafc;
+  color: #F8F8F5;
   font-weight: 700;
 }
 
@@ -104,8 +104,8 @@
   justify-content: space-between;
   gap: 1rem;
   padding: 1rem 1.25rem;
-  background: rgba(15, 23, 42, 0.6);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(7, 26, 28, 0.75);
+  border-bottom: 1px solid rgba(212, 175, 55, 0.16);
 }
 
 .assetInfoGroup {
@@ -117,17 +117,17 @@
 
 .metricTabs {
   display: inline-flex;
-  background: rgba(30, 41, 59, 0.7);
+  background: rgba(15, 107, 109, 0.18);
   padding: 3px;
   border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(212, 175, 55, 0.2);
   gap: 2px;
 }
 
 .metricTabBtn {
   background: transparent;
   border: none;
-  color: #94a3b8;
+  color: #c0d4d4;
   font-size: 0.75rem;
   font-weight: 600;
   padding: 0.4rem 0.75rem;
@@ -138,14 +138,14 @@
 }
 
 .metricTabBtn:hover {
-  color: #f1f5f9;
+  color: #F8F8F5;
 }
 
 .metricTabBtnActive {
-  background: linear-gradient(135deg, rgba(14, 165, 233, 0.3) 0%, rgba(56, 189, 248, 0.15) 100%);
-  color: #38bdf8;
-  border: 1px solid rgba(56, 189, 248, 0.4);
-  box-shadow: 0 0 12px rgba(56, 189, 248, 0.2);
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.25) 0%, rgba(15, 107, 109, 0.2) 100%);
+  color: #D4AF37;
+  border: 1px solid rgba(212, 175, 55, 0.45);
+  box-shadow: 0 0 12px rgba(212, 175, 55, 0.25);
 }
 
 .statsRow {

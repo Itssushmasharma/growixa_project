@@ -6,12 +6,13 @@
 
 .breadcrumb {
   font-size: 13px;
-  color: var(--color-slate);
+  color: #a3c2c2;
 }
 
 .breadcrumb a {
-  color: var(--color-slate);
+  color: #D4AF37;
   text-decoration: none;
+  font-weight: 600;
 }
 
 .breadcrumb a:hover {
@@ -19,9 +20,11 @@
 }
 
 .card {
-  background: #fff;
-  border-radius: var(--card-radius);
-  box-shadow: var(--card-shadow);
+  background: linear-gradient(145deg, rgba(15, 107, 109, 0.22) 0%, rgba(6, 23, 24, 0.88) 100%);
+  border-radius: var(--card-radius, 18px);
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.1), 0 14px 34px -8px rgba(2, 8, 8, 0.7);
+  backdrop-filter: blur(20px);
   padding: 24px;
   width: 100%;
 }
@@ -40,9 +43,11 @@
 }
 
 .formCard {
-  background: #fff;
-  border-radius: var(--card-radius);
-  box-shadow: var(--card-shadow);
+  background: linear-gradient(145deg, rgba(15, 107, 109, 0.22) 0%, rgba(6, 23, 24, 0.88) 100%);
+  border-radius: var(--card-radius, 18px);
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.1), 0 14px 34px -8px rgba(2, 8, 8, 0.7);
+  backdrop-filter: blur(20px);
   padding: 24px;
 }
 
@@ -56,9 +61,11 @@
 
 .previewCard,
 .sendCard {
-  background: #fff;
-  border-radius: var(--card-radius);
-  box-shadow: var(--card-shadow);
+  background: linear-gradient(145deg, rgba(15, 107, 109, 0.22) 0%, rgba(6, 23, 24, 0.88) 100%);
+  border-radius: var(--card-radius, 18px);
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.1), 0 14px 34px -8px rgba(2, 8, 8, 0.7);
+  backdrop-filter: blur(20px);
   padding: 24px;
 }
 
@@ -66,29 +73,30 @@
   margin: 0 0 8px;
   font-size: 18px;
   font-weight: 800;
+  color: #F8F8F5;
 }
 
 .previewHeading {
   margin: 0 0 12px;
   font-size: 12px;
-  font-weight: 700;
-  color: var(--color-slate);
+  font-weight: 800;
+  color: #D4AF37;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
 }
 
 .hint {
   margin: 0 0 16px;
   font-size: 12px;
-  color: var(--color-slate-light);
+  color: #a3c2c2;
 }
 
 .errorText {
   margin: 0 0 16px;
   font-size: 12.5px;
-  color: #b91c1c;
-  background: rgba(244, 63, 94, 0.08);
-  border: 1px solid rgba(244, 63, 94, 0.2);
+  color: #fca5a5;
+  background: rgba(248, 113, 113, 0.15);
+  border: 1px solid rgba(248, 113, 113, 0.35);
   border-radius: 8px;
   padding: 8px 12px;
 }
@@ -100,8 +108,8 @@
 .label {
   display: block;
   font-size: 13px;
-  font-weight: 600;
-  color: var(--color-slate);
+  font-weight: 700;
+  color: #F8F8F5;
   margin-bottom: 6px;
 }
 
@@ -125,19 +133,29 @@
 .input,
 .textarea {
   width: 100%;
-  padding: 9px 12px;
+  padding: 10px 14px;
   border-radius: 10px;
-  border: 1px solid rgba(15, 42, 86, 0.14);
+  border: 1px solid rgba(212, 175, 55, 0.25);
   font-size: 14px;
   font-family: inherit;
-  color: var(--color-dark-text);
-  background: #fff;
+  color: #F8F8F5;
+  background: rgba(4, 18, 19, 0.75);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+  transition: all 0.2s ease;
+}
+
+.input:focus,
+.textarea:focus {
+  outline: none;
+  border-color: #D4AF37;
+  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.2);
 }
 
 .input:disabled,
 .textarea:disabled {
-  background: #f4f6fb;
-  color: var(--color-slate);
+  background: rgba(4, 18, 19, 0.4);
+  color: #64748b;
+  border-color: rgba(212, 175, 55, 0.1);
 }
 
 .textarea {
@@ -154,14 +172,21 @@
 }
 
 .actionButton {
-  padding: 9px 16px;
+  padding: 9px 18px;
   border: none;
-  border-radius: var(--pill-radius);
-  background: var(--gradient-primary);
-  color: #fff;
-  font-weight: 700;
+  border-radius: var(--pill-radius, 999px);
+  background: linear-gradient(135deg, #D4AF37 0%, #F5DE87 50%, #B89225 100%);
+  color: #041213;
+  font-weight: 800;
   font-size: 13px;
   cursor: pointer;
+  box-shadow: 0 4px 16px rgba(212, 175, 55, 0.35);
+  transition: all 0.2s ease;
+}
+
+.actionButton:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 22px rgba(212, 175, 55, 0.55);
 }
 
 .actionButton:disabled {
@@ -170,14 +195,21 @@
 }
 
 .secondaryButton {
-  padding: 9px 16px;
-  border-radius: var(--pill-radius);
-  border: 1px solid rgba(15, 42, 86, 0.14);
-  background: #fff;
-  color: var(--color-dark-text);
-  font-weight: 600;
+  padding: 9px 18px;
+  border-radius: var(--pill-radius, 999px);
+  border: 1px solid rgba(212, 175, 55, 0.25);
+  background: rgba(15, 107, 109, 0.25);
+  color: #F8F8F5;
+  font-weight: 700;
   font-size: 13px;
   cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.secondaryButton:hover:not(:disabled) {
+  background: rgba(15, 107, 109, 0.45);
+  border-color: #D4AF37;
+  color: #ffffff;
 }
 
 .secondaryButton:disabled {
@@ -188,6 +220,7 @@
 .fileInput {
   display: block;
   font-size: 13px;
+  color: #dce8e8;
 }
 
 .mediaRow {
@@ -202,13 +235,15 @@
   height: 72px;
   object-fit: cover;
   border-radius: 8px;
-  background: #f4f6fb;
+  background: rgba(4, 18, 19, 0.8);
+  border: 1px solid rgba(212, 175, 55, 0.2);
 }
 
 .previewImage {
   width: 100%;
   border-radius: 10px;
   display: block;
+  border: 1px solid rgba(212, 175, 55, 0.2);
 }
 
 .statusBadge {
@@ -217,39 +252,46 @@
   padding: 4px 10px;
   border-radius: 999px;
   font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.03em;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .statusDRAFT {
-  background: rgba(148, 163, 184, 0.18);
-  color: var(--color-slate);
+  background: rgba(212, 175, 55, 0.12);
+  border: 1px solid rgba(212, 175, 55, 0.25);
+  color: #D4AF37;
 }
 
 .statusSCHEDULED {
-  background: rgba(37, 99, 235, 0.1);
-  color: #1d4ed8;
+  background: rgba(15, 107, 109, 0.3);
+  border: 1px solid rgba(15, 107, 109, 0.6);
+  color: #7ee7e8;
 }
 
 .statusDISPATCHING,
 .statusPUBLISHING {
-  background: rgba(139, 92, 246, 0.12);
-  color: #7c3aed;
+  background: rgba(212, 175, 55, 0.2);
+  border: 1px solid #D4AF37;
+  color: #F5DE87;
 }
 
 .statusPUBLISHED {
-  background: rgba(34, 160, 107, 0.12);
-  color: var(--color-success);
+  background: rgba(16, 185, 129, 0.18);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  color: #6ee7b7;
 }
 
 .statusCANCELLED {
-  background: rgba(100, 116, 139, 0.12);
-  color: #64748b;
+  background: rgba(100, 116, 139, 0.18);
+  border: 1px solid rgba(100, 116, 139, 0.3);
+  color: #cbd5e1;
 }
 
 .statusFAILED {
-  background: rgba(244, 63, 94, 0.1);
-  color: #b91c1c;
+  background: rgba(248, 113, 113, 0.18);
+  border: 1px solid rgba(248, 113, 113, 0.4);
+  color: #fca5a5;
 }
 
 .sendModeGroup {
@@ -258,8 +300,8 @@
   gap: 8px;
   margin: 16px 0 12px;
   padding: 12px 14px;
-  background: #f8fafc;
-  border: 1px solid rgba(15, 42, 86, 0.1);
+  background: rgba(4, 18, 19, 0.65);
+  border: 1px solid rgba(212, 175, 55, 0.2);
   border-radius: 10px;
 }
 
@@ -269,12 +311,12 @@
   gap: 8px;
   font-size: 13px;
   font-weight: 600;
-  color: var(--color-dark-text);
+  color: #F8F8F5;
   cursor: pointer;
 }
 
 .sendModeOption input[type="radio"] {
-  accent-color: #2563eb;
+  accent-color: #D4AF37;
   width: 15px;
   height: 15px;
   cursor: pointer;

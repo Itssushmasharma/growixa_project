@@ -1,8 +1,9 @@
 .card {
-  background: var(--paper, #ffffff);
-  border-radius: var(--r-l, 18px);
-  box-shadow: var(--sh-1);
-  border: 1px solid var(--line, #e2e4eb);
+  background: var(--paper-2, rgba(7, 26, 28, 0.88));
+  border-radius: var(--card-radius, 20px);
+  box-shadow: var(--card-shadow, 0 20px 45px -12px rgba(4, 15, 16, 0.9));
+  border: 1px solid var(--line, rgba(212, 175, 55, 0.22));
+  backdrop-filter: blur(20px);
   padding: 22px 24px;
 }
 
@@ -19,7 +20,7 @@
   font-size: 1.0625rem;
   font-weight: 700;
   letter-spacing: -0.025em;
-  color: var(--ink, #0b0c16);
+  color: var(--ink, #F8F8F5);
 }
 
 .liveBadge {
@@ -28,11 +29,12 @@
   gap: 6px;
   padding: 3px 10px;
   border-radius: 999px;
-  background: var(--manage-l, rgba(0, 184, 135, 0.12));
-  color: var(--manage, #00b887);
+  background: rgba(212, 175, 55, 0.15);
+  color: #D4AF37;
+  border: 1px solid rgba(212, 175, 55, 0.35);
   font-family: var(--font-mono, monospace);
   font-size: 0.6875rem;
-  font-weight: 700;
+  font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -41,8 +43,8 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--manage, #00b887);
-  box-shadow: 0 0 8px var(--manage, #00b887);
+  background: #D4AF37;
+  box-shadow: 0 0 8px #D4AF37;
   animation: pulse 2s infinite;
 }
 
@@ -62,13 +64,13 @@
 }
 
 .emptyState {
-  color: var(--mut, #5c6070);
+  color: var(--mut, #dce8e8);
   font-size: 0.8438rem;
   padding: 36px 20px;
   text-align: center;
-  background: var(--paper-2, #f8f9fd);
+  background: rgba(15, 107, 109, 0.12);
   border-radius: 12px;
-  border: 1px dashed var(--line, #e2e4eb);
+  border: 1px dashed rgba(212, 175, 55, 0.25);
 }
 
 .list {
@@ -86,8 +88,8 @@
   gap: 12px;
   padding: 10px 12px;
   border-radius: 10px;
-  background: var(--paper-2, #f8f9fd);
-  border: 1px solid var(--line, #e2e4eb);
+  background: rgba(15, 107, 109, 0.14);
+  border: 1px solid rgba(212, 175, 55, 0.18);
 }
 
 .iconWrapper {
@@ -101,13 +103,13 @@
 }
 
 .iconClicked {
-  background: var(--find-l, rgba(0, 169, 224, 0.12));
-  color: var(--find, #00a9e0);
+  background: rgba(15, 107, 109, 0.25);
+  color: #158d8f;
 }
 
 .iconOpened {
-  background: var(--manage-l, rgba(0, 184, 135, 0.12));
-  color: var(--manage, #00b887);
+  background: rgba(212, 175, 55, 0.15);
+  color: #D4AF37;
 }
 
 .details {
@@ -128,7 +130,7 @@
 .contactEmail {
   font-size: 0.8125rem;
   font-weight: 600;
-  color: var(--ink, #0b0c16);
+  color: var(--ink, #F8F8F5);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -137,5 +139,5 @@
 .timeAgo {
   font-family: var(--font-mono, monospace);
   font-size: 0.6875rem;
-  color: var(--faint, #8d91a5);
+  color: var(--faint, #a3c2c2);
 }
