@@ -1,11 +1,19 @@
 import uuid
 from collections.abc import Sequence
+from datetime import datetime, timezone
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from growixa_api.ai import repositories
 from growixa_api.ai.capabilities import body_copy, hashtags, posting_time, rewrite, social_caption
 from growixa_api.ai.capabilities import subject_line as subject_line_capability
+from growixa_api.ai.capabilities import (
+    content_ideas,
+    content_repurpose,
+    cta,
+    platform_rewrite,
+    tone_rewrite,
+)
 from growixa_api.ai.capabilities.types import CapabilityInput
 from growixa_api.ai.models import AIGeneration, AIProviderConnection, PlatformAIProviderConfig
 from growixa_api.ai.providers import factory as factory
@@ -27,6 +35,12 @@ _CAPABILITY_MODULES = {
     "REWRITE": rewrite,
     "HASHTAGS": hashtags,
     "POSTING_TIME": posting_time,
+    # Phase 5 capabilities (GRX-AI-006)
+    "CTA": cta,
+    "TONE_REWRITE": tone_rewrite,
+    "CONTENT_IDEAS": content_ideas,
+    "PLATFORM_REWRITE": platform_rewrite,
+    "CONTENT_REPURPOSE": content_repurpose,
 }
 
 # Rough, deliberately approximate per-1K-token USD pricing -- good enough for
@@ -45,6 +59,18 @@ _DEFAULT_PRICE_PER_1K_TOKENS_USD = 0.002
 class GenerationFailedError(Exception):
     """Wraps an AIProviderError after it's already been logged as a FAILED
     ai_generations row -- the route maps this to a 502."""
+
+
+class GenerationNotFoundError(Exception):
+    """Raised when a generation ID is not found for the given account."""
+
+
+class GenerationAlreadyReviewedError(Exception):
+    """Raised when trying to approve/reject an already-reviewed generation."""
+
+
+class GenerationNotApprovableError(Exception):
+    """Raised when trying to act on a FAILED generation (no output to approve)."""
 
 
 def _estimate_cost_usd(*, provider_name: str, model: str, total_tokens: int) -> float:
@@ -284,6 +310,7 @@ async def list_generation_history(
     capability: str | None = None,
     linked_entity_type: str | None = None,
     linked_entity_id: uuid.UUID | None = None,
+    approval_status: str | None = None,
     limit: int = DEFAULT_LIMIT,
     offset: int = 0,
 ) -> Sequence[AIGeneration]:
@@ -293,23 +320,111 @@ async def list_generation_history(
         capability=capability,
         linked_entity_type=linked_entity_type,
         linked_entity_id=linked_entity_id,
+        approval_status=approval_status,
         limit=limit,
         offset=offset,
     )
 
 
+async def approve_generation(
+    session: AsyncSession,
+    account_id: uuid.UUID,
+    generation_id: uuid.UUID,
+    reviewer_id: uuid.UUID,
+    notes: str | None = None,
+) -> AIGeneration:
+    """Marks a COMPLETE generation as APPROVED by a human manager.
+    FAILED generations cannot be approved -- there is no output to approve.
+    Already-reviewed generations (APPROVED/REJECTED/EDITED) are idempotency-
+    guarded: the caller gets a GenerationAlreadyReviewedError so the route
+    can return 409 rather than silently overwriting a prior decision."""
+    generation = await repositories.get_generation(session, account_id, generation_id)
+    if generation is None:
+        raise GenerationNotFoundError(f"AI generation {generation_id} not found")
+    if generation.status == "FAILED":
+        raise GenerationNotApprovableError("Cannot approve a failed generation.")
+    if generation.approval_status in ("APPROVED", "REJECTED", "EDITED"):
+        raise GenerationAlreadyReviewedError(
+            f"Generation already has approval_status={generation.approval_status!r}"
+        )
+    generation.approval_status = "APPROVED"
+    generation.reviewed_by_user_id = reviewer_id
+    generation.reviewed_at = datetime.now(tz=timezone.utc)
+    generation.review_notes = notes
+    await session.commit()
+    await session.refresh(generation)
+    return generation
+
+
+async def reject_generation(
+    session: AsyncSession,
+    account_id: uuid.UUID,
+    generation_id: uuid.UUID,
+    reviewer_id: uuid.UUID,
+    notes: str | None = None,
+) -> AIGeneration:
+    """Marks a generation as REJECTED by a human manager. REJECTED generations
+    are hidden from the default approval queue but kept for audit purposes."""
+    generation = await repositories.get_generation(session, account_id, generation_id)
+    if generation is None:
+        raise GenerationNotFoundError(f"AI generation {generation_id} not found")
+    if generation.approval_status in ("APPROVED", "REJECTED", "EDITED"):
+        raise GenerationAlreadyReviewedError(
+            f"Generation already has approval_status={generation.approval_status!r}"
+        )
+    generation.approval_status = "REJECTED"
+    generation.reviewed_by_user_id = reviewer_id
+    generation.reviewed_at = datetime.now(tz=timezone.utc)
+    generation.review_notes = notes
+    await session.commit()
+    await session.refresh(generation)
+    return generation
+
+
+async def edit_generation_output(
+    session: AsyncSession,
+    account_id: uuid.UUID,
+    generation_id: uuid.UUID,
+    reviewer_id: uuid.UUID,
+    edited_text: str,
+    notes: str | None = None,
+) -> AIGeneration:
+    """Saves a human-edited version of the AI output to `edited_output` and
+    sets approval_status to EDITED. The original `output` is preserved verbatim
+    for audit/telemetry (GRX-AI-006). FAILED generations cannot be edited."""
+    generation = await repositories.get_generation(session, account_id, generation_id)
+    if generation is None:
+        raise GenerationNotFoundError(f"AI generation {generation_id} not found")
+    if generation.status == "FAILED":
+        raise GenerationNotApprovableError("Cannot edit a failed generation.")
+    generation.edited_output = {"text": edited_text}
+    generation.approval_status = "EDITED"
+    generation.reviewed_by_user_id = reviewer_id
+    generation.reviewed_at = datetime.now(tz=timezone.utc)
+    generation.review_notes = notes
+    await session.commit()
+    await session.refresh(generation)
+    return generation
+
+
 __all__ = [
     "AIProviderConnectionNotFoundError",
     "AINotConfiguredError",
+    "GenerationAlreadyReviewedError",
     "GenerationFailedError",
+    "GenerationNotApprovableError",
+    "GenerationNotFoundError",
     "InsecureBaseUrlError",
     "MissingBaseUrlError",
+    "approve_generation",
     "create_connection",
     "deactivate_connection",
+    "edit_generation_output",
     "generate",
     "get_platform_config",
     "list_connections",
     "list_generation_history",
+    "reject_generation",
     "set_platform_config",
     "test_connection",
 ]

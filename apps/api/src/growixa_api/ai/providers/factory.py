@@ -31,9 +31,14 @@ class ResolvedAIProvider:
     source: Literal["ACCOUNT_BYO", "PLATFORM_DEFAULT"]
 
 
+from growixa_api.ai.providers.mock_provider import MockAIProvider
+
+
 def _build_adapter(
     *, provider_name: str, api_key: str | None, base_url: str | None
 ) -> AIModelProvider:
+    if provider_name == "MOCK":
+        return MockAIProvider()
     if provider_name == "OPENAI":
         if api_key is None:
             raise AINotConfiguredError("OpenAI connection is missing its API key")

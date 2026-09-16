@@ -6,22 +6,32 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from growixa_api.ai.providers.base import AIProviderError, InsecureBaseUrlError
 from growixa_api.ai.providers.factory import AINotConfiguredError
 from growixa_api.ai.schemas import (
+    AIApprovalStatus,
     AICapability,
     AIGenerationOut,
     AILinkedEntityType,
     AIProviderConnectionIn,
     AIProviderConnectionOut,
+    ApproveGenerationIn,
+    EditGenerationIn,
     GenerateContentIn,
+    RejectGenerationIn,
 )
 from growixa_api.ai.services import (
     AIProviderConnectionNotFoundError,
+    GenerationAlreadyReviewedError,
     GenerationFailedError,
+    GenerationNotApprovableError,
+    GenerationNotFoundError,
     MissingBaseUrlError,
+    approve_generation,
     create_connection,
     deactivate_connection,
+    edit_generation_output,
     generate,
     list_connections,
     list_generation_history,
+    reject_generation,
     test_connection,
 )
 from growixa_api.billing.services import QuotaExceededError
@@ -36,6 +46,7 @@ router = APIRouter(prefix="/ai", tags=["ai"])
 _require_manage = require_permission("integrations.manage")
 _require_generate = require_permission("ai.manage")
 _require_view = require_permission("ai.view")
+_require_review = require_permission("ai.review")
 
 
 @router.get("/connections", response_model=list[AIProviderConnectionOut])
@@ -145,6 +156,7 @@ async def list_ai_generations_route(
     capability: AICapability | None = None,
     linked_entity_type: AILinkedEntityType | None = None,
     linked_entity_id: uuid.UUID | None = None,
+    approval_status: AIApprovalStatus | None = None,
     limit: int = Query(default=DEFAULT_LIMIT, ge=1),
     offset: int = Query(default=0, ge=0),
     _actor_id: uuid.UUID = Depends(_require_view),
@@ -157,7 +169,98 @@ async def list_ai_generations_route(
         capability=capability,
         linked_entity_type=linked_entity_type,
         linked_entity_id=linked_entity_id,
+        approval_status=approval_status,
         limit=clamp_limit(limit),
         offset=offset,
     )
     return [AIGenerationOut.model_validate(generation) for generation in generations]
+
+
+# ---------------------------------------------------------------------------
+# Human-manager Approval Workflow (Phase 5, DEC-GRX-006)
+# Three discrete actions: approve, reject, edit. All three require ai.review
+# permission. Routes are explicit sub-actions rather than a generic PATCH
+# so the intent is unambiguous in audit logs and frontend code.
+# ---------------------------------------------------------------------------
+
+
+@router.post("/generations/{generation_id}/approve", response_model=AIGenerationOut)
+async def approve_generation_route(
+    generation_id: uuid.UUID,
+    payload: ApproveGenerationIn,
+    reviewer_id: uuid.UUID = Depends(_require_review),
+    account_id: uuid.UUID = Depends(get_current_account_id),
+    session: AsyncSession = Depends(get_session),
+) -> AIGenerationOut:
+    """Marks an AI generation as APPROVED by a human manager. The generation
+    must be COMPLETE (not FAILED) and not already reviewed. Returns 409 if
+    the generation has already been reviewed (idempotency guard)."""
+    try:
+        generation = await approve_generation(
+            session,
+            account_id=account_id,
+            generation_id=generation_id,
+            reviewer_id=reviewer_id,
+            notes=payload.notes,
+        )
+    except GenerationNotFoundError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, str(exc)) from exc
+    except GenerationNotApprovableError as exc:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc)) from exc
+    except GenerationAlreadyReviewedError as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
+    return AIGenerationOut.model_validate(generation)
+
+
+@router.post("/generations/{generation_id}/reject", response_model=AIGenerationOut)
+async def reject_generation_route(
+    generation_id: uuid.UUID,
+    payload: RejectGenerationIn,
+    reviewer_id: uuid.UUID = Depends(_require_review),
+    account_id: uuid.UUID = Depends(get_current_account_id),
+    session: AsyncSession = Depends(get_session),
+) -> AIGenerationOut:
+    """Marks an AI generation as REJECTED. Rejected generations are retained
+    for audit purposes but excluded from the default approval queue view."""
+    try:
+        generation = await reject_generation(
+            session,
+            account_id=account_id,
+            generation_id=generation_id,
+            reviewer_id=reviewer_id,
+            notes=payload.notes,
+        )
+    except GenerationNotFoundError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, str(exc)) from exc
+    except GenerationAlreadyReviewedError as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
+    return AIGenerationOut.model_validate(generation)
+
+
+@router.post("/generations/{generation_id}/edit", response_model=AIGenerationOut)
+async def edit_generation_route(
+    generation_id: uuid.UUID,
+    payload: EditGenerationIn,
+    reviewer_id: uuid.UUID = Depends(_require_review),
+    account_id: uuid.UUID = Depends(get_current_account_id),
+    session: AsyncSession = Depends(get_session),
+) -> AIGenerationOut:
+    """Saves a human-edited version of the AI output. The original LLM output
+    is preserved in `output`; the edited text is stored in `edited_output`.
+    Sets approval_status to EDITED so downstream consumers know to use
+    `edited_output` over the raw `output`. Cannot be applied to FAILED
+    generations (no output to edit)."""
+    try:
+        generation = await edit_generation_output(
+            session,
+            account_id=account_id,
+            generation_id=generation_id,
+            reviewer_id=reviewer_id,
+            edited_text=payload.edited_text,
+            notes=payload.notes,
+        )
+    except GenerationNotFoundError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, str(exc)) from exc
+    except GenerationNotApprovableError as exc:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc)) from exc
+    return AIGenerationOut.model_validate(generation)

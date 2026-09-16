@@ -106,6 +106,7 @@ async def list_generations(
     capability: str | None = None,
     linked_entity_type: str | None = None,
     linked_entity_id: uuid.UUID | None = None,
+    approval_status: str | None = None,
     limit: int = DEFAULT_LIMIT,
     offset: int = 0,
 ) -> Sequence[AIGeneration]:
@@ -116,6 +117,9 @@ async def list_generations(
         query = query.where(AIGeneration.linked_entity_type == linked_entity_type)
     if linked_entity_id is not None:
         query = query.where(AIGeneration.linked_entity_id == linked_entity_id)
+    if approval_status is not None:
+        query = query.where(AIGeneration.approval_status == approval_status)
     query = query.order_by(AIGeneration.created_at.desc()).limit(limit).offset(offset)
     result = await session.execute(query)
     return result.scalars().all()
+

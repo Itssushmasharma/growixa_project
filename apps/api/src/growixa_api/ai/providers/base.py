@@ -16,17 +16,72 @@ class InsecureBaseUrlError(AIProviderError):
     """Raised when a custom base_url fails SSRF-safe validation (DEC-GRX-027)."""
 
 
+import re
+
+# Pricing rates per 1k tokens: (prompt_cost_usd, completion_cost_usd)
+MODEL_PRICING_PER_1K: dict[str, tuple[float, float]] = {
+    # OpenAI
+    "gpt-4o": (0.005, 0.015),
+    "gpt-4o-mini": (0.00015, 0.0006),
+    "gpt-4-turbo": (0.01, 0.03),
+    "gpt-3.5-turbo": (0.0005, 0.0015),
+    # Anthropic
+    "claude-3-5-sonnet": (0.003, 0.015),
+    "claude-3-5-haiku": (0.0008, 0.004),
+    "claude-3-opus": (0.015, 0.075),
+    # Default fallback
+    "default": (0.0005, 0.0015),
+}
+
+
+def estimate_cost_usd(model: str, prompt_tokens: int, completion_tokens: int) -> float:
+    """Calculates estimated cost in USD based on model pricing matrix."""
+    model_lower = model.lower()
+    rates = MODEL_PRICING_PER_1K.get("default")
+    for key, val in MODEL_PRICING_PER_1K.items():
+        if key in model_lower:
+            rates = val
+            break
+    prompt_rate, completion_rate = rates
+    cost = (prompt_tokens / 1000.0 * prompt_rate) + (completion_tokens / 1000.0 * completion_rate)
+    return round(cost, 6)
+
+
+_SENSITIVE_PATTERNS = [
+    (re.compile(r"(?i)(bearer\s+[a-zA-Z0-9_\-\.]{16,})"), "[REDACTED_AUTH_TOKEN]"),
+    (re.compile(r"(?i)(sk-[a-zA-Z0-9]{20,})"), "[REDACTED_API_KEY]"),
+    (re.compile(r"(?i)(xox[baprs]-[a-zA-Z0-9_\-]{10,})"), "[REDACTED_API_KEY]"),
+    (re.compile(r"\b(?:\d[ -]*?){13,19}\b"), "[REDACTED_CARD_NUMBER]"),
+    (re.compile(r"(?i)(password\s*[:=]\s*['\"]?[^\s'\"]+)"), "password=[REDACTED]"),
+]
+
+
+def sanitize_sensitive_input(text: str) -> str:
+    """Scrubs sensitive credentials and credit cards before passing to third-party AI APIs."""
+    if not text:
+        return text
+    sanitized = text
+    for pattern, replacement in _SENSITIVE_PATTERNS:
+        sanitized = pattern.sub(replacement, sanitized)
+    return sanitized
+
+
 @dataclass
 class AIGenerationResult:
     text: str
     prompt_tokens: int
     completion_tokens: int
+    total_tokens: int = 0
+
+    def __post_init__(self) -> None:
+        if self.total_tokens == 0:
+            self.total_tokens = self.prompt_tokens + self.completion_tokens
 
 
 class AIModelProvider(Protocol):
     """Adapter interface named in DEC-GRX-005. One concrete implementation per vendor
     (openai_provider.py / azure_openai_provider.py / anthropic_provider.py /
-    ollama_provider.py); resolved per account by providers/factory.py."""
+    ollama_provider.py / mock_provider.py); resolved per account by providers/factory.py."""
 
     async def generate(
         self, *, system_prompt: str, user_prompt: str, model: str, max_tokens: int

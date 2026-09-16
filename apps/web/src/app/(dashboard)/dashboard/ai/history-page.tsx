@@ -22,6 +22,7 @@ import type {
 
 const VIEW_PERMISSION = "ai.view";
 const MANAGE_PERMISSION = "ai.manage";
+const REVIEW_PERMISSION = "ai.review";
 
 const CHANNELS: { value: StudioChannel; label: string; icon: string; capability: AICapability }[] =
   [
@@ -110,6 +111,14 @@ export function HistoryPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [canView, setCanView] = useState(false);
   const [canManage, setCanManage] = useState(false);
+  const [canReview, setCanReview] = useState(false);
+
+  // Edit-in-place modal state
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editTargetId, setEditTargetId] = useState<string | null>(null);
+  const [editText, setEditText] = useState("");
+  const [editNotes, setEditNotes] = useState("");
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
 
   // Authenticated user & Account
   const [currentUser, setCurrentUser] = useState<MeResponse>({
@@ -158,8 +167,10 @@ export function HistoryPage() {
         const me = await apiFetch<MeResponse>("/auth/me");
         const hasView = me.permissions.includes(VIEW_PERMISSION);
         const hasManage = me.permissions.includes(MANAGE_PERMISSION);
+        const hasReview = me.permissions.includes(REVIEW_PERMISSION);
         setCanView(hasView);
         setCanManage(hasManage);
+        setCanReview(hasReview);
         setCurrentUser(me);
 
         if (hasView) {
@@ -311,6 +322,60 @@ export function HistoryPage() {
       void navigator.clipboard.writeText(text);
     }
     showToast("success", "Approved & copied to clipboard!");
+  }
+
+  async function handleApproveGeneration(genId: string) {
+    try {
+      const updated = await apiFetch<AIGeneration>(`/ai/generations/${genId}/approve`, {
+        method: "POST",
+        body: JSON.stringify({}),
+      });
+      setGenerations((prev) => prev.map((g) => (g.id === genId ? { ...g, ...updated } : g)));
+      showToast("success", "Content approved ✓");
+    } catch {
+      showToast("error", "Could not approve — please try again.");
+    }
+  }
+
+  async function handleRejectGeneration(genId: string) {
+    try {
+      const updated = await apiFetch<AIGeneration>(`/ai/generations/${genId}/reject`, {
+        method: "POST",
+        body: JSON.stringify({}),
+      });
+      setGenerations((prev) => prev.map((g) => (g.id === genId ? { ...g, ...updated } : g)));
+      showToast("info", "Content rejected.");
+    } catch {
+      showToast("error", "Could not reject — please try again.");
+    }
+  }
+
+  function handleOpenEditModal(genId: string, currentText: string) {
+    setEditTargetId(genId);
+    setEditText(currentText);
+    setEditNotes("");
+    setEditModalOpen(true);
+  }
+
+  async function handleSaveManagerEdit() {
+    if (!editTargetId || !editText.trim()) return;
+    setIsSavingEdit(true);
+    try {
+      const updated = await apiFetch<AIGeneration>(`/ai/generations/${editTargetId}/edit`, {
+        method: "POST",
+        body: JSON.stringify({ edited_text: editText.trim(), notes: editNotes || undefined }),
+      });
+      setGenerations((prev) =>
+        prev.map((g) => (g.id === editTargetId ? { ...g, ...updated } : g)),
+      );
+      setEditModalOpen(false);
+      setEditTargetId(null);
+      showToast("success", "Edited & saved ✓");
+    } catch {
+      showToast("error", "Could not save edit — please try again.");
+    } finally {
+      setIsSavingEdit(false);
+    }
   }
 
   function handleEdit(text: string) {
@@ -755,22 +820,73 @@ export function HistoryPage() {
                 {/* Side-by-Side Variations Grid */}
                 <div className={styles.variationsGrid}>
                   {visibleGenerations.map((item, idx) => {
-                    const outputText = item.output?.text || "";
+                    const displayText =
+                      item.edited_output?.text ?? item.output?.text ?? "";
+                    const isPending = item.approval_status === "PENDING_APPROVAL";
+                    const isApproved = item.approval_status === "APPROVED";
+                    const isRejected = item.approval_status === "REJECTED";
+                    const isEdited = item.approval_status === "EDITED";
 
                     return (
-                      <div key={`${item.id}-${idx}`} className={styles.variationCard}>
+                      <div
+                        key={`${item.id}-${idx}`}
+                        className={styles.variationCard}
+                        style={isRejected ? { opacity: 0.5 } : undefined}
+                      >
                         <div>
                           <div className={styles.variationCardHeader}>
                             <span className={styles.varNumberLabel}>Variation {idx + 1}</span>
+                            {/* Approval Status Badge */}
+                            {isPending && (
+                              <span style={{
+                                fontSize: "11px", fontWeight: 600, padding: "2px 8px",
+                                borderRadius: "20px", background: "rgba(251,191,36,0.15)",
+                                color: "#fbbf24", border: "1px solid rgba(251,191,36,0.3)",
+                              }}>⏳ Pending Review</span>
+                            )}
+                            {isApproved && (
+                              <span style={{
+                                fontSize: "11px", fontWeight: 600, padding: "2px 8px",
+                                borderRadius: "20px", background: "rgba(34,197,94,0.15)",
+                                color: "#22c55e", border: "1px solid rgba(34,197,94,0.3)",
+                              }}>✓ Approved</span>
+                            )}
+                            {isRejected && (
+                              <span style={{
+                                fontSize: "11px", fontWeight: 600, padding: "2px 8px",
+                                borderRadius: "20px", background: "rgba(239,68,68,0.15)",
+                                color: "#ef4444", border: "1px solid rgba(239,68,68,0.3)",
+                              }}>✗ Rejected</span>
+                            )}
+                            {isEdited && (
+                              <span style={{
+                                fontSize: "11px", fontWeight: 600, padding: "2px 8px",
+                                borderRadius: "20px", background: "rgba(139,92,246,0.15)",
+                                color: "#a78bfa", border: "1px solid rgba(139,92,246,0.3)",
+                              }}>✏️ Edited</span>
+                            )}
                           </div>
-                          <h5 className={styles.variationHeadline}>
-                            {outputText.split("\n")[0] || `Variation ${idx + 1}`}
+                          <h5
+                            className={styles.variationHeadline}
+                            style={isRejected ? { textDecoration: "line-through" } : undefined}
+                          >
+                            {displayText.split("\n")[0] || `Variation ${idx + 1}`}
                           </h5>
                           <p className={styles.variationBody}>
-                            {outputText.length > 220
-                              ? `${outputText.substring(0, 220)}…`
-                              : outputText}
+                            {displayText.length > 220
+                              ? `${displayText.substring(0, 220)}…`
+                              : displayText}
                           </p>
+                          {isEdited && item.output?.text && (
+                            <details style={{ marginTop: "4px" }}>
+                              <summary style={{ fontSize: "11px", color: "var(--color-text-muted)", cursor: "pointer" }}>
+                                View original AI output
+                              </summary>
+                              <p style={{ fontSize: "12px", color: "var(--color-text-muted)", marginTop: "4px", fontStyle: "italic" }}>
+                                {item.output.text}
+                              </p>
+                            </details>
+                          )}
                         </div>
 
                         <div>
@@ -779,15 +895,15 @@ export function HistoryPage() {
                             <button
                               type="button"
                               className={styles.useBtn}
-                              onClick={() => handleUse(outputText, item.id)}
+                              onClick={() => handleUse(displayText, item.id)}
                             >
                               ✓ Use
                             </button>
                             <button
                               type="button"
                               className={styles.iconActionBtn}
-                              title="Edit in prompt"
-                              onClick={() => handleEdit(outputText)}
+                              title="Refine in prompt editor"
+                              onClick={() => handleEdit(displayText)}
                             >
                               ✏️
                             </button>
@@ -795,7 +911,7 @@ export function HistoryPage() {
                               type="button"
                               className={styles.iconActionBtn}
                               title="Copy text"
-                              onClick={() => handleUse(outputText, item.id)}
+                              onClick={() => handleUse(displayText, item.id)}
                             >
                               📋
                             </button>
@@ -804,7 +920,7 @@ export function HistoryPage() {
                                 type="button"
                                 className={styles.iconActionBtn}
                                 title="Add to Campaign"
-                                onClick={() => handleAddToCampaign(outputText)}
+                                onClick={() => handleAddToCampaign(displayText)}
                               >
                                 ✉️
                               </button>
@@ -814,7 +930,7 @@ export function HistoryPage() {
                                 type="button"
                                 className={styles.iconActionBtn}
                                 title="Schedule Social Post"
-                                onClick={() => handleScheduleSocial(outputText)}
+                                onClick={() => handleScheduleSocial(displayText)}
                               >
                                 📱
                               </button>
@@ -823,11 +939,60 @@ export function HistoryPage() {
                               type="button"
                               className={styles.iconActionBtn}
                               title="Save as Template"
-                              onClick={() => handleSaveTemplate(outputText)}
+                              onClick={() => handleSaveTemplate(displayText)}
                             >
                               💾
                             </button>
                           </div>
+
+                          {/* Manager Approval Row — only shown for managers with ai.review */}
+                          {canReview && isPending && item.status === "COMPLETE" && (
+                            <div style={{
+                              display: "flex", gap: "8px", marginTop: "8px",
+                              paddingTop: "8px",
+                              borderTop: "1px solid rgba(255,255,255,0.07)",
+                            }}>
+                              <button
+                                id={`approve-btn-${item.id}`}
+                                type="button"
+                                onClick={() => handleApproveGeneration(item.id)}
+                                style={{
+                                  flex: 1, padding: "6px 0", fontSize: "12px", fontWeight: 600,
+                                  borderRadius: "8px", border: "1px solid rgba(34,197,94,0.4)",
+                                  background: "rgba(34,197,94,0.1)", color: "#22c55e",
+                                  cursor: "pointer",
+                                }}
+                              >
+                                ✓ Approve
+                              </button>
+                              <button
+                                id={`edit-approve-btn-${item.id}`}
+                                type="button"
+                                onClick={() => handleOpenEditModal(item.id, displayText)}
+                                style={{
+                                  flex: 1, padding: "6px 0", fontSize: "12px", fontWeight: 600,
+                                  borderRadius: "8px", border: "1px solid rgba(139,92,246,0.4)",
+                                  background: "rgba(139,92,246,0.1)", color: "#a78bfa",
+                                  cursor: "pointer",
+                                }}
+                              >
+                                ✏️ Edit & Save
+                              </button>
+                              <button
+                                id={`reject-btn-${item.id}`}
+                                type="button"
+                                onClick={() => handleRejectGeneration(item.id)}
+                                style={{
+                                  flex: 1, padding: "6px 0", fontSize: "12px", fontWeight: 600,
+                                  borderRadius: "8px", border: "1px solid rgba(239,68,68,0.4)",
+                                  background: "rgba(239,68,68,0.1)", color: "#ef4444",
+                                  cursor: "pointer",
+                                }}
+                              >
+                                ✗ Reject
+                              </button>
+                            </div>
+                          )}
                         </div>
                       </div>
                     );
@@ -906,6 +1071,96 @@ export function HistoryPage() {
             >
               ⚙️ Edit Brand Profile in Settings →
             </Link>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+          Manager Edit Modal
+          ========================================================================= */}
+      {editModalOpen && (
+        <div
+          style={{
+            position: "fixed", inset: 0, zIndex: 999,
+            background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)",
+            display: "flex", alignItems: "center", justifyContent: "center", padding: "24px",
+          }}
+          onClick={() => setEditModalOpen(false)}
+        >
+          <div
+            style={{
+              background: "var(--color-bg-card, #1a1a2e)",
+              border: "1px solid rgba(255,255,255,0.1)",
+              borderRadius: "16px", padding: "28px", width: "100%", maxWidth: "560px",
+              boxShadow: "0 24px 64px rgba(0,0,0,0.5)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ margin: "0 0 4px", fontSize: "16px", fontWeight: 700, color: "var(--color-text-primary, #fff)" }}>
+              ✏️ Edit & Save
+            </h3>
+            <p style={{ margin: "0 0 16px", fontSize: "13px", color: "var(--color-text-muted, #999)" }}>
+              Refine the AI output. Your edit will be saved alongside the original for auditing.
+            </p>
+            <textarea
+              id="manager-edit-textarea"
+              style={{
+                width: "100%", minHeight: "160px", padding: "12px",
+                borderRadius: "8px", border: "1px solid rgba(255,255,255,0.15)",
+                background: "rgba(255,255,255,0.05)", color: "var(--color-text-primary, #fff)",
+                fontSize: "14px", lineHeight: 1.6, resize: "vertical", boxSizing: "border-box",
+              }}
+              value={editText}
+              onChange={(e) => setEditText(e.target.value)}
+              autoFocus
+            />
+            <label
+              htmlFor="manager-edit-notes"
+              style={{ display: "block", fontSize: "12px", color: "var(--color-text-muted, #999)", marginTop: "12px", marginBottom: "4px" }}
+            >
+              Review notes (optional)
+            </label>
+            <input
+              id="manager-edit-notes"
+              type="text"
+              placeholder="Why was this edited?"
+              style={{
+                width: "100%", padding: "8px 12px", borderRadius: "8px",
+                border: "1px solid rgba(255,255,255,0.12)",
+                background: "rgba(255,255,255,0.05)", color: "var(--color-text-primary, #fff)",
+                fontSize: "13px", boxSizing: "border-box",
+              }}
+              value={editNotes}
+              onChange={(e) => setEditNotes(e.target.value)}
+            />
+            <div style={{ display: "flex", gap: "10px", marginTop: "20px", justifyContent: "flex-end" }}>
+              <button
+                id="cancel-edit-modal"
+                type="button"
+                style={{
+                  padding: "9px 20px", borderRadius: "8px", fontSize: "13px",
+                  border: "1px solid rgba(255,255,255,0.15)", background: "transparent",
+                  color: "var(--color-text-secondary, #ccc)", cursor: "pointer",
+                }}
+                onClick={() => setEditModalOpen(false)}
+              >
+                Cancel
+              </button>
+              <button
+                id="save-edit-modal"
+                type="button"
+                disabled={isSavingEdit || !editText.trim()}
+                style={{
+                  padding: "9px 24px", borderRadius: "8px", fontSize: "13px", fontWeight: 600,
+                  border: "none", background: "linear-gradient(135deg, #8b5cf6, #6366f1)",
+                  color: "#fff", cursor: isSavingEdit ? "wait" : "pointer",
+                  opacity: !editText.trim() ? 0.5 : 1,
+                }}
+                onClick={() => { void handleSaveManagerEdit(); }}
+              >
+                {isSavingEdit ? "Saving…" : "Save Edit"}
+              </button>
+            </div>
           </div>
         </div>
       )}

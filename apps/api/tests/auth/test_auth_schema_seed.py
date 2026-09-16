@@ -47,6 +47,8 @@ EXPECTED_PERMISSIONS = {
     # Slice 6 additions (GRX-AI-002) — see RBAC.md §Slice 6 permission codes.
     "ai.manage",
     "ai.view",
+    # Phase 5 approval workflow (GRX-AI-006) — human-manager review gate.
+    "ai.review",
     # Slice 7 additions (GRX-BILL-002) — see RBAC.md §Slice 7 permission codes.
     "billing.manage",
     "billing.view",
@@ -91,6 +93,8 @@ EXPECTED_MATRIX: dict[str, set[str]] = {
         "Content Creator",
         "Analyst",
     },
+    # Content Creator intentionally excluded: generates content but cannot self-approve.
+    "ai.review": {"Super Admin", "Admin", "Marketing Manager"},
     "billing.manage": {"Super Admin"},
     "billing.view": EXPECTED_ROLES,
 }

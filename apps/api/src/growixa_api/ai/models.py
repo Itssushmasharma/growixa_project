@@ -32,12 +32,19 @@ class AIGeneration(Base):
         CheckConstraint(
             "capability IN ("
             "'SUBJECT_LINE', 'BODY_COPY', 'SOCIAL_CAPTION', 'REWRITE', 'HASHTAGS', "
-            "'POSTING_TIME'"
+            "'POSTING_TIME', 'CTA', 'TONE_REWRITE', 'CONTENT_IDEAS', 'PLATFORM_REWRITE', "
+            "'CONTENT_REPURPOSE'"
             ")",
             name="ck_ai_generations_capability",
         ),
         CheckConstraint("status IN ('COMPLETE', 'FAILED')", name="ck_ai_generations_status"),
+        CheckConstraint(
+            "approval_status IN ('PENDING_APPROVAL', 'APPROVED', 'REJECTED', 'EDITED')",
+            name="ck_ai_generations_approval_status",
+        ),
         Index("ix_ai_generations_account_id_capability", "account_id", "capability"),
+        Index("ix_ai_generations_approval_status", "account_id", "approval_status"),
+        Index("ix_ai_generations_telemetry", "account_id", "provider", "model", "created_at"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -52,21 +59,27 @@ class AIGeneration(Base):
     )
     capability: Mapped[str] = mapped_column(Text, nullable=False)
     prompt_template_key: Mapped[str] = mapped_column(Text, nullable=False)
+    prompt_version: Mapped[str] = mapped_column(Text, nullable=False, server_default="v1.0.0")
     input_context: Mapped[dict[str, object]] = mapped_column(JSONB, nullable=False)
     output: Mapped[dict[str, object] | list[object] | None] = mapped_column(JSONB, nullable=True)
+    edited_output: Mapped[dict[str, object] | list[object] | None] = mapped_column(JSONB, nullable=True)
     provider: Mapped[str] = mapped_column(Text, nullable=False)
     model: Mapped[str] = mapped_column(Text, nullable=False)
     prompt_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
     completion_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    # Fixed precision/scale (not plain Numeric) -- an unscaled NUMERIC column stores a
-    # Python float's exact binary representation, producing long floating-point
-    # artifacts (e.g. 0.000569999999999999977...) instead of the intended rounded
-    # value. Found live: a real generation's estimated_cost_usd came back this way.
+    input_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    output_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    total_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
     estimated_cost_usd: Mapped[float | None] = mapped_column(Numeric(10, 6), nullable=True)
     status: Mapped[str] = mapped_column(Text, nullable=False)
+    approval_status: Mapped[str] = mapped_column(Text, nullable=False, server_default="PENDING_APPROVAL")
+    reviewed_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    review_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
-    # Optional provenance -- which campaign/social_post this generation was made from, set
-    # by the frontend. No FK constraint since it can reference either table.
+    # Optional provenance -- which campaign/social_post this generation was made from
     linked_entity_type: Mapped[str | None] = mapped_column(Text, nullable=True)
     linked_entity_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(

@@ -7,11 +7,21 @@ export interface MeResponse {
 }
 
 export type AICapability =
-  "SUBJECT_LINE" | "BODY_COPY" | "SOCIAL_CAPTION" | "REWRITE" | "HASHTAGS" | "POSTING_TIME";
+  | "SUBJECT_LINE"
+  | "BODY_COPY"
+  | "SOCIAL_CAPTION"
+  | "REWRITE"
+  | "HASHTAGS"
+  | "POSTING_TIME"
+  | "CTA"
+  | "TONE_REWRITE"
+  | "CONTENT_IDEAS"
+  | "PLATFORM_REWRITE"
+  | "CONTENT_REPURPOSE";
 
 export type StudioChannel = "Email" | "Social Post" | "SMS" | "Ad Copy" | "Blog";
 
-export type ApprovalStatus = "PENDING_APPROVAL" | "APPROVED" | "DISCARDED";
+export type ApprovalStatus = "PENDING_APPROVAL" | "APPROVED" | "REJECTED" | "EDITED";
 
 export type AIGenerationStatus = "COMPLETE" | "FAILED";
 
@@ -20,6 +30,8 @@ export interface AIGeneration {
   capability: AICapability;
   channel?: StudioChannel;
   output: { text: string; subject?: string; body?: string } | null;
+  /** Human-edited version of the AI output. Present only when approval_status is EDITED. */
+  edited_output: { text: string } | null;
   input_context?: {
     brief?: string;
     existing_text?: string;
@@ -38,7 +50,9 @@ export interface AIGeneration {
   linked_entity_type: string | null;
   linked_entity_id: string | null;
   created_at: string;
-  approval_status?: ApprovalStatus;
+  approval_status: ApprovalStatus;
+  review_notes: string | null;
+  reviewed_at: string | null;
 }
 
 export interface SuggestedPrompt {
