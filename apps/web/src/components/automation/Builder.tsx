@@ -2,12 +2,23 @@
 import React, { useState } from 'react';
 import { apiFetch } from "@/lib/api-client";
 import { useToast } from "@/components/toast/toast-context";
+import { Plus, X, Zap, Mail, Tag, MessageCircle, Clock, Save, Globe } from "lucide-react";
+import styles from "./builder.module.css";
+
+type ActionType = "send_email" | "add_tag" | "send_whatsapp" | "delay" | "webhook";
+
+interface ActionNode {
+  id: string;
+  type: ActionType;
+  config: Record<string, string>;
+}
 
 export function AutomationBuilder() {
   const { showToast } = useToast();
   const [trigger, setTrigger] = useState("contact.created");
-  const [actions, setActions] = useState([{ type: "add_tag", tag: "" }]);
+  const [actions, setActions] = useState<ActionNode[]>([{ id: "1", type: "add_tag", config: { tag: "" } }]);
   const [saving, setSaving] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   async function handleSave() {
     setSaving(true);
@@ -18,50 +29,81 @@ export function AutomationBuilder() {
           name: "New Automation Workflow",
           trigger_type: trigger,
           conditions: [],
-          actions: actions.map(a => ({ type: a.type, config: { tag: a.tag } }))
+          actions: actions.map(a => ({ type: a.type, config: a.config }))
         })
       });
       showToast("success", "Workflow saved successfully!");
-    } catch (e) {
+    } catch {
       showToast("error", "Failed to save workflow.");
     } finally {
       setSaving(false);
     }
   }
 
+  const handleAddAction = (type: ActionType) => {
+    setActions([...actions, { id: Date.now().toString(), type, config: {} }]);
+    setIsModalOpen(false);
+  };
+
+  const handleDeleteAction = (id: string) => {
+    setActions(actions.filter(a => a.id !== id));
+  };
+
+  const updateActionConfig = (id: string, key: string, value: string) => {
+    setActions(actions.map(a => a.id === id ? { ...a, config: { ...a.config, [key]: value } } : a));
+  };
+
+  const getActionIcon = (type: ActionType) => {
+    switch(type) {
+      case "send_email": return <Mail className="w-5 h-5" />;
+      case "add_tag": return <Tag className="w-5 h-5" />;
+      case "send_whatsapp": return <MessageCircle className="w-5 h-5" />;
+      case "delay": return <Clock className="w-5 h-5" />;
+      case "webhook": return <Globe className="w-5 h-5" />;
+    }
+  };
+
+  const getActionTitle = (type: ActionType) => {
+    switch(type) {
+      case "send_email": return "Send Email";
+      case "add_tag": return "Add Tag";
+      case "send_whatsapp": return "WhatsApp Message";
+      case "delay": return "Wait Delay";
+      case "webhook": return "Trigger Webhook";
+    }
+  };
+
   return (
-    <div className="p-8 max-w-4xl mx-auto font-sans text-gray-900 bg-gray-50 min-h-screen">
-      <div className="flex justify-between items-center mb-8">
+    <div className={styles.canvas}>
+      <div className={styles.glow} />
+      
+      {/* Header */}
+      <div className={styles.header}>
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Workflow Builder</h1>
-          <p className="text-gray-500 mt-2">Design cross-channel automations using triggers and actions.</p>
+          <h1>Automation Workflow</h1>
+          <p>Design multi-channel sequences with visual nodes.</p>
         </div>
-        <button 
-          onClick={handleSave}
-          disabled={saving}
-          className="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-2 px-4 rounded-md shadow-sm disabled:opacity-50"
-        >
-          {saving ? "Saving..." : "Save Workflow"}
+        <button onClick={handleSave} disabled={saving} className={styles.btnSave}>
+          {saving ? "Saving..." : <span className="flex items-center gap-2"><Save className="w-4 h-4" /> Save Workflow</span>}
         </button>
       </div>
 
-      <div className="space-y-6 flex flex-col items-center">
+      <div className={styles.treeContainer}>
+        
         {/* Trigger Node */}
-        <div className="bg-white border-2 border-indigo-200 shadow-sm rounded-xl p-6 w-full max-w-md">
-          <div className="flex items-center gap-3 border-b border-gray-100 pb-3 mb-4">
-            <div className="bg-indigo-100 text-indigo-700 p-2 rounded-lg">
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
+        <div className={styles.nodeCard}>
+          <div className={styles.nodeHeader}>
+            <div className={`${styles.iconWrapper} ${styles.triggerIcon}`}>
+              <Zap className="w-5 h-5" />
             </div>
-            <h3 className="font-semibold text-lg">Trigger</h3>
+            <span className={styles.nodeTitle}>Workflow Trigger</span>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">When this happens:</label>
+            <label className={styles.label}>When this happens:</label>
             <select 
               value={trigger} 
               onChange={e => setTrigger(e.target.value)}
-              className="w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm focus:ring-indigo-500 focus:border-indigo-500"
+              className={styles.select}
             >
               <option value="contact.created">New Contact Added</option>
               <option value="segment.entered">Contact Enters Segment</option>
@@ -70,70 +112,142 @@ export function AutomationBuilder() {
           </div>
         </div>
 
-        {/* Connector Line */}
-        <div className="w-0.5 h-8 bg-gray-300"></div>
-
         {/* Action Nodes */}
-        {actions.map((action, index) => (
-          <div key={index} className="bg-white border border-gray-200 shadow-sm rounded-xl p-6 w-full max-w-md relative">
-            <div className="flex items-center gap-3 border-b border-gray-100 pb-3 mb-4">
-              <div className="bg-green-100 text-green-700 p-2 rounded-lg">
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                </svg>
-              </div>
-              <h3 className="font-semibold text-lg">Action</h3>
-            </div>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Do this:</label>
-                <select 
-                  value={action.type}
-                  onChange={(e) => {
-                    const newActions = [...actions];
-                    if (newActions[index]) {
-                      newActions[index] = { ...newActions[index], type: e.target.value };
-                      setActions(newActions);
-                    }
-                  }}
-                  className="w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm focus:ring-indigo-500 focus:border-indigo-500"
-                >
-                  <option value="add_tag">Add Tag to Contact</option>
-                  <option value="send_email">Send Email Campaign</option>
-                  <option value="send_whatsapp">Send WhatsApp Message</option>
-                </select>
-              </div>
+        {actions.map((action) => (
+          <React.Fragment key={action.id}>
+            <div className={styles.connector} />
+            <div className={styles.nodeCard}>
+              <button 
+                onClick={() => handleDeleteAction(action.id)} 
+                className={styles.deleteBtn}
+                title="Remove Action"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
 
-              {action.type === 'add_tag' && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Tag Name</label>
-                  <input type="text" className="w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm focus:ring-indigo-500 focus:border-indigo-500" placeholder="e.g. vip-lead" />
+              <div className={styles.nodeHeader}>
+                <div className={`${styles.iconWrapper} ${styles.actionIcon}`}>
+                  {getActionIcon(action.type)}
                 </div>
-              )}
-              {action.type === 'send_email' && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Select Email Template</label>
-                  <select className="w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm focus:ring-indigo-500 focus:border-indigo-500">
-                    <option>Welcome Series - Email 1</option>
-                  </select>
-                </div>
-              )}
+                <span className={styles.nodeTitle}>{getActionTitle(action.type)}</span>
+              </div>
+              
+              <div>
+                {action.type === 'add_tag' && (
+                  <>
+                    <label className={styles.label}>Tag Name</label>
+                    <input 
+                      type="text" 
+                      value={action.config.tag || ""}
+                      onChange={(e) => updateActionConfig(action.id, "tag", e.target.value)}
+                      className={styles.input} 
+                      placeholder="e.g. vip-lead" 
+                    />
+                  </>
+                )}
+                {action.type === 'send_email' && (
+                  <>
+                    <label className={styles.label}>Email Template</label>
+                    <select 
+                      className={styles.select}
+                      value={action.config.template || ""}
+                      onChange={(e) => updateActionConfig(action.id, "template", e.target.value)}
+                    >
+                      <option value="">Select a template...</option>
+                      <option value="welcome">Welcome Series - Email 1</option>
+                      <option value="promo">Monthly Promo</option>
+                    </select>
+                  </>
+                )}
+                {action.type === 'send_whatsapp' && (
+                  <>
+                    <label className={styles.label}>Message Template</label>
+                    <select 
+                      className={styles.select}
+                      value={action.config.wa_template || ""}
+                      onChange={(e) => updateActionConfig(action.id, "wa_template", e.target.value)}
+                    >
+                      <option value="">Select a template...</option>
+                      <option value="opt_in">Opt-in Confirmation</option>
+                    </select>
+                  </>
+                )}
+                {action.type === 'delay' && (
+                  <>
+                    <label className={styles.label}>Wait Time (Hours)</label>
+                    <input 
+                      type="number" 
+                      value={action.config.hours || ""}
+                      onChange={(e) => updateActionConfig(action.id, "hours", e.target.value)}
+                      className={styles.input} 
+                      placeholder="24" 
+                    />
+                  </>
+                )}
+                {action.type === 'webhook' && (
+                  <>
+                    <label className={styles.label}>Endpoint URL</label>
+                    <input 
+                      type="url" 
+                      value={action.config.url || ""}
+                      onChange={(e) => updateActionConfig(action.id, "url", e.target.value)}
+                      className={styles.input} 
+                      placeholder="https://api.example.com/hook" 
+                    />
+                  </>
+                )}
+              </div>
             </div>
-          </div>
+          </React.Fragment>
         ))}
 
         {/* Add Node Button */}
-        <div className="w-0.5 h-8 bg-gray-300"></div>
+        <div className={styles.connector} />
         <button 
-          onClick={() => setActions([...actions, { type: "add_tag", tag: "" }])}
-          className="flex items-center justify-center w-10 h-10 rounded-full bg-white border-2 border-dashed border-gray-300 text-gray-500 hover:text-indigo-600 hover:border-indigo-600 transition-colors"
+          onClick={() => setIsModalOpen(true)}
+          className={styles.btnAdd}
+          title="Add Node"
         >
-          <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
+          <Plus className="w-6 h-6" />
         </button>
       </div>
+
+      {/* Add Action Modal */}
+      {isModalOpen && (
+        <div className={styles.modalOverlay}>
+          <div className={styles.modalContent}>
+            <div className={styles.modalHeader}>
+              <h3>Add Action</h3>
+              <button onClick={() => setIsModalOpen(false)} className={styles.modalClose}>
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className={styles.actionGrid}>
+              <div className={styles.actionOption} onClick={() => handleAddAction("send_email")}>
+                <div className={`${styles.actionOptionIcon} ${styles.actionIcon}`}><Mail className="w-4 h-4" /></div>
+                <div className={styles.actionOptionText}>Send Email</div>
+              </div>
+              <div className={styles.actionOption} onClick={() => handleAddAction("send_whatsapp")}>
+                <div className={`${styles.actionOptionIcon} ${styles.actionIcon}`}><MessageCircle className="w-4 h-4" /></div>
+                <div className={styles.actionOptionText}>Send WhatsApp</div>
+              </div>
+              <div className={styles.actionOption} onClick={() => handleAddAction("add_tag")}>
+                <div className={`${styles.actionOptionIcon} ${styles.conditionIcon}`}><Tag className="w-4 h-4" /></div>
+                <div className={styles.actionOptionText}>Add Tag</div>
+              </div>
+              <div className={styles.actionOption} onClick={() => handleAddAction("delay")}>
+                <div className={`${styles.actionOptionIcon} ${styles.conditionIcon}`}><Clock className="w-4 h-4" /></div>
+                <div className={styles.actionOptionText}>Wait Delay</div>
+              </div>
+              <div className={styles.actionOption} onClick={() => handleAddAction("webhook")}>
+                <div className={`${styles.actionOptionIcon} ${styles.triggerIcon}`}><Globe className="w-4 h-4" /></div>
+                <div className={styles.actionOptionText}>Webhook</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

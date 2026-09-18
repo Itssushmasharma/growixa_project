@@ -29,8 +29,8 @@ export default function WhatsAppIntegrationPage() {
       });
       showToast("success", "WhatsApp connected successfully!");
       router.push("/dashboard/integrations");
-    } catch (err) {
-      showToast("error", "Failed to connect WhatsApp.");
+    } catch {
+      showToast("error", "Failed to connect WhatsApp Provider.");
     } finally {
       setSaving(false);
     }

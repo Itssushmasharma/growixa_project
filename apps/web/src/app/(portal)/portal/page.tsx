@@ -2,10 +2,18 @@
 
 import { useState, useEffect } from "react";
 import { ApprovalRequestCard } from "@/components/portal/ApprovalRequestCard";
-import { fetchApprovals, updateApprovalStatus, ApprovalRequestResponse } from "@/lib/api/approvals";
+import { fetchApprovals, updateApprovalStatus } from "@/lib/api/approvals";
+
+interface PortalApproval {
+  id: string;
+  entityType: string;
+  title: string;
+  status: string;
+  createdAt: string;
+}
 
 export default function PortalPage() {
-  const [approvals, setApprovals] = useState<any[]>([]);
+  const [approvals, setApprovals] = useState<PortalApproval[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {

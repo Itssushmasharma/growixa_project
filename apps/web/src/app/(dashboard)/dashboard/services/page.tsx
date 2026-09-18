@@ -42,7 +42,7 @@ export default function SMMServicesPage() {
       ]);
       setServices(servicesData);
       setOrders(ordersData);
-      if (servicesData.length > 0) setSelectedServiceId(servicesData[0].id);
+      if (servicesData[0]?.id) setSelectedServiceId(servicesData[0].id);
     } catch (e) {
       console.error("Failed to fetch SMM data", e);
     } finally {
@@ -71,8 +71,8 @@ export default function SMMServicesPage() {
       setSuccess(true);
       setTargetUrl("");
       fetchServicesAndOrders();
-    } catch (err: any) {
-      setError(err.message || "Failed to place order.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to place order.");
     } finally {
       setSubmitting(false);
     }

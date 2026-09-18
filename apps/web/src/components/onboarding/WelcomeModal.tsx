@@ -29,7 +29,7 @@ export function WelcomeModal() {
             </svg>
           </div>
           <h2 className="text-2xl font-bold text-white tracking-tight">Welcome to Growixa!</h2>
-          <p className="text-indigo-100 mt-2">Your agency's growth engine is ready to go.</p>
+          <p className="text-indigo-100 mt-2">Your agency&apos;s growth engine is ready to go.</p>
         </div>
         <div className="p-6">
           <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4">Quick Start Guide</h3>
@@ -38,7 +38,7 @@ export function WelcomeModal() {
               <div className="flex-shrink-0 w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-xs mt-0.5">1</div>
               <div className="ml-3">
                 <p className="text-sm font-semibold text-gray-900">Connect Social Accounts</p>
-                <p className="text-sm text-gray-500">Link your client's Instagram, LinkedIn, or Twitter.</p>
+                <p className="text-sm text-gray-500">Link your client&apos;s Instagram, LinkedIn, or Twitter.</p>
               </div>
             </li>
             <li className="flex items-start">

@@ -2,13 +2,11 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { LiveActivityStream } from "@/components/dashboard/live-activity-stream";
 import { QuotaGauge } from "@/components/dashboard/quota-gauge";
 import { TrendChart } from "@/components/dashboard/trend-chart";
-import { GrowthChartTerminal } from "@/components/chart-terminal";
 import { ApiError, apiFetch } from "@/lib/api-client";
 import styles from "./dashboard-page.module.css";
-import type { CampaignStatusBreakdown, DashboardOverview } from "./types";
+import type { DashboardOverview } from "./types";
 
 interface GrowthInsightsOut {
   insights: string[];
@@ -16,14 +14,6 @@ interface GrowthInsightsOut {
   topics: string[];
 }
 
-const STATUS_LABEL: Record<keyof CampaignStatusBreakdown, string> = {
-  draft: "Draft",
-  scheduled: "Scheduled",
-  sending: "Sending",
-  sent: "Sent",
-  cancelled: "Cancelled",
-  failed: "Failed",
-};
 
 const QUICK_ACTIONS = [
   {
@@ -106,7 +96,6 @@ export function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [overview, setOverview] = useState<DashboardOverview | null>(null);
-  const [viewMode, setViewMode] = useState<"standard" | "chart-terminal">("standard");
 
   const [aiInsights, setAiInsights] = useState<GrowthInsightsOut | null>(null);
   const [aiLoading, setAiLoading] = useState(true);
@@ -146,12 +135,8 @@ export function DashboardPage() {
       </div>
     );
 
-  const statusEntries = Object.entries(overview.campaign_status_breakdown) as [
-    keyof CampaignStatusBreakdown,
-    number,
-  ][];
+
   const recommendation = recommendationFor(overview);
-  const statusTotal = statusEntries.reduce((sum, [, count]) => sum + count, 0);
 
   return (
     <main className={styles.page}>

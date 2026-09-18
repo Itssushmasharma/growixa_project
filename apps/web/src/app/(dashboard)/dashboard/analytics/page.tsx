@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, Legend } from "recharts";
 import { PageHeader } from "@/components/page-header/page-header";
 import { apiFetch } from "@/lib/api-client";
 import styles from "../dashboard-page.module.css";
@@ -69,22 +69,38 @@ export default function AnalyticsPage() {
     );
   }
 
+  const trafficSources = [
+    { name: "Social Media", value: 45 },
+    { name: "Organic Search", value: 30 },
+    { name: "Direct", value: 15 },
+    { name: "Paid Ads", value: 10 },
+  ];
+  const COLORS = ["#4F46E5", "#10B981", "#F59E0B", "#EC4899"];
+
+  const conversionFunnel = [
+    { name: "Page Views", count: 12500 },
+    { name: "Signups", count: 3200 },
+    { name: "Activated", count: 1800 },
+    { name: "Customers", count: 450 },
+  ];
+
   return (
     <div className={styles.page}>
       <PageHeader
         icon="📈"
         title="Analytics & Reports"
         description="Unified analytics across all your connected channels and campaigns."
-      >
-        <button
-          type="button"
-          className={styles.primaryButton}
-          onClick={() => { window.location.href = "/dashboard/analytics/insights"; }}
-          style={{ display: "flex", gap: "8px", alignItems: "center" }}
-        >
-          <span>✨</span> Generate AI Insights
-        </button>
-      </PageHeader>
+        actions={
+          <button
+            type="button"
+            className={styles.primaryButton}
+            onClick={() => { window.location.href = "/dashboard/analytics/insights"; }}
+            style={{ display: "flex", gap: "8px", alignItems: "center" }}
+          >
+            <span>✨</span> Generate AI Insights
+          </button>
+        }
+      />
 
       <div className={styles.grid}>
         <div className={styles.metricCard}>
@@ -143,6 +159,71 @@ export default function AnalyticsPage() {
                 <Area yAxisId="left" type="monotone" dataKey="followers" stroke="#4F46E5" fillOpacity={1} fill="url(#colorFollowers)" strokeWidth={2} name="Followers" />
                 <Area yAxisId="right" type="monotone" dataKey="engagement" stroke="#10B981" fillOpacity={1} fill="url(#colorEngagement)" strokeWidth={2} name="Engagement" />
               </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
+
+      <div className={styles.grid} style={{ marginTop: "24px" }}>
+        {/* Traffic Sources Donut Chart */}
+        <div className={styles.card} style={{ gridColumn: "span 1" }}>
+          <div className={styles.header}>
+            <h3 className={styles.headerTitle}>Traffic Sources</h3>
+            <p className={styles.headerSubtitle}>Where your visitors are coming from</p>
+          </div>
+          <div style={{ height: "300px", width: "100%", marginTop: "16px" }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={trafficSources}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={70}
+                  outerRadius={100}
+                  paddingAngle={3}
+                  dataKey="value"
+                >
+                  {trafficSources.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip 
+                  contentStyle={{ borderRadius: '8px', border: '1px solid #E5E7EB', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
+                  formatter={(value: unknown) => [`${value}%`, 'Traffic']}
+                />
+                <Legend iconType="circle" verticalAlign="bottom" height={36} />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Conversion Funnel Bar Chart */}
+        <div className={styles.card} style={{ gridColumn: "span 2" }}>
+          <div className={styles.header}>
+            <h3 className={styles.headerTitle}>Conversion Funnel</h3>
+            <p className={styles.headerSubtitle}>User drop-off at each stage</p>
+          </div>
+          <div style={{ height: "300px", width: "100%", marginTop: "16px" }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={conversionFunnel}
+                layout="vertical"
+                margin={{ top: 20, right: 30, left: 40, bottom: 5 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#E5E7EB" />
+                <XAxis type="number" axisLine={false} tickLine={false} tick={{fill: '#6B7280', fontSize: 12}} />
+                <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{fill: '#374151', fontSize: 13, fontWeight: 500}} width={100} />
+                <Tooltip 
+                  cursor={{fill: '#F3F4F6'}}
+                  contentStyle={{ borderRadius: '8px', border: '1px solid #E5E7EB', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
+                  formatter={(value: unknown) => [Number(value).toLocaleString(), 'Users']}
+                />
+                <Bar dataKey="count" fill="#4F46E5" radius={[0, 6, 6, 0]} barSize={32}>
+                  {conversionFunnel.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={`hsl(243, 75%, ${59 - index * 8}%)`} />
+                  ))}
+                </Bar>
+              </BarChart>
             </ResponsiveContainer>
           </div>
         </div>

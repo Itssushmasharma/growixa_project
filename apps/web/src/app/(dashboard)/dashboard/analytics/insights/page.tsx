@@ -51,11 +51,12 @@ export default function InsightsPage() {
         icon="✨"
         title="AI Growth Intelligence"
         description="Your automated marketing strategist. Actionable insights derived from your recent performance."
-      >
-        <Link href="/dashboard/analytics" className={styles.secondaryButton} style={{ textDecoration: "none" }}>
-          Back to Analytics
-        </Link>
-      </PageHeader>
+        actions={
+          <Link href="/dashboard/analytics" className={styles.secondaryButton} style={{ textDecoration: "none" }}>
+            Back to Analytics
+          </Link>
+        }
+      />
 
       <div className={styles.grid}>
         {/* Key Insights */}

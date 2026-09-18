@@ -29,7 +29,7 @@ export default function SMSIntegrationPage() {
       });
       showToast("success", "SMS Provider connected successfully!");
       router.push("/dashboard/integrations");
-    } catch (err) {
+    } catch {
       showToast("error", "Failed to connect SMS Provider.");
     } finally {
       setSaving(false);

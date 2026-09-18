@@ -41,8 +41,8 @@ export default function SEOAnalysisPage() {
         setError(data.error);
       }
       setResult(data);
-    } catch (err: any) {
-      setError(err.message || "Failed to analyze website.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to analyze website.");
     } finally {
       setLoading(false);
     }
@@ -59,7 +59,7 @@ export default function SEOAnalysisPage() {
       <div className="flex flex-col items-center justify-center text-center space-y-4 mb-8">
         <h1 className="text-3xl font-bold text-slate-900">SEO Website Audit</h1>
         <p className="text-slate-500 max-w-lg text-lg">
-          Instantly check your website's search engine health. Find critical issues and optimize your content for better rankings.
+          Instantly check your website&apos;s search engine health. Find critical issues and optimize your content for better rankings.
         </p>
       </div>
 

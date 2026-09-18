@@ -21,6 +21,8 @@ import {
   type SenderIdentity,
   type SocialConnection,
   type VerificationStatus,
+  type WhatsAppConnection,
+  type SMSConnection,
 } from "./types";
 
 const MANAGE_PERMISSION = "integrations.manage";
