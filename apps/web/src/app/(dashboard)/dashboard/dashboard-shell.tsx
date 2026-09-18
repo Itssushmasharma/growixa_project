@@ -12,6 +12,7 @@ import { LogoutButton } from "./logout-button";
 import { Sidebar } from "./sidebar";
 import { SupportSessionBanner } from "./support-session-banner";
 import topbarStyles from "./topbar.module.css";
+import { WelcomeModal } from "@/components/onboarding/WelcomeModal";
 
 const MOBILE_QUERY = "(max-width: 768px)";
 
@@ -127,7 +128,7 @@ export function DashboardShell({
 
   return (
     <div className={layoutStyles.shell}>
-      <Sidebar permissions={permissions} open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <Sidebar permissions={permissions} open={sidebarOpen} onClose={() => setSidebarOpen(false)} isPaidPlan={!!isPaidPlan} />
       <div className={layoutStyles.main}>
         {/* =========================================================================
             Global Topbar (Unified across all dashboard pages)
@@ -249,6 +250,7 @@ export function DashboardShell({
         <div className={layoutStyles.content}>{children}</div>
 
         <HelpDrawer isOpen={helpDrawerOpen} onClose={() => setHelpDrawerOpen(false)} />
+        <WelcomeModal />
       </div>
     </div>
   );

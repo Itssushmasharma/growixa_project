@@ -123,6 +123,11 @@ async def handle_send_campaign(session: AsyncSession, payload: dict[str, Any]) -
         logger.error("send_campaign: campaign %s not found, dropping job", campaign_id)
         return
 
+    # Enforce Approval State Machine (Phase A)
+    if campaign.status not in ("APPROVED", "SCHEDULED", "SENDING", "DISPATCHING"):
+        logger.warning(f"send_campaign: campaign {campaign_id} is in status {campaign.status}, not APPROVED, SCHEDULED, SENDING or DISPATCHING")
+        return
+
     already_sent = await session.execute(
         select(CampaignVersion.id).where(CampaignVersion.campaign_id == campaign.id).limit(1)
     )

@@ -1,3 +1,5 @@
+# ruff: noqa: E501
+
 import secrets
 import uuid
 from collections.abc import Sequence
@@ -15,6 +17,7 @@ from growixa_api.jobs.producer import publish_job
 from growixa_api.jobs.schemas import JobEnvelope
 from growixa_api.social import instagram_client, repositories, scheduler
 from growixa_api.social.models import SocialConnection, SocialPost, SocialPostMedia
+from growixa_api.social.providers.factory import get_social_provider
 from growixa_api.social.schemas import ScheduleSocialPostIn, SocialPostIn, SocialPostUpdateIn
 
 _PROVIDER = "INSTAGRAM_BUSINESS"
@@ -143,6 +146,122 @@ async def complete_oauth_callback(
     return connection
 
 
+def _provider_state_key_prefix(provider: str) -> str:
+    return f"grx:social:{provider.lower()}:oauth_state:"
+
+
+def _provider_redirect_uri(provider: str) -> str:
+    return f"{get_settings().api_public_url}/integrations/{provider.lower()}/oauth/callback"
+
+
+async def build_provider_authorize_url(
+    provider_name: str, redis_client: Redis, account_id: uuid.UUID
+) -> str:
+    norm_provider = provider_name.upper()
+    if norm_provider in {"INSTAGRAM_BUSINESS", "INSTAGRAM"}:
+        return await build_authorize_url(redis_client, account_id)
+
+    provider = get_social_provider(norm_provider)
+    settings = get_settings()
+    state = secrets.token_urlsafe(32)
+    await redis_client.set(
+        f"{_provider_state_key_prefix(norm_provider)}{state}",
+        str(account_id),
+        ex=settings.instagram_oauth_state_ttl_seconds,
+    )
+    redirect_uri = _provider_redirect_uri(norm_provider)
+
+    if norm_provider == "LINKEDIN":
+        client_id = settings.linkedin_client_id or "linkedin_client_id_placeholder"
+    elif norm_provider == "TWITTER":
+        client_id = settings.twitter_client_id or "twitter_client_id_placeholder"
+    else:
+        client_id = "client_id_placeholder"
+
+    return provider.build_auth_url(state=state, redirect_uri=redirect_uri, client_id=client_id)
+
+
+async def complete_provider_oauth_callback(
+    provider_name: str,
+    session: AsyncSession,
+    redis_client: Redis,
+    *,
+    account_id: uuid.UUID,
+    actor_id: uuid.UUID,
+    code: str,
+    state: str,
+) -> SocialConnection:
+    norm_provider = provider_name.upper()
+    if norm_provider in {"INSTAGRAM_BUSINESS", "INSTAGRAM"}:
+        return await complete_oauth_callback(
+            session, redis_client, account_id=account_id, actor_id=actor_id, code=code, state=state
+        )
+
+    provider = get_social_provider(norm_provider)
+    state_key = f"{_provider_state_key_prefix(norm_provider)}{state}"
+    stored_account_id = await redis_client.get(state_key)
+    await redis_client.delete(state_key)
+    if stored_account_id is None or stored_account_id != str(account_id):
+        raise OAuthStateInvalidError("OAuth state is missing, expired, or mismatched")
+
+    settings = get_settings()
+    redirect_uri = _provider_redirect_uri(norm_provider)
+
+    if norm_provider == "LINKEDIN":
+        client_id = settings.linkedin_client_id
+        client_secret = settings.linkedin_client_secret
+    elif norm_provider == "TWITTER":
+        client_id = settings.twitter_client_id
+        client_secret = settings.twitter_client_secret
+    else:
+        client_id = ""
+        client_secret = ""
+
+    tokens = await provider.exchange_code(
+        code=code,
+        redirect_uri=redirect_uri,
+        client_id=client_id,
+        client_secret=client_secret,
+    )
+
+    existing_connection = await repositories.get_active_connection(
+        session, account_id, norm_provider
+    )
+    if existing_connection is None:
+        current_count = await repositories.count_active_connections(session, account_id)
+        await check_plan_limit(
+            session,
+            account_id=account_id,
+            limit_attr="max_social_accounts",
+            current_count=current_count,
+            resource="social_accounts",
+        )
+
+    await repositories.deactivate_active_connections(session, account_id, norm_provider)
+    connection = await repositories.create_connection(
+        session,
+        {
+            "account_id": account_id,
+            "provider": norm_provider,
+            "provider_account_id": tokens.account_id,
+            "provider_username": tokens.username,
+            "provider_account_name": tokens.account_name,
+            "access_token_encrypted": encrypt_secret(tokens.access_token),
+            "refresh_token_encrypted": encrypt_secret(tokens.refresh_token)
+            if tokens.refresh_token
+            else None,
+            "token_expires_at": datetime.now(UTC) + timedelta(seconds=tokens.expires_in_seconds)
+            if tokens.expires_in_seconds
+            else None,
+            "account_metadata": tokens.metadata,
+            "scopes": tokens.scopes,
+            "created_by_user_id": actor_id,
+        },
+    )
+    await session.commit()
+    return connection
+
+
 class SocialConnectionNotFoundError(Exception):
     pass
 
@@ -179,18 +298,39 @@ async def list_all_connections(
     return await repositories.list_connections(session, account_id)
 
 
+async def disconnect_connection(
+    session: AsyncSession, account_id: uuid.UUID, connection_id: uuid.UUID
+) -> None:
+    conn = await repositories.get_connection(session, account_id, connection_id)
+    if conn is None:
+        raise SocialConnectionNotFoundError
+    await repositories.deactivate_connection_by_id(session, account_id, connection_id)
+    await session.commit()
+
+
 async def create_post(
     session: AsyncSession, account_id: uuid.UUID, data: SocialPostIn, actor_id: uuid.UUID
 ) -> SocialPost:
     connection = await repositories.get_connection(session, account_id, data.social_connection_id)
     if connection is None:
         raise SocialConnectionNotFoundError
+    provider = get_social_provider(connection.provider)
+    if len(data.caption) > provider.capabilities.max_characters:
+        raise ValueError(
+            f"{provider.capabilities.display_name} posts cannot exceed {provider.capabilities.max_characters} characters."
+        )
+
     post = await repositories.create_post(
         session,
         {
             "account_id": account_id,
             "social_connection_id": data.social_connection_id,
             "caption": data.caption,
+            "campaign_id": data.campaign_id,
+            "utm_source": data.utm_source,
+            "utm_medium": data.utm_medium,
+            "utm_campaign": data.utm_campaign,
+            "utm_content": data.utm_content,
             "created_by_user_id": actor_id,
         },
     )
@@ -227,11 +367,20 @@ async def update_post(
     if post.status != "DRAFT":
         raise SocialPostNotEditableError
 
+    if data.caption is not None:
+        connection = await repositories.get_connection(
+            session, account_id, post.social_connection_id
+        )
+        if connection is not None:
+            provider = get_social_provider(connection.provider)
+            if len(data.caption) > provider.capabilities.max_characters:
+                raise ValueError(
+                    f"{provider.capabilities.display_name} posts cannot exceed {provider.capabilities.max_characters} characters."
+                )
+
     fields = data.model_dump(exclude_unset=True)
     post = await repositories.update_post_fields(session, post, fields)
     await session.commit()
-    # updated_at's server-side onupdate expires the attribute after an UPDATE commit;
-    # refresh explicitly while still inside an awaited call (see contacts/services.py).
     await session.refresh(post)
     return post
 
@@ -336,7 +485,16 @@ async def publish_now(
     if post.status != "DRAFT":
         raise PostNotPublishableError
     media = await repositories.list_post_media(session, account_id, post_id)
-    if len(media) == 0:
+    connection = await repositories.get_connection(session, account_id, post.social_connection_id)
+    if connection is not None:
+        provider = get_social_provider(connection.provider)
+        media_items = [{"media_type": m.media_type, "public_url": m.public_url} for m in media]
+        errors = provider.validate_post(post.caption, media_items)
+        if errors:
+            if provider.capabilities.requires_media and len(media) == 0:
+                raise PostHasNoMediaError
+            raise ValueError("; ".join(errors))
+    elif len(media) == 0:
         raise PostHasNoMediaError
 
     post.status = "DISPATCHING"
@@ -386,7 +544,16 @@ async def schedule_post(
     if data.scheduled_at.astimezone(UTC) <= datetime.now(UTC):
         raise ValueError("scheduled_at must be a future datetime")
     media = await repositories.list_post_media(session, account_id, post_id)
-    if len(media) == 0:
+    connection = await repositories.get_connection(session, account_id, post.social_connection_id)
+    if connection is not None:
+        provider = get_social_provider(connection.provider)
+        media_items = [{"media_type": m.media_type, "public_url": m.public_url} for m in media]
+        errors = provider.validate_post(post.caption, media_items)
+        if errors:
+            if provider.capabilities.requires_media and len(media) == 0:
+                raise PostHasNoMediaError
+            raise ValueError("; ".join(errors))
+    elif len(media) == 0:
         raise PostHasNoMediaError
 
     post = await repositories.update_post_fields(

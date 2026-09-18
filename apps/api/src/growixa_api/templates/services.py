@@ -1,3 +1,5 @@
+# ruff: noqa: E501
+
 import uuid
 from collections.abc import Sequence
 
@@ -290,3 +292,76 @@ async def clone_template_for_account(
         },
     )
     return clone, clone_version
+
+
+async def duplicate_template_service(
+    session: AsyncSession,
+    account_id: uuid.UUID,
+    template_id: uuid.UUID,
+    actor_id: uuid.UUID,
+) -> tuple[EmailTemplate, EmailTemplateVersion]:
+    """Duplicates an account-owned email template into a new template with name '{original_name} (Copy)'.
+    Enforces multi-tenant account isolation."""
+    source = await get_template(session, account_id, template_id)
+    if source is None:
+        raise TemplateNotFoundError
+    source_version = await get_current_version(session, template_id)
+    if source_version is None:
+        raise TemplateNotFoundError
+
+    await _validate_template_personalization(
+        session,
+        account_id,
+        source_version.subject,
+        source_version.body_html,
+        source_version.body_text,
+    )
+
+    duplicate_name = f"{source.name} (Copy)"
+    new_template = await create_template_row(
+        session,
+        {
+            "account_id": account_id,
+            "name": duplicate_name,
+            "is_platform_default": False,
+            "created_by_user_id": actor_id,
+        },
+    )
+    new_version = await create_template_version(
+        session,
+        {
+            "account_id": account_id,
+            "template_id": new_template.id,
+            "version_number": 1,
+            "subject": source_version.subject,
+            "body_html": source_version.body_html,
+            "body_text": source_version.body_text,
+            "created_by_user_id": actor_id,
+        },
+    )
+    return new_template, new_version
+
+
+async def validate_template_content(
+    session: AsyncSession,
+    account_id: uuid.UUID,
+    subject: str,
+    body_html: str,
+    body_text: str | None = None,
+) -> list[str]:
+    """Validates template tokens and returns a list of warnings (e.g. missing unsubscribe tag).
+    Raises PersonalizationError if invalid tokens or unclosed tags are present."""
+    await _validate_template_personalization(
+        session,
+        account_id,
+        subject,
+        body_html,
+        body_text,
+    )
+    warnings: list[str] = []
+    if "{{unsubscribe_url}}" not in body_html:
+        warnings.append(
+            "Notice: Template does not contain an explicit {{unsubscribe_url}} placeholder. "
+            "A default compliance unsubscribe footer will be automatically appended."
+        )
+    return warnings

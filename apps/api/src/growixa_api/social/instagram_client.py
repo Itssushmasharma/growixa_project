@@ -122,3 +122,23 @@ async def resolve_instagram_business_account(
 class NoLinkedInstagramAccountError(InstagramApiError):
     """Raised when the Graph API call succeeds but no accessible Page has a linked
     Instagram Business Account — a distinct, expected outcome from a raw API failure."""
+
+async def refresh_long_lived_token(*, app_id: str, app_secret: str, current_token: str, api_version: str) -> tuple[str, int]:
+    # Stub for token refresh
+    return current_token, 5184000
+
+async def create_media_container(*, ig_business_account_id: str, page_access_token: str, image_url: str, caption: str, api_version: str) -> str:
+    # Stub for creating media container
+    return "stub_container_id"
+
+async def poll_container_status(*, container_id: str, page_access_token: str, api_version: str) -> None:
+    # Stub for polling container status
+    pass
+
+async def publish_media_container(*, ig_business_account_id: str, page_access_token: str, container_id: str, api_version: str) -> str:
+    # Stub for publishing media container
+    return "stub_media_id"
+
+async def fetch_media_permalink(*, media_id: str, page_access_token: str, api_version: str) -> str:
+    # Stub for fetching media permalink
+    return "https://instagram.com/p/stub"

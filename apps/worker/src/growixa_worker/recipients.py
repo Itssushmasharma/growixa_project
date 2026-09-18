@@ -1,8 +1,9 @@
 import uuid
 from collections.abc import Sequence
 from datetime import datetime
+from typing import Any
 
-from sqlalchemy import ColumnElement, and_, select
+from sqlalchemy import ColumnElement, and_, func, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from growixa_worker.models import (
@@ -19,40 +20,69 @@ from growixa_worker.models import (
 )
 
 
+def _build_text_op(column: Any, operator: str, value: str) -> ColumnElement[bool]:
+    op = operator.lower()
+    if op == "equals":
+        return column == value
+    if op == "not_equals":
+        return or_(column != value, column.is_(None))
+    if op == "contains":
+        return column.ilike(f"%{value}%")
+    if op == "starts_with":
+        return column.ilike(f"{value}%")
+    if op == "ends_with":
+        return column.ilike(f"%{value}")
+    if op == "is_empty":
+        return or_(column.is_(None), column == "")
+    if op == "is_not_empty":
+        return and_(column.is_not(None), column != "")
+    return column == value
+
+
 def _build_rule_condition(field: str, operator: str, value: str) -> ColumnElement[bool]:
     """Mirrors growixa_api.contacts.repositories.build_rule_condition — duplicated, not
     imported, since the worker doesn't depend on growixa_api (see models.py's module
     docstring). Must stay in sync with that function's field/operator support."""
     if field == "status":
-        return Contact.status == value
+        return _build_text_op(Contact.status, operator, value)
     if field == "email":
-        return Contact.email == value if operator == "equals" else Contact.email.ilike(f"%{value}%")
+        return _build_text_op(Contact.email, operator, value)
     if field == "first_name":
-        return (
-            Contact.first_name == value
-            if operator == "equals"
-            else Contact.first_name.ilike(f"%{value}%")
-        )
+        return _build_text_op(Contact.first_name, operator, value)
     if field == "last_name":
-        return (
-            Contact.last_name == value
-            if operator == "equals"
-            else Contact.last_name.ilike(f"%{value}%")
-        )
+        return _build_text_op(Contact.last_name, operator, value)
     if field == "phone":
-        return Contact.phone == value if operator == "equals" else Contact.phone.ilike(f"%{value}%")
+        return _build_text_op(Contact.phone, operator, value)
     if field == "source":
-        return Contact.source == value
+        return _build_text_op(Contact.source, operator, value)
+    if field == "lifecycle_stage":
+        return _build_text_op(Contact.lifecycle_stage, operator, value)
+    if field == "job_title":
+        return _build_text_op(Contact.job_title, operator, value)
     if field == "tag":
-        tag_condition = Tag.name == value if operator == "equals" else Tag.name.ilike(f"%{value}%")
+        op = operator.lower()
+        if op == "has_not_tag":
+            return Contact.id.not_in(
+                select(ContactTag.contact_id)
+                .join(Tag, Tag.id == ContactTag.tag_id)
+                .where(Tag.name == value)
+            )
+        tag_condition = Tag.name == value if op == "equals" else Tag.name.ilike(f"%{value}%")
         return Contact.id.in_(
             select(ContactTag.contact_id)
             .join(Tag, Tag.id == ContactTag.tag_id)
             .where(tag_condition)
         )
     if field == "created_at":
+        op = operator.lower()
+        if op == "within_days":
+            try:
+                days = int(value)
+            except ValueError:
+                days = 30
+            return Contact.created_at >= func.now() - text(f"INTERVAL '{days} days'")
         parsed = datetime.fromisoformat(value)
-        return Contact.created_at < parsed if operator == "before" else Contact.created_at > parsed
+        return Contact.created_at < parsed if op == "before" else Contact.created_at > parsed
     if field.startswith("custom_field:"):
         key = field.split(":", 1)[1]
         subquery = (
@@ -60,11 +90,7 @@ def _build_rule_condition(field: str, operator: str, value: str) -> ColumnElemen
             .join(ContactCustomField, ContactCustomField.id == ContactFieldValue.field_id)
             .where(ContactCustomField.key == key)
         )
-        subquery = subquery.where(
-            ContactFieldValue.value == value
-            if operator == "equals"
-            else ContactFieldValue.value.ilike(f"%{value}%")
-        )
+        subquery = subquery.where(_build_text_op(ContactFieldValue.value, operator, value))
         return Contact.id.in_(subquery)
     raise ValueError(f"Unsupported segment rule field: {field}")
 
@@ -72,6 +98,7 @@ def _build_rule_condition(field: str, operator: str, value: str) -> ColumnElemen
 async def _resolve_dynamic_segment(
     session: AsyncSession, account_id: uuid.UUID, segment_id: uuid.UUID
 ) -> Sequence[Contact]:
+    segment = await session.get(Segment, segment_id)
     rules_result = await session.execute(
         select(SegmentRule).where(SegmentRule.segment_id == segment_id)
     )
@@ -83,7 +110,11 @@ async def _resolve_dynamic_segment(
         Contact.deleted_at.is_(None),
     )
     if conditions:
-        query = query.where(and_(*conditions))
+        match_type = getattr(segment, "match_type", "ALL") if segment else "ALL"
+        if match_type and match_type.upper() == "ANY":
+            query = query.where(or_(*conditions))
+        else:
+            query = query.where(and_(*conditions))
     contacts_result = await session.execute(query)
     return contacts_result.scalars().all()
 

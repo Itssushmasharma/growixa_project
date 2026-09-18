@@ -139,6 +139,9 @@ export function IntegrationsPage() {
   const [aiSaving, setAiSaving] = useState(false);
   const [aiDeactivating, setAiDeactivating] = useState(false);
 
+  const [whatsappConnection, setWhatsappConnection] = useState<WhatsAppConnection | null>(null);
+  const [smsConnection, setSmsConnection] = useState<SMSConnection | null>(null);
+
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("All Transports");
 
   const [connectionFormFor, setConnectionFormFor] = useState<EmailProvider | null>(null);
@@ -165,12 +168,14 @@ export function IntegrationsPage() {
         setCanManage(hasAccess);
 
         if (hasAccess) {
-          const [connectionList, identityList, socialConnections, aiConnections] =
+          const [connectionList, identityList, socialConnections, aiConnections, whatsappConnections, smsConnections] =
             await Promise.all([
               apiFetch<EmailProviderConnection[]>("/integrations/email-providers"),
               apiFetch<SenderIdentity[]>("/integrations/sender-identities"),
               apiFetch<SocialConnection[]>("/social/connections"),
               apiFetch<AIProviderConnection[]>("/ai/connections"),
+              apiFetch<WhatsAppConnection[]>("/whatsapp/connections"),
+              apiFetch<SMSConnection[]>("/sms/connections"),
             ]);
           const byProvider: Partial<Record<EmailProvider, EmailProviderConnection>> = {};
           for (const connection of connectionList) {
@@ -180,6 +185,8 @@ export function IntegrationsPage() {
           setIdentities(identityList);
           setSocialConnection(socialConnections[0] ?? null);
           setAiConnection(aiConnections[0] ?? null);
+          setWhatsappConnection(whatsappConnections[0] ?? null);
+          setSmsConnection(smsConnections[0] ?? null);
         }
       } catch {
         setLoadError("Could not load integration settings.");
@@ -760,6 +767,97 @@ export function IntegrationsPage() {
                 {aiDeactivating ? "Removing…" : "Use platform default instead"}
               </button>
             )}
+          </div>
+        </div>
+      </div>
+
+      {/* Omnichannel Messaging */}
+      <div className={styles.grid} style={{ marginTop: "24px" }}>
+        <div className={styles.card}>
+          <div className={styles.header}>
+            <div className={styles.headerTitleGroup}>
+              <ProviderIcon name="Twilio" />
+              <div>
+                <h3 className={styles.headerTitle}>WhatsApp Business</h3>
+                <p className={styles.headerSubtitle}>
+                  Connect your Meta Cloud API to send WhatsApp campaigns.
+                </p>
+              </div>
+            </div>
+            <span
+              className={`${styles.statusBadge} ${
+                whatsappConnection ? styles.statusActive : styles.statusUnconfigured
+              }`}
+            >
+              {whatsappConnection ? "Connected" : "Unconfigured"}
+            </span>
+          </div>
+          {whatsappConnection ? (
+            <div className={styles.connectionDetails}>
+              <div className={styles.summaryRow}>
+                <span className={styles.summaryLabel}>WABA ID</span>
+                <span>{whatsappConnection.waba_id}</span>
+              </div>
+              <div className={styles.summaryRow}>
+                <span className={styles.summaryLabel}>Phone Number ID</span>
+                <span>{whatsappConnection.phone_number_id}</span>
+              </div>
+            </div>
+          ) : (
+            <p className={styles.hint}>No WhatsApp Business account connected.</p>
+          )}
+          <div className={styles.cardActions}>
+            <button
+              type="button"
+              className={styles.secondaryButton}
+              onClick={() => router.push("/dashboard/integrations/whatsapp")}
+            >
+              {whatsappConnection ? "Update connection" : "+ Configure connection"}
+            </button>
+          </div>
+        </div>
+
+        <div className={styles.card}>
+          <div className={styles.header}>
+            <div className={styles.headerTitleGroup}>
+              <ProviderIcon name="Twilio" />
+              <div>
+                <h3 className={styles.headerTitle}>Twilio SMS</h3>
+                <p className={styles.headerSubtitle}>
+                  Connect your Twilio account to send SMS campaigns.
+                </p>
+              </div>
+            </div>
+            <span
+              className={`${styles.statusBadge} ${
+                smsConnection ? styles.statusActive : styles.statusUnconfigured
+              }`}
+            >
+              {smsConnection ? "Connected" : "Unconfigured"}
+            </span>
+          </div>
+          {smsConnection ? (
+            <div className={styles.connectionDetails}>
+              <div className={styles.summaryRow}>
+                <span className={styles.summaryLabel}>Account SID</span>
+                <span>{smsConnection.account_sid}</span>
+              </div>
+              <div className={styles.summaryRow}>
+                <span className={styles.summaryLabel}>Sender Number</span>
+                <span>{smsConnection.sender_number}</span>
+              </div>
+            </div>
+          ) : (
+            <p className={styles.hint}>No Twilio account connected.</p>
+          )}
+          <div className={styles.cardActions}>
+            <button
+              type="button"
+              className={styles.secondaryButton}
+              onClick={() => router.push("/dashboard/integrations/sms")}
+            >
+              {smsConnection ? "Update connection" : "+ Configure connection"}
+            </button>
           </div>
         </div>
       </div>

@@ -12,7 +12,7 @@ from collections.abc import AsyncGenerator, Awaitable, Callable
 import jwt
 import pytest
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy import delete, select
+from sqlalchemy import delete
 
 from growixa_api.ai import services as ai_services
 from growixa_api.ai.models import AIGeneration, AIProviderConnection, PlatformAIProviderConfig
@@ -184,9 +184,7 @@ async def test_manager_can_edit_pending_generation(
             base_url="http://test",
             cookies=_access_token_cookie(manager_id),
         ) as client:
-            gen_resp = await client.post(
-                "/ai/generate/BODY_COPY", json={"brief": "welcome email"}
-            )
+            gen_resp = await client.post("/ai/generate/BODY_COPY", json={"brief": "welcome email"})
             assert gen_resp.status_code == 200
             gen_id = gen_resp.json()["id"]
 
@@ -230,9 +228,7 @@ async def test_approve_already_reviewed_returns_409(
             base_url="http://test",
             cookies=_access_token_cookie(manager_id),
         ) as client:
-            gen_resp = await client.post(
-                "/ai/generate/SUBJECT_LINE", json={"brief": "sale email"}
-            )
+            gen_resp = await client.post("/ai/generate/SUBJECT_LINE", json={"brief": "sale email"})
             assert gen_resp.status_code == 200
             gen_id = gen_resp.json()["id"]
 
@@ -283,9 +279,7 @@ async def test_content_creator_cannot_approve(
             base_url="http://test",
             cookies=_access_token_cookie(creator_id),
         ) as creator_client:
-            approve_resp = await creator_client.post(
-                f"/ai/generations/{gen_id}/approve", json={}
-            )
+            approve_resp = await creator_client.post(f"/ai/generations/{gen_id}/approve", json={})
             assert approve_resp.status_code == 403
     finally:
         await _cleanup()

@@ -1,4 +1,5 @@
 import ipaddress
+import re
 import socket
 from dataclasses import dataclass
 from typing import Protocol
@@ -15,8 +16,6 @@ class AIProviderError(Exception):
 class InsecureBaseUrlError(AIProviderError):
     """Raised when a custom base_url fails SSRF-safe validation (DEC-GRX-027)."""
 
-
-import re
 
 # Pricing rates per 1k tokens: (prompt_cost_usd, completion_cost_usd)
 MODEL_PRICING_PER_1K: dict[str, tuple[float, float]] = {
@@ -37,7 +36,7 @@ MODEL_PRICING_PER_1K: dict[str, tuple[float, float]] = {
 def estimate_cost_usd(model: str, prompt_tokens: int, completion_tokens: int) -> float:
     """Calculates estimated cost in USD based on model pricing matrix."""
     model_lower = model.lower()
-    rates = MODEL_PRICING_PER_1K.get("default")
+    rates = MODEL_PRICING_PER_1K["default"]
     for key, val in MODEL_PRICING_PER_1K.items():
         if key in model_lower:
             rates = val

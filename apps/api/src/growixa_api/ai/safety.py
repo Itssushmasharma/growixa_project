@@ -116,7 +116,11 @@ def check_content_safety(content: str, brand: BrandSafetyProfile | None) -> Safe
         if not rule:
             continue
         rule_lower = rule.lower()
-        if "disclose" in rule_lower and "#ad" not in lower_content and "sponsored" not in lower_content:
+        if (
+            "disclose" in rule_lower
+            and "#ad" not in lower_content
+            and "sponsored" not in lower_content
+        ):
             warnings.append(f"Compliance notice: verify disclosures for rule '{rule}'")
 
     # 3. Check avoid vocabulary (Soft Warning)

@@ -3,96 +3,28 @@
   isolation: isolate;
   display: flex;
   min-height: 100vh;
-  padding: 22px;
-  background:
-    radial-gradient(circle at 14% 16%, rgba(15, 107, 109, 0.45), transparent 42rem),
-    radial-gradient(circle at 88% 22%, rgba(212, 175, 55, 0.16), transparent 40rem),
-    radial-gradient(circle at 50% 90%, rgba(15, 107, 109, 0.35), transparent 46rem),
-    #07191a;
-  color: #F8F8F5;
-
-  /* Theme tokens: The Nest Palette (Peacock #0F6B6D, Off-White #F8F8F5, Gold #D4AF37) */
-  --ink: #F8F8F5;
-  --paper: rgba(15, 107, 109, 0.22);
-  --paper-2: rgba(7, 26, 28, 0.88);
-  --paper-3: rgba(15, 107, 109, 0.32);
-  --line: rgba(212, 175, 55, 0.22);
-  --mut: #dce8e8;
-  --faint: #a3c2c2;
-  --color-dark-text: #F8F8F5;
-  --color-slate: #dce8e8;
-  --color-slate-light: #a3c2c2;
-  --color-primary-blue: #0F6B6D;
-  --color-peacock: #0F6B6D;
-  --color-gold: #D4AF37;
-  --create: #D4AF37;
-  --create-l: rgba(212, 175, 55, 0.18);
-  --gradient-primary: linear-gradient(135deg, #D4AF37 0%, #F5DE87 50%, #B89225 100%);
-  --card-radius: 20px;
-  --card-shadow: 0 20px 45px -12px rgba(4, 15, 16, 0.9), inset 0 1px 1px rgba(248, 248, 245, 0.12);
-}
-
-.shell::before,
-.shell::after {
-  content: "";
-  position: fixed;
-  z-index: -1;
-  border-radius: 50%;
-  pointer-events: none;
-}
-
-.shell::before {
-  width: 420px;
-  height: 420px;
-  right: -120px;
-  top: 60px;
-  border: 1px solid rgba(212, 175, 55, 0.22);
-  box-shadow: 0 0 90px rgba(212, 175, 55, 0.14), inset 0 0 60px rgba(15, 107, 109, 0.28);
-}
-
-.shell::after {
-  width: 320px;
-  height: 320px;
-  left: 6%;
-  bottom: -90px;
-  border: 1px solid rgba(15, 107, 109, 0.35);
-  box-shadow: 0 0 80px rgba(15, 107, 109, 0.28);
+  background-color: var(--bg-page);
+  color: var(--color-dark-text);
 }
 
 .main {
   flex: 1;
   min-width: 0;
-  min-height: calc(100vh - 44px);
+  min-height: 100vh;
   overflow: hidden;
-  border: 1px solid rgba(212, 175, 55, 0.2);
-  border-radius: 0 24px 24px 0;
-  background: rgba(9, 29, 31, 0.82);
-  backdrop-filter: blur(28px) saturate(190%);
-  -webkit-backdrop-filter: blur(28px) saturate(190%);
-  box-shadow: 0 30px 90px -30px rgba(3, 12, 13, 0.92);
+  display: flex;
+  flex-direction: column;
+  background-color: var(--bg-page);
 }
 
 .content {
-  min-height: calc(100vh - 116px);
-  padding: 28px 32px 38px;
-  background:
-    radial-gradient(circle at 50% 0%, rgba(15, 107, 109, 0.35), transparent 36rem),
-    linear-gradient(180deg, rgba(9, 29, 31, 0.7) 0%, rgba(6, 20, 22, 0.9) 100%);
+  flex: 1;
+  padding: 32px 40px;
+  background-color: var(--bg-page);
 }
 
-
 @media (max-width: 768px) {
-  .shell {
-    padding: 0;
-  }
-
-  .main {
-    min-height: 100vh;
-    border: 0;
-    border-radius: 0;
-  }
-
   .content {
-    padding: 20px 16px 30px;
+    padding: 24px 16px;
   }
 }

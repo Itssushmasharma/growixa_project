@@ -64,6 +64,21 @@ export interface SocialConnection {
   last_error: string | null;
 }
 
+export interface WhatsAppConnection {
+  id: string;
+  waba_id: string;
+  phone_number_id: string;
+  is_active: boolean;
+}
+
+export interface SMSConnection {
+  id: string;
+  provider: string;
+  account_sid: string;
+  sender_number: string;
+  is_active: boolean;
+}
+
 // Slice 6 (AI Assistant) -- account-level bring-your-own AI provider connection (see
 // integrations-page.tsx's "AI Model Provider" card). Mirrors the platform-admin
 // ai-config page's own copy of this same shape (DEC-GRX-026: both are the exact same

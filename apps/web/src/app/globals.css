@@ -5,27 +5,37 @@
 @import "@/styles/liquid-glass.css";
 
 :root {
-  --color-primary-blue: var(--find, #00a9e0);
-  --color-teal: var(--manage, #00b887);
-  --color-mint: var(--manage, #00b887);
-  --color-success: var(--manage, #00b887);
-  --color-error: var(--send, #ff3f73);
-  --color-purple: var(--create, #7b4dff);
-  --color-slate: #5c6070;
-  --color-slate-light: #8d91a5;
-  --color-dark-text: #0b0c16;
-  --color-nav-inactive: rgba(255, 255, 255, 0.7);
+  /* Leegality-inspired color palette */
+  --color-primary-blue: #0052cc;
+  --color-primary-light: #e6f0ff;
+  --color-teal: #00a3bf;
+  --color-mint: #00c7a5;
+  --color-success: #00c7a5;
+  --color-error: #ff5630;
+  --color-warning: #ffab00;
+  --color-purple: #6554c0;
+  
+  --color-slate: #5e6c84;
+  --color-slate-light: #97a0af;
+  --color-dark-text: #172b4d;
+  --color-nav-inactive: #5e6c84;
+  
+  --bg-page: #f4f5f7;
+  --bg-surface: #ffffff;
+  --bg-surface-hover: #fafbfc;
+  --border-color: #dfe1e6;
 
-  --gradient-primary: linear-gradient(135deg, var(--create, #7b4dff) 0%, var(--find, #00a9e0) 100%);
-  --gradient-sidebar: linear-gradient(180deg, #0b0c16 0%, #121424 100%);
-  --gradient-login-bg: #ffffff;
-  --gradient-hero-card: linear-gradient(135deg, #0b0c16, #1e2030);
+  --gradient-primary: linear-gradient(135deg, #0052cc 0%, #00a3bf 100%);
+  --gradient-sidebar: #ffffff;
+  --gradient-login-bg: #f4f5f7;
+  --gradient-hero-card: linear-gradient(135deg, #172b4d, #091e42);
 
-  --card-radius: 18px;
-  --card-shadow: var(--sh-1);
+  --card-radius: 12px;
+  --card-shadow: 0 4px 12px rgba(9, 30, 66, 0.05), 0 1px 3px rgba(9, 30, 66, 0.1);
+  --card-shadow-hover: 0 8px 24px rgba(9, 30, 66, 0.08), 0 2px 4px rgba(9, 30, 66, 0.12);
   --pill-radius: 999px;
 
-  --font-sans: var(--font-body, system-ui, -apple-system, sans-serif);
+  --font-sans: 'Instrument Sans Variable', system-ui, -apple-system, sans-serif;
 }
 
 * {
@@ -40,8 +50,8 @@ body {
 
 body {
   font-family: var(--font-sans);
-  color: var(--ink, #0b0c16);
-  background: var(--paper-2, #f8f9fd);
+  color: var(--color-dark-text);
+  background: var(--bg-page);
   -webkit-font-smoothing: antialiased;
 }
 

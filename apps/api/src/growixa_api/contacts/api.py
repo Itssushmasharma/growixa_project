@@ -23,10 +23,12 @@ from growixa_api.contacts.models import (
     ContactCustomField,
     ContactImport,
     ContactList,
+    CRMCompany,
     Segment,
     SegmentRule,
     Tag,
 )
+from growixa_api.contacts.repositories import get_company_names_by_ids
 from growixa_api.contacts.schemas import (
     AddListMemberIn,
     AttachTagIn,
@@ -34,8 +36,17 @@ from growixa_api.contacts.schemas import (
     BulkDeleteContactsOut,
     BulkRestoreContactsIn,
     BulkRestoreContactsOut,
+    BulkTagIn,
+    BulkTagOut,
+    CompanyIn,
+    CompanyListOut,
+    CompanyOut,
+    CompanyUpdateIn,
     ConsentRecordIn,
     ConsentRecordOut,
+    ContactActivityIn,
+    ContactActivityListOut,
+    ContactActivityOut,
     ContactCountOut,
     ContactImportOut,
     ContactImportRowOut,
@@ -45,12 +56,17 @@ from growixa_api.contacts.schemas import (
     ContactOut,
     ContactStatsOut,
     ContactUpdateIn,
+    CSVDetectOut,
     CustomFieldIn,
     CustomFieldOut,
     DomainSuppressionIn,
+    PhoneSuppressionIn,
     SegmentIn,
     SegmentOut,
+    SegmentPreviewIn,
+    SegmentPreviewOut,
     SegmentRuleOut,
+    SegmentSnapshotOut,
     SuppressionEntryIn,
     SuppressionEntryOut,
     SuppressionImportResultOut,
@@ -59,9 +75,11 @@ from growixa_api.contacts.schemas import (
     UpdateContactStatusIn,
 )
 from growixa_api.contacts.services import (
+    CompanyNotFoundError,
     ContactImportNotFoundError,
     ContactListNotFoundError,
     ContactNotFoundError,
+    DuplicateCompanyDomainError,
     DuplicateEmailError,
     DuplicateFieldKeyError,
     DuplicateTagNameError,
@@ -72,10 +90,26 @@ from growixa_api.contacts.services import (
     SuppressionEntryNotFoundError,
     TagNotFoundError,
     UnknownCustomFieldError,
+    bulk_tag_contacts_service,
+    count_companies_service,
+    count_contact_activities_service,
     count_contacts_service,
+    create_company_service,
+    create_contact_activity_service,
+    delete_company_service,
     delete_segment_service,
+    delete_tag_service,
+    detect_csv_columns_service,
+    get_company_service,
     get_contact_stats_service,
+    list_companies_service,
+    list_contact_activities_service,
+    preview_segment_service,
+    snapshot_segment_service,
+    suppress_phone_service,
+    update_company_service,
     update_segment_service,
+    update_tag_service,
 )
 from growixa_api.contacts.services import add_contact_to_list as add_contact_to_list_service
 from growixa_api.contacts.services import attach_tag_to_contact as attach_tag_service
@@ -135,7 +169,11 @@ _require_view = require_permission("contacts.view")
 
 
 def _to_out(
-    contact: Contact, custom_fields: dict[str, str], tags: list[str], is_suppressed: bool
+    contact: Contact,
+    custom_fields: dict[str, str],
+    tags: list[str],
+    is_suppressed: bool,
+    company_name: str | None = None,
 ) -> ContactOut:
     return ContactOut(
         id=contact.id,
@@ -143,12 +181,17 @@ def _to_out(
         first_name=contact.first_name,
         last_name=contact.last_name,
         phone=contact.phone,
+        company_id=contact.company_id,
+        company_name=company_name,
+        job_title=contact.job_title,
+        lifecycle_stage=contact.lifecycle_stage,
         status=contact.status,
         source=contact.source,
         created_at=contact.created_at,
         updated_at=contact.updated_at,
         deleted_at=contact.deleted_at,
         custom_fields=custom_fields,
+        custom_attributes=contact.custom_attributes or {},
         tags=tags,
         is_suppressed=is_suppressed,
     )
@@ -666,6 +709,8 @@ async def count_contacts_route(
     status: str | None = None,
     search: str | None = None,
     tag_id: uuid.UUID | None = None,
+    company_id: uuid.UUID | None = None,
+    lifecycle_stage: str | None = None,
     _actor_id: uuid.UUID = Depends(_require_view),
     account_id: uuid.UUID = Depends(get_current_account_id),
     session: AsyncSession = Depends(get_session),
@@ -681,6 +726,8 @@ async def count_contacts_route(
         status=status,
         search=search,
         tag_id=tag_id,
+        company_id=company_id,
+        lifecycle_stage=lifecycle_stage,
     )
     return ContactCountOut(total=total)
 
@@ -692,6 +739,8 @@ async def list_contacts_route(
     status: str | None = None,
     search: str | None = None,
     tag_id: uuid.UUID | None = None,
+    company_id: uuid.UUID | None = None,
+    lifecycle_stage: str | None = None,
     limit: int = Query(default=DEFAULT_LIMIT, ge=1),
     offset: int = Query(default=0, ge=0),
     _actor_id: uuid.UUID = Depends(_require_view),
@@ -706,11 +755,21 @@ async def list_contacts_route(
         status=status,
         search=search,
         tag_id=tag_id,
+        company_id=company_id,
+        lifecycle_stage=lifecycle_stage,
         limit=clamp_limit(limit),
         offset=offset,
     )
+    if not contacts_with_fields:
+        return []
+
+    company_ids = [
+        contact.company_id for contact, *_ in contacts_with_fields if contact.company_id is not None
+    ]
+    company_names = await get_company_names_by_ids(session, account_id, company_ids)
+
     return [
-        _to_out(contact, fields, tags, suppressed)
+        _to_out(contact, fields, tags, suppressed, company_names.get(contact.company_id) if contact.company_id else None)
         for contact, fields, tags, suppressed in contacts_with_fields
     ]
 
@@ -731,8 +790,12 @@ async def create_contact_route(
             first_name=payload.first_name,
             last_name=payload.last_name,
             phone=payload.phone,
+            company_id=payload.company_id,
+            job_title=payload.job_title,
+            lifecycle_stage=payload.lifecycle_stage,
             source=payload.source,
             custom_fields=payload.custom_fields,
+            custom_attributes=payload.custom_attributes,
         )
     except UnknownCustomFieldError as exc:
         raise HTTPException(
@@ -748,7 +811,12 @@ async def create_contact_route(
             },
         ) from exc
 
-    return _to_out(contact, fields, tags, suppressed)
+    company_name = None
+    if contact.company_id:
+        c_names = await get_company_names_by_ids(session, account_id, [contact.company_id])
+        company_name = c_names.get(contact.company_id)
+
+    return _to_out(contact, fields, tags, suppressed, company_name)
 
 
 @router.delete("/all", response_model=BulkDeleteContactsOut)
@@ -847,6 +915,147 @@ async def restore_contact_route(
     return _to_out(contact, fields, tags, suppressed)
 
 
+# ---------------------------------------------------------------------------
+# CRM Companies Endpoints
+# ---------------------------------------------------------------------------
+
+
+def _company_to_out(company: CRMCompany, contacts_count: int) -> CompanyOut:
+    return CompanyOut(
+        id=company.id,
+        name=company.name,
+        domain=company.domain,
+        industry=company.industry,
+        website=company.website,
+        phone=company.phone,
+        address=company.address,
+        lifecycle_stage=company.lifecycle_stage,
+        custom_attributes=company.custom_attributes or {},
+        contacts_count=contacts_count,
+        created_at=company.created_at,
+        updated_at=company.updated_at,
+    )
+
+
+@router.post("/companies", response_model=CompanyOut, status_code=status.HTTP_201_CREATED)
+async def create_company_route(
+    payload: CompanyIn,
+    actor_id: uuid.UUID = Depends(_require_manage),
+    account_id: uuid.UUID = Depends(get_current_account_id),
+    session: AsyncSession = Depends(get_session),
+) -> CompanyOut:
+    try:
+        company, count = await create_company_service(
+            session,
+            account_id=account_id,
+            actor_id=actor_id,
+            name=payload.name,
+            domain=payload.domain,
+            industry=payload.industry,
+            website=payload.website,
+            phone=payload.phone,
+            address=payload.address,
+            lifecycle_stage=payload.lifecycle_stage,
+            custom_attributes=payload.custom_attributes,
+        )
+    except DuplicateCompanyDomainError as exc:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, f"A company with domain '{payload.domain}' already exists"
+        ) from exc
+
+    return _company_to_out(company, count)
+
+
+@router.get("/companies", response_model=CompanyListOut)
+async def list_companies_route(
+    search: str | None = None,
+    lifecycle_stage: str | None = None,
+    limit: int = Query(default=DEFAULT_LIMIT, ge=1),
+    offset: int = Query(default=0, ge=0),
+    _actor_id: uuid.UUID = Depends(_require_view),
+    account_id: uuid.UUID = Depends(get_current_account_id),
+    session: AsyncSession = Depends(get_session),
+) -> CompanyListOut:
+    companies = await list_companies_service(
+        session,
+        account_id=account_id,
+        search=search,
+        lifecycle_stage=lifecycle_stage,
+        limit=clamp_limit(limit),
+        offset=offset,
+    )
+    total = await count_companies_service(
+        session, account_id=account_id, search=search, lifecycle_stage=lifecycle_stage
+    )
+    items = [_company_to_out(c, count) for c, count in companies]
+    return CompanyListOut(items=items, total=total)
+
+
+@router.get("/companies/{company_id}", response_model=CompanyOut)
+async def get_company_route(
+    company_id: uuid.UUID,
+    _actor_id: uuid.UUID = Depends(_require_view),
+    account_id: uuid.UUID = Depends(get_current_account_id),
+    session: AsyncSession = Depends(get_session),
+) -> CompanyOut:
+    try:
+        company, count = await get_company_service(
+            session, account_id=account_id, company_id=company_id
+        )
+    except CompanyNotFoundError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Company not found") from exc
+
+    return _company_to_out(company, count)
+
+
+@router.patch("/companies/{company_id}", response_model=CompanyOut)
+async def update_company_route(
+    company_id: uuid.UUID,
+    payload: CompanyUpdateIn,
+    actor_id: uuid.UUID = Depends(_require_manage),
+    account_id: uuid.UUID = Depends(get_current_account_id),
+    session: AsyncSession = Depends(get_session),
+) -> CompanyOut:
+    try:
+        company, count = await update_company_service(
+            session,
+            account_id=account_id,
+            actor_id=actor_id,
+            company_id=company_id,
+            name=payload.name,
+            domain=payload.domain,
+            industry=payload.industry,
+            website=payload.website,
+            phone=payload.phone,
+            address=payload.address,
+            lifecycle_stage=payload.lifecycle_stage,
+            custom_attributes=payload.custom_attributes,
+        )
+    except CompanyNotFoundError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Company not found") from exc
+    except DuplicateCompanyDomainError as exc:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, f"A company with domain '{payload.domain}' already exists"
+        ) from exc
+
+    return _company_to_out(company, count)
+
+
+@router.delete("/companies/{company_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_company_route(
+    company_id: uuid.UUID,
+    actor_id: uuid.UUID = Depends(_require_manage),
+    account_id: uuid.UUID = Depends(get_current_account_id),
+    session: AsyncSession = Depends(get_session),
+) -> None:
+    try:
+        await delete_company_service(
+            session, account_id=account_id, actor_id=actor_id, company_id=company_id
+        )
+    except CompanyNotFoundError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Company not found") from exc
+
+
 @router.delete("/{contact_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_contact_route(
     contact_id: uuid.UUID,
@@ -878,7 +1087,12 @@ async def get_contact_route(
     except ContactNotFoundError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Contact not found") from exc
 
-    return _to_out(contact, fields, tags, suppressed)
+    company_name = None
+    if contact.company_id:
+        c_names = await get_company_names_by_ids(session, account_id, [contact.company_id])
+        company_name = c_names.get(contact.company_id)
+
+    return _to_out(contact, fields, tags, suppressed, company_name)
 
 
 @router.patch("/{contact_id}", response_model=ContactOut)
@@ -899,7 +1113,11 @@ async def update_contact_route(
             first_name=payload.first_name,
             last_name=payload.last_name,
             phone=payload.phone,
+            company_id=payload.company_id,
+            job_title=payload.job_title,
+            lifecycle_stage=payload.lifecycle_stage,
             custom_fields=payload.custom_fields,
+            custom_attributes=payload.custom_attributes,
         )
     except ContactNotFoundError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Contact not found") from exc
@@ -912,7 +1130,12 @@ async def update_contact_route(
             status.HTTP_400_BAD_REQUEST, f"Unknown custom field key: {exc.key}"
         ) from exc
 
-    return _to_out(contact, fields, tags, suppressed)
+    company_name = None
+    if contact.company_id:
+        c_names = await get_company_names_by_ids(session, account_id, [contact.company_id])
+        company_name = c_names.get(contact.company_id)
+
+    return _to_out(contact, fields, tags, suppressed, company_name)
 
 
 @router.patch("/{contact_id}/status", response_model=ContactOut)
@@ -1024,3 +1247,234 @@ async def record_consent_route(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Contact not found") from exc
 
     return ConsentRecordOut.model_validate(record)
+
+
+# ---------------------------------------------------------------------------
+# Contact Activities Endpoints
+# ---------------------------------------------------------------------------
+
+
+@router.get("/{contact_id}/activities", response_model=ContactActivityListOut)
+async def list_contact_activities_route(
+    contact_id: uuid.UUID,
+    limit: int = Query(default=50, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    _actor_id: uuid.UUID = Depends(_require_view),
+    account_id: uuid.UUID = Depends(get_current_account_id),
+    session: AsyncSession = Depends(get_session),
+) -> ContactActivityListOut:
+    try:
+        activities = await list_contact_activities_service(
+            session, account_id=account_id, contact_id=contact_id, limit=limit, offset=offset
+        )
+        total = await count_contact_activities_service(
+            session, account_id=account_id, contact_id=contact_id
+        )
+    except ContactNotFoundError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Contact not found") from exc
+
+    items = [
+        ContactActivityOut(
+            id=a.id,
+            contact_id=a.contact_id,
+            activity_type=a.activity_type,
+            title=a.title,
+            description=a.description,
+            metadata=a.metadata_ or {},
+            created_by_user_id=a.created_by_user_id,
+            created_at=a.created_at,
+        )
+        for a in activities
+    ]
+    return ContactActivityListOut(items=items, total=total)
+
+
+@router.post(
+    "/{contact_id}/activities",
+    response_model=ContactActivityOut,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_contact_activity_route(
+    contact_id: uuid.UUID,
+    payload: ContactActivityIn,
+    actor_id: uuid.UUID = Depends(_require_manage),
+    account_id: uuid.UUID = Depends(get_current_account_id),
+    session: AsyncSession = Depends(get_session),
+) -> ContactActivityOut:
+    try:
+        activity = await create_contact_activity_service(
+            session,
+            account_id=account_id,
+            actor_id=actor_id,
+            contact_id=contact_id,
+            activity_type=payload.activity_type,
+            title=payload.title,
+            description=payload.description,
+            metadata_=payload.metadata_,
+        )
+    except ContactNotFoundError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Contact not found") from exc
+
+    return ContactActivityOut(
+        id=activity.id,
+        contact_id=activity.contact_id,
+        activity_type=activity.activity_type,
+        title=activity.title,
+        description=activity.description,
+        metadata=activity.metadata_ or {},
+        created_by_user_id=activity.created_by_user_id,
+        created_at=activity.created_at,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Tag Management & Bulk Tagging Endpoints
+# ---------------------------------------------------------------------------
+
+
+@router.patch("/tags/{tag_id}", response_model=TagOut)
+async def update_tag_route(
+    tag_id: uuid.UUID,
+    payload: TagIn,
+    actor_id: uuid.UUID = Depends(_require_manage),
+    account_id: uuid.UUID = Depends(get_current_account_id),
+    session: AsyncSession = Depends(get_session),
+) -> TagOut:
+    try:
+        tag = await update_tag_service(
+            session, account_id=account_id, actor_id=actor_id, tag_id=tag_id, new_name=payload.name
+        )
+        return TagOut(id=tag.id, name=tag.name)
+    except TagNotFoundError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Tag not found") from exc
+    except DuplicateTagNameError as exc:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "A tag with this name already exists"
+        ) from exc
+
+
+@router.delete("/tags/{tag_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_tag_route(
+    tag_id: uuid.UUID,
+    actor_id: uuid.UUID = Depends(_require_manage),
+    account_id: uuid.UUID = Depends(get_current_account_id),
+    session: AsyncSession = Depends(get_session),
+) -> None:
+    try:
+        await delete_tag_service(session, account_id=account_id, actor_id=actor_id, tag_id=tag_id)
+    except TagNotFoundError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Tag not found") from exc
+
+
+@router.post("/bulk-tag", response_model=BulkTagOut)
+async def bulk_tag_route(
+    payload: BulkTagIn,
+    actor_id: uuid.UUID = Depends(_require_manage),
+    account_id: uuid.UUID = Depends(get_current_account_id),
+    session: AsyncSession = Depends(get_session),
+) -> BulkTagOut:
+    assert payload.tag_id is not None
+    try:
+        affected = await bulk_tag_contacts_service(
+            session,
+            account_id=account_id,
+            actor_id=actor_id,
+            contact_ids=payload.contact_ids,
+            tag_id=payload.tag_id,
+            action=payload.action,
+        )
+    except TagNotFoundError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Tag not found") from exc
+
+    return BulkTagOut(affected=affected, tag_id=payload.tag_id, action=payload.action)
+
+
+# ---------------------------------------------------------------------------
+# Segments Preview & Snapshot Endpoints
+# ---------------------------------------------------------------------------
+
+
+@router.post("/segments/preview", response_model=SegmentPreviewOut)
+async def preview_segment_route(
+    payload: SegmentPreviewIn,
+    _actor_id: uuid.UUID = Depends(_require_view),
+    account_id: uuid.UUID = Depends(get_current_account_id),
+    session: AsyncSession = Depends(get_session),
+) -> SegmentPreviewOut:
+    try:
+        count = await preview_segment_service(
+            session,
+            account_id=account_id,
+            rules=[(r.field, r.operator, r.value) for r in payload.rules],
+            match_type=payload.match_type,
+        )
+    except InvalidSegmentRuleError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
+
+    return SegmentPreviewOut(count=count)
+
+
+@router.post("/segments/{segment_id}/snapshot", response_model=SegmentSnapshotOut)
+async def snapshot_segment_route(
+    segment_id: uuid.UUID,
+    actor_id: uuid.UUID = Depends(_require_manage),
+    account_id: uuid.UUID = Depends(get_current_account_id),
+    session: AsyncSession = Depends(get_session),
+) -> SegmentSnapshotOut:
+    try:
+        count = await snapshot_segment_service(
+            session, account_id=account_id, actor_id=actor_id, segment_id=segment_id
+        )
+    except SegmentNotFoundError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Segment not found") from exc
+
+    return SegmentSnapshotOut(segment_id=segment_id, frozen_member_count=count)
+
+
+# ---------------------------------------------------------------------------
+# CSV Auto-Detection Endpoint
+# ---------------------------------------------------------------------------
+
+
+@router.post("/imports/detect", response_model=CSVDetectOut)
+async def detect_csv_columns_route(
+    file: UploadFile = File(...),
+    _actor_id: uuid.UUID = Depends(_require_manage),
+    _account_id: uuid.UUID = Depends(get_current_account_id),
+) -> CSVDetectOut:
+    raw = await file.read()
+    if not raw:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "File is empty")
+    data = detect_csv_columns_service(raw)
+    return CSVDetectOut(
+        headers=data["headers"],  # type: ignore[arg-type]
+        sample_rows=data["sample_rows"],  # type: ignore[arg-type]
+        suggested_mapping=data["suggested_mapping"],  # type: ignore[arg-type]
+        total_rows_estimate=data["total_rows_estimate"],  # type: ignore[arg-type]
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phone Suppression Endpoint
+# ---------------------------------------------------------------------------
+
+
+@router.post(
+    "/suppression/phone",
+    response_model=SuppressionEntryOut,
+    status_code=status.HTTP_201_CREATED,
+)
+async def suppress_phone_route(
+    payload: PhoneSuppressionIn,
+    actor_id: uuid.UUID = Depends(_require_manage),
+    account_id: uuid.UUID = Depends(get_current_account_id),
+    session: AsyncSession = Depends(get_session),
+) -> SuppressionEntryOut:
+    entry = await suppress_phone_service(
+        session,
+        account_id=account_id,
+        actor_id=actor_id,
+        phone=payload.phone,
+        reason=payload.reason,
+    )
+    return SuppressionEntryOut.model_validate(entry)

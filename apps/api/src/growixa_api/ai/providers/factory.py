@@ -9,6 +9,7 @@ from growixa_api.ai.models import AIProviderConnection, PlatformAIProviderConfig
 from growixa_api.ai.providers.anthropic_provider import AnthropicProvider
 from growixa_api.ai.providers.azure_openai_provider import AzureOpenAIProvider
 from growixa_api.ai.providers.base import AIModelProvider
+from growixa_api.ai.providers.mock_provider import MockAIProvider
 from growixa_api.ai.providers.ollama_provider import OllamaProvider
 from growixa_api.ai.providers.openai_provider import OpenAIProvider
 from growixa_api.auth.encryption import decrypt_secret
@@ -29,9 +30,6 @@ class ResolvedAIProvider:
     # quota only applies to PLATFORM_DEFAULT; an account's own bring-your-own key costs
     # Growixa nothing, so it's never metered (GRX-BILL-005).
     source: Literal["ACCOUNT_BYO", "PLATFORM_DEFAULT"]
-
-
-from growixa_api.ai.providers.mock_provider import MockAIProvider
 
 
 def _build_adapter(

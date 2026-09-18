@@ -365,9 +365,7 @@ export function HistoryPage() {
         method: "POST",
         body: JSON.stringify({ edited_text: editText.trim(), notes: editNotes || undefined }),
       });
-      setGenerations((prev) =>
-        prev.map((g) => (g.id === editTargetId ? { ...g, ...updated } : g)),
-      );
+      setGenerations((prev) => prev.map((g) => (g.id === editTargetId ? { ...g, ...updated } : g)));
       setEditModalOpen(false);
       setEditTargetId(null);
       showToast("success", "Edited & saved ✓");
@@ -411,7 +409,6 @@ export function HistoryPage() {
   // Filtered Generations
   const visibleGenerations = useMemo(() => {
     return generations.filter((g) => {
-      if (g.approval_status === "DISCARDED") return false;
       if (historyFilter !== "All" && g.channel !== historyFilter) return false;
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
@@ -777,9 +774,7 @@ export function HistoryPage() {
             {generations.length === 0 && (
               <div className={styles.emptyStateCard}>
                 <div style={{ fontSize: "32px", marginBottom: "8px" }}>✨</div>
-                <h4 className={styles.emptyStateTitle}>
-                  Ready to create with AI
-                </h4>
+                <h4 className={styles.emptyStateTitle}>Ready to create with AI</h4>
                 <p className={styles.emptyStateSubtitle}>
                   Select a suggestion above or enter a prompt on the left to generate content in
                   seconds.
@@ -820,8 +815,7 @@ export function HistoryPage() {
                 {/* Side-by-Side Variations Grid */}
                 <div className={styles.variationsGrid}>
                   {visibleGenerations.map((item, idx) => {
-                    const displayText =
-                      item.edited_output?.text ?? item.output?.text ?? "";
+                    const displayText = item.edited_output?.text ?? item.output?.text ?? "";
                     const isPending = item.approval_status === "PENDING_APPROVAL";
                     const isApproved = item.approval_status === "APPROVED";
                     const isRejected = item.approval_status === "REJECTED";
@@ -838,32 +832,64 @@ export function HistoryPage() {
                             <span className={styles.varNumberLabel}>Variation {idx + 1}</span>
                             {/* Approval Status Badge */}
                             {isPending && (
-                              <span style={{
-                                fontSize: "11px", fontWeight: 600, padding: "2px 8px",
-                                borderRadius: "20px", background: "rgba(251,191,36,0.15)",
-                                color: "#fbbf24", border: "1px solid rgba(251,191,36,0.3)",
-                              }}>⏳ Pending Review</span>
+                              <span
+                                style={{
+                                  fontSize: "11px",
+                                  fontWeight: 600,
+                                  padding: "2px 8px",
+                                  borderRadius: "20px",
+                                  background: "rgba(251,191,36,0.15)",
+                                  color: "#fbbf24",
+                                  border: "1px solid rgba(251,191,36,0.3)",
+                                }}
+                              >
+                                ⏳ Pending Review
+                              </span>
                             )}
                             {isApproved && (
-                              <span style={{
-                                fontSize: "11px", fontWeight: 600, padding: "2px 8px",
-                                borderRadius: "20px", background: "rgba(34,197,94,0.15)",
-                                color: "#22c55e", border: "1px solid rgba(34,197,94,0.3)",
-                              }}>✓ Approved</span>
+                              <span
+                                style={{
+                                  fontSize: "11px",
+                                  fontWeight: 600,
+                                  padding: "2px 8px",
+                                  borderRadius: "20px",
+                                  background: "rgba(34,197,94,0.15)",
+                                  color: "#22c55e",
+                                  border: "1px solid rgba(34,197,94,0.3)",
+                                }}
+                              >
+                                ✓ Approved
+                              </span>
                             )}
                             {isRejected && (
-                              <span style={{
-                                fontSize: "11px", fontWeight: 600, padding: "2px 8px",
-                                borderRadius: "20px", background: "rgba(239,68,68,0.15)",
-                                color: "#ef4444", border: "1px solid rgba(239,68,68,0.3)",
-                              }}>✗ Rejected</span>
+                              <span
+                                style={{
+                                  fontSize: "11px",
+                                  fontWeight: 600,
+                                  padding: "2px 8px",
+                                  borderRadius: "20px",
+                                  background: "rgba(239,68,68,0.15)",
+                                  color: "#ef4444",
+                                  border: "1px solid rgba(239,68,68,0.3)",
+                                }}
+                              >
+                                ✗ Rejected
+                              </span>
                             )}
                             {isEdited && (
-                              <span style={{
-                                fontSize: "11px", fontWeight: 600, padding: "2px 8px",
-                                borderRadius: "20px", background: "rgba(139,92,246,0.15)",
-                                color: "#a78bfa", border: "1px solid rgba(139,92,246,0.3)",
-                              }}>✏️ Edited</span>
+                              <span
+                                style={{
+                                  fontSize: "11px",
+                                  fontWeight: 600,
+                                  padding: "2px 8px",
+                                  borderRadius: "20px",
+                                  background: "rgba(139,92,246,0.15)",
+                                  color: "#a78bfa",
+                                  border: "1px solid rgba(139,92,246,0.3)",
+                                }}
+                              >
+                                ✏️ Edited
+                              </span>
                             )}
                           </div>
                           <h5
@@ -879,10 +905,23 @@ export function HistoryPage() {
                           </p>
                           {isEdited && item.output?.text && (
                             <details style={{ marginTop: "4px" }}>
-                              <summary style={{ fontSize: "11px", color: "var(--color-text-muted)", cursor: "pointer" }}>
+                              <summary
+                                style={{
+                                  fontSize: "11px",
+                                  color: "var(--color-text-muted)",
+                                  cursor: "pointer",
+                                }}
+                              >
                                 View original AI output
                               </summary>
-                              <p style={{ fontSize: "12px", color: "var(--color-text-muted)", marginTop: "4px", fontStyle: "italic" }}>
+                              <p
+                                style={{
+                                  fontSize: "12px",
+                                  color: "var(--color-text-muted)",
+                                  marginTop: "4px",
+                                  fontStyle: "italic",
+                                }}
+                              >
                                 {item.output.text}
                               </p>
                             </details>
@@ -947,19 +986,28 @@ export function HistoryPage() {
 
                           {/* Manager Approval Row — only shown for managers with ai.review */}
                           {canReview && isPending && item.status === "COMPLETE" && (
-                            <div style={{
-                              display: "flex", gap: "8px", marginTop: "8px",
-                              paddingTop: "8px",
-                              borderTop: "1px solid rgba(255,255,255,0.07)",
-                            }}>
+                            <div
+                              style={{
+                                display: "flex",
+                                gap: "8px",
+                                marginTop: "8px",
+                                paddingTop: "8px",
+                                borderTop: "1px solid rgba(255,255,255,0.07)",
+                              }}
+                            >
                               <button
                                 id={`approve-btn-${item.id}`}
                                 type="button"
                                 onClick={() => handleApproveGeneration(item.id)}
                                 style={{
-                                  flex: 1, padding: "6px 0", fontSize: "12px", fontWeight: 600,
-                                  borderRadius: "8px", border: "1px solid rgba(34,197,94,0.4)",
-                                  background: "rgba(34,197,94,0.1)", color: "#22c55e",
+                                  flex: 1,
+                                  padding: "6px 0",
+                                  fontSize: "12px",
+                                  fontWeight: 600,
+                                  borderRadius: "8px",
+                                  border: "1px solid rgba(34,197,94,0.4)",
+                                  background: "rgba(34,197,94,0.1)",
+                                  color: "#22c55e",
                                   cursor: "pointer",
                                 }}
                               >
@@ -970,9 +1018,14 @@ export function HistoryPage() {
                                 type="button"
                                 onClick={() => handleOpenEditModal(item.id, displayText)}
                                 style={{
-                                  flex: 1, padding: "6px 0", fontSize: "12px", fontWeight: 600,
-                                  borderRadius: "8px", border: "1px solid rgba(139,92,246,0.4)",
-                                  background: "rgba(139,92,246,0.1)", color: "#a78bfa",
+                                  flex: 1,
+                                  padding: "6px 0",
+                                  fontSize: "12px",
+                                  fontWeight: 600,
+                                  borderRadius: "8px",
+                                  border: "1px solid rgba(139,92,246,0.4)",
+                                  background: "rgba(139,92,246,0.1)",
+                                  color: "#a78bfa",
                                   cursor: "pointer",
                                 }}
                               >
@@ -983,9 +1036,14 @@ export function HistoryPage() {
                                 type="button"
                                 onClick={() => handleRejectGeneration(item.id)}
                                 style={{
-                                  flex: 1, padding: "6px 0", fontSize: "12px", fontWeight: 600,
-                                  borderRadius: "8px", border: "1px solid rgba(239,68,68,0.4)",
-                                  background: "rgba(239,68,68,0.1)", color: "#ef4444",
+                                  flex: 1,
+                                  padding: "6px 0",
+                                  fontSize: "12px",
+                                  fontWeight: 600,
+                                  borderRadius: "8px",
+                                  border: "1px solid rgba(239,68,68,0.4)",
+                                  background: "rgba(239,68,68,0.1)",
+                                  color: "#ef4444",
                                   cursor: "pointer",
                                 }}
                               >
@@ -1081,9 +1139,15 @@ export function HistoryPage() {
       {editModalOpen && (
         <div
           style={{
-            position: "fixed", inset: 0, zIndex: 999,
-            background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)",
-            display: "flex", alignItems: "center", justifyContent: "center", padding: "24px",
+            position: "fixed",
+            inset: 0,
+            zIndex: 999,
+            background: "rgba(0,0,0,0.6)",
+            backdropFilter: "blur(4px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "24px",
           }}
           onClick={() => setEditModalOpen(false)}
         >
@@ -1091,24 +1155,47 @@ export function HistoryPage() {
             style={{
               background: "var(--color-bg-card, #1a1a2e)",
               border: "1px solid rgba(255,255,255,0.1)",
-              borderRadius: "16px", padding: "28px", width: "100%", maxWidth: "560px",
+              borderRadius: "16px",
+              padding: "28px",
+              width: "100%",
+              maxWidth: "560px",
               boxShadow: "0 24px 64px rgba(0,0,0,0.5)",
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 style={{ margin: "0 0 4px", fontSize: "16px", fontWeight: 700, color: "var(--color-text-primary, #fff)" }}>
+            <h3
+              style={{
+                margin: "0 0 4px",
+                fontSize: "16px",
+                fontWeight: 700,
+                color: "var(--color-text-primary, #fff)",
+              }}
+            >
               ✏️ Edit & Save
             </h3>
-            <p style={{ margin: "0 0 16px", fontSize: "13px", color: "var(--color-text-muted, #999)" }}>
+            <p
+              style={{
+                margin: "0 0 16px",
+                fontSize: "13px",
+                color: "var(--color-text-muted, #999)",
+              }}
+            >
               Refine the AI output. Your edit will be saved alongside the original for auditing.
             </p>
             <textarea
               id="manager-edit-textarea"
               style={{
-                width: "100%", minHeight: "160px", padding: "12px",
-                borderRadius: "8px", border: "1px solid rgba(255,255,255,0.15)",
-                background: "rgba(255,255,255,0.05)", color: "var(--color-text-primary, #fff)",
-                fontSize: "14px", lineHeight: 1.6, resize: "vertical", boxSizing: "border-box",
+                width: "100%",
+                minHeight: "160px",
+                padding: "12px",
+                borderRadius: "8px",
+                border: "1px solid rgba(255,255,255,0.15)",
+                background: "rgba(255,255,255,0.05)",
+                color: "var(--color-text-primary, #fff)",
+                fontSize: "14px",
+                lineHeight: 1.6,
+                resize: "vertical",
+                boxSizing: "border-box",
               }}
               value={editText}
               onChange={(e) => setEditText(e.target.value)}
@@ -1116,7 +1203,13 @@ export function HistoryPage() {
             />
             <label
               htmlFor="manager-edit-notes"
-              style={{ display: "block", fontSize: "12px", color: "var(--color-text-muted, #999)", marginTop: "12px", marginBottom: "4px" }}
+              style={{
+                display: "block",
+                fontSize: "12px",
+                color: "var(--color-text-muted, #999)",
+                marginTop: "12px",
+                marginBottom: "4px",
+              }}
             >
               Review notes (optional)
             </label>
@@ -1125,22 +1218,37 @@ export function HistoryPage() {
               type="text"
               placeholder="Why was this edited?"
               style={{
-                width: "100%", padding: "8px 12px", borderRadius: "8px",
+                width: "100%",
+                padding: "8px 12px",
+                borderRadius: "8px",
                 border: "1px solid rgba(255,255,255,0.12)",
-                background: "rgba(255,255,255,0.05)", color: "var(--color-text-primary, #fff)",
-                fontSize: "13px", boxSizing: "border-box",
+                background: "rgba(255,255,255,0.05)",
+                color: "var(--color-text-primary, #fff)",
+                fontSize: "13px",
+                boxSizing: "border-box",
               }}
               value={editNotes}
               onChange={(e) => setEditNotes(e.target.value)}
             />
-            <div style={{ display: "flex", gap: "10px", marginTop: "20px", justifyContent: "flex-end" }}>
+            <div
+              style={{
+                display: "flex",
+                gap: "10px",
+                marginTop: "20px",
+                justifyContent: "flex-end",
+              }}
+            >
               <button
                 id="cancel-edit-modal"
                 type="button"
                 style={{
-                  padding: "9px 20px", borderRadius: "8px", fontSize: "13px",
-                  border: "1px solid rgba(255,255,255,0.15)", background: "transparent",
-                  color: "var(--color-text-secondary, #ccc)", cursor: "pointer",
+                  padding: "9px 20px",
+                  borderRadius: "8px",
+                  fontSize: "13px",
+                  border: "1px solid rgba(255,255,255,0.15)",
+                  background: "transparent",
+                  color: "var(--color-text-secondary, #ccc)",
+                  cursor: "pointer",
                 }}
                 onClick={() => setEditModalOpen(false)}
               >
@@ -1151,12 +1259,19 @@ export function HistoryPage() {
                 type="button"
                 disabled={isSavingEdit || !editText.trim()}
                 style={{
-                  padding: "9px 24px", borderRadius: "8px", fontSize: "13px", fontWeight: 600,
-                  border: "none", background: "linear-gradient(135deg, #8b5cf6, #6366f1)",
-                  color: "#fff", cursor: isSavingEdit ? "wait" : "pointer",
+                  padding: "9px 24px",
+                  borderRadius: "8px",
+                  fontSize: "13px",
+                  fontWeight: 600,
+                  border: "none",
+                  background: "linear-gradient(135deg, #8b5cf6, #6366f1)",
+                  color: "#fff",
+                  cursor: isSavingEdit ? "wait" : "pointer",
                   opacity: !editText.trim() ? 0.5 : 1,
                 }}
-                onClick={() => { void handleSaveManagerEdit(); }}
+                onClick={() => {
+                  void handleSaveManagerEdit();
+                }}
               >
                 {isSavingEdit ? "Saving…" : "Save Edit"}
               </button>

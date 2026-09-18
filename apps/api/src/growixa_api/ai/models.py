@@ -33,7 +33,7 @@ class AIGeneration(Base):
             "capability IN ("
             "'SUBJECT_LINE', 'BODY_COPY', 'SOCIAL_CAPTION', 'REWRITE', 'HASHTAGS', "
             "'POSTING_TIME', 'CTA', 'TONE_REWRITE', 'CONTENT_IDEAS', 'PLATFORM_REWRITE', "
-            "'CONTENT_REPURPOSE'"
+            "'CONTENT_REPURPOSE', 'GROWTH_INSIGHTS'"
             ")",
             name="ck_ai_generations_capability",
         ),
@@ -62,7 +62,9 @@ class AIGeneration(Base):
     prompt_version: Mapped[str] = mapped_column(Text, nullable=False, server_default="v1.0.0")
     input_context: Mapped[dict[str, object]] = mapped_column(JSONB, nullable=False)
     output: Mapped[dict[str, object] | list[object] | None] = mapped_column(JSONB, nullable=True)
-    edited_output: Mapped[dict[str, object] | list[object] | None] = mapped_column(JSONB, nullable=True)
+    edited_output: Mapped[dict[str, object] | list[object] | None] = mapped_column(
+        JSONB, nullable=True
+    )
     provider: Mapped[str] = mapped_column(Text, nullable=False)
     model: Mapped[str] = mapped_column(Text, nullable=False)
     prompt_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
@@ -72,7 +74,9 @@ class AIGeneration(Base):
     total_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
     estimated_cost_usd: Mapped[float | None] = mapped_column(Numeric(10, 6), nullable=True)
     status: Mapped[str] = mapped_column(Text, nullable=False)
-    approval_status: Mapped[str] = mapped_column(Text, nullable=False, server_default="PENDING_APPROVAL")
+    approval_status: Mapped[str] = mapped_column(
+        Text, nullable=False, server_default="PENDING_APPROVAL"
+    )
     reviewed_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )

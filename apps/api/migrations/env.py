@@ -22,6 +22,7 @@ from growixa_api.db import Base, _normalize_database_url
 from growixa_api.email_delivery import models as email_delivery_models  # noqa: F401
 from growixa_api.email_validation import models as email_validation_models  # noqa: F401
 from growixa_api.integrations import models as integrations_models  # noqa: F401
+from growixa_api.media import models as media_models  # noqa: F401
 from growixa_api.notifications import models as notifications_models  # noqa: F401
 from growixa_api.permissions import models as permissions_models  # noqa: F401
 from growixa_api.platform_admin import models as platform_admin_models  # noqa: F401
@@ -32,6 +33,14 @@ from growixa_api.templates import models as templates_models  # noqa: F401
 from growixa_api.usage import models as usage_models  # noqa: F401
 from growixa_api.users import models as users_models  # noqa: F401
 
+# Phases 6-9 added models
+from growixa_api.whatsapp import models as whatsapp_models  # noqa: F401
+from growixa_api.sms import models as sms_models  # noqa: F401
+from growixa_api.analytics_engine import models as analytics_engine_models  # noqa: F401
+from growixa_api.inbox import models as inbox_models  # noqa: F401
+from growixa_api.reports import models as reports_models  # noqa: F401
+from growixa_api.agency import models as agency_models  # noqa: F401
+from growixa_api.smm import models as smm_models  # noqa: F401
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config

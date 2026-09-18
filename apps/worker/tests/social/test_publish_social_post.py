@@ -32,6 +32,23 @@ def _encrypt(plaintext: str) -> str:
     return Fernet(get_settings().encryption_key.encode()).encrypt(plaintext.encode()).decode()
 
 
+@pytest.fixture(autouse=True)
+async def cleanup() -> AsyncGenerator[None, None]:
+    async with get_session_factory()() as session:
+        await session.execute(delete(SocialPostVersion))
+        await session.execute(delete(SocialPostMedia))
+        await session.execute(delete(SocialPost))
+        await session.execute(delete(SocialConnection))
+        await session.commit()
+    yield
+    async with get_session_factory()() as session:
+        await session.execute(delete(SocialPostVersion))
+        await session.execute(delete(SocialPostMedia))
+        await session.execute(delete(SocialPost))
+        await session.execute(delete(SocialConnection))
+        await session.commit()
+
+
 @pytest.fixture
 async def session() -> AsyncGenerator[AsyncSession, None]:
     async with get_session_factory()() as session:

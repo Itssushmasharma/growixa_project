@@ -72,4 +72,19 @@ export interface CampaignReport {
   click_to_open_rate_pct?: number | null;
   bounced: number;
   complained: number;
+  bounce_rate_pct?: number | null;
+  unsubscribe_count?: number;
+}
+
+export interface CampaignTimeseriesPoint {
+  bucket: string;
+  delivered: number;
+  opened: number;
+  clicked: number;
+  bounced: number;
+}
+
+export interface CampaignTimeseriesOut {
+  campaign_id: string;
+  points: CampaignTimeseriesPoint[];
 }

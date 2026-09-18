@@ -15,10 +15,12 @@ from growixa_api.contacts.constants import (
 from growixa_api.contacts.models import (
     ConsentRecord,
     Contact,
+    ContactActivity,
     ContactCustomField,
     ContactImport,
     ContactImportRow,
     ContactList,
+    CRMCompany,
     Segment,
     SegmentRule,
     SuppressionEntry,
@@ -28,22 +30,36 @@ from growixa_api.contacts.repositories import (
     add_import_row,
     add_list_member,
     add_segment_members,
+    apply_company_fields,
     apply_contact_fields,
     attach_tag,
+    bulk_attach_tag_to_contacts,
+    bulk_detach_tag_from_contacts,
     bulk_soft_delete_contacts,
     count_active_contacts,
+    count_companies,
+    count_contact_activities,
     count_contacts,
     count_dynamic_segment_members,
     count_list_members,
     count_saved_segment_members,
+    create_company,
     create_contact,
+    create_contact_activity,
+    create_phone_suppression_entry,
     delete_segment_row,
+    delete_tag_and_associations,
     detach_tag,
     evaluate_segment_rules,
+    get_all_company_contact_counts,
     get_all_field_values_for_account,
     get_all_list_member_counts_for_account,
     get_all_suppressed_emails_for_account,
+    get_all_tag_contact_counts,
     get_all_tag_names_for_account,
+    get_company_by_domain,
+    get_company_by_id,
+    get_company_contact_count,
     get_contact_by_email,
     get_contact_by_id,
     get_contact_by_id_including_deleted,
@@ -55,13 +71,17 @@ from growixa_api.contacts.repositories import (
     get_segment_by_id,
     get_suppression_by_domain,
     get_suppression_by_email,
+    get_suppression_by_phone,
     get_suppression_entry_by_id,
     get_tag_by_id,
     get_tag_by_name,
     get_tag_names_for_contact,
     is_email_suppressed,
+    is_phone_suppressed,
     list_active_campaigns_referencing_segment,
+    list_companies,
     list_consent_records,
+    list_contact_activities,
     list_import_rows,
     list_imports,
     list_members_for_contact_list,
@@ -72,9 +92,12 @@ from growixa_api.contacts.repositories import (
     refresh_saved_segment_members,
     remove_list_member,
     replace_segment_rules,
+    snapshot_segment_members,
+    soft_delete_company,
     soft_delete_contact,
     unlink_historical_campaigns_referencing_segment,
     update_segment_row,
+    update_tag_name,
     upsert_field_value,
 )
 from growixa_api.contacts.repositories import add_segment_rule as add_segment_rule_row
@@ -111,7 +134,16 @@ ContactSnapshot = tuple[Contact, dict[str, str], list[str], bool]
 SegmentDetail = tuple[Segment, Sequence[SegmentRule], int]
 
 # Column-mapping target fields a CSV header may be mapped to, beyond `custom_field:<key>`.
-CONTACT_IMPORT_FIELD_TARGETS = {"email", "first_name", "last_name", "phone", "source"}
+CONTACT_IMPORT_FIELD_TARGETS = {
+    "email",
+    "first_name",
+    "last_name",
+    "phone",
+    "source",
+    "company",
+    "job_title",
+    "lifecycle_stage",
+}
 
 
 class DuplicateEmailError(Exception):
@@ -123,6 +155,18 @@ class DuplicateFieldKeyError(Exception):
 
 
 class DuplicateTagNameError(Exception):
+    pass
+
+
+class DuplicateCompanyDomainError(Exception):
+    pass
+
+
+class CompanyNotFoundError(Exception):
+    pass
+
+
+class ContactActivityNotFoundError(Exception):
     pass
 
 
@@ -204,11 +248,15 @@ async def create_or_update_contact(
     account_id: uuid.UUID,
     actor_id: uuid.UUID,
     email: str,
-    first_name: str | None,
-    last_name: str | None,
-    phone: str | None,
-    source: str | None,
-    custom_fields: dict[str, str],
+    first_name: str | None = None,
+    last_name: str | None = None,
+    phone: str | None = None,
+    company_id: uuid.UUID | None = None,
+    job_title: str | None = None,
+    lifecycle_stage: str = "LEAD",
+    source: str | None = None,
+    custom_fields: dict[str, str] | None = None,
+    custom_attributes: dict | None = None,
 ) -> ContactSnapshot:
     """Create a contact, or update it in place if the email already exists.
 
@@ -232,20 +280,56 @@ async def create_or_update_contact(
             first_name=first_name,
             last_name=last_name,
             phone=phone,
+            company_id=company_id,
+            job_title=job_title,
+            lifecycle_stage=lifecycle_stage,
             source=source,
+            custom_attributes=custom_attributes or {},
             created_by_user_id=actor_id,
+        )
+        await create_contact_activity(
+            session,
+            account_id=account_id,
+            contact_id=contact.id,
+            activity_type="NOTE",
+            title="Contact created",
+            user_id=actor_id,
         )
         action = "contact.created"
     else:
-        contact = await apply_contact_fields(
-            existing,
-            {"first_name": first_name, "last_name": last_name, "phone": phone, "source": source},
-        )
+        update_fields: dict[str, object] = {
+            "first_name": first_name,
+            "last_name": last_name,
+            "phone": phone,
+            "source": source,
+        }
+        if company_id is not None:
+            update_fields["company_id"] = company_id
+        if job_title is not None:
+            update_fields["job_title"] = job_title
+        if lifecycle_stage is not None and lifecycle_stage != existing.lifecycle_stage:
+            old_stage = existing.lifecycle_stage
+            update_fields["lifecycle_stage"] = lifecycle_stage
+            await create_contact_activity(
+                session,
+                account_id=account_id,
+                contact_id=existing.id,
+                activity_type="STAGE_CHANGE",
+                title=f"Stage changed to {lifecycle_stage}",
+                description=f"Lifecycle stage moved from {old_stage} to {lifecycle_stage}",
+                metadata_={"old_stage": old_stage, "new_stage": lifecycle_stage},
+                user_id=actor_id,
+            )
+        if custom_attributes is not None:
+            update_fields["custom_attributes"] = custom_attributes
+
+        contact = await apply_contact_fields(existing, update_fields)
         action = "contact.updated"
 
-    await _apply_custom_fields(
-        session, account_id=account_id, contact_id=contact.id, custom_fields=custom_fields
-    )
+    if custom_fields:
+        await _apply_custom_fields(
+            session, account_id=account_id, contact_id=contact.id, custom_fields=custom_fields
+        )
     await record_event(
         session,
         account_id=account_id,
@@ -270,19 +354,17 @@ async def update_contact(
     account_id: uuid.UUID,
     actor_id: uuid.UUID | None,
     contact_id: uuid.UUID,
-    email: str | None,
-    first_name: str | None,
-    last_name: str | None,
-    phone: str | None,
-    custom_fields: dict[str, str] | None,
+    email: str | None = None,
+    first_name: str | None = None,
+    last_name: str | None = None,
+    phone: str | None = None,
+    company_id: uuid.UUID | None = None,
+    job_title: str | None = None,
+    lifecycle_stage: str | None = None,
+    custom_fields: dict[str, str] | None = None,
+    custom_attributes: dict | None = None,
     audit_metadata: dict[str, object] | None = None,
 ) -> ContactSnapshot:
-    """actor_id is Optional and audit_metadata exists for GRX-SAAS-010: a platform admin
-    editing a contact through a support session has no users.id to record as the actor
-    (DEC-GRX-022 point 4) -- it passes actor_id=None and its own identity in
-    audit_metadata instead, the same actor_user_id=None + metadata pattern DEC-GRX-020
-    established. Ordinary customer callers are unaffected -- they keep passing a real
-    actor_id and audit_metadata defaults to None."""
     contact = await get_contact_by_id(session, account_id, contact_id)
     if contact is None:
         raise ContactNotFoundError
@@ -299,6 +381,25 @@ async def update_contact(
         fields["last_name"] = last_name
     if phone is not None:
         fields["phone"] = phone
+    if company_id is not None:
+        fields["company_id"] = company_id
+    if job_title is not None:
+        fields["job_title"] = job_title
+    if lifecycle_stage is not None and lifecycle_stage != contact.lifecycle_stage:
+        old_stage = contact.lifecycle_stage
+        fields["lifecycle_stage"] = lifecycle_stage
+        await create_contact_activity(
+            session,
+            account_id=account_id,
+            contact_id=contact.id,
+            activity_type="STAGE_CHANGE",
+            title=f"Stage changed to {lifecycle_stage}",
+            description=f"Lifecycle stage moved from {old_stage} to {lifecycle_stage}",
+            metadata_={"old_stage": old_stage, "new_stage": lifecycle_stage},
+            user_id=actor_id,
+        )
+    if custom_attributes is not None:
+        fields["custom_attributes"] = custom_attributes
 
     await apply_contact_fields(contact, fields)
     if custom_fields:
@@ -370,6 +471,8 @@ async def list_contacts_with_fields(
     status: str | None = None,
     search: str | None = None,
     tag_id: uuid.UUID | None = None,
+    company_id: uuid.UUID | None = None,
+    lifecycle_stage: str | None = None,
     limit: int = DEFAULT_LIMIT,
     offset: int = 0,
 ) -> list[ContactSnapshot]:
@@ -381,6 +484,8 @@ async def list_contacts_with_fields(
         status=status,
         search=search,
         tag_id=tag_id,
+        company_id=company_id,
+        lifecycle_stage=lifecycle_stage,
         limit=limit,
         offset=offset,
     )
@@ -411,6 +516,8 @@ async def count_contacts_service(
     status: str | None = None,
     search: str | None = None,
     tag_id: uuid.UUID | None = None,
+    company_id: uuid.UUID | None = None,
+    lifecycle_stage: str | None = None,
 ) -> int:
     """Thin passthrough to the SQL-level `COUNT(*)` -- feeds the Contacts page's
     "total pages" figure under the currently-active search/status/tag filters without
@@ -423,6 +530,8 @@ async def count_contacts_service(
         status=status,
         search=search,
         tag_id=tag_id,
+        company_id=company_id,
+        lifecycle_stage=lifecycle_stage,
     )
 
 
@@ -1408,3 +1517,535 @@ async def bulk_restore_contacts(
         )
     await session.commit()
     return restored_count
+
+
+# ---------------------------------------------------------------------------
+# CRM Companies Services
+# ---------------------------------------------------------------------------
+
+
+async def create_company_service(
+    session: AsyncSession,
+    *,
+    account_id: uuid.UUID,
+    actor_id: uuid.UUID,
+    name: str,
+    domain: str | None = None,
+    industry: str | None = None,
+    website: str | None = None,
+    phone: str | None = None,
+    address: str | None = None,
+    lifecycle_stage: str = "PROSPECT",
+    custom_attributes: dict | None = None,
+) -> tuple[CRMCompany, int]:
+    normalized_domain = domain.strip().lower() if domain else None
+    if normalized_domain:
+        existing = await get_company_by_domain(session, account_id, normalized_domain)
+        if existing is not None:
+            raise DuplicateCompanyDomainError(
+                f"Company with domain '{normalized_domain}' already exists"
+            )
+
+    company = await create_company(
+        session,
+        account_id=account_id,
+        name=name,
+        domain=normalized_domain,
+        industry=industry,
+        website=website,
+        phone=phone,
+        address=address,
+        lifecycle_stage=lifecycle_stage,
+        custom_attributes=custom_attributes or {},
+        created_by_user_id=actor_id,
+    )
+    await record_event(
+        session,
+        account_id=account_id,
+        actor_user_id=actor_id,
+        action="crm_company.created",
+        entity_type="crm_company",
+        entity_id=company.id,
+        metadata={"name": name, "domain": normalized_domain},
+    )
+    await session.commit()
+    await session.refresh(company)
+    return company, 0
+
+
+async def update_company_service(
+    session: AsyncSession,
+    *,
+    account_id: uuid.UUID,
+    actor_id: uuid.UUID,
+    company_id: uuid.UUID,
+    name: str | None = None,
+    domain: str | None = None,
+    industry: str | None = None,
+    website: str | None = None,
+    phone: str | None = None,
+    address: str | None = None,
+    lifecycle_stage: str | None = None,
+    custom_attributes: dict | None = None,
+) -> tuple[CRMCompany, int]:
+    company = await get_company_by_id(session, account_id, company_id)
+    if company is None:
+        raise CompanyNotFoundError(f"Company {company_id} not found")
+
+    fields: dict[str, object] = {}
+    if name is not None:
+        fields["name"] = name
+    if domain is not None:
+        normalized_domain = domain.strip().lower() if domain else None
+        if normalized_domain and normalized_domain != company.domain:
+            existing = await get_company_by_domain(session, account_id, normalized_domain)
+            if existing is not None and existing.id != company.id:
+                raise DuplicateCompanyDomainError(
+                    f"Company with domain '{normalized_domain}' already exists"
+                )
+        fields["domain"] = normalized_domain
+    if industry is not None:
+        fields["industry"] = industry
+    if website is not None:
+        fields["website"] = website
+    if phone is not None:
+        fields["phone"] = phone
+    if address is not None:
+        fields["address"] = address
+    if lifecycle_stage is not None:
+        fields["lifecycle_stage"] = lifecycle_stage
+    if custom_attributes is not None:
+        fields["custom_attributes"] = custom_attributes
+
+    await apply_company_fields(company, fields)
+    await record_event(
+        session,
+        account_id=account_id,
+        actor_user_id=actor_id,
+        action="crm_company.updated",
+        entity_type="crm_company",
+        entity_id=company.id,
+        metadata={"updated_fields": list(fields.keys())},
+    )
+    await session.commit()
+    await session.refresh(company)
+    count = await get_company_contact_count(session, account_id, company.id)
+    return company, count
+
+
+async def get_company_service(
+    session: AsyncSession,
+    *,
+    account_id: uuid.UUID,
+    company_id: uuid.UUID,
+) -> tuple[CRMCompany, int]:
+    company = await get_company_by_id(session, account_id, company_id)
+    if company is None:
+        raise CompanyNotFoundError(f"Company {company_id} not found")
+    count = await get_company_contact_count(session, account_id, company_id)
+    return company, count
+
+
+async def list_companies_service(
+    session: AsyncSession,
+    *,
+    account_id: uuid.UUID,
+    search: str | None = None,
+    lifecycle_stage: str | None = None,
+    limit: int = DEFAULT_LIMIT,
+    offset: int = 0,
+) -> list[tuple[CRMCompany, int]]:
+    companies = await list_companies(
+        session,
+        account_id,
+        search=search,
+        lifecycle_stage=lifecycle_stage,
+        limit=limit,
+        offset=offset,
+    )
+    if not companies:
+        return []
+    company_ids = [c.id for c in companies]
+    counts = await get_all_company_contact_counts(session, account_id, company_ids)
+    return [(c, counts.get(c.id, 0)) for c in companies]
+
+
+async def count_companies_service(
+    session: AsyncSession,
+    *,
+    account_id: uuid.UUID,
+    search: str | None = None,
+    lifecycle_stage: str | None = None,
+) -> int:
+    return await count_companies(
+        session, account_id, search=search, lifecycle_stage=lifecycle_stage
+    )
+
+
+async def delete_company_service(
+    session: AsyncSession,
+    *,
+    account_id: uuid.UUID,
+    actor_id: uuid.UUID,
+    company_id: uuid.UUID,
+) -> None:
+    company = await get_company_by_id(session, account_id, company_id)
+    if company is None:
+        raise CompanyNotFoundError(f"Company {company_id} not found")
+
+    await soft_delete_company(session, account_id, company_id)
+    await record_event(
+        session,
+        account_id=account_id,
+        actor_user_id=actor_id,
+        action="crm_company.deleted",
+        entity_type="crm_company",
+        entity_id=company.id,
+        metadata={"name": company.name},
+    )
+    await session.commit()
+
+
+# ---------------------------------------------------------------------------
+# Contact Activity Services
+# ---------------------------------------------------------------------------
+
+
+async def create_contact_activity_service(
+    session: AsyncSession,
+    *,
+    account_id: uuid.UUID,
+    actor_id: uuid.UUID,
+    contact_id: uuid.UUID,
+    activity_type: str,
+    title: str,
+    description: str | None = None,
+    metadata_: dict | None = None,
+) -> ContactActivity:
+    contact = await get_contact_by_id(session, account_id, contact_id)
+    if contact is None:
+        raise ContactNotFoundError(f"Contact {contact_id} not found")
+
+    activity = await create_contact_activity(
+        session,
+        account_id=account_id,
+        contact_id=contact_id,
+        activity_type=activity_type,
+        title=title,
+        description=description,
+        metadata_=metadata_ or {},
+        user_id=actor_id,
+    )
+    await record_event(
+        session,
+        account_id=account_id,
+        actor_user_id=actor_id,
+        action="contact_activity.created",
+        entity_type="contact_activity",
+        entity_id=activity.id,
+        metadata={"contact_id": str(contact_id), "activity_type": activity_type},
+    )
+    await session.commit()
+    return activity
+
+
+async def list_contact_activities_service(
+    session: AsyncSession,
+    *,
+    account_id: uuid.UUID,
+    contact_id: uuid.UUID,
+    limit: int = 50,
+    offset: int = 0,
+) -> Sequence[ContactActivity]:
+    contact = await get_contact_by_id(session, account_id, contact_id)
+    if contact is None:
+        raise ContactNotFoundError(f"Contact {contact_id} not found")
+    return await list_contact_activities(
+        session, account_id, contact_id, limit=limit, offset=offset
+    )
+
+
+async def count_contact_activities_service(
+    session: AsyncSession,
+    *,
+    account_id: uuid.UUID,
+    contact_id: uuid.UUID,
+) -> int:
+    return await count_contact_activities(session, account_id, contact_id)
+
+
+# ---------------------------------------------------------------------------
+# Tag Management Services
+# ---------------------------------------------------------------------------
+
+
+async def update_tag_service(
+    session: AsyncSession,
+    *,
+    account_id: uuid.UUID,
+    actor_id: uuid.UUID,
+    tag_id: uuid.UUID,
+    new_name: str,
+) -> Tag:
+    existing_named = await get_tag_by_name(session, account_id, new_name)
+    if existing_named is not None and existing_named.id != tag_id:
+        raise DuplicateTagNameError(f"Tag '{new_name}' already exists")
+
+    tag = await update_tag_name(session, account_id, tag_id, new_name)
+    if tag is None:
+        raise TagNotFoundError(f"Tag {tag_id} not found")
+
+    await record_event(
+        session,
+        account_id=account_id,
+        actor_user_id=actor_id,
+        action="tag.updated",
+        entity_type="tag",
+        entity_id=tag.id,
+        metadata={"new_name": new_name},
+    )
+    await session.commit()
+    await session.refresh(tag)
+    return tag
+
+
+async def delete_tag_service(
+    session: AsyncSession,
+    *,
+    account_id: uuid.UUID,
+    actor_id: uuid.UUID,
+    tag_id: uuid.UUID,
+) -> None:
+    tag = await get_tag_by_id(session, account_id, tag_id)
+    if tag is None:
+        raise TagNotFoundError(f"Tag {tag_id} not found")
+
+    deleted = await delete_tag_and_associations(session, account_id, tag_id)
+    if not deleted:
+        raise TagNotFoundError(f"Tag {tag_id} not found")
+
+    await record_event(
+        session,
+        account_id=account_id,
+        actor_user_id=actor_id,
+        action="tag.deleted",
+        entity_type="tag",
+        entity_id=tag_id,
+        metadata={"name": tag.name},
+    )
+    await session.commit()
+
+
+async def bulk_tag_contacts_service(
+    session: AsyncSession,
+    *,
+    account_id: uuid.UUID,
+    actor_id: uuid.UUID,
+    contact_ids: Sequence[uuid.UUID],
+    tag_id: uuid.UUID,
+    action: str,  # "ATTACH" or "DETACH"
+) -> int:
+    tag = await get_tag_by_id(session, account_id, tag_id)
+    if tag is None:
+        raise TagNotFoundError(f"Tag {tag_id} not found")
+
+    if action == "ATTACH":
+        affected = await bulk_attach_tag_to_contacts(session, account_id, contact_ids, tag_id)
+        audit_action = "contacts.bulk_tagged"
+    elif action == "DETACH":
+        affected = await bulk_detach_tag_from_contacts(session, account_id, contact_ids, tag_id)
+        audit_action = "contacts.bulk_untagged"
+    else:
+        raise ValueError(f"Invalid bulk tag action: {action}")
+
+    if affected > 0:
+        await record_event(
+            session,
+            account_id=account_id,
+            actor_user_id=actor_id,
+            action=audit_action,
+            entity_type="tag",
+            entity_id=tag_id,
+            metadata={"affected": affected, "tag_name": tag.name},
+        )
+    await session.commit()
+    return affected
+
+
+async def list_tags_with_counts_service(
+    session: AsyncSession,
+    *,
+    account_id: uuid.UUID,
+) -> list[tuple[Tag, int]]:
+    tags = await list_tags_rows(session, account_id)
+    if not tags:
+        return []
+    counts = await get_all_tag_contact_counts(session, account_id)
+    return [(t, counts.get(t.id, 0)) for t in tags]
+
+
+# ---------------------------------------------------------------------------
+# Segment Preview & Snapshot Services
+# ---------------------------------------------------------------------------
+
+
+async def preview_segment_service(
+    session: AsyncSession,
+    *,
+    account_id: uuid.UUID,
+    rules: Sequence[tuple[str, str, str]],
+    match_type: str = "ALL",
+) -> int:
+    for field, operator, value in rules:
+        await _validate_segment_rule(
+            session, account_id=account_id, field=field, operator=operator, value=value
+        )
+    rule_objs = [
+        SegmentRule(
+            segment_id=uuid.uuid4(),
+            field=f,
+            operator=o,
+            value=v,
+        )
+        for f, o, v in rules
+    ]
+    matching = await evaluate_segment_rules(session, account_id, rule_objs, match_type=match_type)
+    return len(matching)
+
+
+async def snapshot_segment_service(
+    session: AsyncSession,
+    *,
+    account_id: uuid.UUID,
+    actor_id: uuid.UUID,
+    segment_id: uuid.UUID,
+) -> int:
+    segment = await get_segment_by_id(session, account_id, segment_id)
+    if segment is None:
+        raise SegmentNotFoundError
+
+    count = await snapshot_segment_members(session, account_id, segment_id)
+    await record_event(
+        session,
+        account_id=account_id,
+        actor_user_id=actor_id,
+        action="segment.snapshotted",
+        entity_type="segment",
+        entity_id=segment.id,
+        metadata={"frozen_count": count},
+    )
+    await session.commit()
+    return count
+
+
+# ---------------------------------------------------------------------------
+# CSV Auto-Detection Service
+# ---------------------------------------------------------------------------
+
+
+def detect_csv_columns_service(file_bytes: bytes) -> dict[str, object]:
+    text: str = ""
+    for enc in ("utf-8-sig", "utf-8", "latin-1"):
+        try:
+            text = file_bytes.decode(enc)
+            break
+        except UnicodeDecodeError:
+            continue
+    if not text:
+        text = file_bytes.decode("utf-8", errors="replace")
+
+    sample = text[:4096]
+    delimiter = ","
+    try:
+        sniffer = csv.Sniffer()
+        dialect = sniffer.sniff(sample)
+        delimiter = dialect.delimiter
+    except Exception:
+        delimiter = ","
+
+    reader = csv.reader(io.StringIO(text), delimiter=delimiter)
+    headers: list[str] = []
+    sample_rows: list[list[str]] = []
+    total_rows = 0
+
+    for i, row in enumerate(reader):
+        if i == 0:
+            headers = [h.strip() for h in row]
+        else:
+            total_rows += 1
+            if len(sample_rows) < 5:
+                sample_rows.append(row)
+
+    target_rules = {
+        "email": ["email", "e-mail", "mail", "email_address", "electronic_mail"],
+        "first_name": ["first_name", "firstname", "first", "given_name", "fname"],
+        "last_name": ["last_name", "lastname", "last", "surname", "family_name", "lname"],
+        "phone": ["phone", "mobile", "tel", "cell", "telephone", "phone_number"],
+        "company": ["company", "company_name", "organization", "org", "business"],
+        "job_title": ["job_title", "title", "position", "role", "designation"],
+        "lifecycle_stage": ["lifecycle_stage", "stage", "status", "lead_status"],
+        "source": ["source", "lead_source", "origin", "channel"],
+    }
+
+    suggested_mapping: dict[str, str | None] = {}
+    for header in headers:
+        clean = header.lower().replace(" ", "_").replace("-", "_")
+        matched = None
+        for target, aliases in target_rules.items():
+            if clean in aliases or any(alias in clean for alias in aliases):
+                matched = target
+                break
+        suggested_mapping[header] = matched
+
+    return {
+        "headers": headers,
+        "sample_rows": sample_rows,
+        "suggested_mapping": suggested_mapping,
+        "total_rows_estimate": total_rows,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Phone Suppression Services
+# ---------------------------------------------------------------------------
+
+
+async def suppress_phone_service(
+    session: AsyncSession,
+    *,
+    account_id: uuid.UUID,
+    actor_id: uuid.UUID,
+    phone: str,
+    reason: str = "MANUAL",
+) -> SuppressionEntry:
+    normalized = phone.strip()
+    existing = await get_suppression_by_phone(session, account_id, normalized)
+    if existing is not None:
+        return existing
+
+    entry = await create_phone_suppression_entry(
+        session,
+        account_id=account_id,
+        phone=normalized,
+        reason=reason,
+        suppressed_by_user_id=actor_id,
+    )
+    await record_event(
+        session,
+        account_id=account_id,
+        actor_user_id=actor_id,
+        action="contact.phone_suppressed",
+        entity_type="suppression_entry",
+        entity_id=entry.id,
+        metadata={"phone": normalized, "reason": reason},
+    )
+    await session.commit()
+    return entry
+
+
+async def is_phone_suppressed_service(
+    session: AsyncSession,
+    account_id: uuid.UUID,
+    phone: str | None,
+) -> bool:
+    return await is_phone_suppressed(session, account_id, phone)

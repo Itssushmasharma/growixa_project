@@ -10,6 +10,12 @@ import { ApiError, apiFetch } from "@/lib/api-client";
 import styles from "./dashboard-page.module.css";
 import type { CampaignStatusBreakdown, DashboardOverview } from "./types";
 
+interface GrowthInsightsOut {
+  insights: string[];
+  recommendations: string[];
+  topics: string[];
+}
+
 const STATUS_LABEL: Record<keyof CampaignStatusBreakdown, string> = {
   draft: "Draft",
   scheduled: "Scheduled",
@@ -22,34 +28,34 @@ const STATUS_LABEL: Record<keyof CampaignStatusBreakdown, string> = {
 const QUICK_ACTIONS = [
   {
     eyebrow: "PLAN",
-    title: "Create a campaign",
+    title: "Create Campaign",
     description: "Start with your goal, audience and message.",
     href: "/dashboard/campaigns/new",
-    icon: "↗",
+    icon: "🚀",
     tone: "violet",
   },
   {
     eyebrow: "CREATE",
-    title: "Build email content",
+    title: "Email Templates",
     description: "Use a responsive template or create your own.",
     href: "/dashboard/templates/new",
-    icon: "✦",
+    icon: "✨",
     tone: "blue",
   },
   {
     eyebrow: "AUDIENCE",
-    title: "Add contacts",
+    title: "Import Contacts",
     description: "Import, organize and segment your audience.",
     href: "/dashboard/contacts/imports",
-    icon: "+",
+    icon: "👥",
     tone: "cyan",
   },
   {
     eyebrow: "SCHEDULE",
-    title: "Plan social content",
+    title: "Social Publisher",
     description: "Create a post and place it on your calendar.",
     href: "/dashboard/social",
-    icon: "◎",
+    icon: "📅",
     tone: "green",
   },
 ] as const;
@@ -61,8 +67,8 @@ function formatPct(value: number | null | undefined) {
 function recommendationFor(overview: DashboardOverview) {
   if (overview.campaign_status_breakdown.failed > 0)
     return {
-      label: "Needs attention",
-      title: `${overview.campaign_status_breakdown.failed} campaign failure${overview.campaign_status_breakdown.failed === 1 ? "" : "s"}`,
+      label: "Action Required",
+      title: `${overview.campaign_status_breakdown.failed} Campaign Failure${overview.campaign_status_breakdown.failed === 1 ? "" : "s"}`,
       description: "Review the failure before scheduling another send. Your campaign data is safe.",
       href: "/dashboard/campaigns?status=failed",
       action: "Review campaigns",
@@ -70,8 +76,8 @@ function recommendationFor(overview: DashboardOverview) {
     };
   if (overview.total_contacts === 0)
     return {
-      label: "Best next step",
-      title: "Build your first audience",
+      label: "Next Step",
+      title: "Build Your Audience",
       description: "Import contacts, map consent correctly, then create a focused segment.",
       href: "/dashboard/contacts/imports",
       action: "Import contacts",
@@ -79,17 +85,17 @@ function recommendationFor(overview: DashboardOverview) {
     };
   if (overview.active_campaigns === 0)
     return {
-      label: "Growth opportunity",
-      title: "Turn your audience into a campaign",
-      description: `You have ${overview.total_contacts.toLocaleString()} contacts and no active campaign. Start with one clear business goal.`,
+      label: "Growth Engine",
+      title: "Launch a Campaign",
+      description: `You have ${overview.total_contacts.toLocaleString()} contacts ready. Start engaging them today.`,
       href: "/dashboard/campaigns/new",
       action: "Create campaign",
       tone: "growth",
     };
   return {
-    label: "Keep momentum",
-    title: "Review live campaign performance",
-    description: "Use clicks and recipient activity to decide what to improve next.",
+    label: "Momentum",
+    title: "Monitor Performance",
+    description: "Use analytics to optimize your next automated workflow.",
     href: "/dashboard/campaigns",
     action: "View campaigns",
     tone: "growth",
@@ -102,31 +108,40 @@ export function DashboardPage() {
   const [overview, setOverview] = useState<DashboardOverview | null>(null);
   const [viewMode, setViewMode] = useState<"standard" | "chart-terminal">("standard");
 
+  const [aiInsights, setAiInsights] = useState<GrowthInsightsOut | null>(null);
+  const [aiLoading, setAiLoading] = useState(true);
+
   useEffect(() => {
     apiFetch<DashboardOverview>("/dashboard/overview")
       .then(setOverview)
       .catch((err) =>
         setLoadError(
-          err instanceof ApiError ? "Could not load your command center." : "Something went wrong.",
+          err instanceof ApiError ? "Could not load your workspace." : "Something went wrong.",
         ),
       )
       .finally(() => setLoading(false));
+      
+    // Fetch AI Phase 9 Insights
+    apiFetch<GrowthInsightsOut>("/analytics/insights")
+      .then(setAiInsights)
+      .catch(() => console.error("Failed to load AI insights"))
+      .finally(() => setAiLoading(false));
   }, []);
 
   if (loading)
     return (
-      <div className={styles.loading} role="status">
+      <div className={styles.loading}>
         <span />
-        Preparing your growth command center…
+        Initializing Workspace...
       </div>
     );
   if (loadError || !overview)
     return (
-      <div className={styles.errorState} role="alert">
-        <strong>Growixa could not load this workspace.</strong>
-        <span>{loadError ?? "Could not load your command center."}</span>
+      <div className={styles.errorState}>
+        <strong>System Offline</strong>
+        <span>{loadError ?? "Could not connect to the backend."}</span>
         <button type="button" onClick={() => window.location.reload()}>
-          Try again
+          Retry Connection
         </button>
       </div>
     );
@@ -140,36 +155,38 @@ export function DashboardPage() {
 
   return (
     <main className={styles.page}>
-      <section className={styles.hero} aria-labelledby="command-center-heading">
+      
+      {/* 1. HERO COMMAND CENTER */}
+      <section className={styles.hero}>
         <div className={styles.heroContent}>
-          <span className={styles.eyebrow}>GROWTH COMMAND CENTER</span>
-          <h1 id="command-center-heading">What do you want to grow today?</h1>
-          <p>Turn a business goal into an audience, campaign and measurable next action.</p>
+          <span className={styles.eyebrow}>WORKSPACE DASHBOARD</span>
+          <h1>Welcome to Growixa OS.</h1>
+          <p>Your central hub for marketing automation, audience management, and AI generation.</p>
           <div className={styles.heroActions}>
             <Link href="/dashboard/ai" className={styles.primaryAction}>
-              ✦ Ask Growixa
+              Ask AI Assistant
             </Link>
             <Link href="/dashboard/campaigns/new" className={styles.secondaryAction}>
-              Create campaign
+              Launch Campaign
             </Link>
           </div>
         </div>
-        <div className={styles.heroSignal} aria-label="Current workspace signal">
-          <span className={styles.signalLabel}>LIVE WORKSPACE</span>
+        <div className={styles.heroSignal}>
+          <span className={styles.signalLabel}>ACTIVE CAMPAIGNS</span>
           <strong>{overview.active_campaigns}</strong>
-          <span>active campaigns</span>
+          <span>currently running</span>
           <div />
-          <small>{overview.scheduled_social_posts} social posts scheduled</small>
+          <small>{overview.scheduled_social_posts} social posts queued</small>
         </div>
       </section>
 
-      <section aria-labelledby="quick-actions-heading">
+      {/* 2. BENTO QUICK ACTIONS */}
+      <section>
         <div className={styles.sectionHeading}>
           <div>
-            <span className={styles.sectionKicker}>START HERE</span>
-            <h2 id="quick-actions-heading">Quick actions</h2>
+            <span className={styles.sectionKicker}>WORKFLOWS</span>
+            <h2>Quick Actions</h2>
           </div>
-          <span>Every action opens a working Growixa flow</span>
         </div>
         <div className={styles.quickGrid}>
           {QUICK_ACTIONS.map((action) => (
@@ -183,120 +200,122 @@ export function DashboardPage() {
                 <h3>{action.title}</h3>
                 <p>{action.description}</p>
               </div>
-              <span className={styles.quickIcon} aria-hidden="true">
-                {action.icon}
-              </span>
+              <span className={styles.quickIcon}>{action.icon}</span>
             </Link>
           ))}
         </div>
       </section>
 
-      <section aria-labelledby="growth-pulse-heading">
+      {/* 3. GROWTH PULSE (KPIs) */}
+      <section>
         <div className={styles.sectionHeading}>
           <div>
-            <span className={styles.sectionKicker}>REAL WORKSPACE DATA</span>
-            <h2 id="growth-pulse-heading">Growth pulse</h2>
+            <span className={styles.sectionKicker}>ANALYTICS</span>
+            <h2>System Pulse</h2>
           </div>
-          <div className={styles.terminalSwitchBar}>
-            <div
-              className={styles.viewModeToggle}
-              role="group"
-              aria-label="Dashboard Analytics View"
-            >
-              <button
-                type="button"
-                onClick={() => setViewMode("standard")}
-                className={`${styles.viewToggleBtn} ${viewMode === "standard" ? styles.viewToggleBtnActive : ""}`}
-              >
-                Overview Pulse
-              </button>
-              <button
-                type="button"
-                onClick={() => setViewMode("chart-terminal")}
-                className={`${styles.viewToggleBtn} ${viewMode === "chart-terminal" ? styles.viewToggleBtnActive : ""}`}
-              >
-                📈 Expert Chart Analysis
-              </button>
-            </div>
-          </div>
-          <Link href="/dashboard/campaigns">View campaign details →</Link>
         </div>
-        {viewMode === "chart-terminal" ? (
-          <div style={{ marginTop: "16px" }}>
-            <GrowthChartTerminal initialMetric="GROWTH_VELOCITY" initialTimeframe="24H" />
-          </div>
-        ) : (
-          <div className={styles.pulseGrid}>
-            <article className={styles.pulseCard}>
-              <div className={styles.pulseHeaderRow}>
-                <span>Audience</span>
-                <span className="tactileBadge tactileBadgeCyan">UI</span>
-              </div>
-              <strong>{overview.total_contacts.toLocaleString()}</strong>
-              <small>Total contacts</small>
-            </article>
-            <article className={styles.pulseCard}>
-              <div className={styles.pulseHeaderRow}>
-                <span>Campaigns</span>
-                <span className="tactileBadge tactileBadgePurple">UX</span>
-              </div>
-              <strong>{overview.active_campaigns}</strong>
-              <small>Live &amp; scheduled</small>
-            </article>
-            <article className={`${styles.pulseCard} ${styles.featuredPulse}`}>
-              <div className={styles.pulseHeaderRow}>
-                <span>Email clicks</span>
-                <span className="tactileBadge tactileBadgeAmber">Growth</span>
-              </div>
-              <strong>{formatPct(overview.email_click_rate_pct)}</strong>
-              <div className="tactileTrack" style={{ marginTop: "4px" }}>
-                <div
-                  className="tactileProgress"
-                  style={{ width: `${Math.min((overview.email_click_rate_pct || 0) * 8, 100)}%` }}
-                />
-              </div>
-              <small>Delivered campaigns</small>
-            </article>
-            <article className={styles.pulseCard}>
-              <div className={styles.pulseHeaderRow}>
-                <span>Click-to-open</span>
-                <span className="tactileBadge tactileBadgePink">Audience</span>
-              </div>
-              <strong>{formatPct(overview.email_ctor_pct)}</strong>
-              <small>Unique CTOR</small>
-            </article>
-            <article className={styles.pulseCard}>
-              <div className={styles.pulseHeaderRow}>
-                <span>Email opens</span>
-                <span className="tactileBadge tactileBadgeEmerald">Delivery</span>
-              </div>
-              <strong>{formatPct(overview.email_open_rate_pct)}</strong>
-              <small>Directional signal</small>
-            </article>
-          </div>
-        )}
+        
+        <div className={styles.pulseGrid}>
+          <article className={styles.pulseCard}>
+            <div className={styles.pulseHeaderRow}>
+              <span>Total Contacts</span>
+            </div>
+            <strong>{overview.total_contacts.toLocaleString()}</strong>
+            <small>Active Audience Size</small>
+          </article>
+          
+          <article className={styles.pulseCard}>
+            <div className={styles.pulseHeaderRow}>
+              <span>Live Campaigns</span>
+            </div>
+            <strong>{overview.active_campaigns}</strong>
+            <small>Scheduled & Sending</small>
+          </article>
+
+          <article className={`${styles.pulseCard} ${styles.featuredPulse}`}>
+            <div className={styles.pulseHeaderRow}>
+              <span>Email CTR</span>
+            </div>
+            <strong>{formatPct(overview.email_click_rate_pct)}</strong>
+            <small>Aggregate Engagement</small>
+          </article>
+        </div>
       </section>
 
-      <section className={styles.insightCard} aria-labelledby="recommendation-heading">
-        <div className={`${styles.insightIcon} ${styles[recommendation.tone]}`} aria-hidden="true">
-          ✦
+      {/* 4. SMART INSIGHT (AI RECOMMENDATION) */}
+      <section className={styles.insightCard}>
+        <div className={`${styles.insightIcon} ${styles[recommendation.tone]}`}>
+          {recommendation.tone === 'danger' ? '⚠️' : '💡'}
         </div>
         <div className={styles.insightCopy}>
           <span>{recommendation.label}</span>
-          <h2 id="recommendation-heading">{recommendation.title}</h2>
+          <h2>{recommendation.title}</h2>
           <p>{recommendation.description}</p>
         </div>
-        <Link href={recommendation.href}>{recommendation.action} →</Link>
+        <Link href={recommendation.href}>{recommendation.action}</Link>
       </section>
 
+      {/* 4.5 AI GROWTH INTELLIGENCE (Phase 9) */}
+      <section>
+        <div className={styles.sectionHeading}>
+          <div>
+            <span className={styles.sectionKicker}>AI STRATEGIST</span>
+            <h2>AI Growth Intelligence</h2>
+          </div>
+          <Link href="/dashboard/analytics/insights" className={styles.secondaryButton} style={{ textDecoration: 'none', padding: '8px 16px', borderRadius: '8px', border: '1px solid #e5e7eb', fontSize: '14px', fontWeight: 500, color: '#374151' }}>
+            View Full Report
+          </Link>
+        </div>
+        
+        {aiLoading ? (
+          <div className={styles.card} style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '24px' }}>
+            <span style={{ animation: "pulse 1.5s infinite", fontSize: '24px' }}>✨</span>
+            <span style={{ color: '#6b7280' }}>AI is analyzing your 30-day performance data...</span>
+          </div>
+        ) : aiInsights ? (
+          <div className={styles.pulseGrid} style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))' }}>
+            <article className={styles.card} style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '20px' }}>📊</span>
+                <strong style={{ fontSize: '16px' }}>Key Insight</strong>
+              </div>
+              <p style={{ color: '#4b5563', lineHeight: 1.5, margin: 0 }}>
+                {aiInsights.insights[0] || "Trend analysis complete."}
+              </p>
+            </article>
+
+            <article className={styles.card} style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '12px', background: 'linear-gradient(to right bottom, #eef2ff, #faf5ff)', border: '1px solid #e0e7ff' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '20px' }}>🚀</span>
+                <strong style={{ fontSize: '16px', color: '#4338ca' }}>Top Recommendation</strong>
+              </div>
+              <p style={{ color: '#374151', lineHeight: 1.5, margin: 0, fontWeight: 500 }}>
+                {aiInsights.recommendations[0] || "Keep posting consistently."}
+              </p>
+            </article>
+
+            <article className={styles.card} style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '20px' }}>💡</span>
+                <strong style={{ fontSize: '16px' }}>Trending Topic</strong>
+              </div>
+              <p style={{ color: '#86198f', lineHeight: 1.5, margin: 0, fontWeight: 600, display: 'inline-block', backgroundColor: '#fdf4ff', padding: '4px 12px', borderRadius: '16px', width: 'fit-content' }}>
+                # {aiInsights.topics[0] || "Industry News"}
+              </p>
+            </article>
+          </div>
+        ) : null}
+      </section>
+
+      {/* 5. CHARTS & METRICS */}
       <div className={styles.analyticsGrid}>
-        <section className={styles.card} aria-labelledby="audience-growth-heading">
+        <section className={styles.card}>
           <div className={styles.cardHeader}>
             <div>
-              <span className={styles.sectionKicker}>AUDIENCE</span>
-              <h2 id="audience-growth-heading">Contact growth</h2>
+              <span className={styles.sectionKicker}>TRENDS</span>
+              <h2>Audience Growth</h2>
             </div>
-            <strong>{overview.total_contacts.toLocaleString()} total</strong>
+            <strong>{overview.total_contacts.toLocaleString()}</strong>
           </div>
           <TrendChart
             points={overview.contact_growth_6_months.map((point) => ({
@@ -305,129 +324,24 @@ export function DashboardPage() {
             }))}
           />
         </section>
-        <section className={styles.card} aria-labelledby="campaign-health-heading">
-          <div className={styles.cardHeader}>
-            <div>
-              <span className={styles.sectionKicker}>EXECUTION</span>
-              <h2 id="campaign-health-heading">Campaign health</h2>
-            </div>
-          </div>
-          {statusTotal === 0 ? (
-            <EmptyCampaign />
-          ) : (
-            <ul className={styles.statusList}>
-              {statusEntries
-                .filter(([, count]) => count > 0)
-                .map(([status, count]) => (
-                  <li key={status}>
-                    <div>
-                      <span className={`${styles.statusDot} ${styles[`status_${status}`]}`} />
-                      <span>{STATUS_LABEL[status]}</span>
-                    </div>
-                    <strong>{count}</strong>
-                  </li>
-                ))}
-            </ul>
-          )}
-        </section>
-      </div>
 
-      <div className={styles.activityGrid}>
-        <LiveActivityStream items={overview.recent_activity ?? []} />
-        <section className={styles.card} aria-labelledby="quota-heading">
+        <section className={styles.card}>
           <div className={styles.cardHeader}>
             <div>
-              <span className={styles.sectionKicker}>CAPACITY</span>
-              <h2 id="quota-heading">{overview.quota.plan_name} plan usage</h2>
+              <span className={styles.sectionKicker}>LIMITS</span>
+              <h2>Plan Usage</h2>
             </div>
           </div>
           <div className={styles.gauges}>
-            <QuotaGauge
-              label="Contacts"
-              used={overview.quota.contact_usage}
-              limit={overview.quota.contact_limit}
-            />
-            <QuotaGauge
-              label="Emails this period"
-              used={overview.quota.email_usage}
-              limit={overview.quota.email_limit}
-            />
-            <QuotaGauge
-              label="AI runs this period"
-              used={overview.quota.ai_usage}
-              limit={overview.quota.ai_limit}
-            />
+            <QuotaGauge label="Contacts" used={overview.quota.contact_usage} limit={overview.quota.contact_limit} />
+            <QuotaGauge label="Emails" used={overview.quota.email_usage} limit={overview.quota.email_limit} />
           </div>
           <p className={styles.quotaHint}>
-            {overview.quota.ai_credits_remaining.toLocaleString()} top-up AI credits remaining.{" "}
-            <Link href="/dashboard/billing">Manage plan →</Link>
+            <Link href="/dashboard/billing">Manage Subscription</Link>
           </p>
         </section>
       </div>
 
-      <section className={styles.card} aria-labelledby="recent-campaigns-heading">
-        <div className={styles.cardHeader}>
-          <div>
-            <span className={styles.sectionKicker}>RECENT WORK</span>
-            <h2 id="recent-campaigns-heading">Recent campaigns</h2>
-          </div>
-          <Link href="/dashboard/campaigns">View all →</Link>
-        </div>
-        {overview.recent_campaigns.length === 0 ? (
-          <EmptyCampaign />
-        ) : (
-          <div className={styles.tableWrap}>
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th>Campaign</th>
-                  <th>Status</th>
-                  <th>Sent</th>
-                  <th>Open signal</th>
-                  <th>
-                    <span className={styles.srOnly}>Action</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {overview.recent_campaigns.map((campaign) => (
-                  <tr key={campaign.id}>
-                    <td>
-                      <Link href={`/dashboard/campaigns/${campaign.id}`}>{campaign.name}</Link>
-                    </td>
-                    <td>
-                      <span className={styles.statusBadge}>{campaign.status}</span>
-                    </td>
-                    <td>{campaign.sent_count.toLocaleString()}</td>
-                    <td>{formatPct(campaign.open_rate_pct)}</td>
-                    <td>
-                      <Link
-                        href={`/dashboard/campaigns/${campaign.id}`}
-                        aria-label={`View ${campaign.name}`}
-                      >
-                        View →
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
     </main>
-  );
-}
-
-function EmptyCampaign() {
-  return (
-    <div className={styles.emptyState}>
-      <strong>Your campaign workspace is ready</strong>
-      <span>
-        Start with a goal and Growixa will guide you through audience, content, review and
-        scheduling.
-      </span>
-      <Link href="/dashboard/campaigns/new">Create campaign</Link>
-    </div>
   );
 }

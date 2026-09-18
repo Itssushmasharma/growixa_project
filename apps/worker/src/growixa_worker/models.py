@@ -41,8 +41,14 @@ class Contact(Base):
     first_name: Mapped[str | None] = mapped_column(Text, nullable=True)
     last_name: Mapped[str | None] = mapped_column(Text, nullable=True)
     phone: Mapped[str | None] = mapped_column(Text, nullable=True)
+    company_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    job_title: Mapped[str | None] = mapped_column(Text, nullable=True)
+    lifecycle_stage: Mapped[str] = mapped_column(Text, nullable=False, server_default="LEAD")
     status: Mapped[str] = mapped_column(Text, nullable=False)
     source: Mapped[str | None] = mapped_column(Text, nullable=True)
+    custom_attributes: Mapped[dict] = mapped_column(
+        JSONB, nullable=False, server_default=text("'{}'::jsonb")
+    )
     deleted_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True, default=None
     )
@@ -123,6 +129,7 @@ class Segment(Base):
     account_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     name: Mapped[str] = mapped_column(Text, nullable=False)
     type: Mapped[str] = mapped_column(Text, nullable=False)
+    match_type: Mapped[str] = mapped_column(Text, nullable=False, server_default="ALL")
 
 
 class SegmentRule(Base):
@@ -368,13 +375,17 @@ class SocialConnection(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
     account_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
-    # Not read by publish_social_post's own logic (this module only ever handles
-    # Instagram) -- declared only so tests can construct a real row against the NOT
-    # NULL DB column, matching EmailProviderConnection.provider's identical note.
     provider: Mapped[str] = mapped_column(Text, nullable=False)
-    ig_business_account_id: Mapped[str] = mapped_column(Text, nullable=False)
-    facebook_page_id: Mapped[str] = mapped_column(Text, nullable=False)
+    ig_business_account_id: Mapped[str | None] = mapped_column(Text, nullable=True)
+    facebook_page_id: Mapped[str | None] = mapped_column(Text, nullable=True)
+    provider_account_id: Mapped[str | None] = mapped_column(Text, nullable=True)
+    provider_username: Mapped[str | None] = mapped_column(Text, nullable=True)
+    provider_account_name: Mapped[str | None] = mapped_column(Text, nullable=True)
     access_token_encrypted: Mapped[str] = mapped_column(Text, nullable=False)
+    refresh_token_encrypted: Mapped[str | None] = mapped_column(Text, nullable=True)
+    account_metadata: Mapped[dict[str, object]] = mapped_column(
+        JSONB, nullable=False, server_default="{}"
+    )
     token_expires_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
@@ -398,8 +409,15 @@ class SocialPost(Base):
     caption: Mapped[str] = mapped_column(Text, nullable=False)
     status: Mapped[str] = mapped_column(Text, nullable=False)
     published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    campaign_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    utm_source: Mapped[str | None] = mapped_column(Text, nullable=True)
+    utm_medium: Mapped[str | None] = mapped_column(Text, nullable=True)
+    utm_campaign: Mapped[str | None] = mapped_column(Text, nullable=True)
+    utm_content: Mapped[str | None] = mapped_column(Text, nullable=True)
     ig_media_id: Mapped[str | None] = mapped_column(Text, nullable=True)
     ig_permalink: Mapped[str | None] = mapped_column(Text, nullable=True)
+    provider_post_id: Mapped[str | None] = mapped_column(Text, nullable=True)
+    provider_permalink: Mapped[str | None] = mapped_column(Text, nullable=True)
     last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
@@ -418,6 +436,8 @@ class SocialPostMedia(Base):
     storage_path: Mapped[str] = mapped_column(Text, nullable=False)
     public_url: Mapped[str] = mapped_column(Text, nullable=False)
     position: Mapped[int] = mapped_column(Integer, nullable=False)
+    file_size_bytes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    mime_type: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 class SocialPostVersion(Base):

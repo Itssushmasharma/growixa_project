@@ -13,6 +13,7 @@ from sqlalchemy import (
     func,
     or_,
     select,
+    text,
     update,
 )
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -25,6 +26,7 @@ from growixa_api.contacts.constants import (
 from growixa_api.contacts.models import (
     ConsentRecord,
     Contact,
+    ContactActivity,
     ContactCustomField,
     ContactFieldValue,
     ContactImport,
@@ -32,6 +34,7 @@ from growixa_api.contacts.models import (
     ContactList,
     ContactListMember,
     ContactTag,
+    CRMCompany,
     Segment,
     SegmentMember,
     SegmentRule,
@@ -131,6 +134,8 @@ def _contact_filter_conditions(
     status: str | None,
     search: str | None,
     tag_id: uuid.UUID | None,
+    company_id: uuid.UUID | None = None,
+    lifecycle_stage: str | None = None,
 ) -> list[ColumnElement[bool]]:
     conditions: list[ColumnElement[bool]] = [Contact.account_id == account_id]
     if deleted_only:
@@ -143,6 +148,10 @@ def _contact_filter_conditions(
         conditions.append(_contact_search_condition(search))
     if tag_id is not None:
         conditions.append(_contact_tag_condition(tag_id))
+    if company_id is not None:
+        conditions.append(Contact.company_id == company_id)
+    if lifecycle_stage is not None:
+        conditions.append(Contact.lifecycle_stage == lifecycle_stage)
     return conditions
 
 
@@ -155,6 +164,8 @@ async def list_contacts(
     status: str | None = None,
     search: str | None = None,
     tag_id: uuid.UUID | None = None,
+    company_id: uuid.UUID | None = None,
+    lifecycle_stage: str | None = None,
     limit: int = DEFAULT_LIMIT,
     offset: int = 0,
 ) -> Sequence[Contact]:
@@ -165,6 +176,8 @@ async def list_contacts(
         status=status,
         search=search,
         tag_id=tag_id,
+        company_id=company_id,
+        lifecycle_stage=lifecycle_stage,
     )
     query = select(Contact).where(*conditions)
     query = query.order_by(Contact.deleted_at.desc() if deleted_only else Contact.created_at.desc())
@@ -182,6 +195,8 @@ async def count_contacts(
     status: str | None = None,
     search: str | None = None,
     tag_id: uuid.UUID | None = None,
+    company_id: uuid.UUID | None = None,
+    lifecycle_stage: str | None = None,
 ) -> int:
     """SQL-level `COUNT(*)` matching the same filters as `list_contacts` -- feeds the
     Contacts page's "total pages" figure without ever fetching the matching rows
@@ -194,6 +209,8 @@ async def count_contacts(
         status=status,
         search=search,
         tag_id=tag_id,
+        company_id=company_id,
+        lifecycle_stage=lifecycle_stage,
     )
     result = await session.execute(select(func.count()).select_from(Contact).where(*conditions))
     return result.scalar_one()
@@ -637,53 +654,62 @@ async def list_members_for_contact_list(
     return result.scalars().all()
 
 
-# Field -> allowed operators for segment rules. `custom_field:<key>` fields are validated
-# separately (the key must exist in contact_custom_fields) but share the equals/contains
-# operator set. Kept intentionally small — see DATA_MODEL.md §Slice 2 entities: all rules
-# on a segment are AND-combined only, no OR/grouping in Slice 2.
+def _build_text_op(column: Any, operator: str, value: str) -> ColumnElement[bool]:
+    op = operator.lower()
+    if op == SegmentRuleOperator.EQUALS:
+        return column == value
+    if op == SegmentRuleOperator.NOT_EQUALS:
+        return or_(column != value, column.is_(None))
+    if op == SegmentRuleOperator.CONTAINS:
+        return column.ilike(f"%{value}%")
+    if op == SegmentRuleOperator.STARTS_WITH:
+        return column.ilike(f"{value}%")
+    if op == SegmentRuleOperator.ENDS_WITH:
+        return column.ilike(f"%{value}")
+    if op == SegmentRuleOperator.IS_EMPTY:
+        return or_(column.is_(None), column == "")
+    if op == SegmentRuleOperator.IS_NOT_EMPTY:
+        return and_(column.is_not(None), column != "")
+    return column == value
+
+
 def build_rule_condition(field: str, operator: str, value: str) -> ColumnElement[bool]:
     """Translate one validated (field, operator, value) triple into a SQLAlchemy
-    boolean expression over `Contact`. Callers must validate field/operator combinations
-    (and parse `created_at` values) before calling this — it assumes valid input.
-
-    The `tag`/`custom_field:` subqueries below aren't themselves account-scoped, but
-    every caller intersects the result with an account_id filter on the outer `Contact`
-    query (see `_matching_contacts_query`), so a same-named tag/field key in another
-    account can never leak a contact into these results.
-    """
+    boolean expression over `Contact`."""
     if field == SegmentRuleField.STATUS:
-        return Contact.status == value
+        return _build_text_op(Contact.status, operator, value)
     if field == SegmentRuleField.EMAIL:
-        return (
-            Contact.email == value
-            if operator == SegmentRuleOperator.EQUALS
-            else Contact.email.ilike(f"%{value}%")
-        )
+        return _build_text_op(Contact.email, operator, value)
     if field == SegmentRuleField.FIRST_NAME:
-        return (
-            Contact.first_name == value
-            if operator == SegmentRuleOperator.EQUALS
-            else Contact.first_name.ilike(f"%{value}%")
-        )
+        return _build_text_op(Contact.first_name, operator, value)
     if field == SegmentRuleField.LAST_NAME:
-        return (
-            Contact.last_name == value
-            if operator == SegmentRuleOperator.EQUALS
-            else Contact.last_name.ilike(f"%{value}%")
-        )
+        return _build_text_op(Contact.last_name, operator, value)
     if field == SegmentRuleField.PHONE:
-        return (
-            Contact.phone == value
-            if operator == SegmentRuleOperator.EQUALS
-            else Contact.phone.ilike(f"%{value}%")
-        )
+        return _build_text_op(Contact.phone, operator, value)
     if field == SegmentRuleField.SOURCE:
-        return Contact.source == value
+        return _build_text_op(Contact.source, operator, value)
+    if field == SegmentRuleField.LIFECYCLE_STAGE:
+        return _build_text_op(Contact.lifecycle_stage, operator, value)
+    if field == SegmentRuleField.JOB_TITLE:
+        return _build_text_op(Contact.job_title, operator, value)
+    if field == SegmentRuleField.COMPANY:
+        company_subquery = select(CRMCompany.id).where(
+            _build_text_op(CRMCompany.name, operator, value),
+            CRMCompany.deleted_at.is_(None),
+        )
+        return Contact.company_id.in_(company_subquery)
     if field == SegmentRuleField.TAG:
+        op = operator.lower()
+        if op == SegmentRuleOperator.HAS_NOT_TAG:
+            return Contact.id.not_in(
+                select(ContactTag.contact_id)
+                .join(Tag, Tag.id == ContactTag.tag_id)
+                .where(Tag.name == value)
+            )
         tag_condition = (
-            Tag.name == value
-            if operator == SegmentRuleOperator.EQUALS
-            else Tag.name.ilike(f"%{value}%")
+            Tag.name.ilike(f"%{value}%")
+            if op == SegmentRuleOperator.CONTAINS
+            else Tag.name == value
         )
         return Contact.id.in_(
             select(ContactTag.contact_id)
@@ -691,10 +717,17 @@ def build_rule_condition(field: str, operator: str, value: str) -> ColumnElement
             .where(tag_condition)
         )
     if field == SegmentRuleField.CREATED_AT:
+        op = operator.lower()
+        if op == SegmentRuleOperator.WITHIN_DAYS:
+            try:
+                days = int(value)
+            except ValueError:
+                days = 30
+            return Contact.created_at >= func.now() - text(f"INTERVAL '{days} days'")
         parsed = datetime.fromisoformat(value)
         return (
             Contact.created_at < parsed
-            if operator == SegmentRuleOperator.BEFORE
+            if op == SegmentRuleOperator.BEFORE
             else Contact.created_at > parsed
         )
 
@@ -705,17 +738,14 @@ def build_rule_condition(field: str, operator: str, value: str) -> ColumnElement
             .join(ContactCustomField, ContactCustomField.id == ContactFieldValue.field_id)
             .where(ContactCustomField.key == key)
         )
-        subquery = subquery.where(
-            ContactFieldValue.value == value
-            if operator == "equals"
-            else ContactFieldValue.value.ilike(f"%{value}%")
-        )
+        subquery = subquery.where(_build_text_op(ContactFieldValue.value, operator, value))
         return Contact.id.in_(subquery)
+
     raise ValueError(f"Unsupported segment rule field: {field}")
 
 
 def _matching_contacts_query(
-    account_id: uuid.UUID, rules: Sequence[SegmentRule]
+    account_id: uuid.UUID, rules: Sequence[Any], match_type: str = "ALL"
 ) -> Select[tuple[Contact]]:
     conditions = [build_rule_condition(r.field, r.operator, r.value) for r in rules]
     query = select(Contact).where(
@@ -723,19 +753,20 @@ def _matching_contacts_query(
         Contact.deleted_at.is_(None),
     )
     if conditions:
-        query = query.where(and_(*conditions))
+        combined = and_(*conditions) if match_type.upper() == "ALL" else or_(*conditions)
+        query = query.where(combined)
     return query
 
 
 async def evaluate_segment_rules(
-    session: AsyncSession, account_id: uuid.UUID, rules: Sequence[SegmentRule]
+    session: AsyncSession, account_id: uuid.UUID, rules: Sequence[Any], match_type: str = "ALL"
 ) -> Sequence[Contact]:
-    result = await session.execute(_matching_contacts_query(account_id, rules))
+    result = await session.execute(_matching_contacts_query(account_id, rules, match_type))
     return result.scalars().all()
 
 
 async def count_dynamic_segment_members(
-    session: AsyncSession, account_id: uuid.UUID, rules: Sequence[SegmentRule]
+    session: AsyncSession, account_id: uuid.UUID, rules: Sequence[Any], match_type: str = "ALL"
 ) -> int:
     conditions = [build_rule_condition(r.field, r.operator, r.value) for r in rules]
     query = (
@@ -747,7 +778,8 @@ async def count_dynamic_segment_members(
         )
     )
     if conditions:
-        query = query.where(and_(*conditions))
+        combined = and_(*conditions) if match_type.upper() == "ALL" else or_(*conditions)
+        query = query.where(combined)
     result = await session.execute(query)
     return result.scalar_one()
 
@@ -1167,3 +1199,384 @@ async def get_suppression_entry_by_id(
 async def delete_suppression_entry(session: AsyncSession, entry: SuppressionEntry) -> None:
     await session.delete(entry)
     await session.flush()
+
+
+# ---------------------------------------------------------------------------
+# CRM Companies Repositories
+# ---------------------------------------------------------------------------
+
+
+async def get_company_by_id(
+    session: AsyncSession, account_id: uuid.UUID, company_id: uuid.UUID
+) -> CRMCompany | None:
+    result = await session.execute(
+        select(CRMCompany).where(
+            CRMCompany.account_id == account_id,
+            CRMCompany.id == company_id,
+            CRMCompany.deleted_at.is_(None),
+        )
+    )
+    return result.scalar_one_or_none()
+
+
+async def get_company_by_domain(
+    session: AsyncSession, account_id: uuid.UUID, domain: str
+) -> CRMCompany | None:
+    result = await session.execute(
+        select(CRMCompany).where(
+            CRMCompany.account_id == account_id,
+            CRMCompany.domain == domain,
+            CRMCompany.deleted_at.is_(None),
+        )
+    )
+    return result.scalar_one_or_none()
+
+
+async def create_company(session: AsyncSession, **fields: Any) -> CRMCompany:
+    company = CRMCompany(**fields)
+    session.add(company)
+    await session.flush()
+    return company
+
+
+async def apply_company_fields(company: CRMCompany, fields: dict[str, Any]) -> CRMCompany:
+    for key, value in fields.items():
+        setattr(company, key, value)
+    return company
+
+
+async def soft_delete_company(
+    session: AsyncSession, account_id: uuid.UUID, company_id: uuid.UUID
+) -> bool:
+    result = await session.execute(
+        update(CRMCompany)
+        .where(
+            CRMCompany.account_id == account_id,
+            CRMCompany.id == company_id,
+            CRMCompany.deleted_at.is_(None),
+        )
+        .values(deleted_at=func.now())
+    )
+    await session.flush()
+    return int(cast(CursorResult[Any], result).rowcount) > 0
+
+
+def _company_filter_conditions(
+    account_id: uuid.UUID,
+    search: str | None = None,
+    lifecycle_stage: str | None = None,
+) -> list[ColumnElement[bool]]:
+    conditions: list[ColumnElement[bool]] = [
+        CRMCompany.account_id == account_id,
+        CRMCompany.deleted_at.is_(None),
+    ]
+    if lifecycle_stage:
+        conditions.append(CRMCompany.lifecycle_stage == lifecycle_stage)
+    if search:
+        like = f"%{search}%"
+        conditions.append(
+            or_(
+                CRMCompany.name.ilike(like),
+                CRMCompany.domain.ilike(like),
+                CRMCompany.industry.ilike(like),
+            )
+        )
+    return conditions
+
+
+async def list_companies(
+    session: AsyncSession,
+    account_id: uuid.UUID,
+    *,
+    search: str | None = None,
+    lifecycle_stage: str | None = None,
+    limit: int = DEFAULT_LIMIT,
+    offset: int = 0,
+) -> Sequence[CRMCompany]:
+    conditions = _company_filter_conditions(account_id, search, lifecycle_stage)
+    query = (
+        select(CRMCompany)
+        .where(*conditions)
+        .order_by(CRMCompany.created_at.desc())
+        .limit(limit)
+        .offset(offset)
+    )
+    result = await session.execute(query)
+    return result.scalars().all()
+
+
+async def count_companies(
+    session: AsyncSession,
+    account_id: uuid.UUID,
+    *,
+    search: str | None = None,
+    lifecycle_stage: str | None = None,
+) -> int:
+    conditions = _company_filter_conditions(account_id, search, lifecycle_stage)
+    result = await session.execute(select(func.count()).select_from(CRMCompany).where(*conditions))
+    return result.scalar_one()
+
+
+async def get_company_contact_count(
+    session: AsyncSession, account_id: uuid.UUID, company_id: uuid.UUID
+) -> int:
+    result = await session.execute(
+        select(func.count(Contact.id)).where(
+            Contact.account_id == account_id,
+            Contact.company_id == company_id,
+            Contact.deleted_at.is_(None),
+        )
+    )
+    return result.scalar_one()
+
+
+async def get_all_company_contact_counts(
+    session: AsyncSession,
+    account_id: uuid.UUID,
+    company_ids: Sequence[uuid.UUID] | None = None,
+) -> dict[uuid.UUID, int]:
+    query = select(Contact.company_id, func.count(Contact.id)).where(
+        Contact.account_id == account_id,
+        Contact.company_id.is_not(None),
+        Contact.deleted_at.is_(None),
+    )
+    if company_ids is not None:
+        if not company_ids:
+            return {}
+        query = query.where(Contact.company_id.in_(company_ids))
+    result = await session.execute(query.group_by(Contact.company_id))
+    return {row[0]: row[1] for row in result.all() if row[0] is not None}
+
+
+async def get_company_names_by_ids(
+    session: AsyncSession, account_id: uuid.UUID, company_ids: Sequence[uuid.UUID]
+) -> dict[uuid.UUID, str]:
+    if not company_ids:
+        return {}
+    result = await session.execute(
+        select(CRMCompany.id, CRMCompany.name).where(
+            CRMCompany.account_id == account_id,
+            CRMCompany.id.in_(company_ids),
+        )
+    )
+    return {row[0]: row[1] for row in result.all()}
+
+
+# ---------------------------------------------------------------------------
+# Contact Activities Repositories
+# ---------------------------------------------------------------------------
+
+
+async def create_contact_activity(
+    session: AsyncSession,
+    *,
+    account_id: uuid.UUID,
+    contact_id: uuid.UUID,
+    activity_type: str,
+    title: str,
+    description: str | None = None,
+    metadata_: dict | None = None,
+    user_id: uuid.UUID | None = None,
+) -> ContactActivity:
+    activity = ContactActivity(
+        account_id=account_id,
+        contact_id=contact_id,
+        activity_type=activity_type,
+        title=title,
+        description=description,
+        metadata_=metadata_ or {},
+        created_by_user_id=user_id,
+    )
+    session.add(activity)
+    await session.flush()
+    return activity
+
+
+async def list_contact_activities(
+    session: AsyncSession,
+    account_id: uuid.UUID,
+    contact_id: uuid.UUID,
+    *,
+    limit: int = 50,
+    offset: int = 0,
+) -> Sequence[ContactActivity]:
+    result = await session.execute(
+        select(ContactActivity)
+        .where(
+            ContactActivity.account_id == account_id,
+            ContactActivity.contact_id == contact_id,
+        )
+        .order_by(ContactActivity.created_at.desc())
+        .limit(limit)
+        .offset(offset)
+    )
+    return result.scalars().all()
+
+
+async def count_contact_activities(
+    session: AsyncSession, account_id: uuid.UUID, contact_id: uuid.UUID
+) -> int:
+    result = await session.execute(
+        select(func.count())
+        .select_from(ContactActivity)
+        .where(
+            ContactActivity.account_id == account_id,
+            ContactActivity.contact_id == contact_id,
+        )
+    )
+    return result.scalar_one()
+
+
+# ---------------------------------------------------------------------------
+# Tag Management Repositories
+# ---------------------------------------------------------------------------
+
+
+async def update_tag_name(
+    session: AsyncSession, account_id: uuid.UUID, tag_id: uuid.UUID, new_name: str
+) -> Tag | None:
+    tag = await get_tag_by_id(session, account_id, tag_id)
+    if tag is None:
+        return None
+    tag.name = new_name
+    await session.flush()
+    return tag
+
+
+async def delete_tag_and_associations(
+    session: AsyncSession, account_id: uuid.UUID, tag_id: uuid.UUID
+) -> bool:
+    tag = await get_tag_by_id(session, account_id, tag_id)
+    if tag is None:
+        return False
+    await session.delete(tag)
+    await session.flush()
+    return True
+
+
+async def bulk_attach_tag_to_contacts(
+    session: AsyncSession,
+    account_id: uuid.UUID,
+    contact_ids: Sequence[uuid.UUID],
+    tag_id: uuid.UUID,
+) -> int:
+    if not contact_ids:
+        return 0
+    existing_result = await session.execute(
+        select(ContactTag.contact_id).where(
+            ContactTag.account_id == account_id,
+            ContactTag.contact_id.in_(contact_ids),
+            ContactTag.tag_id == tag_id,
+        )
+    )
+    already_attached = set(existing_result.scalars().all())
+    count = 0
+    for cid in contact_ids:
+        if cid not in already_attached:
+            session.add(ContactTag(account_id=account_id, contact_id=cid, tag_id=tag_id))
+            count += 1
+    await session.flush()
+    return count
+
+
+async def bulk_detach_tag_from_contacts(
+    session: AsyncSession,
+    account_id: uuid.UUID,
+    contact_ids: Sequence[uuid.UUID],
+    tag_id: uuid.UUID,
+) -> int:
+    if not contact_ids:
+        return 0
+    result = await session.execute(
+        delete(ContactTag).where(
+            ContactTag.account_id == account_id,
+            ContactTag.contact_id.in_(contact_ids),
+            ContactTag.tag_id == tag_id,
+        )
+    )
+    await session.flush()
+    return int(cast(CursorResult[Any], result).rowcount)
+
+
+async def get_all_tag_contact_counts(
+    session: AsyncSession, account_id: uuid.UUID
+) -> dict[uuid.UUID, int]:
+    result = await session.execute(
+        select(ContactTag.tag_id, func.count(ContactTag.contact_id))
+        .join(Contact, Contact.id == ContactTag.contact_id)
+        .where(
+            ContactTag.account_id == account_id,
+            Contact.deleted_at.is_(None),
+        )
+        .group_by(ContactTag.tag_id)
+    )
+    return {row[0]: row[1] for row in result.all()}
+
+
+# ---------------------------------------------------------------------------
+# Phone Suppression Repositories
+# ---------------------------------------------------------------------------
+
+
+async def get_suppression_by_phone(
+    session: AsyncSession, account_id: uuid.UUID, phone: str
+) -> SuppressionEntry | None:
+    result = await session.execute(
+        select(SuppressionEntry).where(
+            SuppressionEntry.account_id == account_id,
+            SuppressionEntry.phone == phone,
+        )
+    )
+    return result.scalar_one_or_none()
+
+
+async def is_phone_suppressed(
+    session: AsyncSession, account_id: uuid.UUID, phone: str | None
+) -> bool:
+    if not phone:
+        return False
+    entry = await get_suppression_by_phone(session, account_id, phone)
+    return entry is not None
+
+
+async def create_phone_suppression_entry(
+    session: AsyncSession,
+    *,
+    account_id: uuid.UUID,
+    phone: str,
+    reason: str = "MANUAL",
+    suppressed_by_user_id: uuid.UUID | None = None,
+) -> SuppressionEntry:
+    entry = SuppressionEntry(
+        account_id=account_id,
+        phone=phone,
+        reason=reason,
+        suppressed_by_user_id=suppressed_by_user_id,
+    )
+    session.add(entry)
+    await session.flush()
+    return entry
+
+
+# ---------------------------------------------------------------------------
+# Segment Frozen Snapshot
+# ---------------------------------------------------------------------------
+
+
+async def snapshot_segment_members(
+    session: AsyncSession, account_id: uuid.UUID, segment_id: uuid.UUID
+) -> int:
+    segment = await get_segment_by_id(session, account_id, segment_id)
+    if segment is None:
+        return 0
+    rules = await list_segment_rules(session, segment_id)
+    matching = await evaluate_segment_rules(
+        session, account_id, rules, getattr(segment, "match_type", "ALL")
+    )
+    await refresh_saved_segment_members(
+        session,
+        account_id=account_id,
+        segment_id=segment_id,
+        rules=rules,
+    )
+    return len(matching)

@@ -7,6 +7,28 @@
 
 ---
 
+## 🏗️ Platform Architecture
+
+```mermaid
+graph TD
+    A[Growixa Platform] --> B(Audience CRM)
+    A --> C(Marketing Studio)
+    A --> D(Growth Tools)
+    
+    B --> B1(Contacts & Segments)
+    B --> B2(Lists & Tags)
+    
+    C --> C1(Email Campaigns)
+    C --> C2(Social Media Publisher)
+    C --> C3(WhatsApp & SMS)
+    
+    D --> D1[SMM Services Panel]
+    D --> D2[SEO Analysis Engine]
+    D --> D3(AI Content Assistant)
+```
+
+---
+
 ## 📈 Chart Analysis & Growth Telemetry System
 
 Growixa includes an institutional-grade, zero-dependency SVG **Chart Analysis Terminal** (`apps/web/src/components/chart-terminal/`):

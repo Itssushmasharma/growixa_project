@@ -1,3 +1,4 @@
+# ruff: noqa: E501
 """Prompt templates, one function per capability, per DEC-GRX-028 — code-defined, not a
 customer-editable database table. Each returns (system_prompt, user_prompt).
 
@@ -133,7 +134,9 @@ def build_platform_rewrite_prompt(input: CapabilityInput) -> tuple[str, str]:
     elif "linkedin" in channel.lower():
         spec = "Format as a professional LinkedIn post with a strong hook, clean line breaks, and an engaging closing question."
     elif "instagram" in channel.lower():
-        spec = "Format as an Instagram caption with visual narrative, relevant emojis, and 3 hashtags."
+        spec = (
+            "Format as an Instagram caption with visual narrative, relevant emojis, and 3 hashtags."
+        )
     else:
         spec = f"Format specifically optimized for {channel}."
 

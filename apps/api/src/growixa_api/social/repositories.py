@@ -67,6 +67,20 @@ async def deactivate_active_connections(
     )
 
 
+async def deactivate_connection_by_id(
+    session: AsyncSession, account_id: uuid.UUID, connection_id: uuid.UUID
+) -> bool:
+    result = await session.execute(
+        update(SocialConnection)
+        .where(
+            SocialConnection.account_id == account_id,
+            SocialConnection.id == connection_id,
+        )
+        .values(is_active=False)
+    )
+    return result.rowcount > 0  # type: ignore[attr-defined]
+
+
 async def create_connection(session: AsyncSession, fields: dict[str, Any]) -> SocialConnection:
     connection = SocialConnection(**fields)
     session.add(connection)

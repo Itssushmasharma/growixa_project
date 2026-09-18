@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from growixa_api import __version__
 from growixa_api.accounts import models as accounts_models  # noqa: F401
 from growixa_api.accounts.api import router as accounts_router
+from growixa_api.agency.api import router as agency_router
 from growixa_api.ai.api import router as ai_router
 from growixa_api.analytics.api import router as analytics_router
 from growixa_api.audit.api import router as audit_router
@@ -18,8 +19,16 @@ from growixa_api.billing.api import public_router as billing_public_router
 from growixa_api.billing.api import router as billing_router
 from growixa_api.billing.scheduler import run_downgrade_loop as run_billing_downgrade_loop
 from growixa_api.brand.api import router as brand_router
+from growixa_api.calendar.router import router as calendar_router
 from growixa_api.campaigns.api import router as campaigns_router
 from growixa_api.campaigns.scheduler import run_scheduler_loop
+from growixa_api.automations.api import router as automations_router
+from growixa_api.whatsapp.router import router as whatsapp_router, webhook_router as whatsapp_webhook_router
+from growixa_api.sms.router import router as sms_router, webhook_router as sms_webhook_router
+from growixa_api.analytics_engine.router import router as analytics_engine_router
+from growixa_api.inbox.router import router as inbox_router
+from growixa_api.reports.api import router as reports_router
+from growixa_api.approvals.api import router as approvals_router
 from growixa_api.company.api import router as company_router
 from growixa_api.config import get_settings
 from growixa_api.contacts.api import router as contacts_router
@@ -30,6 +39,7 @@ from growixa_api.email_validation.api import router as email_validation_router
 from growixa_api.health import router as health_router
 from growixa_api.integrations.api import router as integrations_router
 from growixa_api.jobs.api import router as jobs_router
+from growixa_api.media.api import router as media_router
 from growixa_api.platform_admin.api import ai_config_router as platform_admin_ai_config_router
 from growixa_api.platform_admin.api import billing_router as platform_admin_billing_router
 from growixa_api.platform_admin.api import (
@@ -51,11 +61,14 @@ from growixa_api.platform_admin.api import (
 from growixa_api.platform_admin.api import usage_router as platform_admin_usage_router
 from growixa_api.platform_auth.api import router as platform_auth_router
 from growixa_api.roles.api import router as roles_router
+from growixa_api.social.api import channel_oauth_router
 from growixa_api.social.api import oauth_router as social_oauth_router
 from growixa_api.social.api import router as social_router
 from growixa_api.social.scheduler import run_scheduler_loop as run_social_scheduler_loop
 from growixa_api.templates.api import router as templates_router
 from growixa_api.users.api import router as users_router
+from growixa_api.smm.api import router as smm_router
+from growixa_api.seo.api import router as seo_router
 
 
 @asynccontextmanager
@@ -114,8 +127,19 @@ def create_app() -> FastAPI:
     app.include_router(platform_admin_monitoring_router)
     app.include_router(platform_admin_templates_router)
     app.include_router(accounts_router)
+    app.include_router(agency_router)
     app.include_router(company_router)
     app.include_router(brand_router)
+    app.include_router(calendar_router)
+    app.include_router(automations_router)
+    app.include_router(whatsapp_router)
+    app.include_router(whatsapp_webhook_router)
+    app.include_router(sms_router)
+    app.include_router(sms_webhook_router)
+    app.include_router(analytics_engine_router)
+    app.include_router(inbox_router)
+    app.include_router(reports_router)
+    app.include_router(approvals_router)
     app.include_router(users_router)
     app.include_router(roles_router)
     app.include_router(jobs_router)
@@ -125,7 +149,9 @@ def create_app() -> FastAPI:
     app.include_router(audit_router)
     app.include_router(integrations_router)
     app.include_router(social_oauth_router)
+    app.include_router(channel_oauth_router)
     app.include_router(social_router)
+    app.include_router(media_router)
     app.include_router(templates_router)
     app.include_router(campaigns_router)
     app.include_router(email_delivery_router)
@@ -134,4 +160,6 @@ def create_app() -> FastAPI:
     app.include_router(ai_router)
     app.include_router(billing_router)
     app.include_router(billing_public_router)
+    app.include_router(smm_router)
+    app.include_router(seo_router)
     return app

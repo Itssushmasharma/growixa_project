@@ -1,3 +1,5 @@
+# ruff: noqa: E501
+
 import uuid
 from datetime import datetime
 
@@ -19,10 +21,62 @@ from sqlalchemy.sql import func
 from growixa_api.db import Base
 
 
+class CRMCompany(Base):
+    __tablename__ = "crm_companies"
+    __table_args__ = (
+        CheckConstraint(
+            "lifecycle_stage IN ('PROSPECT', 'LEAD', 'QUALIFIED', 'CUSTOMER', 'CHURNED', 'PARTNER', 'OTHER')",
+            name="ck_crm_companies_lifecycle_stage",
+        ),
+        Index(
+            "ux_crm_companies_account_id_domain",
+            "account_id",
+            "domain",
+            unique=True,
+            postgresql_where=text("deleted_at IS NULL AND domain IS NOT NULL"),
+        ),
+        Index("ix_crm_companies_account_created", "account_id", "created_at"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    account_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("accounts.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    domain: Mapped[str | None] = mapped_column(CITEXT, nullable=True)
+    industry: Mapped[str | None] = mapped_column(Text, nullable=True)
+    website: Mapped[str | None] = mapped_column(Text, nullable=True)
+    phone: Mapped[str | None] = mapped_column(Text, nullable=True)
+    address: Mapped[str | None] = mapped_column(Text, nullable=True)
+    lifecycle_stage: Mapped[str] = mapped_column(Text, nullable=False, server_default="PROSPECT")
+    custom_attributes: Mapped[dict] = mapped_column(
+        JSONB, nullable=False, server_default=text("'{}'::jsonb")
+    )
+    created_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, default=None
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+
 class Contact(Base):
     __tablename__ = "contacts"
     __table_args__ = (
         CheckConstraint("status IN ('ACTIVE', 'ARCHIVED')", name="ck_contacts_status"),
+        CheckConstraint(
+            "lifecycle_stage IN ('SUBSCRIBER', 'LEAD', 'MQL', 'SQL', 'OPPORTUNITY', 'CUSTOMER', 'EVANGELIST', 'OTHER')",
+            name="ck_contacts_lifecycle_stage",
+        ),
         # GRX-SAAS-001: dedup is per-account, not global -- two different customers may
         # legitimately both have a contact at the same email address (unlike users.email,
         # which stays globally unique because it's a login identity, not audience data).
@@ -35,6 +89,9 @@ class Contact(Base):
             unique=True,
             postgresql_where=text("deleted_at IS NULL"),
         ),
+        Index("ix_contacts_account_lifecycle", "account_id", "lifecycle_stage"),
+        Index("ix_contacts_account_phone", "account_id", "phone"),
+        Index("ix_contacts_account_company", "account_id", "company_id"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -48,8 +105,20 @@ class Contact(Base):
     first_name: Mapped[str | None] = mapped_column(Text, nullable=True)
     last_name: Mapped[str | None] = mapped_column(Text, nullable=True)
     phone: Mapped[str | None] = mapped_column(Text, nullable=True)
+    company_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("crm_companies.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    job_title: Mapped[str | None] = mapped_column(Text, nullable=True)
+    lifecycle_stage: Mapped[str] = mapped_column(Text, nullable=False, server_default="LEAD")
     status: Mapped[str] = mapped_column(Text, nullable=False, server_default="ACTIVE")
     source: Mapped[str | None] = mapped_column(Text, nullable=True)
+    custom_attributes: Mapped[dict] = mapped_column(
+        JSONB, nullable=False, server_default=text("'{}'::jsonb")
+    )
+    whatsapp_opt_out: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+    sms_opt_out: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
     created_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
     )
@@ -197,7 +266,10 @@ class ContactListMember(Base):
 
 class Segment(Base):
     __tablename__ = "segments"
-    __table_args__ = (CheckConstraint("type IN ('DYNAMIC', 'SAVED')", name="ck_segments_type"),)
+    __table_args__ = (
+        CheckConstraint("type IN ('DYNAMIC', 'SAVED')", name="ck_segments_type"),
+        CheckConstraint("match_type IN ('ALL', 'ANY')", name="ck_segments_match_type"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     account_id: Mapped[uuid.UUID] = mapped_column(
@@ -208,6 +280,7 @@ class Segment(Base):
     )
     name: Mapped[str] = mapped_column(Text, nullable=False)
     type: Mapped[str] = mapped_column(Text, nullable=False)
+    match_type: Mapped[str] = mapped_column(Text, nullable=False, server_default="ALL")
     created_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
     )
@@ -363,11 +436,9 @@ class ConsentRecord(Base):
 
 
 class SuppressionEntry(Base):
-    """Either an exact-email entry (`email` set, `domain` NULL) or a whole-domain block
-    (`domain` set, `email` NULL, e.g. suppress every `*@competitor.com` address) -- never
-    both, enforced by `ck_suppression_entries_email_xor_domain` (GRX-SAAS-015, ad hoc
-    suppression-list pass). Domain entries are always `reason='MANUAL'` -- there is
-    no such thing as an automatic whole-domain unsubscribe/bounce/complaint event."""
+    """Either an exact-email entry (`email` set, `domain` and `phone` NULL), a whole-domain block
+    (`domain` set, `email` and `phone` NULL), or a phone suppression (`phone` set, `email` and `domain` NULL).
+    Domain entries are always `reason='MANUAL'`. Email/phone entries can be UNSUBSCRIBED/BOUNCED/COMPLAINED/MANUAL."""
 
     __tablename__ = "suppression_entries"
     __table_args__ = (
@@ -376,14 +447,13 @@ class SuppressionEntry(Base):
             name="ck_suppression_entries_reason",
         ),
         CheckConstraint(
-            "(email IS NOT NULL AND domain IS NULL) OR (email IS NULL AND domain IS NOT NULL)",
-            name="ck_suppression_entries_email_xor_domain",
+            "(email IS NOT NULL AND domain IS NULL AND phone IS NULL) OR "
+            "(email IS NULL AND domain IS NOT NULL AND phone IS NULL) OR "
+            "(email IS NULL AND domain IS NULL AND phone IS NOT NULL)",
+            name="ck_suppression_entries_target",
         ),
-        # Suppression is per-account -- an address suppressed by one customer's sends
-        # doesn't suppress it for a different customer's own audience. NULL emails (every
-        # domain-only row) are all mutually distinct under Postgres NULL semantics, so
-        # this constraint is effectively a no-op for domain rows -- the partial unique
-        # index below is what actually enforces "one active block per domain".
+        # Suppression is per-account -- an address/phone suppressed by one customer's sends
+        # doesn't suppress it for a different customer's own audience.
         UniqueConstraint("account_id", "email", name="ux_suppression_entries_account_id_email"),
         Index(
             "ux_suppression_entries_account_id_domain",
@@ -391,6 +461,13 @@ class SuppressionEntry(Base):
             "domain",
             unique=True,
             postgresql_where=text("domain IS NOT NULL"),
+        ),
+        Index(
+            "ux_suppression_entries_account_id_phone",
+            "account_id",
+            "phone",
+            unique=True,
+            postgresql_where=text("phone IS NOT NULL"),
         ),
     )
 
@@ -403,13 +480,53 @@ class SuppressionEntry(Base):
     )
     email: Mapped[str | None] = mapped_column(CITEXT, nullable=True)
     domain: Mapped[str | None] = mapped_column(Text, nullable=True)
+    phone: Mapped[str | None] = mapped_column(Text, nullable=True)
     reason: Mapped[str] = mapped_column(Text, nullable=False)
     contact_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("contacts.id"), nullable=True
+        UUID(as_uuid=True), ForeignKey("contacts.id", ondelete="SET NULL"), nullable=True
     )
     suppressed_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
     suppressed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class ContactActivity(Base):
+    __tablename__ = "contact_activities"
+    __table_args__ = (
+        CheckConstraint(
+            "activity_type IN ('NOTE', 'STAGE_CHANGE', 'TAG_ADDED', 'TAG_REMOVED', 'EMAIL_SENT', 'EMAIL_OPENED', 'IMPORT', 'CONSENT_CHANGE', 'TASK', 'CALL')",
+            name="ck_contact_activities_type",
+        ),
+        Index(
+            "ix_contact_activities_timeline", "account_id", "contact_id", text("created_at DESC")
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    account_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("accounts.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    contact_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("contacts.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    activity_type: Mapped[str] = mapped_column(Text, nullable=False)
+    title: Mapped[str] = mapped_column(Text, nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    metadata_: Mapped[dict] = mapped_column(
+        "metadata", JSONB, nullable=False, server_default=text("'{}'::jsonb")
+    )
+    created_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

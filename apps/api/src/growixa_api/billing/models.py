@@ -57,6 +57,12 @@ class SubscriptionPlan(Base):
     # Free/Enterprise, neither of which self-serve-checkouts through Razorpay.
     razorpay_plan_id_usd: Mapped[str | None] = mapped_column(Text, nullable=True)
     razorpay_plan_id_inr: Mapped[str | None] = mapped_column(Text, nullable=True)
+    
+    # Stripe equivalent fields
+    stripe_product_id: Mapped[str | None] = mapped_column(Text, nullable=True)
+    stripe_price_id_usd: Mapped[str | None] = mapped_column(Text, nullable=True)
+    stripe_price_id_inr: Mapped[str | None] = mapped_column(Text, nullable=True)
+    
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -135,7 +141,9 @@ class AccountSubscription(Base):
     # NULL for an account on an admin-assigned plan with no real Razorpay object (most
     # Enterprise accounts, or any manual override via GRX-SAAS-006).
     razorpay_customer_id: Mapped[str | None] = mapped_column(Text, nullable=True)
-    razorpay_subscription_id: Mapped[str | None] = mapped_column(Text, nullable=True)
+    razorpay_subscription_id: Mapped[str | None] = mapped_column(Text, unique=True, nullable=True)
+    stripe_customer_id: Mapped[str | None] = mapped_column(Text, nullable=True)
+    stripe_subscription_id: Mapped[str | None] = mapped_column(Text, unique=True, nullable=True)
     set_by_platform_admin_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("platform_admins.id"), nullable=True
     )

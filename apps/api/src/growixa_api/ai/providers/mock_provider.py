@@ -1,3 +1,5 @@
+# ruff: noqa: E501
+
 from growixa_api.ai.providers.base import AIGenerationResult, AIModelProvider
 
 

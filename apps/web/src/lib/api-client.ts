@@ -92,3 +92,35 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
 
   return (await response.json()) as T;
 }
+
+export async function apiFetchBlob(path: string, init?: RequestInit): Promise<Blob> {
+  const isFormData = init?.body instanceof FormData;
+
+  const doFetch = () =>
+    fetch(`${getApiUrl()}${path}`, {
+      ...init,
+      credentials: "include",
+      headers: isFormData
+        ? init?.headers
+        : {
+            "Content-Type": "application/json",
+            ...init?.headers,
+          },
+    });
+
+  let response = await doFetch();
+
+  if (response.status === 401 && !NO_REFRESH_RETRY_PATHS.includes(path)) {
+    const refreshed = await refreshSession();
+    if (refreshed) {
+      response = await doFetch();
+    }
+  }
+
+  if (!response.ok) {
+    const body = await response.text();
+    throw new ApiError(response.status, body || response.statusText);
+  }
+
+  return await response.blob();
+}

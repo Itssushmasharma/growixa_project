@@ -16,3 +16,30 @@ class CampaignReportOut(BaseModel):
     click_to_open_rate_pct: float | None = None
     bounced: int
     complained: int
+    bounce_rate_pct: float | None = None
+    unsubscribe_count: int = 0
+
+
+class CampaignTimeseriesPoint(BaseModel):
+    bucket: str
+    delivered: int = 0
+    opened: int = 0
+    clicked: int = 0
+    bounced: int = 0
+
+
+class CampaignTimeseriesOut(BaseModel):
+    campaign_id: uuid.UUID
+    points: list[CampaignTimeseriesPoint]
+
+
+class CampaignComparisonOut(BaseModel):
+    campaign_id: uuid.UUID
+    recipient_type: str
+    recipient_count: int
+    campaign_open_rate_pct: float | None = None
+    campaign_click_rate_pct: float | None = None
+    campaign_bounce_rate_pct: float | None = None
+    account_avg_open_rate_pct: float | None = None
+    account_avg_click_rate_pct: float | None = None
+    account_avg_bounce_rate_pct: float | None = None

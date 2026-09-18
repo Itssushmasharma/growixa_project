@@ -122,4 +122,3 @@ async def list_generations(
     query = query.order_by(AIGeneration.created_at.desc()).limit(limit).offset(offset)
     result = await session.execute(query)
     return result.scalars().all()
-

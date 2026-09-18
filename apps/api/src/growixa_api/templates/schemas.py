@@ -35,3 +35,14 @@ class EmailTemplateOut(BaseModel):
     created_at: datetime
     updated_at: datetime
     current_version: EmailTemplateVersionOut | None
+
+
+class TemplateValidationIn(BaseModel):
+    subject: str
+    body_html: str
+    body_text: str | None = None
+
+
+class TemplateValidationOut(BaseModel):
+    valid: bool
+    warnings: list[str] = []

@@ -16,7 +16,7 @@ from growixa_api.contacts.repositories import (
     get_suppression_by_email,
     list_custom_fields,
 )
-from growixa_api.email_delivery.models import MessageDelivery
+from growixa_api.email_delivery.models import EmailEvent, MessageDelivery
 from growixa_api.email_delivery.postal_schemas import PostalWebhookPayload
 from growixa_api.email_delivery.repositories import (
     create_email_event,
@@ -258,6 +258,21 @@ async def record_webhook_event(
         return
 
     occurred_at = _extract_occurred_at(payload)
+
+    # Idempotent duplicate webhook handling: check if event already recorded
+    dup_check = await session.execute(
+        select(EmailEvent.id)
+        .where(
+            EmailEvent.account_id == account_id,
+            EmailEvent.message_delivery_id == delivery.id,
+            EmailEvent.event_type == event_type,
+            EmailEvent.occurred_at == occurred_at,
+        )
+        .limit(1)
+    )
+    if dup_check.scalar_one_or_none() is not None:
+        return
+
     await create_email_event(
         session,
         {
@@ -412,6 +427,21 @@ async def process_postal_webhook(session: AsyncSession, payload: PostalWebhookPa
         return
 
     occurred_at = payload.extract_occurred_at()
+
+    # Idempotent duplicate webhook handling: check if event already recorded
+    dup_check = await session.execute(
+        select(EmailEvent.id)
+        .where(
+            EmailEvent.account_id == delivery.account_id,
+            EmailEvent.message_delivery_id == delivery.id,
+            EmailEvent.event_type == event_type,
+            EmailEvent.occurred_at == occurred_at,
+        )
+        .limit(1)
+    )
+    if dup_check.scalar_one_or_none() is not None:
+        return
+
     await create_email_event(
         session,
         {

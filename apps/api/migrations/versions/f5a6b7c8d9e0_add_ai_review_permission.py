@@ -76,12 +76,8 @@ def upgrade() -> None:
 def downgrade() -> None:
     """Remove ai.review permission and its role grants."""
     op.execute(
-        sa.text(
-            "DELETE FROM role_permissions WHERE permission_id = :id"
-        ).bindparams(id=PERM_AI_REVIEW)
+        sa.text("DELETE FROM role_permissions WHERE permission_id = :id").bindparams(
+            id=PERM_AI_REVIEW
+        )
     )
-    op.execute(
-        sa.text(
-            "DELETE FROM permissions WHERE id = :id"
-        ).bindparams(id=PERM_AI_REVIEW)
-    )
+    op.execute(sa.text("DELETE FROM permissions WHERE id = :id").bindparams(id=PERM_AI_REVIEW))

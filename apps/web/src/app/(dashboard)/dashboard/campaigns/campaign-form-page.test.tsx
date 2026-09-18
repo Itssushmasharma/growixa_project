@@ -313,7 +313,8 @@ describe("CampaignFormPage", () => {
     await screen.findByLabelText("Campaign name");
 
     expect(await screen.findByText("Delivery report")).toBeInTheDocument();
-    expect(screen.getAllByText("0")).toHaveLength(6);
+    expect(screen.getAllByText("0")).toHaveLength(7);
+    expect(screen.getByText("Unsubscribed")).toBeInTheDocument();
   });
 
   it("still renders the campaign when the report fetch fails", async () => {

@@ -26,8 +26,15 @@ class BrandProfile(Base):
         UUID(as_uuid=True), ForeignKey("company_profile.id", ondelete="CASCADE"), nullable=False
     )
     brand_voice: Mapped[str | None] = mapped_column(Text, nullable=True)
+    brand_tone: Mapped[str | None] = mapped_column(Text, nullable=True)
+    target_audience: Mapped[str | None] = mapped_column(Text, nullable=True)
     forbidden_claims: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, server_default="[]")
     required_facts: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, server_default="[]")
+    preferred_vocabulary: Mapped[list[Any]] = mapped_column(
+        JSONB, nullable=False, server_default="[]"
+    )
+    avoid_vocabulary: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, server_default="[]")
+    compliance_rules: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, server_default="[]")
     # Selected persona chips, e.g. ["Professional", "Confident"] (GRX-COMPANY-003).
     persona_tags: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, server_default="[]")
     # 0-100 slider values, e.g. {"formality": 70, "energy": 40, "technical_depth": 50,

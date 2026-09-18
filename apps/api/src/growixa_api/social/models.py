@@ -22,7 +22,7 @@ class SocialConnection(Base):
     __tablename__ = "social_connections"
     __table_args__ = (
         CheckConstraint(
-            "provider IN ('INSTAGRAM_BUSINESS')",
+            "provider IN ('LINKEDIN', 'TWITTER', 'INSTAGRAM_BUSINESS', 'FACEBOOK_PAGE', 'YOUTUBE')",
             name="ck_social_connections_provider",
         ),
         # One active connection per account per provider -- identical shape to
@@ -45,12 +45,22 @@ class SocialConnection(Base):
         index=True,
     )
     provider: Mapped[str] = mapped_column(Text, nullable=False)
-    ig_business_account_id: Mapped[str] = mapped_column(Text, nullable=False)
+    ig_business_account_id: Mapped[str | None] = mapped_column(Text, nullable=True)
     ig_username: Mapped[str | None] = mapped_column(Text, nullable=True)
-    facebook_page_id: Mapped[str] = mapped_column(Text, nullable=False)
+    facebook_page_id: Mapped[str | None] = mapped_column(Text, nullable=True)
+    provider_account_id: Mapped[str | None] = mapped_column(Text, nullable=True)
+    provider_username: Mapped[str | None] = mapped_column(Text, nullable=True)
+    provider_account_name: Mapped[str | None] = mapped_column(Text, nullable=True)
     # Fernet-encrypted at the service layer before insert, per DEC-GRX-025. See
     # growixa_api.auth.encryption.
     access_token_encrypted: Mapped[str] = mapped_column(Text, nullable=False)
+    refresh_token_encrypted: Mapped[str | None] = mapped_column(Text, nullable=True)
+    account_metadata: Mapped[dict[str, object]] = mapped_column(
+        JSONB, nullable=False, server_default=text("'{}'::jsonb")
+    )
+    scopes: Mapped[list[str]] = mapped_column(
+        JSONB, nullable=False, server_default=text("'[]'::jsonb")
+    )
     token_expires_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
@@ -75,7 +85,7 @@ class SocialPost(Base):
     __table_args__ = (
         CheckConstraint(
             "status IN ("
-            "'DRAFT', 'SCHEDULED', 'DISPATCHING', 'PUBLISHING', 'PUBLISHED', "
+            "'DRAFT', 'REVIEW', 'CHANGES_REQUESTED', 'APPROVED', 'SCHEDULED', 'DISPATCHING', 'PUBLISHING', 'PUBLISHED', "
             "'CANCELLED', 'FAILED'"
             ")",
             name="ck_social_posts_status",
@@ -105,8 +115,20 @@ class SocialPost(Base):
     idempotency_key: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), nullable=False, default=uuid.uuid4, unique=True
     )
+    campaign_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("campaigns.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    utm_source: Mapped[str | None] = mapped_column(Text, nullable=True)
+    utm_medium: Mapped[str | None] = mapped_column(Text, nullable=True)
+    utm_campaign: Mapped[str | None] = mapped_column(Text, nullable=True)
+    utm_content: Mapped[str | None] = mapped_column(Text, nullable=True)
     ig_media_id: Mapped[str | None] = mapped_column(Text, nullable=True)
     ig_permalink: Mapped[str | None] = mapped_column(Text, nullable=True)
+    provider_post_id: Mapped[str | None] = mapped_column(Text, nullable=True)
+    provider_permalink: Mapped[str | None] = mapped_column(Text, nullable=True)
     last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
@@ -120,13 +142,9 @@ class SocialPost(Base):
 
 
 class SocialPostMedia(Base):
-    """Exactly one row per post is an app-level rule (social/services.py), not a schema
-    constraint -- media_type/position stay carousel/video-ready for a later slice, per
-    DEC-GRX-023's "single JPEG image only" scope decision for this one."""
-
     __tablename__ = "social_post_media"
     __table_args__ = (
-        CheckConstraint("media_type IN ('IMAGE')", name="ck_social_post_media_media_type"),
+        CheckConstraint("media_type IN ('IMAGE', 'VIDEO')", name="ck_social_post_media_media_type"),
         Index("ix_social_post_media_social_post_id", "social_post_id"),
     )
 
@@ -146,6 +164,8 @@ class SocialPostMedia(Base):
     storage_path: Mapped[str] = mapped_column(Text, nullable=False)
     public_url: Mapped[str] = mapped_column(Text, nullable=False)
     position: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    file_size_bytes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    mime_type: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

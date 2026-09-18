@@ -2,6 +2,26 @@
 
 ---
 
+## 🟢 [v0.6.0] — 2026-09-18
+
+> **Release Tag**: `v0.6.0`
+> **Release Date**: September 18, 2026
+> **Platform Status**: 🟢 Promoted to Production
+
+### 🚀 Added & Enhanced
+- **SMM Services Module**: Built a complete interface and backend provider for purchasing followers/likes for Telegram and Instagram.
+- **SEO Analysis Tool**: Developed an on-the-fly website auditor that scores HTML pages based on Title, Meta, H1, Alt Tags, and HTTPS.
+
+```mermaid
+pie title "New Features Breakdown (v0.6.0)"
+    "SMM Models & Provider" : 35
+    "SMM UI Dashboard" : 20
+    "SEO HTML Parser" : 25
+    "SEO Audit UI" : 20
+```
+
+---
+
 ## 🟡 [v0.5.9-rc8] (UAT Release Candidate) — 2026-09-01
 
 > **Release Tag**: `v0.5.9-rc8`

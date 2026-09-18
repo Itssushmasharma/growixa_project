@@ -12,6 +12,8 @@ from growixa_api.templates.schemas import (
     EmailTemplateOut,
     EmailTemplateVersionIn,
     EmailTemplateVersionOut,
+    TemplateValidationIn,
+    TemplateValidationOut,
 )
 from growixa_api.templates.services import (
     TemplateInUseError,
@@ -20,10 +22,12 @@ from growixa_api.templates.services import (
     clone_template_for_account,
     create_template,
     delete_template,
+    duplicate_template_service,
     get_template_with_current_version,
     list_platform_default_templates_with_current_version,
     list_template_versions,
     list_templates_with_current_version,
+    validate_template_content,
 )
 
 router = APIRouter(prefix="/templates", tags=["templates"])
@@ -87,6 +91,28 @@ async def list_platform_default_templates_route(
     return [_to_out(template, version) for template, version in templates]
 
 
+@router.post("/validate", response_model=TemplateValidationOut)
+async def validate_template_route(
+    payload: TemplateValidationIn,
+    _actor_id: uuid.UUID = Depends(_require_view),
+    account_id: uuid.UUID = Depends(get_current_account_id),
+    session: AsyncSession = Depends(get_session),
+) -> TemplateValidationOut:
+    """Validates subject, HTML body, and plain-text body against personalization tokens.
+    Returns validation status and any compliance warnings."""
+    try:
+        warnings = await validate_template_content(
+            session,
+            account_id,
+            payload.subject,
+            payload.body_html,
+            payload.body_text,
+        )
+        return TemplateValidationOut(valid=True, warnings=warnings)
+    except PersonalizationError as exc:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc)) from exc
+
+
 @router.post(
     "/{template_id}/clone", response_model=EmailTemplateOut, status_code=status.HTTP_201_CREATED
 )
@@ -100,6 +126,28 @@ async def clone_platform_default_template_route(
     account as an independent, editable row (clone-not-edit, GRX-EMAIL-016)."""
     try:
         template, version = await clone_template_for_account(
+            session, account_id, template_id, actor_id
+        )
+    except TemplateNotFoundError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Template not found") from exc
+    except PersonalizationError as exc:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc)) from exc
+    await session.commit()
+    return _to_out(template, version)
+
+
+@router.post(
+    "/{template_id}/duplicate", response_model=EmailTemplateOut, status_code=status.HTTP_201_CREATED
+)
+async def duplicate_template_route(
+    template_id: uuid.UUID,
+    actor_id: uuid.UUID = Depends(_require_manage),
+    account_id: uuid.UUID = Depends(get_current_account_id),
+    session: AsyncSession = Depends(get_session),
+) -> EmailTemplateOut:
+    """Duplicates an account-owned email template into '{name} (Copy)'."""
+    try:
+        template, version = await duplicate_template_service(
             session, account_id, template_id, actor_id
         )
     except TemplateNotFoundError as exc:

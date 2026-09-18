@@ -6,7 +6,7 @@ import { type FormEvent, useEffect, useState } from "react";
 
 import { AIGenerateButton } from "@/components/ai/ai-generate-button";
 import { useToast } from "@/components/toast/toast-context";
-import { ApiError, apiFetch } from "@/lib/api-client";
+import { ApiError, apiFetch, apiFetchBlob } from "@/lib/api-client";
 import { formatHtml } from "@/lib/format-html";
 
 import type { EmailTemplate } from "../templates/types";
@@ -14,6 +14,8 @@ import styles from "./campaign-form-page.module.css";
 import type {
   Campaign,
   CampaignReport,
+  CampaignTimeseriesOut,
+  CampaignTimeseriesPoint,
   ContactListSummary,
   MeResponse,
   RecipientType,
@@ -90,6 +92,10 @@ export function CampaignFormPage({ mode, campaignId }: CampaignFormPageProps) {
   const [testSending, setTestSending] = useState(false);
   const [sendingNow, setSendingNow] = useState(false);
 
+  const [previewDevice, setPreviewDevice] = useState<"desktop" | "mobile">("desktop");
+  const [timeseries, setTimeseries] = useState<CampaignTimeseriesPoint[] | null>(null);
+  const [exportingCsv, setExportingCsv] = useState(false);
+
   // Send Mode: only visible to canManage users on DRAFT campaigns
   type SendMode = "now" | "schedule";
   const [sendMode, setSendMode] = useState<SendMode>("now");
@@ -146,6 +152,17 @@ export function CampaignFormPage({ mode, campaignId }: CampaignFormPageProps) {
               setReport(reportData);
             } catch {
               // Leave report null — no report section renders.
+            }
+
+            try {
+              const tsData = await apiFetch<CampaignTimeseriesOut>(
+                `/campaigns/${campaignId}/analytics/timeseries`,
+              );
+              if (tsData) {
+                setTimeseries(tsData.points);
+              }
+            } catch {
+              // Leave timeseries null
             }
           }
         }
@@ -315,6 +332,27 @@ export function CampaignFormPage({ mode, campaignId }: CampaignFormPageProps) {
       showToast("error", parseApiErrorDetail(error, "Could not cancel campaign."));
     } finally {
       setCancelling(false);
+    }
+  }
+
+  async function handleExportCsv() {
+    if (!campaignId) return;
+    setExportingCsv(true);
+    try {
+      const blob = await apiFetchBlob(`/campaigns/${campaignId}/analytics/export`);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `campaign_${campaignId}_recipients.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      showToast("success", "Recipient analytics exported successfully.");
+    } catch (error) {
+      showToast("error", parseApiErrorDetail(error, "Could not export recipient analytics."));
+    } finally {
+      setExportingCsv(false);
     }
   }
 
@@ -624,14 +662,40 @@ export function CampaignFormPage({ mode, campaignId }: CampaignFormPageProps) {
 
         <div className={styles.sideColumn}>
           <div className={styles.previewCard}>
-            <h3 className={styles.previewHeading}>Live preview</h3>
+            <div className={styles.previewHeader}>
+              <h3 className={styles.previewHeading}>Live preview</h3>
+              <div className={styles.previewToggleGroup}>
+                <button
+                  type="button"
+                  className={`${styles.previewToggleButton} ${
+                    previewDevice === "desktop" ? styles.previewToggleActive : ""
+                  }`}
+                  onClick={() => setPreviewDevice("desktop")}
+                >
+                  🖥️ Desktop
+                </button>
+                <button
+                  type="button"
+                  className={`${styles.previewToggleButton} ${
+                    previewDevice === "mobile" ? styles.previewToggleActive : ""
+                  }`}
+                  onClick={() => setPreviewDevice("mobile")}
+                >
+                  📱 Mobile (375px)
+                </button>
+              </div>
+            </div>
             {form.body_html ? (
-              <iframe
-                title="Campaign preview"
-                className={styles.previewFrame}
-                sandbox=""
-                srcDoc={form.body_html}
-              />
+              <div className={styles.previewContainer}>
+                <iframe
+                  title="Campaign preview"
+                  className={
+                    previewDevice === "mobile" ? styles.previewFrameMobile : styles.previewFrame
+                  }
+                  sandbox=""
+                  srcDoc={form.body_html}
+                />
+              </div>
             ) : (
               <p className={styles.hint}>Start typing the HTML body to see a preview.</p>
             )}
@@ -639,7 +703,54 @@ export function CampaignFormPage({ mode, campaignId }: CampaignFormPageProps) {
 
           {report && (
             <div className={styles.reportCard}>
-              <h3 className={styles.previewHeading}>Delivery report</h3>
+              <div className={styles.reportHeaderRow}>
+                <h3 className={styles.previewHeading}>Delivery report</h3>
+                <button
+                  type="button"
+                  className={styles.exportCsvButton}
+                  disabled={exportingCsv}
+                  onClick={handleExportCsv}
+                >
+                  {exportingCsv ? "Exporting…" : "📥 Export CSV"}
+                </button>
+              </div>
+
+              <div className={styles.rateSummaryRow}>
+                <div className={styles.ratePill}>
+                  <span className={styles.ratePillLabel}>Open Rate</span>
+                  <span className={styles.ratePillValue}>
+                    {report.open_rate_pct !== undefined && report.open_rate_pct !== null
+                      ? `${report.open_rate_pct}%`
+                      : "0%"}
+                  </span>
+                </div>
+                <div className={styles.ratePill}>
+                  <span className={styles.ratePillLabel}>Click Rate</span>
+                  <span className={styles.ratePillValue}>
+                    {report.click_rate_pct !== undefined && report.click_rate_pct !== null
+                      ? `${report.click_rate_pct}%`
+                      : "0%"}
+                  </span>
+                </div>
+                <div className={styles.ratePill}>
+                  <span className={styles.ratePillLabel}>CTOR</span>
+                  <span className={styles.ratePillValue}>
+                    {report.click_to_open_rate_pct !== undefined &&
+                    report.click_to_open_rate_pct !== null
+                      ? `${report.click_to_open_rate_pct}%`
+                      : "0%"}
+                  </span>
+                </div>
+                <div className={styles.ratePill}>
+                  <span className={styles.ratePillLabel}>Bounce Rate</span>
+                  <span className={styles.ratePillValue}>
+                    {report.bounce_rate_pct !== undefined && report.bounce_rate_pct !== null
+                      ? `${report.bounce_rate_pct}%`
+                      : "0%"}
+                  </span>
+                </div>
+              </div>
+
               <div className={styles.reportGrid}>
                 <div className={styles.reportStat}>
                   <span className={styles.reportValue}>{report.sent}</span>
@@ -670,13 +781,6 @@ export function CampaignFormPage({ mode, campaignId }: CampaignFormPageProps) {
                   {Boolean(report.total_clicked && report.total_clicked > 0) && (
                     <span className={styles.reportSubtext}>
                       {report.total_clicked} total click{report.total_clicked === 1 ? "" : "s"}
-                      {report.click_to_open_rate_pct !== undefined &&
-                        report.click_to_open_rate_pct !== null && (
-                          <span className={styles.ctorBadge}>
-                            {" "}
-                            · {report.click_to_open_rate_pct}% CTOR
-                          </span>
-                        )}
                     </span>
                   )}
                 </div>
@@ -692,7 +796,41 @@ export function CampaignFormPage({ mode, campaignId }: CampaignFormPageProps) {
                   </span>
                   <span className={styles.reportLabel}>Complained</span>
                 </div>
+                <div className={styles.reportStat}>
+                  <span className={styles.reportValue}>{report.unsubscribe_count ?? 0}</span>
+                  <span className={styles.reportLabel}>Unsubscribed</span>
+                </div>
               </div>
+
+              {timeseries && timeseries.length > 0 && (
+                <div className={styles.timeseriesSection}>
+                  <h4 className={styles.timeseriesHeading}>Activity Over Time</h4>
+                  <div className={styles.timeseriesTableWrapper}>
+                    <table className={styles.timeseriesTable}>
+                      <thead>
+                        <tr>
+                          <th>Time Window</th>
+                          <th>Delivered</th>
+                          <th>Opens</th>
+                          <th>Clicks</th>
+                          <th>Bounces</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {timeseries.map((pt) => (
+                          <tr key={pt.bucket}>
+                            <td>{formatBucket(pt.bucket)}</td>
+                            <td>{pt.delivered}</td>
+                            <td>{pt.opened}</td>
+                            <td>{pt.clicked}</td>
+                            <td>{pt.bounced}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -865,4 +1003,19 @@ function parseApiErrorDetail(error: unknown, fallback: string): string {
     }
   }
   return fallback;
+}
+
+function formatBucket(bucket: string): string {
+  try {
+    const d = new Date(bucket);
+    if (isNaN(d.getTime())) return bucket;
+    return d.toLocaleString(undefined, {
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return bucket;
+  }
 }

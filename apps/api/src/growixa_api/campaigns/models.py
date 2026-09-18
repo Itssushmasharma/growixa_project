@@ -17,7 +17,7 @@ class Campaign(Base):
         ),
         CheckConstraint(
             "status IN ("
-            "'DRAFT', 'SCHEDULED', 'DISPATCHING', 'SENDING', 'SENT', 'CANCELLED', 'FAILED'"
+            "'DRAFT', 'REVIEW', 'CHANGES_REQUESTED', 'APPROVED', 'SCHEDULED', 'DISPATCHING', 'SENDING', 'SENT', 'CANCELLED', 'FAILED'"
             ")",
             name="ck_campaigns_status",
         ),

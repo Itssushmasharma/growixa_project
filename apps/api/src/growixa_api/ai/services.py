@@ -1,19 +1,24 @@
 import uuid
 from collections.abc import Sequence
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from growixa_api.ai import repositories
-from growixa_api.ai.capabilities import body_copy, hashtags, posting_time, rewrite, social_caption
-from growixa_api.ai.capabilities import subject_line as subject_line_capability
 from growixa_api.ai.capabilities import (
+    body_copy,
     content_ideas,
     content_repurpose,
     cta,
+    hashtags,
     platform_rewrite,
+    posting_time,
+    rewrite,
+    social_caption,
     tone_rewrite,
 )
+from growixa_api.ai.capabilities import subject_line as subject_line_capability
+from growixa_api.ai.capabilities import growth_insights
 from growixa_api.ai.capabilities.types import CapabilityInput
 from growixa_api.ai.models import AIGeneration, AIProviderConnection, PlatformAIProviderConfig
 from growixa_api.ai.providers import factory as factory
@@ -41,6 +46,7 @@ _CAPABILITY_MODULES = {
     "CONTENT_IDEAS": content_ideas,
     "PLATFORM_REWRITE": platform_rewrite,
     "CONTENT_REPURPOSE": content_repurpose,
+    "GROWTH_INSIGHTS": growth_insights,
 }
 
 # Rough, deliberately approximate per-1K-token USD pricing -- good enough for
@@ -349,7 +355,7 @@ async def approve_generation(
         )
     generation.approval_status = "APPROVED"
     generation.reviewed_by_user_id = reviewer_id
-    generation.reviewed_at = datetime.now(tz=timezone.utc)
+    generation.reviewed_at = datetime.now(tz=UTC)
     generation.review_notes = notes
     await session.commit()
     await session.refresh(generation)
@@ -374,7 +380,7 @@ async def reject_generation(
         )
     generation.approval_status = "REJECTED"
     generation.reviewed_by_user_id = reviewer_id
-    generation.reviewed_at = datetime.now(tz=timezone.utc)
+    generation.reviewed_at = datetime.now(tz=UTC)
     generation.review_notes = notes
     await session.commit()
     await session.refresh(generation)
@@ -400,7 +406,7 @@ async def edit_generation_output(
     generation.edited_output = {"text": edited_text}
     generation.approval_status = "EDITED"
     generation.reviewed_by_user_id = reviewer_id
-    generation.reviewed_at = datetime.now(tz=timezone.utc)
+    generation.reviewed_at = datetime.now(tz=UTC)
     generation.review_notes = notes
     await session.commit()
     await session.refresh(generation)

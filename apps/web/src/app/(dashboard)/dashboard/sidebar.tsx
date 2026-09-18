@@ -13,6 +13,7 @@ interface NavItem {
   stage: "overview" | "find" | "qualify" | "create" | "send" | "manage";
   icon: ReactNode;
   requiresPermission?: string;
+  requiresPro?: boolean;
 }
 
 interface NavSection {
@@ -53,6 +54,42 @@ function IconContacts() {
       <circle cx="8" cy="5.5" r="3.5" />
       <path d="M18 16.5v-1.2a3.5 3.5 0 0 0-2.5-3.3" />
       <path d="M13.5 2.2a3.5 3.5 0 0 1 0 6.6" />
+    </svg>
+  );
+}
+
+function IconCompanies() {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <rect x="3" y="3" width="14" height="15" rx="2" />
+      <path d="M7 7h2" />
+      <path d="M11 7h2" />
+      <path d="M7 11h2" />
+      <path d="M11 11h2" />
+      <path d="M9 18v-4h2v4" />
+    </svg>
+  );
+}
+
+function IconTags() {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M17.5 11.5L10 19L2 11V3h8l7.5 8.5z" />
+      <circle cx="6.5" cy="7.5" r="1.5" fill="currentColor" />
     </svg>
   );
 }
@@ -209,6 +246,40 @@ function IconAi() {
   );
 }
 
+function IconSMM() {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M4 11a7 7 0 1 0 14 0" />
+      <path d="M11 2L7.5 11H12.5L9 20" />
+    </svg>
+  );
+}
+
+function IconSEO() {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <circle cx="9" cy="9" r="5" />
+      <path d="M17 17l-4.5-4.5" />
+      <path d="M9 6v6" />
+      <path d="M6 9h6" />
+    </svg>
+  );
+}
+
 function IconCompany() {
   return (
     <svg
@@ -327,10 +398,24 @@ const NAV_SECTIONS: NavSection[] = [
         requiresPermission: "contacts.view",
       },
       {
+        label: "Companies",
+        href: "/dashboard/contacts/companies",
+        stage: "find",
+        icon: <IconCompanies />,
+        requiresPermission: "contacts.view",
+      },
+      {
         label: "Lists",
         href: "/dashboard/contacts/lists",
         stage: "find",
         icon: <IconLists />,
+        requiresPermission: "contacts.view",
+      },
+      {
+        label: "Tags",
+        href: "/dashboard/contacts/tags",
+        stage: "qualify",
+        icon: <IconTags />,
         requiresPermission: "contacts.view",
       },
       {
@@ -389,11 +474,24 @@ const NAV_SECTIONS: NavSection[] = [
         requiresPermission: "social.view",
       },
       {
+        label: "SMM Services",
+        href: "/dashboard/services",
+        stage: "send",
+        icon: <IconSMM />,
+      },
+      {
         label: "AI Assistant",
         href: "/dashboard/ai",
         stage: "create",
         icon: <IconAi />,
         requiresPermission: "ai.view",
+        requiresPro: true,
+      },
+      {
+        label: "SEO Analysis",
+        href: "/dashboard/seo",
+        stage: "find",
+        icon: <IconSEO />,
       },
     ],
   },
@@ -449,10 +547,15 @@ interface SidebarProps {
   permissions: string[];
   open: boolean;
   onClose: () => void;
+  isPaidPlan: boolean;
 }
 
-export function Sidebar({ permissions, open, onClose }: SidebarProps) {
+import { UpgradePrompt } from "@/components/billing/UpgradePrompt";
+
+export function Sidebar({ permissions, open, onClose, isPaidPlan }: SidebarProps) {
   const pathname = usePathname();
+  const [upgradePromptOpen, setUpgradePromptOpen] = useState(false);
+  const [upgradeFeature, setUpgradeFeature] = useState("");
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(NAV_SECTIONS.map((section) => [section.label, true])),
   );
@@ -522,7 +625,7 @@ export function Sidebar({ permissions, open, onClose }: SidebarProps) {
                 aria-expanded={expanded}
               >
                 <span
-                  className={`${styles.sectionLabel} ${styles[`stage_${section.stage}`] ?? ""}`}
+                  className={styles.sectionLabel}
                 >
                   {section.label}
                 </span>
@@ -553,13 +656,23 @@ export function Sidebar({ permissions, open, onClose }: SidebarProps) {
                   return (
                     <Link
                       key={item.href}
-                      href={item.href}
-                      className={`${isActive ? styles.navItemActive : styles.navItem} ${styles[`navStage_${item.stage}`] ?? ""}`}
+                      href={item.requiresPro && !isPaidPlan ? "#" : item.href}
+                      onClick={(e) => {
+                        if (item.requiresPro && !isPaidPlan) {
+                          e.preventDefault();
+                          setUpgradeFeature(item.label);
+                          setUpgradePromptOpen(true);
+                        }
+                      }}
+                      className={isActive ? styles.navItemActive : styles.navItem}
                     >
                       <span className={styles.navIcon} aria-hidden="true">
                         {item.icon}
                       </span>
-                      <span>{item.label}</span>
+                      <span style={{ flex: 1 }}>{item.label}</span>
+                      {item.requiresPro && (
+                        <span className="ml-2 px-1.5 py-0.5 rounded text-[10px] font-bold bg-gradient-to-r from-amber-400 to-amber-500 text-amber-950 shadow-sm uppercase tracking-wider">PRO</span>
+                      )}
                     </Link>
                   );
                 })}
@@ -567,6 +680,11 @@ export function Sidebar({ permissions, open, onClose }: SidebarProps) {
           );
         })}
       </nav>
+      <UpgradePrompt 
+        isOpen={upgradePromptOpen} 
+        onClose={() => setUpgradePromptOpen(false)} 
+        featureName={upgradeFeature} 
+      />
     </>
   );
 }

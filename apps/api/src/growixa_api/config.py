@@ -141,6 +141,12 @@ class Settings(BaseSettings):
     iam_client_secret: str = ""
     iam_oauth_state_ttl_seconds: int = 600
 
+    # Phase 4 Social Channels OAuth credentials
+    linkedin_client_id: str = ""
+    linkedin_client_secret: str = ""
+    twitter_client_id: str = ""
+    twitter_client_secret: str = ""
+
     # Slice 5 media storage (DEC-GRX-024): Supabase Storage, called directly via its
     # REST API (growixa_api.files.storage_client) — no SDK, matching this codebase's
     # existing thin-provider-wrapper convention. The bucket is public-read by

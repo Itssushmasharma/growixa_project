@@ -11,9 +11,14 @@ from growixa_api.db import get_session
 from growixa_api.files.storage_client import StorageError
 from growixa_api.permissions.dependencies import get_current_account_id, require_permission
 from growixa_api.redis import get_redis
+from growixa_api.social.bulk_scheduler import BulkScheduleItem, bulk_schedule_posts_service
 from growixa_api.social.instagram_client import InstagramApiError
 from growixa_api.social.models import SocialPost, SocialPostMedia
+from growixa_api.social.providers.factory import list_available_channels
 from growixa_api.social.schemas import (
+    BulkScheduleIn,
+    BulkScheduleOut,
+    ChannelCapabilityOut,
     ScheduleSocialPostIn,
     SocialConnectionOut,
     SocialPostIn,
@@ -38,9 +43,12 @@ from growixa_api.social.services import (
     TooManyMediaItemsError,
     add_media,
     build_authorize_url,
+    build_provider_authorize_url,
     cancel_post,
     complete_oauth_callback,
+    complete_provider_oauth_callback,
     create_post,
+    disconnect_connection,
     get_post_or_raise,
     list_all_connections,
     list_all_posts,
@@ -53,6 +61,7 @@ from growixa_api.social.services import (
 )
 
 oauth_router = APIRouter(prefix="/integrations/instagram/oauth", tags=["social"])
+channel_oauth_router = APIRouter(prefix="/integrations", tags=["social"])
 router = APIRouter(prefix="/social", tags=["social"])
 
 _require_integrations_manage = require_permission("integrations.manage")
@@ -123,6 +132,72 @@ async def callback_route(
     return RedirectResponse(f"{integrations_url}?instagram=connected", status_code=302)
 
 
+@channel_oauth_router.get("/{provider}/oauth/authorize")
+async def provider_authorize_route(
+    provider: str,
+    _actor_id: uuid.UUID = Depends(_require_integrations_manage),
+    account_id: uuid.UUID = Depends(get_current_account_id),
+    redis_client: Redis = Depends(get_redis),
+) -> RedirectResponse:
+    url = await build_provider_authorize_url(provider, redis_client, account_id)
+    return RedirectResponse(url, status_code=302)
+
+
+@channel_oauth_router.get("/{provider}/oauth/callback")
+async def provider_callback_route(
+    provider: str,
+    code: str | None = None,
+    state: str | None = None,
+    error: str | None = None,
+    actor_id: uuid.UUID = Depends(_require_integrations_manage),
+    account_id: uuid.UUID = Depends(get_current_account_id),
+    redis_client: Redis = Depends(get_redis),
+    session: AsyncSession = Depends(get_session),
+) -> RedirectResponse:
+    frontend_url = get_settings().frontend_base_url
+    social_url = f"{frontend_url}/dashboard/social"
+
+    if error is not None or code is None or state is None:
+        return RedirectResponse(
+            f"{social_url}?channel={provider.lower()}&error=denied", status_code=302
+        )
+
+    try:
+        await complete_provider_oauth_callback(
+            provider,
+            session,
+            redis_client,
+            account_id=account_id,
+            actor_id=actor_id,
+            code=code,
+            state=state,
+        )
+    except OAuthStateInvalidError:
+        return RedirectResponse(
+            f"{social_url}?channel={provider.lower()}&error=invalid_state", status_code=302
+        )
+    except PlanLimitExceededError:
+        return RedirectResponse(
+            f"{social_url}?channel={provider.lower()}&error=plan_limit_reached", status_code=302
+        )
+    except Exception:
+        return RedirectResponse(
+            f"{social_url}?channel={provider.lower()}&error=auth_failed", status_code=302
+        )
+
+    return RedirectResponse(
+        f"{social_url}?channel={provider.lower()}&connected=true", status_code=302
+    )
+
+
+@router.get("/channels", response_model=list[ChannelCapabilityOut])
+async def list_channels_route(
+    _actor_id: uuid.UUID = Depends(_require_social_view),
+) -> list[ChannelCapabilityOut]:
+    caps = list_available_channels()
+    return [ChannelCapabilityOut.model_validate(c) for c in caps]
+
+
 @router.get("/connections", response_model=list[SocialConnectionOut])
 async def list_connections_route(
     _actor_id: uuid.UUID = Depends(_require_social_view),
@@ -133,6 +208,56 @@ async def list_connections_route(
     return [SocialConnectionOut.model_validate(connection) for connection in connections]
 
 
+@router.delete("/connections/{connection_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def disconnect_connection_route(
+    connection_id: uuid.UUID,
+    _actor_id: uuid.UUID = Depends(_require_social_manage),
+    account_id: uuid.UUID = Depends(get_current_account_id),
+    session: AsyncSession = Depends(get_session),
+) -> None:
+    try:
+        await disconnect_connection(session, account_id, connection_id)
+    except SocialConnectionNotFoundError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Social connection not found") from exc
+
+
+@router.post("/bulk-schedule", response_model=BulkScheduleOut)
+async def bulk_schedule_route(
+    payload: BulkScheduleIn,
+    actor_id: uuid.UUID = Depends(_require_social_publish),
+    account_id: uuid.UUID = Depends(get_current_account_id),
+    session: AsyncSession = Depends(get_session),
+) -> BulkScheduleOut:
+    items = [
+        BulkScheduleItem(
+            social_connection_id=item.social_connection_id,
+            caption=item.caption,
+            scheduled_at=item.scheduled_at,
+            media_items=item.media_items,
+            campaign_id=item.campaign_id,
+            utm_source=item.utm_source,
+            utm_medium=item.utm_medium,
+            utm_campaign=item.utm_campaign,
+            utm_content=item.utm_content,
+        )
+        for item in payload.items
+    ]
+    result = await bulk_schedule_posts_service(
+        session,
+        account_id=account_id,
+        actor_id=actor_id,
+        items=items,
+        stagger_interval_minutes=payload.stagger_interval_minutes,
+    )
+    return BulkScheduleOut(
+        total_requested=result.total_requested,
+        scheduled_count=result.scheduled_count,
+        failed_count=result.failed_count,
+        scheduled_posts=result.scheduled_posts,
+        errors=result.errors,
+    )
+
+
 @router.get("/posts", response_model=list[SocialPostOut])
 async def list_posts_route(
     _actor_id: uuid.UUID = Depends(_require_social_view),
@@ -140,8 +265,6 @@ async def list_posts_route(
     session: AsyncSession = Depends(get_session),
 ) -> list[SocialPostOut]:
     posts = await list_all_posts(session, account_id)
-    # One media lookup per post -- acceptable at this slice's scale (a handful of posts,
-    # at most one media item each); revisit only if this becomes a real problem.
     out = []
     for post in posts:
         media = await list_media_for_post(session, account_id, post.id)
@@ -160,6 +283,8 @@ async def create_post_route(
         post = await create_post(session, account_id, payload, actor_id)
     except SocialConnectionNotFoundError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Social connection not found") from exc
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
     return _post_to_out(post, [])
 
 
@@ -192,6 +317,8 @@ async def update_post_route(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Post not found") from exc
     except SocialPostNotEditableError as exc:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Post is no longer a draft") from exc
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
     media = await list_media_for_post(session, account_id, post_id)
     return _post_to_out(post, list(media))
 

@@ -1,18 +1,18 @@
 import type { Metadata } from "next";
-import { ClassicHome } from "@/components/website/sections/classic-home";
+import { SocialPilotCloneHome } from "@/components/website/sections/socialpilot-clone/home";
 import { FAQS } from "@/components/website/sections/classic-home-data";
 
 export const metadata: Metadata = {
-  title: "Growixa — AI Growth Execution Platform",
+  title: "Growixa — Social Media Management Tool",
   description:
-    "Plan, create, approve, execute and improve email and social campaigns from one intelligent growth workspace.",
+    "Publish, analyze, and engage across all your social platforms from one intuitive dashboard.",
   alternates: {
     canonical: "/",
   },
   openGraph: {
-    title: "Growixa — AI Growth Execution Platform",
+    title: "Growixa — Social Media Management Tool",
     description:
-      "Turn marketing goals into approved, measurable campaigns from one intelligent workspace.",
+      "Publish, analyze, and engage across all your social platforms from one intuitive dashboard.",
     type: "website",
   },
 };
@@ -27,7 +27,7 @@ export default function HomePage() {
         applicationCategory: "BusinessApplication",
         operatingSystem: "Web",
         description:
-          "An AI-powered workspace for planning, creating, approving, executing and improving marketing campaigns.",
+          "An intelligent workspace for social media publishing, analytics, and engagement.",
         offers: {
           "@type": "Offer",
           price: "0",
@@ -57,7 +57,7 @@ export default function HomePage() {
           __html: JSON.stringify(structuredData).replace(/</g, "\\u003c"),
         }}
       />
-      <ClassicHome />
+      <SocialPilotCloneHome />
     </>
   );
 }

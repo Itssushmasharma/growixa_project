@@ -1,0 +1,75 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  password  String
+  role      Role     @default(STUDENT)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tutorProfile   TutorProfile?
+  studentLessons Lesson[]      @relation("StudentLessons")
+  tutorLessons   Lesson[]      @relation("TutorLessons")
+}
+
+enum Role {
+  STUDENT
+  TUTOR
+  ADMIN
+}
+
+model TutorProfile {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  headline    String
+  bio         String
+  subject     String
+  country     String
+  price       Float
+  videoUrl    String?
+  imageUrl    String?
+  
+  rating      Float    @default(0)
+  reviewCount Int      @default(0)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Lesson {
+  id          String       @id @default(cuid())
+  
+  studentId   String
+  student     User         @relation("StudentLessons", fields: [studentId], references: [id])
+  
+  tutorId     String
+  tutor       User         @relation("TutorLessons", fields: [tutorId], references: [id])
+  
+  startTime   DateTime
+  endTime     DateTime
+  status      LessonStatus @default(SCHEDULED)
+  price       Float
+  
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+enum LessonStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+}

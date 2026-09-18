@@ -1,0 +1,60 @@
+.container {
+  padding: 24px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.title {
+  font-size: 1.875rem;
+  font-weight: 700;
+  color: var(--text-primary, #111827);
+  margin: 0;
+}
+
+.button {
+  background: var(--primary-color, #2563eb);
+  color: white;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.button:hover {
+  background: var(--primary-hover, #1d4ed8);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 24px;
+}
+
+.emptyState {
+  text-align: center;
+  padding: 64px 20px;
+  background: var(--card-bg, #ffffff);
+  border: 1px dashed var(--border-color, #d1d5db);
+  border-radius: 12px;
+}
+
+.emptyTitle {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary, #111827);
+  margin-bottom: 8px;
+}
+
+.emptyDesc {
+  color: var(--text-secondary, #6b7280);
+  margin-bottom: 24px;
+}

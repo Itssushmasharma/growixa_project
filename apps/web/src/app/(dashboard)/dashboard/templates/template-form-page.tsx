@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { type FormEvent, useEffect, useRef, useState } from "react";
+import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
 
 import { useToast } from "@/components/toast/toast-context";
 import { apiFetch } from "@/lib/api-client";
@@ -160,6 +160,23 @@ export function TemplateFormPage({ mode, templateId }: TemplateFormPageProps) {
     }
   }
 
+  const [previewDevice, setPreviewDevice] = useState<"desktop" | "mobile">("desktop");
+
+  const validationWarnings = useMemo(() => {
+    const warnings: string[] = [];
+    const openMatches = form.body_html.match(/{{/g)?.length ?? 0;
+    const closeMatches = form.body_html.match(/}}/g)?.length ?? 0;
+    if (openMatches !== closeMatches) {
+      warnings.push("Unmatched token brackets detected. Ensure all {{tags}} are properly closed.");
+    }
+    if (form.body_html && !form.body_html.includes("{{unsubscribe_url}}")) {
+      warnings.push(
+        "No explicit {{unsubscribe_url}} tag found; compliance footer will be auto-appended.",
+      );
+    }
+    return warnings;
+  }, [form.body_html]);
+
   function handleInsertToken(token: string) {
     setForm((prev) => ({
       ...prev,
@@ -313,11 +330,43 @@ export function TemplateFormPage({ mode, templateId }: TemplateFormPageProps) {
               <button
                 type="button"
                 className={styles.tokenPill}
+                onClick={() => handleInsertToken("{{email}}")}
+              >
+                + Email
+              </button>
+              <button
+                type="button"
+                className={styles.tokenPill}
                 onClick={() => handleInsertToken("{{company_name}}")}
               >
-                + Company Name
+                + Company
+              </button>
+              <button
+                type="button"
+                className={styles.tokenPill}
+                onClick={() => handleInsertToken("{{website_url}}")}
+              >
+                + Website
+              </button>
+              <button
+                type="button"
+                className={styles.tokenPill}
+                onClick={() => handleInsertToken("{{unsubscribe_url}}")}
+              >
+                + Unsubscribe Link
               </button>
             </div>
+
+            {validationWarnings.length > 0 && (
+              <div className={styles.validationNotice}>
+                <span className={styles.validationIcon}>ℹ️</span>
+                <div className={styles.validationText}>
+                  {validationWarnings.map((w: string, idx: number) => (
+                    <div key={idx}>{w}</div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {editorMode === "visual" ? (
               <div className={styles.visualEditorContainer}>
@@ -374,14 +423,40 @@ export function TemplateFormPage({ mode, templateId }: TemplateFormPageProps) {
         </form>
 
         <div className={styles.previewCard}>
-          <h3 className={styles.previewHeading}>Live preview</h3>
+          <div className={styles.previewHeader}>
+            <h3 className={styles.previewHeading}>Live preview</h3>
+            <div className={styles.previewToggleGroup}>
+              <button
+                type="button"
+                className={`${styles.previewToggleButton} ${
+                  previewDevice === "desktop" ? styles.previewToggleActive : ""
+                }`}
+                onClick={() => setPreviewDevice("desktop")}
+              >
+                🖥️ Desktop
+              </button>
+              <button
+                type="button"
+                className={`${styles.previewToggleButton} ${
+                  previewDevice === "mobile" ? styles.previewToggleActive : ""
+                }`}
+                onClick={() => setPreviewDevice("mobile")}
+              >
+                📱 Mobile (375px)
+              </button>
+            </div>
+          </div>
           {form.body_html ? (
-            <iframe
-              title="Template preview"
-              className={styles.previewFrame}
-              sandbox=""
-              srcDoc={form.body_html}
-            />
+            <div className={styles.previewContainer}>
+              <iframe
+                title="Template preview"
+                className={
+                  previewDevice === "mobile" ? styles.previewFrameMobile : styles.previewFrame
+                }
+                sandbox=""
+                srcDoc={form.body_html}
+              />
+            </div>
           ) : (
             <p className={styles.hint}>Start typing the HTML body to see a preview.</p>
           )}

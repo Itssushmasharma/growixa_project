@@ -17,6 +17,7 @@ AICapability = Literal[
     "CONTENT_IDEAS",
     "PLATFORM_REWRITE",
     "CONTENT_REPURPOSE",
+    "GROWTH_INSIGHTS",
 ]
 AILinkedEntityType = Literal["campaign", "social_post"]
 AIApprovalStatus = Literal["PENDING_APPROVAL", "APPROVED", "REJECTED", "EDITED"]
