@@ -2,6 +2,20 @@
 
 ---
 
+## 🟢 [v0.7.0] — 2026-09-19
+
+> **Release Tag**: `v0.7.0`
+> **Release Date**: September 19, 2026
+> **Platform Status**: 🟢 Promoted to Production
+
+### 🚀 Added & Enhanced
+- **Premium UI/UX Design System**: Complete visual overhaul of remaining marketing pages (`roadmap`, `platform`, `for`, `docs`) implementing the premium "Stripe / Vercel" style with a deep dark slate canvas (`#070a12`), frosted glass components, and seamless animations.
+- **Production Build Hardening**: Resolved CSS minification (`CssSyntaxError`) preventing successful Next.js production builds. `npm run build` now compiles with zero errors.
+- **AI Insights Crash Prevention**: Added robust optional chaining to the main dashboard component, preventing fatal runtime crashes when AI Insights API returns incomplete or delayed data.
+- **Documentation Overhaul**: Completely rewrote the main `README.md` to be engaging, emoji-rich, and written in simple English for maximum clarity and user adoption.
+
+---
+
 ## 🟢 [v0.6.0] — 2026-09-18
 
 > **Release Tag**: `v0.6.0`

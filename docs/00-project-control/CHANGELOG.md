@@ -2,13 +2,20 @@
 
 - Document ID: DOC-CHANGELOG
 - Status: ACTIVE
-- Version: 1.0.0
-- Last updated: 2026-08-18
+- Version: 0.7.0
+- Last updated: 2026-09-19
 - Owner: Coding agent
 - Related documents: [PROJECT_STATUS](PROJECT_STATUS.md), [DECISIONS](DECISIONS.md), [MASTER_TASK_TRACKER](MASTER_TASK_TRACKER.md)
 
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
+
+## 2026-09-19 — v0.7.0 production release
+
+- **`feat(website)`** — **Premium UI/UX Design System**: Complete visual overhaul of remaining marketing pages (`roadmap`, `platform`, `for`, `docs`) implementing the premium "Stripe / Vercel" style with a deep dark slate canvas (`#070a12`), frosted glass components, and seamless animations.
+- **`fix(build)`** — **Production Build Hardening**: Resolved CSS minification (`CssSyntaxError`) preventing successful Next.js production builds. `npm run build` now compiles with zero errors.
+- **`fix(dashboard)`** — **AI Insights Crash Prevention**: Added robust optional chaining to the main dashboard component, preventing fatal runtime crashes when AI Insights API returns incomplete or delayed data.
+- **`docs(core)`** — Completely rewrote the main `README.md` to be engaging, emoji-rich, and written in simple English for maximum clarity and user adoption.
 
 ## 2026-09-01 — v0.5.9-rc8 UAT release candidate
 
