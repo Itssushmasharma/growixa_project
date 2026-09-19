@@ -266,7 +266,7 @@ export function DashboardPage() {
                 <strong style={{ fontSize: '16px' }}>Key Insight</strong>
               </div>
               <p style={{ color: '#4b5563', lineHeight: 1.5, margin: 0 }}>
-                {aiInsights.insights[0] || "Trend analysis complete."}
+                {aiInsights.insights?.[0] || "Trend analysis complete."}
               </p>
             </article>
 
@@ -276,7 +276,7 @@ export function DashboardPage() {
                 <strong style={{ fontSize: '16px', color: '#4338ca' }}>Top Recommendation</strong>
               </div>
               <p style={{ color: '#374151', lineHeight: 1.5, margin: 0, fontWeight: 500 }}>
-                {aiInsights.recommendations[0] || "Keep posting consistently."}
+                {aiInsights.recommendations?.[0] || "Keep posting consistently."}
               </p>
             </article>
 
@@ -286,7 +286,7 @@ export function DashboardPage() {
                 <strong style={{ fontSize: '16px' }}>Trending Topic</strong>
               </div>
               <p style={{ color: '#86198f', lineHeight: 1.5, margin: 0, fontWeight: 600, display: 'inline-block', backgroundColor: '#fdf4ff', padding: '4px 12px', borderRadius: '16px', width: 'fit-content' }}>
-                # {aiInsights.topics[0] || "Industry News"}
+                # {aiInsights.topics?.[0] || "Industry News"}
               </p>
             </article>
           </div>
