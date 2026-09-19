@@ -114,7 +114,17 @@ export function PremiumGrowixaHome() {
       {/* 4. DATA FLOW DIAGRAM (User approved feature) */}
       <DataFlowDiagram />
 
-      {/* 5. COMPARISON TABLE */}
+      {/* 5. ECOSYSTEM SECTION */}
+      <section className={styles.roiSection} style={{ paddingBottom: '20px' }}>
+        <h2 className={styles.roiTitle}>
+          Ecosystem Connects With Your <span>Tech Stack</span>
+        </h2>
+        <p className={styles.roiSubtitle} style={{ maxWidth: '600px', margin: '0 auto' }}>
+          Native integrations with leading email relays, payment gateways, LLMs, and social platforms.
+        </p>
+      </section>
+
+      {/* 6. COMPARISON TABLE */}
       <section className={styles.comparisonSection}>
         <h2 className={styles.roiTitle}>Why choose <span>Growixa?</span></h2>
         <div className={styles.tableContainer}>
