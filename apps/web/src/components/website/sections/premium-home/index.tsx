@@ -4,13 +4,11 @@ import {
   Check, 
   X, 
   ArrowRight, 
-  Zap, 
   Star, 
   Bot, 
   Sparkles, 
   Mic, 
   TrendingUp, 
-  Layers, 
   Cpu 
 } from "lucide-react";
 import styles from "./premium-home.module.css";

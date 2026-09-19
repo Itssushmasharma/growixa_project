@@ -9,10 +9,8 @@ import {
   Cpu, 
   CreditCard, 
   Globe, 
-  Share2, 
   MessageSquare, 
-  Zap, 
-  ShieldCheck 
+  Zap 
 } from "lucide-react";
 
 export function IntegrationHubOrbSection() {

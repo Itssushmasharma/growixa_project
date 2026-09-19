@@ -1,1 +1,17 @@
-const fs = require('fs'); const files = ['src/app/(website)/for/page.tsx', 'src/app/(website)/platform/page.tsx', 'src/app/(website)/roadmap/page.tsx', 'src/app/(website)/vision/page.tsx', 'src/components/website/sections/premium-home/index.tsx']; files.forEach(f => { if (fs.existsSync(f)) { let t = fs.readFileSync(f, 'utf8'); t = t.replace(/>([^<]+)</g, (m, c) => '>' + c.replace(/'/g, '&apos;').replace(/"/g, '&quot;') + '<'); fs.writeFileSync(f, t); console.log('Fixed', f); } });
+import fs from "fs";
+
+const files = [
+  "src/app/(website)/for/page.tsx",
+  "src/app/(website)/platform/page.tsx",
+  "src/app/(website)/roadmap/page.tsx",
+  "src/app/(website)/vision/page.tsx",
+  "src/components/website/sections/premium-home/index.tsx",
+];
+
+files.forEach((f) => {
+  if (fs.existsSync(f)) {
+    let t = fs.readFileSync(f, "utf8");
+    t = t.replace(/>([^<]+)</g, (m, c) => ">" + c.replace(/'/g, "&apos;").replace(/"/g, "&quot;") + "<");
+    fs.writeFileSync(f, t);
+  }
+});

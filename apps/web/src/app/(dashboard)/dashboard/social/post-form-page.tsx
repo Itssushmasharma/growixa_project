@@ -9,7 +9,7 @@ import { useToast } from "@/components/toast/toast-context";
 import { ApiError, apiFetch } from "@/lib/api-client";
 
 import styles from "./post-form-page.module.css";
-import type { MediaAsset, MeResponse, SocialConnection, SocialPost } from "./types";
+import type { MeResponse, SocialConnection, SocialPost } from "./types";
 
 const VIEW_PERMISSION = "social.view";
 const MANAGE_PERMISSION = "social.manage";
@@ -40,7 +40,6 @@ export function PostFormPage({ mode, postId }: PostFormPageProps) {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [canManage, setCanManage] = useState(false);
-  const [canPublish, setCanPublish] = useState(false);
   const [canGenerateAI, setCanGenerateAI] = useState(false);
 
   const [connections, setConnections] = useState<SocialConnection[]>([]);
@@ -48,8 +47,6 @@ export function PostFormPage({ mode, postId }: PostFormPageProps) {
   const [selectedConnectionIds, setSelectedConnectionIds] = useState<Set<string>>(new Set());
   const [caption, setCaption] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [removingMediaId, setRemovingMediaId] = useState<string | null>(null);
 
   // UTM Parameters
   const [utmCampaign, setUtmCampaign] = useState("");

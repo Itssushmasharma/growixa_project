@@ -6,8 +6,7 @@ import {
   MessageSquare, 
   Video, 
   FolderGit2, 
-  FileText, 
-  Clock 
+  FileText 
 } from "lucide-react";
 
 export function ChaoticWorkProblemSection() {
