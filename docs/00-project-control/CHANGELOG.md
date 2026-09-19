@@ -10,6 +10,10 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
+## 2026-09-19 — v0.7.4 production release
+
+- **`fix(website)`** — **UI Polish & Mobile Optimization**: Removed old hardcoded HEX colors from the Premium Homepage that clashed with the new Dark Green / Light Beige theme. Ensured testimonials, graphs, and CTA buttons use the correct semantic CSS variables (`var(--paper)`, `var(--brand-gold)`, `var(--ink)`). Verified 4-column pricing grid successfully collapses into 1-column layout on mobile devices.
+
 ## 2026-09-19 — v0.7.3 production release
 
 - **`feat(website)`** — **Theme Overhaul (Dark Green/Beige)**: Applied a new 2-color premium theme requested by the user, replacing the previous colors with Deep Green (`#1C352D`) and Light Beige (`#F8F0E5`) across the website's tokens, globals, and glass-icon utilities.

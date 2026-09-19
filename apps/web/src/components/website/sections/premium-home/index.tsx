@@ -6,7 +6,7 @@ import { DataFlowDiagram } from "../data-flow-diagram";
 
 export function PremiumGrowixaHome() {
   return (
-    <div className="w-full" style={{ background: "#ffffff" }}>
+    <div className="w-full" style={{ background: "var(--paper)" }}>
       {/* 1. HERO SECTION */}
       <section className={styles.hero}>
         <div className={styles.heroContent}>
@@ -37,7 +37,7 @@ export function PremiumGrowixaHome() {
                 <div className={styles.graphBar} style={{ height: "40%" }} />
                 <div className={styles.graphBar} style={{ height: "60%" }} />
                 <div className={styles.graphBar} style={{ height: "50%" }} />
-                <div className={styles.graphBar} style={{ height: "80%", background: "#2a41ff" }} />
+                <div className={styles.graphBar} style={{ height: "80%", background: "var(--brand-gold)" }} />
               </div>
             </div>
             
@@ -48,7 +48,7 @@ export function PremiumGrowixaHome() {
                 <div className={styles.graphBar} style={{ height: "30%" }} />
                 <div className={styles.graphBar} style={{ height: "50%" }} />
                 <div className={styles.graphBar} style={{ height: "70%" }} />
-                <div className={styles.graphBar} style={{ height: "100%", background: "#2a41ff" }} />
+                <div className={styles.graphBar} style={{ height: "100%", background: "var(--brand-gold)" }} />
               </div>
             </div>
           </div>
@@ -102,7 +102,7 @@ export function PremiumGrowixaHome() {
 
           <div className={styles.resultCard}>
             <div className={styles.resultTitle}>Estimate your Marketing ROI</div>
-            <p style={{ color: '#5c6488', fontSize: '0.9rem' }}>Startups can save up to 40 hours a week.</p>
+            <p style={{ color: 'var(--mut)', fontSize: '0.9rem' }}>Startups can save up to 40 hours a week.</p>
             <div className={styles.resultValue}>$1,250 - $4,500</div>
             <Link href="/register" className={styles.primaryBtn} style={{ width: '100%', marginTop: '10px' }}>
               Get Started ↗
@@ -143,8 +143,8 @@ export function PremiumGrowixaHome() {
           ].map((feature, idx) => (
             <div className={styles.compRow} key={idx}>
               <div className={`${styles.compCell} ${styles.compCellLeft}`}>{feature}</div>
-              <div className={styles.compCell}><X color="#ff3f73" size={20} /></div>
-              <div className={`${styles.compCell} ${styles.compGrowixa}`}><Check color="#ffffff" size={20} /></div>
+              <div className={styles.compCell}><X color="var(--brand-gold)" size={20} /></div>
+              <div className={`${styles.compCell} ${styles.compGrowixa}`}><Check color="var(--paper)" size={20} /></div>
             </div>
           ))}
         </div>
@@ -155,26 +155,26 @@ export function PremiumGrowixaHome() {
         <h2 className={styles.roiTitle} style={{ textAlign: 'center' }}>Trusted by <span>Bold Brands</span></h2>
         <div className={styles.testiGrid}>
           <div className={styles.testiCard}>
-            <p style={{ fontStyle: 'italic', color: '#5c6488', marginBottom: '20px' }}>
+            <p style={{ fontStyle: 'italic', color: 'var(--mut)', marginBottom: '20px' }}>
               &quot;Great experience so far. We have a complex setup and they have way outperformed the previous two solutions we had tried out. Strongly recommend.&quot;
             </p>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <div style={{ width: '40px', height: '40px', background: '#e1e5ff', borderRadius: '50%' }}></div>
+              <div style={{ width: '40px', height: '40px', background: 'var(--paper-2)', borderRadius: '50%' }}></div>
               <div>
-                <div style={{ fontWeight: '700', color: '#0b102b' }}>Stephen.G</div>
-                <div style={{ fontSize: '0.8rem', color: '#8f98b6' }}>CEO & Founder</div>
+                <div style={{ fontWeight: '700', color: 'var(--ink)' }}>Stephen.G</div>
+                <div style={{ fontSize: '0.8rem', color: 'var(--mut)' }}>CEO & Founder</div>
               </div>
             </div>
           </div>
           <div className={styles.testiCard}>
-            <p style={{ fontStyle: 'italic', color: '#5c6488', marginBottom: '20px' }}>
+            <p style={{ fontStyle: 'italic', color: 'var(--mut)', marginBottom: '20px' }}>
               &quot;Super efficient! Really enjoyed working with the Growixa team! Highly recommend for startups looking to scale.&quot;
             </p>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <div style={{ width: '40px', height: '40px', background: '#e1e5ff', borderRadius: '50%' }}></div>
+              <div style={{ width: '40px', height: '40px', background: 'var(--paper-2)', borderRadius: '50%' }}></div>
               <div>
-                <div style={{ fontWeight: '700', color: '#0b102b' }}>Arjun Sethi</div>
-                <div style={{ fontSize: '0.8rem', color: '#8f98b6' }}>Co-Founder</div>
+                <div style={{ fontWeight: '700', color: 'var(--ink)' }}>Arjun Sethi</div>
+                <div style={{ fontSize: '0.8rem', color: 'var(--mut)' }}>Co-Founder</div>
               </div>
             </div>
           </div>
@@ -185,9 +185,9 @@ export function PremiumGrowixaHome() {
       <footer className={styles.massiveFooter}>
         <div className={styles.footerContent}>
           <div>
-            <h3 style={{ fontSize: '1.5rem', fontWeight: '800', marginBottom: '16px' }}>Save Time, Money, And <br/>Run A Better Startup.</h3>
-            <p style={{ opacity: 0.8, maxWidth: '400px', marginBottom: '24px' }}>Growixa integrates with the platforms you already use, making it easy to bring everything together in one place.</p>
-            <Link href="/register" className={styles.secondaryBtn} style={{ background: '#ffffff', color: '#2a41ff' }}>
+            <h3 style={{ fontSize: '1.5rem', fontWeight: '800', marginBottom: '16px', color: 'var(--ink)' }}>Save Time, Money, And <br/>Run A Better Startup.</h3>
+            <p style={{ opacity: 0.8, maxWidth: '400px', marginBottom: '24px', color: 'var(--ink)' }}>Growixa integrates with the platforms you already use, making it easy to bring everything together in one place.</p>
+            <Link href="/register" className={styles.secondaryBtn} style={{ background: 'var(--brand-gold)', color: 'var(--paper)', border: 'none' }}>
               Get Started ↗
             </Link>
           </div>
