@@ -146,6 +146,14 @@ class Settings(BaseSettings):
     linkedin_client_secret: str = ""
     twitter_client_id: str = ""
     twitter_client_secret: str = ""
+    
+    # Phase 1 Live APIs: OpenAI, Twilio, Meta (WhatsApp)
+    openai_api_key: str = ""
+    twilio_account_sid: str = ""
+    twilio_auth_token: str = ""
+    twilio_phone_number: str = ""
+    meta_whatsapp_token: str = ""
+    meta_whatsapp_phone_id: str = ""
 
     # Slice 5 media storage (DEC-GRX-024): Supabase Storage, called directly via its
     # REST API (growixa_api.files.storage_client) — no SDK, matching this codebase's

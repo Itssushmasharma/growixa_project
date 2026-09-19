@@ -1,0 +1,246 @@
+/* Data Flow Diagram Styles */
+.section {
+  padding: 100px 24px;
+  background-color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-family: var(--font-body, system-ui, sans-serif);
+  overflow: hidden;
+}
+
+.title {
+  text-align: center;
+  font-family: var(--font-display, inherit);
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 800;
+  color: #0b0c16;
+  margin-bottom: 20px;
+}
+
+.subtitle {
+  text-align: center;
+  font-size: 1.125rem;
+  color: #5c6070;
+  max-width: 600px;
+  margin-bottom: 80px;
+}
+
+.diagramContainer {
+  position: relative;
+  width: 100%;
+  max-width: 1100px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 40px;
+}
+
+/* Background SVG Lines */
+.svgBackground {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.pathLine {
+  fill: none;
+  stroke: url(#gradientLeft);
+  stroke-width: 12;
+  stroke-linecap: round;
+  opacity: 0.3;
+}
+
+.pathLineRight {
+  fill: none;
+  stroke: url(#gradientRight);
+  stroke-width: 12;
+  stroke-linecap: round;
+  opacity: 0.3;
+}
+
+.pathLineAnim {
+  fill: none;
+  stroke: url(#gradientLeft);
+  stroke-width: 12;
+  stroke-linecap: round;
+  stroke-dasharray: 20 40;
+  animation: flowAnim 20s linear infinite;
+}
+
+.pathLineAnimRight {
+  fill: none;
+  stroke: url(#gradientRight);
+  stroke-width: 12;
+  stroke-linecap: round;
+  stroke-dasharray: 20 40;
+  animation: flowAnimRight 20s linear infinite;
+}
+
+@keyframes flowAnim {
+  to {
+    stroke-dashoffset: -1000;
+  }
+}
+@keyframes flowAnimRight {
+  to {
+    stroke-dashoffset: 1000;
+  }
+}
+
+/* Columns */
+.column {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 260px;
+}
+
+.colHeader {
+  text-align: center;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 30px;
+}
+
+.headerLeft { color: #00b887; }
+.headerCenter { color: #0b0c16; }
+.headerRight { color: #7b4dff; }
+
+/* Cards */
+.card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+  background: #ffffff;
+  border-radius: 99px;
+  box-shadow: 0 10px 30px -10px rgba(11, 12, 22, 0.1);
+  border: 1px solid #e2e4eb;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 40px -10px rgba(11, 12, 22, 0.15);
+}
+
+.cardIcon {
+  font-size: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+}
+
+.cardLabel {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: #0b0c16;
+}
+
+/* Center Hub */
+.centerHubWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  min-width: 300px;
+  height: 400px;
+}
+
+.centerGlow {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle, rgba(123, 77, 255, 0.1) 0%, rgba(0, 184, 135, 0.05) 40%, transparent 70%);
+  animation: pulse 4s infinite alternate;
+}
+
+@keyframes pulse {
+  0% { transform: scale(0.95); opacity: 0.8; }
+  100% { transform: scale(1.05); opacity: 1; }
+}
+
+.centerHub {
+  position: relative;
+  z-index: 2;
+  width: 180px;
+  height: 180px;
+  background: #ffffff;
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 20px 50px -10px rgba(123, 77, 255, 0.25);
+  border: 2px solid rgba(123, 77, 255, 0.1);
+}
+
+.hubLogo {
+  font-family: var(--font-display, inherit);
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: #0b0c16;
+}
+
+.hubLogo span {
+  color: #7b4dff;
+}
+
+.hubSubtitle {
+  font-size: 0.75rem;
+  color: #5c6070;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  margin-top: 4px;
+}
+
+/* Hub Knowledge Points */
+.knowledgePoints {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.kPoint {
+  position: absolute;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #5c6070;
+  white-space: nowrap;
+}
+
+.kPoint.tl { top: 10%; left: 10%; }
+.kPoint.tr { top: 10%; right: 10%; }
+.kPoint.bl { bottom: 10%; left: 10%; }
+.kPoint.br { bottom: 10%; right: 10%; }
+
+/* Mobile Fallback */
+@media (max-width: 900px) {
+  .diagramContainer {
+    flex-direction: column;
+  }
+  .svgBackground {
+    display: none;
+  }
+  .column {
+    width: 100%;
+    max-width: 400px;
+  }
+  .centerHubWrapper {
+    height: 300px;
+  }
+}

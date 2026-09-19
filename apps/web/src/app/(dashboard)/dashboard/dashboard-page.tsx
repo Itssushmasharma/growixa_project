@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { QuotaGauge } from "@/components/dashboard/quota-gauge";
 import { TrendChart } from "@/components/dashboard/trend-chart";
+import { ActivityFeed } from "@/components/global/ActivityFeed";
 import { ApiError, apiFetch } from "@/lib/api-client";
 import styles from "./dashboard-page.module.css";
 import type { DashboardOverview } from "./types";
@@ -326,6 +327,17 @@ export function DashboardPage() {
           </p>
         </section>
       </div>
+
+      {/* 6. GLOBAL ACTIVITY FEED (TRANSPARENCY) */}
+      <section style={{ marginTop: '2rem' }}>
+        <div className={styles.sectionHeading}>
+          <div>
+            <span className={styles.sectionKicker}>TRANSPARENCY</span>
+            <h2>Command Center Activity</h2>
+          </div>
+        </div>
+        <ActivityFeed />
+      </section>
 
     </main>
   );

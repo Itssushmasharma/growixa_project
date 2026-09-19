@@ -9,6 +9,8 @@ from growixa_api.permissions.dependencies import get_current_account_id
 from pydantic import BaseModel
 from growixa_api.inbox.models import InboxConversation, InboxMessage
 from growixa_api.inbox.services import add_message
+from growixa_api.inbox.ws import manager
+from fastapi import WebSocket, WebSocketDisconnect
 
 class SendMessageReq(BaseModel):
     content: str
@@ -55,6 +57,18 @@ async def send_message(
         media_urls=payload.media_urls
     )
     await session.commit()
+    
+    # Broadcast to all active websockets for this account
+    msg_dict = {
+        "id": str(msg.id),
+        "conversation_id": str(msg.conversation_id),
+        "direction": msg.direction,
+        "content": msg.content,
+        "status": msg.status,
+        "created_at": msg.created_at.isoformat()
+    }
+    await manager.broadcast_to_account(account_id, "NEW_MESSAGE", msg_dict)
+    
     return msg
 
 @router.get("/conversations/{conversation_id}/messages")
@@ -77,3 +91,19 @@ async def get_messages(
         .order_by(InboxMessage.created_at.asc())
     )
     return result.scalars().all()
+
+@router.websocket("/ws")
+async def websocket_endpoint(
+    websocket: WebSocket,
+    # In a real app we'd parse the token from query params or headers since WS doesn't easily send Auth headers natively.
+    # For MVP, we'll accept the account_id directly in the query param: ?account_id=...
+    account_id: uuid.UUID
+):
+    await manager.connect(websocket, account_id)
+    try:
+        while True:
+            # We don't expect the client to send messages via WS, only listen.
+            # But we need to keep the connection open and listen for disconnects.
+            data = await websocket.receive_text()
+    except WebSocketDisconnect:
+        manager.disconnect(websocket, account_id)

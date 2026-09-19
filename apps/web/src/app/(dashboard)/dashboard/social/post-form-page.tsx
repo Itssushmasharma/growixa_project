@@ -45,7 +45,7 @@ export function PostFormPage({ mode, postId }: PostFormPageProps) {
 
   const [connections, setConnections] = useState<SocialConnection[]>([]);
   const [post, setPost] = useState<SocialPost | null>(null);
-  const [connectionId, setConnectionId] = useState("");
+  const [selectedConnectionIds, setSelectedConnectionIds] = useState<Set<string>>(new Set());
   const [caption, setCaption] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -57,23 +57,9 @@ export function PostFormPage({ mode, postId }: PostFormPageProps) {
   const [utmMedium, setUtmMedium] = useState("");
   const [utmContent, setUtmContent] = useState("");
 
-  // Platform Preview Tab
+  // Previews
   type PreviewPlatform = "LINKEDIN" | "TWITTER" | "INSTAGRAM_BUSINESS";
-  const [previewTab, setPreviewTab] = useState<PreviewPlatform>("INSTAGRAM_BUSINESS");
-
-  // Media Library Picker Modal
-  const [showMediaModal, setShowMediaModal] = useState(false);
-  const [mediaAssets, setMediaAssets] = useState<MediaAsset[]>([]);
-  const [loadingMedia, setLoadingMedia] = useState(false);
-
-  const [publishing, setPublishing] = useState(false);
-  const [cancelling, setCancelling] = useState(false);
-  const [retrying, setRetrying] = useState(false);
-
-  type ActionMode = "now" | "schedule";
-  const [actionMode, setActionMode] = useState<ActionMode>("now");
-  const [scheduledAt, setScheduledAt] = useState("");
-  const [scheduling, setScheduling] = useState(false);
+  const [previewTab, setPreviewTab] = useState<PreviewPlatform>("LINKEDIN");
 
   useEffect(() => {
     async function load() {
@@ -97,6 +83,13 @@ export function PostFormPage({ mode, postId }: PostFormPageProps) {
         if (mode === "create") {
           const connectionList = await apiFetch<SocialConnection[]>("/social/connections");
           setConnections(connectionList);
+          if (connectionList.length > 0) {
+            const first = connectionList[0];
+            if (first) {
+              setSelectedConnectionIds(new Set([first.id]));
+              setPreviewTab(first.provider as PreviewPlatform);
+            }
+          }
         }
 
         if (mode === "edit" && postId) {
@@ -118,32 +111,22 @@ export function PostFormPage({ mode, postId }: PostFormPageProps) {
     void load();
   }, [mode, postId]);
 
-  async function fetchMediaLibrary() {
-    setLoadingMedia(true);
-    try {
-      const assets = await apiFetch<MediaAsset[]>("/media");
-      setMediaAssets(assets);
-    } catch {
-      showToast("error", "Could not load media library.");
-    } finally {
-      setLoadingMedia(false);
-    }
-  }
-
   const editable = canManage && (mode === "create" || post?.status === "DRAFT");
 
-  const selectedConnection = connections.find(
-    (c) => c.id === (mode === "create" ? connectionId : post?.social_connection_id),
-  );
-  const currentProvider =
-    selectedConnection?.provider ??
-    (previewTab === "TWITTER"
-      ? "TWITTER"
-      : previewTab === "LINKEDIN"
-        ? "LINKEDIN"
-        : "INSTAGRAM_BUSINESS");
-  const maxChars =
-    currentProvider === "TWITTER" ? 280 : currentProvider === "LINKEDIN" ? 3000 : 2200;
+  const toggleConnection = (id: string, provider: string) => {
+    if (!editable) return;
+    const next = new Set(selectedConnectionIds);
+    if (next.has(id)) {
+      next.delete(id);
+    } else {
+      next.add(id);
+      setPreviewTab(provider as PreviewPlatform); // Focus preview on newly selected
+    }
+    setSelectedConnectionIds(next);
+  };
+
+  const currentProvider = previewTab;
+  const maxChars = currentProvider === "TWITTER" ? 280 : currentProvider === "LINKEDIN" ? 3000 : 2200;
   const charsRemaining = maxChars - caption.length;
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -151,21 +134,31 @@ export function PostFormPage({ mode, postId }: PostFormPageProps) {
     setSubmitting(true);
     try {
       if (mode === "create") {
-        const payload: Record<string, unknown> = {
-          social_connection_id: connectionId,
-          caption,
-        };
-        if (utmCampaign) payload.utm_campaign = utmCampaign;
-        if (utmSource) payload.utm_source = utmSource;
-        if (utmMedium) payload.utm_medium = utmMedium;
-        if (utmContent) payload.utm_content = utmContent;
+        if (selectedConnectionIds.size === 0) {
+          showToast("error", "Please select at least one social account.");
+          setSubmitting(false);
+          return;
+        }
+        
+        // Create a draft for each selected connection
+        for (const connId of Array.from(selectedConnectionIds)) {
+          const payload: Record<string, unknown> = {
+            social_connection_id: connId,
+            caption,
+          };
+          if (utmCampaign) payload.utm_campaign = utmCampaign;
+          if (utmSource) payload.utm_source = utmSource;
+          if (utmMedium) payload.utm_medium = utmMedium;
+          if (utmContent) payload.utm_content = utmContent;
 
-        const created = await apiFetch<SocialPost>("/social/posts", {
-          method: "POST",
-          body: JSON.stringify(payload),
-        });
-        showToast("success", "Draft created — now add an image.");
-        router.push(`/dashboard/social/${created.id}`);
+          await apiFetch<SocialPost>("/social/posts", {
+            method: "POST",
+            body: JSON.stringify(payload),
+          });
+        }
+        
+        showToast("success", `${selectedConnectionIds.size} Drafts created!`);
+        router.push(`/dashboard/social`);
       } else if (postId) {
         const payload: Record<string, unknown> = {
           caption,
@@ -186,7 +179,7 @@ export function PostFormPage({ mode, postId }: PostFormPageProps) {
       showToast(
         "error",
         mode === "create"
-          ? "Could not create that post. Please try again."
+          ? "Could not create drafts. Please try again."
           : "Could not save that edit. Please try again.",
       );
     } finally {
@@ -216,27 +209,6 @@ export function PostFormPage({ mode, postId }: PostFormPageProps) {
     }
   }
 
-  async function handleSelectFromMediaLibrary(asset: MediaAsset) {
-    if (!postId) return;
-    setUploading(true);
-    setShowMediaModal(false);
-    try {
-      const res = await fetch(asset.public_url);
-      const blob = await res.blob();
-      const file = new File([blob], asset.filename, { type: asset.mime_type || "image/jpeg" });
-      const formData = new FormData();
-      formData.append("file", file);
-      await apiFetch(`/social/posts/${postId}/media`, { method: "POST", body: formData });
-      const refreshed = await apiFetch<SocialPost>(`/social/posts/${postId}`);
-      setPost(refreshed);
-      showToast("success", `Attached ${asset.filename} from Media Library.`);
-    } catch {
-      showToast("error", "Could not attach image from Media Library.");
-    } finally {
-      setUploading(false);
-    }
-  }
-
   async function handleRemoveMedia(mediaId: string) {
     if (!postId) return;
     setRemovingMediaId(mediaId);
@@ -252,123 +224,8 @@ export function PostFormPage({ mode, postId }: PostFormPageProps) {
     }
   }
 
-  async function handlePublishNow() {
-    if (!post) return;
-    const channelName =
-      currentProvider === "TWITTER"
-        ? "Twitter / X"
-        : currentProvider === "LINKEDIN"
-          ? "LinkedIn"
-          : "Instagram";
-    if (!window.confirm(`Publish this post to ${channelName} now? This cannot be undone.`)) return;
-    setPublishing(true);
-    try {
-      await apiFetch<{ job_id: string }>(`/social/posts/${post.id}/publish`, { method: "POST" });
-      setPost((prev) => (prev ? { ...prev, status: "DISPATCHING" } : prev));
-      showToast("success", "Publishing — check back shortly for status.");
-    } catch (error) {
-      showToast("error", parseApiErrorDetail(error, "Could not publish this post."));
-    } finally {
-      setPublishing(false);
-    }
-  }
-
-  async function handleSchedule() {
-    if (!post || !scheduledAt) return;
-    const utcIso = new Date(scheduledAt).toISOString();
-    setScheduling(true);
-    try {
-      const updated = await apiFetch<SocialPost>(`/social/posts/${post.id}/schedule`, {
-        method: "POST",
-        body: JSON.stringify({ scheduled_at: utcIso }),
-      });
-      setPost(updated);
-      showToast("success", `Post scheduled for ${formatFull(utcIso)}.`);
-    } catch (error) {
-      showToast("error", parseApiErrorDetail(error, "Could not schedule this post."));
-    } finally {
-      setScheduling(false);
-    }
-  }
-
-  async function handleCancel() {
-    if (!post) return;
-    if (!window.confirm("Cancel this post?")) return;
-    setCancelling(true);
-    try {
-      const updated = await apiFetch<SocialPost>(`/social/posts/${post.id}/cancel`, {
-        method: "POST",
-      });
-      setPost(updated);
-      showToast("success", "Post cancelled.");
-    } catch (error) {
-      showToast("error", parseApiErrorDetail(error, "Could not cancel this post."));
-    } finally {
-      setCancelling(false);
-    }
-  }
-
-  async function handleRetry() {
-    if (!post) return;
-    setRetrying(true);
-    try {
-      await apiFetch<{ job_id: string }>(`/social/posts/${post.id}/retry`, { method: "POST" });
-      setPost((prev) => (prev ? { ...prev, status: "DISPATCHING" } : prev));
-      showToast("success", "Retrying — check back shortly for status.");
-    } catch (error) {
-      showToast("error", parseApiErrorDetail(error, "Could not retry this post."));
-    } finally {
-      setRetrying(false);
-    }
-  }
-
-  function minDatetimeLocal(): string {
-    const d = new Date(Date.now() + 10 * 60 * 1000);
-    return d.toISOString().slice(0, 16);
-  }
-
-  function formatFull(iso: string): string {
-    return new Date(iso).toLocaleString(undefined, {
-      weekday: "long",
-      month: "long",
-      day: "numeric",
-      year: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-    });
-  }
-
-  if (loading) {
-    return (
-      <div className={styles.page}>
-        <div className={styles.card}>Loading…</div>
-      </div>
-    );
-  }
-
-  if (loadError) {
-    return (
-      <div className={styles.page}>
-        <div className={styles.card}>{loadError}</div>
-      </div>
-    );
-  }
-
-  if (mode === "create" && !canManage) {
-    return (
-      <div className={styles.page}>
-        <div className={styles.card}>You don&apos;t have access to create posts.</div>
-      </div>
-    );
-  }
-
-  if (mode === "edit" && !post) {
-    return (
-      <div className={styles.page}>
-        <div className={styles.card}>You don&apos;t have access to social posts.</div>
-      </div>
-    );
-  }
+  if (loading) return <div className={styles.page}>Loading…</div>;
+  if (loadError) return <div className={styles.page}>{loadError}</div>;
 
   const hasMedia = mode === "edit" && (post?.media.length ?? 0) > 0;
 
@@ -381,320 +238,141 @@ export function PostFormPage({ mode, postId }: PostFormPageProps) {
       </nav>
 
       <div className={styles.split}>
+        {/* Left Side: Composer */}
         <form className={styles.formCard} onSubmit={handleSubmit}>
-          <h2 className={styles.heading}>{mode === "create" ? "New post" : "Edit post"}</h2>
-          {post && (
-            <span className={`${styles.statusBadge} ${styles[`status${post.status}`]}`}>
-              {post.status}
-            </span>
-          )}
-          {mode === "edit" && post && post.status !== "DRAFT" && (
-            <p className={styles.hint}>This post is no longer a draft and can&apos;t be edited.</p>
-          )}
-          {post?.last_error && <p className={styles.errorText}>Error: {post.last_error}</p>}
-
           {mode === "create" && (
-            <div className={styles.field}>
-              <label className={styles.label} htmlFor="post-connection">
-                Instagram connection
-              </label>
-              <select
-                id="post-connection"
-                className={styles.input}
-                required
-                value={connectionId}
-                onChange={(event) => {
-                  setConnectionId(event.target.value);
-                  const chosen = connections.find((c) => c.id === event.target.value);
-                  if (chosen?.provider === "TWITTER" || chosen?.provider === "LINKEDIN") {
-                    setPreviewTab(chosen.provider);
-                  } else {
-                    setPreviewTab("INSTAGRAM_BUSINESS");
-                  }
-                }}
-              >
-                <option value="" disabled>
-                  -- Select a connection --
-                </option>
-                {connections.map((connection) => {
-                  const providerName =
-                    connection.provider === "LINKEDIN"
-                      ? "LinkedIn"
-                      : connection.provider === "TWITTER"
-                        ? "Twitter / X"
-                        : "Instagram";
-                  const name = connection.ig_username ?? connection.ig_business_account_id;
+            <div className={styles.networkSelector}>
+              <span className={styles.networkLabel}>Post to:</span>
+              <div className={styles.networkIcons}>
+                {connections.map((conn) => {
+                  const isActive = selectedConnectionIds.has(conn.id);
+                  const iconMap: Record<string, string> = {
+                    TWITTER: "𝕏",
+                    LINKEDIN: "in",
+                    INSTAGRAM_BUSINESS: "📸",
+                  };
                   return (
-                    <option key={connection.id} value={connection.id}>
-                      {name} ({providerName})
-                    </option>
+                    <button
+                      key={conn.id}
+                      type="button"
+                      className={`${styles.networkIcon} ${isActive ? styles.networkIconActive : ""}`}
+                      onClick={() => toggleConnection(conn.id, conn.provider)}
+                      title={conn.provider_account_name || conn.ig_username || conn.provider}
+                    >
+                      {iconMap[conn.provider] || "🌐"}
+                    </button>
                   );
                 })}
-              </select>
-              {connections.length === 0 && (
-                <p className={styles.hint}>
-                  No accounts connected yet — connect LinkedIn, Twitter/X, or Instagram under
-                  Integrations first.
-                </p>
-              )}
+              </div>
             </div>
           )}
 
-          <div className={styles.field}>
-            <div className={styles.fieldHeader}>
-              <label className={styles.label} htmlFor="post-caption">
-                Caption
-              </label>
-              {editable && canGenerateAI && (
-                <div className={styles.fieldActions}>
-                  <AIGenerateButton
-                    capability="SOCIAL_CAPTION"
-                    triggerLabel="Generate with AI"
-                    briefPlaceholder="e.g. a 20% off sale on running shoes this weekend"
-                    onInsert={(text) => setCaption(text)}
-                    linkedEntityType="social_post"
-                    linkedEntityId={postId}
-                  />
-                  <AIGenerateButton
-                    capability="HASHTAGS"
-                    triggerLabel="Suggest hashtags"
-                    briefPlaceholder="e.g. running shoes sale"
-                    onInsert={(text) => setCaption((prev) => (prev ? `${prev}\n\n${text}` : text))}
-                    linkedEntityType="social_post"
-                    linkedEntityId={postId}
-                  />
-                </div>
-              )}
-            </div>
+          <div className={styles.composerArea}>
             <textarea
-              id="post-caption"
               className={styles.textarea}
+              placeholder="What do you want to share?"
               disabled={!editable}
               value={caption}
-              onChange={(event) => setCaption(event.target.value)}
+              onChange={(e) => setCaption(e.target.value)}
             />
-            <div className={styles.charCountRow}>
-              <span
-                className={`${styles.charCount} ${
-                  charsRemaining < 0
-                    ? styles.charCountError
-                    : charsRemaining <= 50
-                      ? styles.charCountWarn
-                      : ""
-                }`}
-              >
-                {caption.length} / {maxChars} characters
-                {charsRemaining < 0 && ` (${Math.abs(charsRemaining)} over limit)`}
-              </span>
-            </div>
+            {editable && canGenerateAI && (
+              <div style={{ display: "flex", gap: "10px", marginTop: "10px" }}>
+                <AIGenerateButton
+                  capability="SOCIAL_CAPTION"
+                  triggerLabel="✨ Rewrite with AI"
+                  briefPlaceholder="e.g. a product launch announcement"
+                  onInsert={(text) => setCaption(text)}
+                  linkedEntityType="social_post"
+                  linkedEntityId={postId}
+                />
+              </div>
+            )}
+            
+            {/* Display Media if attached (only single-draft mode currently supported for media upload) */}
+            {mode === "edit" && post && post.media.length > 0 && (
+              <div className={styles.attachedMediaGrid}>
+                {post.media.map((media) => (
+                  <div key={media.id} className={styles.attachedMediaItem}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={media.public_url} alt="Attached media" />
+                    {editable && (
+                      <button type="button" className={styles.removeMediaBtn} onClick={() => handleRemoveMedia(media.id)}>✕</button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {mode === "edit" && !hasMedia && editable && (
+              <label className={styles.mediaZone}>
+                <div className={styles.mediaIcon}>📁</div>
+                <p>Click to browse or drag and drop an image</p>
+                <input
+                  type="file"
+                  accept="image/jpeg"
+                  style={{ display: "none" }}
+                  onChange={handleFileChange}
+                />
+              </label>
+            )}
+            {mode === "create" && (
+              <div className={styles.mediaZone}>
+                <div className={styles.mediaIcon}>🔒</div>
+                <p>Save draft first to attach media across selected channels.</p>
+              </div>
+            )}
           </div>
 
-          {/* Collapsible UTM Tracking Section */}
-          <details className={styles.accordion}>
-            <summary className={styles.accordionSummary}>
-              <span>Campaign &amp; UTM Tracking (Optional)</span>
-              <span style={{ fontSize: "11px", opacity: 0.8 }}>▼</span>
-            </summary>
-            <div className={styles.accordionBody}>
-              <div className={styles.utmGrid}>
-                <div>
-                  <label className={styles.label} htmlFor="utm-campaign">
-                    Campaign Name
-                  </label>
-                  <input
-                    id="utm-campaign"
-                    type="text"
-                    placeholder="e.g. spring_launch"
-                    className={styles.input}
-                    disabled={!editable}
-                    value={utmCampaign}
-                    onChange={(e) => setUtmCampaign(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className={styles.label} htmlFor="utm-source">
-                    Source
-                  </label>
-                  <input
-                    id="utm-source"
-                    type="text"
-                    placeholder="e.g. linkedin, twitter, instagram"
-                    className={styles.input}
-                    disabled={!editable}
-                    value={utmSource}
-                    onChange={(e) => setUtmSource(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className={styles.label} htmlFor="utm-medium">
-                    Medium
-                  </label>
-                  <input
-                    id="utm-medium"
-                    type="text"
-                    placeholder="e.g. social, organic"
-                    className={styles.input}
-                    disabled={!editable}
-                    value={utmMedium}
-                    onChange={(e) => setUtmMedium(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className={styles.label} htmlFor="utm-content">
-                    Content / Creative Tag
-                  </label>
-                  <input
-                    id="utm-content"
-                    type="text"
-                    placeholder="e.g. variant_a"
-                    className={styles.input}
-                    disabled={!editable}
-                    value={utmContent}
-                    onChange={(e) => setUtmContent(e.target.value)}
-                  />
-                </div>
-              </div>
-              {(utmCampaign || utmSource || utmMedium || utmContent) && (
-                <div className={styles.utmPreviewBox}>
-                  <strong>Generated Tracking Params: </strong>
-                  {[
-                    utmSource && `utm_source=${encodeURIComponent(utmSource)}`,
-                    utmMedium && `utm_medium=${encodeURIComponent(utmMedium)}`,
-                    utmCampaign && `utm_campaign=${encodeURIComponent(utmCampaign)}`,
-                    utmContent && `utm_content=${encodeURIComponent(utmContent)}`,
-                  ]
-                    .filter(Boolean)
-                    .join("&")}
-                </div>
-              )}
+          <div className={styles.formActions}>
+            <div className={styles.actionLeft}>
+              <span style={{ fontSize: "12px", color: charsRemaining < 0 ? "red" : "#94a3b8" }}>
+                {caption.length} / {maxChars}
+              </span>
             </div>
-          </details>
-
-          {mode === "edit" && (
-            <div className={styles.field}>
-              <span className={styles.label}>Image</span>
-              {post?.media.map((media) => (
-                <div className={styles.mediaRow} key={media.id}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={media.public_url} alt="" className={styles.mediaThumb} />
-                  {editable && (
-                    <button
-                      type="button"
-                      className={styles.secondaryButton}
-                      disabled={removingMediaId === media.id}
-                      onClick={() => handleRemoveMedia(media.id)}
-                    >
-                      {removingMediaId === media.id ? "Removing…" : "Remove"}
-                    </button>
-                  )}
-                </div>
-              ))}
-              {editable && !hasMedia && (
-                <>
-                  <label className={styles.label} htmlFor="post-media-file">
-                    Upload image
-                  </label>
-                  <input
-                    type="file"
-                    accept="image/jpeg"
-                    id="post-media-file"
-                    className={styles.fileInput}
-                    disabled={uploading}
-                    onChange={handleFileChange}
-                  />
-                  <div className={styles.mediaButtonsRow}>
-                    <button
-                      type="button"
-                      className={styles.secondaryButton}
-                      disabled={uploading}
-                      onClick={() => {
-                        setShowMediaModal(true);
-                        void fetchMediaLibrary();
-                      }}
-                    >
-                      🖼️ Choose from Media Library
-                    </button>
-                  </div>
-                  <p className={styles.hint}>JPEG only, up to 8MB. Exactly one image per post.</p>
-                </>
-              )}
-            </div>
-          )}
-
-          {editable && (
-            <div className={styles.formActions}>
-              <button
-                type="button"
-                className={styles.secondaryButton}
-                onClick={() => router.back()}
-              >
-                Cancel
-              </button>
-              <button type="submit" className={styles.actionButton} disabled={submitting}>
-                {submitting
-                  ? mode === "create"
-                    ? "Creating…"
-                    : "Saving…"
-                  : mode === "create"
-                    ? "Create draft"
-                    : "Save changes"}
+            <div className={styles.actionRight}>
+              <button type="button" className={styles.btnSecondary} onClick={() => router.back()}>Cancel</button>
+              <button type="submit" className={styles.btnPrimary} disabled={submitting}>
+                {submitting ? "Saving..." : (mode === "create" ? "Save Drafts" : "Save Changes")}
               </button>
             </div>
-          )}
+          </div>
         </form>
 
-        {mode === "edit" && post && (
-          <div className={styles.sideColumn}>
-            <div className={styles.previewCard}>
-              <h3 className={styles.previewHeading}>Live Platform Simulator</h3>
-              <div className={styles.previewTabs}>
-                <button
-                  type="button"
-                  className={`${styles.previewTab} ${
-                    previewTab === "LINKEDIN" ? styles.previewTabActive : ""
-                  }`}
-                  onClick={() => setPreviewTab("LINKEDIN")}
-                >
-                  💼 LinkedIn
-                </button>
-                <button
-                  type="button"
-                  className={`${styles.previewTab} ${
-                    previewTab === "TWITTER" ? styles.previewTabActive : ""
-                  }`}
-                  onClick={() => setPreviewTab("TWITTER")}
-                >
-                  🐦 Twitter / X
-                </button>
-                <button
-                  type="button"
-                  className={`${styles.previewTab} ${
-                    previewTab === "INSTAGRAM_BUSINESS" ? styles.previewTabActive : ""
-                  }`}
-                  onClick={() => setPreviewTab("INSTAGRAM_BUSINESS")}
-                >
-                  📷 Instagram
-                </button>
-              </div>
+        {/* Right Side: Preview Pane */}
+        <div className={styles.sideColumn}>
+          <div className={styles.previewTabs}>
+            <button
+              className={`${styles.previewTab} ${previewTab === "LINKEDIN" ? styles.previewTabActive : ""}`}
+              onClick={() => setPreviewTab("LINKEDIN")}
+            >LinkedIn</button>
+            <button
+              className={`${styles.previewTab} ${previewTab === "TWITTER" ? styles.previewTabActive : ""}`}
+              onClick={() => setPreviewTab("TWITTER")}
+            >Twitter / X</button>
+            <button
+              className={`${styles.previewTab} ${previewTab === "INSTAGRAM_BUSINESS" ? styles.previewTabActive : ""}`}
+              onClick={() => setPreviewTab("INSTAGRAM_BUSINESS")}
+            >Instagram</button>
+          </div>
 
+          <div className={styles.phoneFrame}>
+            <div className={styles.previewContent}>
+              
               {previewTab === "LINKEDIN" && (
-                <div className={styles.simulator}>
-                  <div className={styles.liHeader}>
-                    <div className={styles.liAvatar}>G</div>
-                    <div className={styles.liMeta}>
-                      <span className={styles.liName}>Growixa Professional</span>
-                      <span className={styles.liSub}>Growth &amp; Marketing Engine • 1st</span>
-                      <span className={styles.liTime}>Just now • 🌐</span>
+                <div className={styles.socialPostCard}>
+                  <div className={styles.postHeader}>
+                    <div className={styles.avatar}>G</div>
+                    <div className={styles.authorInfo}>
+                      <span className={styles.authorName}>Growixa Inc.</span>
+                      <span className={styles.authorMeta}>Just now • 🌐</span>
                     </div>
                   </div>
-                  <div className={styles.liBody}>
-                    {caption || "Your post text will appear here…"}
-                  </div>
-                  {post.media[0] && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={post.media[0].public_url} alt="" className={styles.liImage} />
+                  <div className={styles.postBody}>{caption || "Your post text will appear here..."}</div>
+                  {post?.media[0] && (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img src={post.media[0].public_url} alt="Preview" className={styles.postImage} />
                   )}
-                  <div className={styles.liActions}>
+                  <div className={styles.postActions}>
                     <span>👍 Like</span>
                     <span>💬 Comment</span>
                     <span>🔁 Repost</span>
@@ -704,215 +382,60 @@ export function PostFormPage({ mode, postId }: PostFormPageProps) {
               )}
 
               {previewTab === "TWITTER" && (
-                <div className={styles.xCard}>
-                  <div className={styles.xHeader}>
-                    <div className={styles.xAvatar}>𝕏</div>
-                    <div className={styles.xNameCol}>
-                      <span className={styles.xName}>Growixa</span>
-                      <span className={styles.xHandle}>@growixa · Just now</span>
+                <div className={styles.socialPostCard}>
+                  <div className={styles.postHeader}>
+                    <div className={styles.avatar}>𝕏</div>
+                    <div className={styles.authorInfo}>
+                      <span className={styles.authorName}>Growixa</span>
+                      <span className={styles.authorMeta}>@growixa • Just now</span>
                     </div>
                   </div>
-                  <div className={styles.xBody}>{caption || "What is happening?!"}</div>
-                  {post.media[0] && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={post.media[0].public_url} alt="" className={styles.xImage} />
+                  <div className={styles.postBody}>{caption || "What is happening?!"}</div>
+                  {post?.media[0] && (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img src={post.media[0].public_url} alt="Preview" className={styles.postImage} />
                   )}
-                  <div className={styles.xActions}>
+                  <div className={styles.postActions}>
                     <span>💬 12</span>
                     <span>🔁 48</span>
                     <span>❤️ 192</span>
                     <span>📊 2.4K</span>
-                    <span>📤</span>
                   </div>
                 </div>
               )}
 
               {previewTab === "INSTAGRAM_BUSINESS" && (
-                <div className={styles.igCard}>
-                  <div className={styles.igHeader}>
-                    <div className={styles.igAvatar}>📸</div>
-                    <span className={styles.igUsername}>growixa_official</span>
-                  </div>
-                  {post.media[0] ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={post.media[0].public_url} alt="" className={styles.igImage} />
-                  ) : (
-                    <div className={styles.igImagePlaceholder}>No image attached</div>
-                  )}
-                  <div className={styles.igActions}>
-                    <div>❤️ 💬 🚀</div>
-                    <div>🔖</div>
-                  </div>
-                  <div className={styles.igCaption}>
-                    <strong>growixa_official</strong> {caption || "Caption preview…"}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {post.ig_permalink && (
-              <div className={styles.previewCard}>
-                <h3 className={styles.previewHeading}>Published on Instagram</h3>
-                <a href={post.ig_permalink} target="_blank" rel="noreferrer">
-                  View on Instagram
-                </a>
-              </div>
-            )}
-            {post.provider_permalink && (
-              <div className={styles.previewCard}>
-                <h3 className={styles.previewHeading}>Published Post</h3>
-                <a href={post.provider_permalink} target="_blank" rel="noreferrer">
-                  View Live Post ↗
-                </a>
-              </div>
-            )}
-
-            {canPublish && hasMedia && post.status === "DRAFT" && (
-              <div className={styles.sendCard}>
-                <h3 className={styles.previewHeading}>Publish</h3>
-                <div className={styles.sendModeGroup} role="group" aria-label="Publish mode">
-                  <label className={styles.sendModeOption}>
-                    <input
-                      type="radio"
-                      name="action-mode"
-                      value="now"
-                      checked={actionMode === "now"}
-                      onChange={() => setActionMode("now")}
-                    />
-                    Publish Now
-                  </label>
-                  <label className={styles.sendModeOption}>
-                    <input
-                      type="radio"
-                      name="action-mode"
-                      value="schedule"
-                      checked={actionMode === "schedule"}
-                      onChange={() => setActionMode("schedule")}
-                    />
-                    Schedule for Later
-                  </label>
-                </div>
-
-                {actionMode === "now" && (
-                  <>
-                    <p className={styles.hint}>
-                      Publishing now sends this post immediately. This can&apos;t be undone.
-                    </p>
-                    <button
-                      type="button"
-                      className={styles.actionButton}
-                      disabled={publishing}
-                      onClick={handlePublishNow}
-                    >
-                      {publishing ? "Starting…" : "Publish now"}
-                    </button>
-                  </>
-                )}
-
-                {actionMode === "schedule" && (
-                  <>
-                    <label className={styles.label} htmlFor="schedule-datetime">
-                      Publish date &amp; time
-                    </label>
-                    <input
-                      id="schedule-datetime"
-                      type="datetime-local"
-                      className={styles.input}
-                      min={minDatetimeLocal()}
-                      value={scheduledAt}
-                      onChange={(event) => setScheduledAt(event.target.value)}
-                      required
-                    />
-                    <button
-                      type="button"
-                      className={styles.actionButton}
-                      disabled={scheduling || !scheduledAt}
-                      onClick={handleSchedule}
-                    >
-                      {scheduling ? "Scheduling…" : "Confirm schedule"}
-                    </button>
-                  </>
-                )}
-              </div>
-            )}
-
-            {canPublish && post.status === "SCHEDULED" && (
-              <div className={styles.sendCard}>
-                <p className={styles.hint}>
-                  This post is scheduled and will publish automatically.{" "}
-                  {post.scheduled_at && `Scheduled for ${formatFull(post.scheduled_at)}.`}
-                </p>
-                <button
-                  type="button"
-                  className={styles.secondaryButton}
-                  disabled={cancelling}
-                  onClick={handleCancel}
-                >
-                  {cancelling ? "Cancelling…" : "Cancel"}
-                </button>
-              </div>
-            )}
-
-            {canPublish && post.status === "FAILED" && (
-              <div className={styles.sendCard}>
-                <button
-                  type="button"
-                  className={styles.actionButton}
-                  disabled={retrying}
-                  onClick={handleRetry}
-                >
-                  {retrying ? "Retrying…" : "Retry"}
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      {showMediaModal && (
-        <div className={styles.modalOverlay} onClick={() => setShowMediaModal(false)}>
-          <div className={styles.modalCard} onClick={(e) => e.stopPropagation()}>
-            <div className={styles.modalHeader}>
-              <h3 className={styles.modalTitle}>Select from Media Library</h3>
-              <button
-                type="button"
-                className={styles.modalCloseBtn}
-                onClick={() => setShowMediaModal(false)}
-              >
-                ✕
-              </button>
-            </div>
-            <div className={styles.modalBody}>
-              {loadingMedia ? (
-                <p style={{ color: "#a3c2c2", textAlign: "center" }}>Loading media assets…</p>
-              ) : mediaAssets.length === 0 ? (
-                <p style={{ color: "#a3c2c2", textAlign: "center" }}>
-                  No media assets found in library.
-                </p>
-              ) : (
-                <div className={styles.mediaPickerGrid}>
-                  {mediaAssets.map((asset) => (
-                    <div
-                      key={asset.id}
-                      className={styles.mediaPickerItem}
-                      onClick={() => void handleSelectFromMediaLibrary(asset)}
-                      title={`Select ${asset.filename}`}
-                    >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={asset.public_url}
-                        alt={asset.filename}
-                        className={styles.mediaPickerThumb}
-                      />
-                      <span className={styles.mediaPickerName}>{asset.filename}</span>
+                <div className={styles.socialPostCard}>
+                  <div className={styles.postHeader}>
+                    <div className={styles.avatar}>📸</div>
+                    <div className={styles.authorInfo}>
+                      <span className={styles.authorName}>growixa_official</span>
+                      <span className={styles.authorMeta}>Just now</span>
                     </div>
-                  ))}
+                  </div>
+                  {post?.media[0] ? (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img src={post.media[0].public_url} alt="Preview" className={styles.postImage} />
+                  ) : (
+                    <div style={{ height: '200px', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1rem', color: '#94a3b8' }}>
+                      No Image Attached
+                    </div>
+                  )}
+                  <div className={styles.postActions} style={{ justifyContent: 'flex-start', gap: '1rem', paddingBottom: '0.5rem', borderBottom: 'none' }}>
+                    <span>❤️</span>
+                    <span>💬</span>
+                    <span>🚀</span>
+                  </div>
+                  <div className={styles.postBody} style={{ fontSize: '0.85rem' }}>
+                    <strong>growixa_official</strong> {caption || "Caption preview..."}
+                  </div>
                 </div>
               )}
+
             </div>
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }

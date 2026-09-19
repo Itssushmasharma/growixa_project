@@ -23,13 +23,13 @@
   --brand-gold: #d9b66f;
 
   /* ground */
-  --ink: #0b0c16;
-  --paper: #ffffff;
-  --paper-2: #f6f6fb;
-  --paper-3: #ededf5;
-  --line: #e4e4ef;
-  --mut: #5c6076;
-  --faint: #656a82;
+  --ink: #ffffff;
+  --paper: #05050d;
+  --paper-2: #0b0c16;
+  --paper-3: #13141f;
+  --line: #22223a;
+  --mut: #9096b0;
+  --faint: #444760;
 
   /* dark bands */
   --stage: #08080f;
@@ -62,5 +62,5 @@
   --t-base: 220ms;
 
   /* grain overlay for gradients and dark bands */
-  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='.4'/%3E%3C/svg%3E");
+  /* --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='.4'/%3E%3C/svg%3E"); */
 }

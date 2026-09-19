@@ -1,145 +1,187 @@
-.lanes {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 18px;
-}
+/* ==========================================================================
+   Roadmap Page - Fondo Theme
+   ========================================================================== */
 
-.lane {
-  display: flex;
-  flex-direction: column;
-  border: 1px solid var(--line);
-  border-radius: var(--r-xl);
-  background: var(--paper);
-  overflow: hidden;
-  box-shadow: var(--sh-1);
-}
-
-.lh {
-  padding: 18px 20px;
-  border-bottom: 1px solid var(--line);
-}
-
-.now .lh {
-  background: var(--manage-l);
-}
-
-.next .lh {
-  background: var(--qualify-l);
-}
-
-.kicker {
-  display: block;
-  margin-bottom: 6px;
-  font-family: var(--font-mono);
-  font-size: 0.6875rem;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  font-weight: 500;
-  color: var(--faint);
-}
-
-.now .kicker {
-  color: var(--manage-d);
-}
-
-.next .kicker {
-  color: var(--qualify-d);
-}
-
-.lt {
-  font-size: 1.125rem;
-  margin: 0;
-}
-
-.items {
-  padding: 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 9px;
-  flex: 1;
-}
-
-.item {
-  border: 1px solid var(--line);
-  border-radius: 13px;
-  padding: 13px 14px;
-  background: var(--paper-2);
-}
-
-.it {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 0.875rem;
-  font-weight: 650;
-  letter-spacing: -0.015em;
-  margin-bottom: 4px;
-}
-
-.it i {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  flex: none;
-}
-
-.item p {
-  margin: 0;
-  font-size: 0.8125rem;
-  color: var(--mut);
-  line-height: 1.45;
-}
-
-.log {
-  border: 1px solid var(--line);
-  border-radius: var(--r-xl);
-  background: var(--paper);
-  overflow: hidden;
-  box-shadow: var(--sh-1);
-  max-width: 920px;
-}
-
-.logRow {
-  display: flex;
-  align-items: flex-start;
-  gap: 9px;
-  padding: 14px 18px;
-  border-bottom: 1px solid var(--line);
-}
-
-.logRow:last-child {
-  border-bottom: none;
-}
-
-.date {
-  font-family: var(--font-mono);
-  font-size: 0.6875rem;
-  color: var(--faint);
-  width: 74px;
-  flex: none;
-  padding-top: 2px;
-}
-
-.text {
-  flex: 1;
-  font-size: 0.9063rem;
-  color: var(--mut);
-}
-
-.text b {
-  font-weight: 650;
-  letter-spacing: -0.012em;
-  color: var(--ink);
-}
-
-@media (max-width: 1200px) {
-  .lanes {
-    grid-template-columns: repeat(2, 1fr);
+   .page {
+    background: var(--paper);
+    min-height: 100vh;
+    padding: 140px 24px 100px;
+    position: relative;
+    overflow: hidden;
+    font-family: var(--font-body, system-ui, sans-serif);
   }
-}
-
-@media (max-width: 620px) {
-  .lanes {
-    grid-template-columns: 1fr;
+  
+  .page::before {
+    content: "";
+    position: absolute;
+    top: -20%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 140vw;
+    height: 100vh;
+    background: radial-gradient(circle at 50% 0%, rgba(225, 235, 255, 0.8) 0%, rgba(255, 255, 255, 0) 60%);
+    pointer-events: none;
+    z-index: 0;
   }
-}
+  
+  .header {
+    position: relative;
+    z-index: 1;
+    text-align: center;
+    max-width: 900px;
+    margin: 0 auto 80px;
+  }
+  
+  .eyebrow {
+    display: inline-block;
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--create);
+    margin-bottom: 24px;
+    padding: 6px 16px;
+    background: rgba(67, 83, 255, 0.1);
+    border-radius: 999px;
+  }
+  
+  .title {
+    font-family: var(--font-display, inherit);
+    font-size: clamp(2.5rem, 5vw, 4rem);
+    font-weight: 800;
+    color: var(--ink);
+    margin-bottom: 24px;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+  }
+  
+  .subtitle {
+    font-size: 1.2rem;
+    color: var(--mut);
+    line-height: 1.6;
+    max-width: 700px;
+    margin: 0 auto;
+  }
+
+  /* Kanban Board */
+  .kanbanBoard {
+    display: flex;
+    gap: 30px;
+    max-width: 1200px;
+    margin: 0 auto;
+    position: relative;
+    z-index: 1;
+    overflow-x: auto;
+    padding-bottom: 40px;
+  }
+
+  .kanbanCol {
+    flex: 1;
+    min-width: 320px;
+    background: var(--paper-2);
+    border-radius: 16px;
+    padding: 24px;
+    border: 1px solid var(--line);
+  }
+
+  .colHeader {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+
+  .colTitle {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--ink);
+  }
+
+  .colBadge {
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 700;
+  }
+
+  .badgeNow { background: rgba(0, 184, 135, 0.15); color: #00b887; }
+  .badgeNext { background: rgba(42, 65, 255, 0.15); color: var(--create); }
+  .badgeLater { background: rgba(92, 100, 136, 0.15); color: #5c6488; }
+
+  .ticketList {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .ticket {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 4px 12px rgba(11, 16, 43, 0.03);
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+
+  .ticket:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 24px -6px rgba(11, 16, 43, 0.08);
+  }
+
+  .ticketTitle {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--ink);
+    margin-bottom: 8px;
+  }
+
+  .ticketDesc {
+    font-size: 0.9rem;
+    color: var(--mut);
+    line-height: 1.5;
+  }
+
+  /* Submit Idea Section */
+  .submitIdea {
+    max-width: 800px;
+    margin: 80px auto 0;
+    text-align: center;
+    background: var(--paper);
+    padding: 60px;
+    border-radius: 24px;
+    border: 1px solid var(--line);
+    box-shadow: 0 20px 40px -10px rgba(11, 16, 43, 0.05);
+    position: relative;
+    z-index: 1;
+  }
+
+  .submitIdea h2 {
+    font-family: var(--font-display, inherit);
+    font-size: 2rem;
+    font-weight: 800;
+    color: var(--ink);
+    margin-bottom: 16px;
+  }
+
+  .submitIdea p {
+    color: var(--mut);
+    margin-bottom: 32px;
+  }
+
+  .submitBtn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px 32px;
+    background: var(--create);
+    color: #ffffff;
+    font-weight: 600;
+    border-radius: 999px;
+    text-decoration: none;
+    transition: transform 0.2s, background 0.2s;
+  }
+
+  .submitBtn:hover {
+    transform: translateY(-2px);
+    background: var(--create-d);
+  }

@@ -1,133 +1,85 @@
-import type { Metadata } from "next";
-import { PageHero, Sec, Head, ClosingCta } from "@/components/website/sections/page-kit";
-import own from "./roadmap.module.css";
-
-export const metadata: Metadata = {
-  title: "Roadmap & Changelog — Growixa",
-  description:
-    "What we've shipped, what we're building, and what we haven't started. Transparent, live timeline.",
-};
-
-const LANES = [
-  {
-    tone: "now",
-    kicker: "● Live now",
-    title: "Shipped",
-    items: [
-      ["send", "Campaigns & sequences", "Multi-step, reply detection, send windows."],
-      ["send", "Deliverability suite", "SPF/DKIM/DMARC, warm-up, blocklist monitoring."],
-      ["manage", "Contacts & imports", "Dedup, custom fields, CSV and ESP migration."],
-      ["manage", "Consent & suppression", "Global list, one-click unsubscribe, consent records."],
-    ],
-  },
-  {
-    tone: "next",
-    kicker: "In beta",
-    title: "Q3 2026",
-    items: [
-      ["find", "Find — open beta", "Currently invite-only. Opening to all paid plans."],
-      ["find", "Phone enrichment", "Direct dials where we can verify them."],
-      ["create", "Create — brand voice", "Learn tone from emails you have already sent."],
-      ["manage", "Dynamic segments", "Rules that re-evaluate as contacts change."],
-    ],
-  },
-  {
-    tone: undefined,
-    kicker: "Building",
-    title: "Q4 2026",
-    items: [
-      [
-        "qualify",
-        "Qualify — first signals",
-        "Pricing visits, hiring, funding. The stage that does not exist yet.",
-      ],
-      ["qualify", "Editable signal weights", "Tune what counts for your market."],
-      ["create", "Approval workflow", "Human sign-off before first-touch sends."],
-      ["send", "A/B testing", "Real variants, not two subject lines."],
-    ],
-  },
-  {
-    tone: undefined,
-    kicker: "Not started",
-    title: "2027",
-    items: [
-      ["send", "SMS & WhatsApp", "Same sequences, more channels."],
-      ["create", "Social scheduling", "LinkedIn and X, from the same composer."],
-      ["manage", "Public API & webhooks", "So the engine can hand off to your own systems."],
-      ["ink", "SSO & audit logs", "When customers start needing a security review."],
-    ],
-  },
-];
-
-const SHIPPED = [
-  ["28 Aug", "Blocklist monitoring", "hourly checks across 34 lists, alert on listing."],
-  ["21 Aug", "Klaviyo import", "lists, templates and suppression in one pass."],
-  ["14 Aug", "Reply detection across threads", "sequences now stop when a colleague replies."],
-  ["06 Aug", "Find beta", "first fifty design partners onboarded."],
-  ["29 Jul", "Automatic domain warm-up", "30-day ramp with per-domain ceilings."],
-];
+import React from "react";
+import Link from "next/link";
+import styles from "./roadmap.module.css";
 
 export default function RoadmapPage() {
   return (
-    <>
-      <PageHero
-        hue="manage"
-        title="What we've shipped, what we're building, what we haven't started."
-        lede="We're early, and pretending otherwise would be the fastest way to lose you. This page is the honest version, updated when things move — including when they slip."
-      />
+    <main className={styles.page}>
+      <header className={styles.header}>
+        <span className={styles.eyebrow}>Product Roadmap</span>
+        <h1 className={styles.title}>Building the Future of Marketing</h1>
+        <p className={styles.subtitle}>
+          See what we&apos;re working on, what&apos;s coming next, and help us shape the future of Growixa.
+        </p>
+      </header>
 
-      <Sec hue="manage">
-        <div className={own.lanes}>
-          {LANES.map((l) => (
-            <div
-              key={l.title}
-              className={`${own.lane} ${l.tone ? own[l.tone as keyof typeof own] : ""}`}
-            >
-              <div className={own.lh}>
-                <span className={own.kicker}>{l.kicker}</span>
-                <h3 className={own.lt}>{l.title}</h3>
-              </div>
-              <div className={own.items}>
-                {l.items.map(([hue, title, body]) => (
-                  <div key={title} className={own.item}>
-                    <span className={own.it}>
-                      <i style={{ background: `var(--${hue})` }} aria-hidden="true" />
-                      {title}
-                    </span>
-                    <p>{body}</p>
-                  </div>
-                ))}
-              </div>
+      <div className={styles.kanbanBoard}>
+        {/* NOW Column */}
+        <div className={styles.kanbanCol}>
+          <div className={styles.colHeader}>
+            <span className={styles.colTitle}>Now</span>
+            <span className={`${styles.colBadge} ${styles.badgeNow}`}>In Progress</span>
+          </div>
+          <div className={styles.ticketList}>
+            <div className={styles.ticket}>
+              <h3 className={styles.ticketTitle}>WhatsApp Business API V2</h3>
+              <p className={styles.ticketDesc}>Full support for WhatsApp catalog integration and automated cart recovery messages.</p>
             </div>
-          ))}
-        </div>
-      </Sec>
-
-      <Sec tint hue="manage">
-        <Head
-          eyebrow="Changelog"
-          title="Recently shipped."
-          lede="Every release, dated. The best evidence a small team can offer is a visible pace."
-        />
-        <div className={own.log}>
-          {SHIPPED.map(([date, title, body]) => (
-            <div key={title} className={own.logRow}>
-              <span className={own.date}>{date}</span>
-              <span className={own.text}>
-                <b>{title}</b> — {body}
-              </span>
+            <div className={styles.ticket}>
+              <h3 className={styles.ticketTitle}>AI Content Generator 2.0</h3>
+              <p className={styles.ticketDesc}>Generate highly targeted email sequences and social posts based on CRM audience segments.</p>
             </div>
-          ))}
+          </div>
         </div>
-      </Sec>
 
-      <ClosingCta
-        title="Want a say in what's next?"
-        body="Design partners get the roadmap early, a direct line to the founders, and pricing locked for as long as they stay."
-        primary={{ to: "/contact", label: "Become a design partner" }}
-        secondary={{ to: "/pricing", label: "See pricing" }}
-        foot="Fifty places."
-      />
-    </>
+        {/* NEXT Column */}
+        <div className={styles.kanbanCol}>
+          <div className={styles.colHeader}>
+            <span className={styles.colTitle}>Next</span>
+            <span className={`${styles.colBadge} ${styles.badgeNext}`}>Up Next</span>
+          </div>
+          <div className={styles.ticketList}>
+            <div className={styles.ticket}>
+              <h3 className={styles.ticketTitle}>Custom Dashboard Widgets</h3>
+              <p className={styles.ticketDesc}>Allow users to build their own reporting dashboards using a drag-and-drop widget library.</p>
+            </div>
+            <div className={styles.ticket}>
+              <h3 className={styles.ticketTitle}>Shopify Deep Integration</h3>
+              <p className={styles.ticketDesc}>Sync products, orders, and customers directly from Shopify into Growixa CRM in real-time.</p>
+            </div>
+            <div className={styles.ticket}>
+              <h3 className={styles.ticketTitle}>Approval Workflows</h3>
+              <p className={styles.ticketDesc}>Multi-step approval processes for agencies and enterprise teams before publishing content.</p>
+            </div>
+          </div>
+        </div>
+
+        {/* LATER Column */}
+        <div className={styles.kanbanCol}>
+          <div className={styles.colHeader}>
+            <span className={styles.colTitle}>Later</span>
+            <span className={`${styles.colBadge} ${styles.badgeLater}`}>Exploring</span>
+          </div>
+          <div className={styles.ticketList}>
+            <div className={styles.ticket}>
+              <h3 className={styles.ticketTitle}>TikTok & Shorts Publishing</h3>
+              <p className={styles.ticketDesc}>Native video publishing and analytics for TikTok, YouTube Shorts, and Instagram Reels.</p>
+            </div>
+            <div className={styles.ticket}>
+              <h3 className={styles.ticketTitle}>Predictive LTV Scoring</h3>
+              <p className={styles.ticketDesc}>AI models to predict the lifetime value of a lead the moment they enter the CRM.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className={styles.submitIdea}>
+        <h2>Have a feature request?</h2>
+        <p>We build Growixa for you. If there&apos;s something you need that isn&apos;t on the roadmap, let us know.</p>
+        <Link href="/contact" className={styles.submitBtn}>
+          Submit an Idea
+        </Link>
+      </div>
+    </main>
   );
 }

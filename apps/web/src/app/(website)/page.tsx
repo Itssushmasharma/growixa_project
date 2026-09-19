@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { SocialPilotCloneHome } from "@/components/website/sections/socialpilot-clone/home";
+import { PremiumGrowixaHome } from "@/components/website/sections/premium-home";
 import { FAQS } from "@/components/website/sections/classic-home-data";
 
 export const metadata: Metadata = {
@@ -57,7 +57,7 @@ export default function HomePage() {
           __html: JSON.stringify(structuredData).replace(/</g, "\\u003c"),
         }}
       />
-      <SocialPilotCloneHome />
+      <PremiumGrowixaHome />
     </>
   );
 }

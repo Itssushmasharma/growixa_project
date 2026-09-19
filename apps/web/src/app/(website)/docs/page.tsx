@@ -1,116 +1,78 @@
 import React from "react";
 import Link from "next/link";
-import { DOC_CATEGORIES, getAllArticles } from "@/lib/docs/data";
-import { DocsSearch } from "@/components/docs/docs-search";
+import { Search, Code2, BookOpen, Key, Webhook } from "lucide-react";
 import styles from "./docs.module.css";
 
-export const metadata = {
-  title: "Documentation & Help Center | Growixa",
-  description:
-    "Comprehensive guides, integration walkthroughs, and tutorials for the Growixa growth and email marketing platform.",
-};
-
-export default function DocsLandingPage() {
-  const allArticles = getAllArticles();
-  const totalArticles = allArticles.length;
-
+export default function DocsPage() {
   return (
-    <div className={styles.docsContainer}>
-      {/* Hero Header */}
-      <section className={styles.heroSection}>
-        <div className={styles.heroBadge}>📖 Knowledge Base & User Guides</div>
-        <h1 className={styles.heroTitle}>How can we help you grow?</h1>
-        <p className={styles.heroSubtitle}>
-          Explore {totalArticles} detailed guides, integration playbooks, and best practices to
-          master Growixa email campaigns, dynamic segments, and AI automation.
-        </p>
-
-        {/* Global Live Search */}
-        <div className={styles.heroSearchWrapper}>
-          <DocsSearch
-            placeholder="Search guides, SMTP, SPF, Segments, Archiving, AI Studio..."
-            autoFocus
-          />
+    <main className={styles.page}>
+      {/* Sidebar Navigation */}
+      <aside className={styles.sidebar}>
+        <Link href="/" className={styles.logo}>Grow<span>ixa</span></Link>
+        
+        <div className={styles.navGroup}>
+          <div className={styles.navTitle}>Getting Started</div>
+          <Link href="/docs" className={styles.navLinkActive}>Introduction</Link>
+          <Link href="/docs/quickstart" className={styles.navLink}>Quick Start Guide</Link>
+          <Link href="/docs/authentication" className={styles.navLink}>Authentication</Link>
         </div>
 
-        {/* Quick Suggestion Chips */}
-        <div className={styles.quickChips}>
-          <span className={styles.quickLabel}>Popular topics:</span>
-          <Link href="/docs/getting-started/quickstart" className={styles.chip}>
-            ⚡ 5-Min Quickstart
-          </Link>
-          <Link href="/docs/contacts/importing-contacts" className={styles.chip}>
-            📥 CSV Imports
-          </Link>
-          <Link href="/docs/getting-started/domain-verification" className={styles.chip}>
-            🛡️ SPF & DKIM
-          </Link>
-          <Link href="/docs/integrations/postmark-setup" className={styles.chip}>
-            📨 Postmark Delivery
-          </Link>
-          <Link href="/docs/contacts/contact-lifecycle" className={styles.chip}>
-            🔄 Contact Lifecycle
-          </Link>
+        <div className={styles.navGroup}>
+          <div className={styles.navTitle}>Core Concepts</div>
+          <Link href="/docs/inbox" className={styles.navLink}>Unified Inbox</Link>
+          <Link href="/docs/automations" className={styles.navLink}>Visual Automations</Link>
+          <Link href="/docs/crm" className={styles.navLink}>Audience CRM</Link>
         </div>
-      </section>
 
-      {/* Category Cards Grid */}
-      <section className={styles.categoriesSection} aria-label="Documentation Categories">
-        <div className={styles.sectionHeader}>
-          <h2 className={styles.sectionTitle}>Browse by Topic</h2>
-          <p className={styles.sectionSubtitle}>
-            Find step-by-step documentation for every feature area in Growixa.
+        <div className={styles.navGroup}>
+          <div className={styles.navTitle}>API Reference</div>
+          <Link href="/docs/api/rest" className={styles.navLink}>REST API Overview</Link>
+          <Link href="/docs/api/webhooks" className={styles.navLink}>Webhooks</Link>
+          <Link href="/docs/api/rate-limits" className={styles.navLink}>Rate Limits</Link>
+        </div>
+      </aside>
+
+      {/* Main Content Area */}
+      <section className={styles.content}>
+        <header className={styles.header}>
+          <span className={styles.eyebrow}>Developer & Help Center</span>
+          <h1 className={styles.title}>Growixa Documentation</h1>
+          <p className={styles.subtitle}>
+            Learn how to integrate Growixa into your tech stack, build custom automations, and manage your marketing data programmatically.
           </p>
+        </header>
+
+        <div className={styles.searchBar}>
+          <Search size={20} className={styles.searchIcon} />
+          <input type="text" placeholder="Search documentation, API endpoints, or tutorials..." className={styles.searchInput} />
         </div>
 
-        <div className={styles.categoriesGrid}>
-          {DOC_CATEGORIES.map((category) => (
-            <div key={category.id} className={styles.categoryCard}>
-              <div className={styles.categoryHeader}>
-                <div className={styles.categoryIconWrap}>{category.icon}</div>
-                <div>
-                  <h3 className={styles.categoryName}>{category.name}</h3>
-                  <span className={styles.articleCount}>
-                    {category.articles.length} article{category.articles.length > 1 ? "s" : ""}
-                  </span>
-                </div>
-              </div>
+        <div className={styles.cardGrid}>
+          {/* Quick Start Card */}
+          <Link href="/docs/quickstart" className={styles.card}>
+            <h2 className={styles.cardTitle}><BookOpen size={24} color="#2a41ff" /> Quick Start Guide</h2>
+            <p className={styles.cardDesc}>Connect your first social account and set up your unified inbox in under 5 minutes.</p>
+          </Link>
 
-              <p className={styles.categoryDesc}>{category.description}</p>
+          {/* API Reference Card */}
+          <Link href="/docs/api/rest" className={styles.card}>
+            <h2 className={styles.cardTitle}><Code2 size={24} color="#2a41ff" /> API Reference</h2>
+            <p className={styles.cardDesc}>Explore our REST API to programmatically manage contacts, posts, and analytics data.</p>
+          </Link>
 
-              <ul className={styles.categoryArticleLinks}>
-                {category.articles.map((article) => (
-                  <li key={article.slug}>
-                    <Link href={`/docs/${category.id}/${article.slug}`} className={styles.catLink}>
-                      <span className={styles.linkIcon}>{article.icon || "📄"}</span>
-                      <span className={styles.linkTitle}>{article.title}</span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </div>
-      </section>
+          {/* Authentication Card */}
+          <Link href="/docs/authentication" className={styles.card}>
+            <h2 className={styles.cardTitle}><Key size={24} color="#2a41ff" /> Authentication</h2>
+            <p className={styles.cardDesc}>Learn how to generate API keys and use OAuth 2.0 to authenticate your requests securely.</p>
+          </Link>
 
-      {/* Featured Help Spotlight */}
-      <section className={styles.spotlightSection}>
-        <div className={styles.spotlightCard}>
-          <div className={styles.spotlightIcon}>✨</div>
-          <div className={styles.spotlightContent}>
-            <h3 className={styles.spotlightTitle}>Need Contextual Help in the Dashboard?</h3>
-            <p className={styles.spotlightText}>
-              You don&apos;t have to leave your active campaign or audience list. Look for the{" "}
-              <strong>(?)</strong> icons next to form fields, or click{" "}
-              <strong>&ldquo;Help &amp; Docs&rdquo;</strong> in the dashboard sidebar to open our
-              instant slide-over assistant.
-            </p>
-          </div>
-          <Link href="/dashboard" className={styles.spotlightAction}>
-            Go to Dashboard →
+          {/* Webhooks Card */}
+          <Link href="/docs/api/webhooks" className={styles.card}>
+            <h2 className={styles.cardTitle}><Webhook size={24} color="#2a41ff" /> Webhooks</h2>
+            <p className={styles.cardDesc}>Subscribe to real-time events like incoming messages, new contacts, or campaign completions.</p>
           </Link>
         </div>
       </section>
-    </div>
+    </main>
   );
 }

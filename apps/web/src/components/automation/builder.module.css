@@ -91,8 +91,16 @@
 .connector {
   width: 2px;
   height: 40px;
-  background: linear-gradient(to bottom, #4f46e5, rgba(79, 70, 229, 0.2));
+  background: transparent;
   position: relative;
+  background-image: linear-gradient(to bottom, #4f46e5 50%, transparent 50%);
+  background-size: 100% 12px;
+  animation: march 1s linear infinite;
+}
+
+@keyframes march {
+  0% { background-position: 0 0; }
+  100% { background-position: 0 12px; }
 }
 
 .nodeCard {

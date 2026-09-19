@@ -20,15 +20,17 @@
   top: 50%;
   z-index: 0;
   transform: translate(-50%, -50%);
-  color: transparent;
-  -webkit-text-stroke: 1px rgba(217, 182, 111, 0.1);
+  background: linear-gradient(135deg, rgba(123, 77, 255, 0.15), rgba(0, 169, 224, 0.15), rgba(255, 63, 115, 0.15));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
   font-family: var(--font-display, sans-serif);
-  font-size: clamp(7rem, 22vw, 20rem);
-  font-weight: 850;
-  letter-spacing: -0.08em;
+  font-size: clamp(8rem, 24vw, 24rem);
+  font-weight: 900;
+  letter-spacing: -0.05em;
   line-height: 0.8;
   white-space: nowrap;
   pointer-events: none;
+  filter: drop-shadow(0 0 40px rgba(123, 77, 255, 0.2));
 }
 
 /* --------------------------------------------------------------------------

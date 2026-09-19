@@ -1,219 +1,114 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import Link from "next/link";
-import { PageHero, Sec, Head, ClosingCta, Button } from "@/components/website/sections/page-kit";
-import own from "./pricing.module.css";
-
-interface TierPrice {
-  usd: [number, number];
-  inr: [number, number];
-}
-
-interface Tier {
-  name: string;
-  desc: string;
-  price: TierPrice | null;
-  per?: string;
-  cta: string;
-  to: string;
-  variant: "glass" | "primary";
-  featured?: boolean;
-  flag?: string;
-  items: string[];
-}
-
-const TIERS: Tier[] = [
-  {
-    name: "Free",
-    desc: "Enough to run your first real campaign and judge us on it.",
-    price: { usd: [0, 0], inr: [0, 0] },
-    per: "forever",
-    cta: "Start free",
-    to: "/register",
-    variant: "glass",
-    items: [
-      "1,000 contacts",
-      "2,000 emails a month",
-      "1 sending domain",
-      "Campaigns & templates",
-      "Growixa badge in the footer",
-    ],
-  },
-  {
-    name: "Starter",
-    desc: "For a founder doing outbound between everything else.",
-    price: { usd: [29, 24], inr: [2400, 1990] },
-    cta: "Choose Starter",
-    to: "/register",
-    variant: "glass",
-    items: [
-      "5,000 contacts",
-      "25,000 emails a month",
-      "3 sending domains + warm-up",
-      "Sequences & follow-ups",
-      "500 Find credits a month",
-    ],
-  },
-  {
-    name: "Growth",
-    desc: "The whole engine, including everything the AI does.",
-    price: { usd: [89, 74], inr: [7400, 6150] },
-    cta: "Choose Growth",
-    to: "/register",
-    variant: "primary",
-    featured: true,
-    flag: "Most founders start here",
-    items: [
-      "25,000 contacts",
-      "150,000 emails a month",
-      "Unlimited sending domains",
-      "AI Create — brand voice, all channels",
-      "2,500 Find credits a month",
-      "Qualify, the day it ships",
-    ],
-  },
-  {
-    name: "Scale",
-    desc: "Higher volume, your own infrastructure, a contract.",
-    price: null,
-    per: "talk to us",
-    cta: "Book a call",
-    to: "/contact",
-    variant: "glass",
-    items: [
-      "Unlimited contacts",
-      "Volume email pricing",
-      "Bring your own SMTP",
-      "SSO & audit logs",
-      "DPA & security review",
-    ],
-  },
-];
-
-const FAQS = [
-  [
-    "Half the engine is not built. Why would I pay now?",
-    "You should not pay for what is not built — so you do not. Free and Starter are priced against Send and Manage alone, which are live today and are most of what an email tool costs elsewhere. Find and Create are in beta and included rather than upsold. Qualify is free to every Growth customer the day it ships, at whatever price you are already on.",
-  ],
-  [
-    "What happens if I go over my contact or email limit?",
-    "Nothing breaks and nothing sends without your say-so. You get a warning at 80% and again at 100%, then the option to upgrade or let the campaign wait. We do not auto-charge overage and we do not silently stop delivering mid-sequence.",
-  ],
-  [
-    "Is there a discount for annual billing?",
-    'Two months free — that is the whole discount, applied to any plan. There is not a hidden "talk to sales" rate below the published one.',
-  ],
-  [
-    "Can I bring my existing lists and templates?",
-    "Yes. Direct import from Mailchimp, Klaviyo, Brevo and HubSpot, or a CSV. Suppression lists come across too, which is the part most migrations forget and then regret.",
-  ],
-  [
-    "Do you charge per seat?",
-    "No, on every plan including Free. Charging a three-person startup extra to let all three log in is a tax on the exact customer we are building for.",
-  ],
-  [
-    "What if I want to leave?",
-    "Cancel in the app, no call required. Export everything in one click, any time, including after you have cancelled. Your data was never the lock-in.",
-  ],
-];
+import { Check } from "lucide-react";
+import styles from "./pricing.module.css";
 
 export default function PricingPage() {
-  const [yearly, setYearly] = useState(false);
-  const [cur, setCur] = useState<"usd" | "inr">("usd");
-
-  const fmt = (t: Tier) => {
-    if (!t.price) return "Custom";
-    const v = t.price[cur][yearly ? 1 : 0];
-    return cur === "inr" ? `₹${v.toLocaleString("en-IN")}` : `$${v.toLocaleString("en-US")}`;
-  };
+  const [isAnnual, setIsAnnual] = useState(true);
 
   return (
-    <>
-      <PageHero
-        hue="create"
-        title="Start free. Pay when it's actually working."
-        lede="One subscription instead of nine. No seat pricing, no annual lock-in to get a sane rate, and no charging you for contacts you never email."
-      />
-
-      <Sec hue="create">
-        <div className={own.ctrl}>
-          <div className={own.seg} role="group" aria-label="Billing period">
-            <button type="button" aria-pressed={!yearly} onClick={() => setYearly(false)}>
-              Monthly
-            </button>
-            <button type="button" aria-pressed={yearly} onClick={() => setYearly(true)}>
-              Yearly
-            </button>
-          </div>
-          <span className={own.save}>Yearly = 2 months free</span>
-          <div className={own.seg} role="group" aria-label="Currency">
-            <button type="button" aria-pressed={cur === "usd"} onClick={() => setCur("usd")}>
-              USD $
-            </button>
-            <button type="button" aria-pressed={cur === "inr"} onClick={() => setCur("inr")}>
-              INR ₹
-            </button>
-          </div>
-        </div>
-
-        <div className={own.tiers}>
-          {TIERS.map((t) => (
-            <div key={t.name} className={`${own.tier} ${t.featured ? own.feat : ""}`}>
-              {t.flag && <span className={own.flag}>{t.flag}</span>}
-              <h3 className={own.tname}>{t.name}</h3>
-              <p className={own.tdesc}>{t.desc}</p>
-              <div className={own.price}>{fmt(t)}</div>
-              <span className={own.per}>
-                {t.per || (yearly ? "per month, billed yearly" : "per month")}
-              </span>
-              <Button as={Link} href={t.to} variant={t.variant} className={own.tcta}>
-                {t.cta}
-              </Button>
-              <ul className={own.items}>
-                {t.items.map((x) => (
-                  <li key={x}>
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                      <path
-                        d="M3 8.4l3.2 3.2L13 4.8"
-                        stroke="var(--manage-d)"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                    {x}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </div>
-        <p className={own.note}>
-          Placeholder figures pending final pricing. Find bills per <b>verified</b> contact — if an
-          address fails a real mailbox check it never reaches your list and never reaches your bill.
+    <main className={styles.page}>
+      <header className={styles.header}>
+        <span className={styles.eyebrow}>Pricing</span>
+        <h1 className={styles.title}>Simple Pricing for Complex Growth</h1>
+        <p className={styles.subtitle}>
+          No hidden fees, no complicated tiers. Just the powerful tools you need to automate and scale your marketing.
         </p>
-      </Sec>
+      </header>
 
-      <Sec tint hue="create">
-        <Head center eyebrow="Questions" title="The ones worth asking before you pay." />
-        <div className={own.faq}>
-          {FAQS.map(([q, a], i) => (
-            <details key={q} className={own.q} open={i === 0}>
-              <summary>{q}</summary>
-              <div className={own.a}>{a}</div>
-            </details>
-          ))}
+      <div className={styles.toggleContainer}>
+        <span className={`${styles.toggleLabel} ${!isAnnual ? styles.active : ""}`} onClick={() => setIsAnnual(false)}>
+          Monthly
+        </span>
+        <div className={`${styles.toggleSwitch} ${isAnnual ? styles.active : ""}`} onClick={() => setIsAnnual(!isAnnual)}>
+          <div className={styles.toggleKnob}></div>
         </div>
-      </Sec>
+        <span className={`${styles.toggleLabel} ${isAnnual ? styles.active : ""}`} onClick={() => setIsAnnual(true)}>
+          Annually
+        </span>
+        <span className={styles.badge}>Save 20%</span>
+      </div>
 
-      <ClosingCta
-        title="Try the half that's finished."
-        body="Free forever up to 1,000 contacts. If Send and Manage do not earn their keep, nothing else we ship will convince you."
-        primary={{ to: "/sandbox", label: "Try it without signing up" }}
-        secondary={{ to: "/platform", label: "See the engine" }}
-        foot="No credit card · Cancel whenever · Export any time"
-      />
-    </>
+      <div className={styles.grid}>
+        {/* Starter Plan */}
+        <div className={styles.card}>
+          <h2 className={styles.planName}>Starter</h2>
+          <p className={styles.planDesc}>Perfect for small teams and early-stage startups.</p>
+          <div className={styles.priceBlock}>
+            <span className={styles.price}>${isAnnual ? "49" : "59"}</span>
+            <span className={styles.period}>/mo</span>
+          </div>
+          <Link href="/register?plan=starter" className={`${styles.btn} ${styles.secondaryBtn}`}>
+            Get Started
+          </Link>
+          <ul className={styles.featuresList}>
+            <li className={styles.featureItem}><Check size={20} className={styles.featureIcon} /> 2 Team Members</li>
+            <li className={styles.featureItem}><Check size={20} className={styles.featureIcon} /> 5 Social Accounts</li>
+            <li className={styles.featureItem}><Check size={20} className={styles.featureIcon} /> Unified Inbox (Basic)</li>
+            <li className={styles.featureItem}><Check size={20} className={styles.featureIcon} /> Basic Analytics</li>
+          </ul>
+        </div>
+
+        {/* Professional Plan */}
+        <div className={`${styles.card} ${styles.popularCard}`}>
+          <div className={styles.popularBadge}>Most Popular</div>
+          <h2 className={styles.planName}>Professional</h2>
+          <p className={styles.planDesc}>Everything you need to run scaling marketing operations.</p>
+          <div className={styles.priceBlock}>
+            <span className={styles.price}>${isAnnual ? "99" : "119"}</span>
+            <span className={styles.period}>/mo</span>
+          </div>
+          <Link href="/register?plan=pro" className={`${styles.btn} ${styles.primaryBtn}`}>
+            Start Free Trial
+          </Link>
+          <ul className={styles.featuresList}>
+            <li className={styles.featureItem}><Check size={20} className={styles.featureIcon} /> Unlimited Team Members</li>
+            <li className={styles.featureItem}><Check size={20} className={styles.featureIcon} /> 15 Social Accounts</li>
+            <li className={styles.featureItem}><Check size={20} className={styles.featureIcon} /> Advanced AI Automations</li>
+            <li className={styles.featureItem}><Check size={20} className={styles.featureIcon} /> CRM & Audience Segmentation</li>
+            <li className={styles.featureItem}><Check size={20} className={styles.featureIcon} /> Predictive Analytics</li>
+          </ul>
+        </div>
+
+        {/* Enterprise Plan */}
+        <div className={styles.card}>
+          <h2 className={styles.planName}>Enterprise</h2>
+          <p className={styles.planDesc}>Custom setups, dedicated support, and SLA guarantees.</p>
+          <div className={styles.priceBlock}>
+            <span className={styles.price}>$299</span>
+            <span className={styles.period}>/mo</span>
+          </div>
+          <Link href="/contact" className={`${styles.btn} ${styles.secondaryBtn}`}>
+            Contact Sales
+          </Link>
+          <ul className={styles.featuresList}>
+            <li className={styles.featureItem}><Check size={20} className={styles.featureIcon} /> Unlimited Everything</li>
+            <li className={styles.featureItem}><Check size={20} className={styles.featureIcon} /> Dedicated Success Manager</li>
+            <li className={styles.featureItem}><Check size={20} className={styles.featureIcon} /> Custom API & Integrations</li>
+            <li className={styles.featureItem}><Check size={20} className={styles.featureIcon} /> SLA & Priority Support</li>
+          </ul>
+        </div>
+      </div>
+
+      <section className={styles.faqSection}>
+        <h2 className={styles.faqTitle}>Frequently Asked Questions</h2>
+        <div className={styles.faqGrid}>
+          <div className={styles.faqItem}>
+            <h3 className={styles.faqQ}>Can I change my plan later?</h3>
+            <p className={styles.faqA}>Yes, you can upgrade or downgrade your plan at any time. Prorated charges or credits will automatically be applied to your account.</p>
+          </div>
+          <div className={styles.faqItem}>
+            <h3 className={styles.faqQ}>What payment methods do you accept?</h3>
+            <p className={styles.faqA}>We accept all major credit cards including Visa, Mastercard, and American Express. For Enterprise plans, we also support invoicing and wire transfers.</p>
+          </div>
+          <div className={styles.faqItem}>
+            <h3 className={styles.faqQ}>Is there a free trial?</h3>
+            <p className={styles.faqA}>Yes! Our Professional plan comes with a 14-day free trial. No credit card required to start.</p>
+          </div>
+        </div>
+      </section>
+    </main>
   );
 }

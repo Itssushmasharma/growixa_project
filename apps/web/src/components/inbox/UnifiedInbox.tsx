@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { inboxApi, InboxConversation, InboxMessage } from '@/lib/api/inbox';
+import { getWsUrl } from '@/lib/env';
 
 export function UnifiedInbox() {
   const [conversations, setConversations] = useState<InboxConversation[]>([]);
@@ -15,6 +16,53 @@ export function UnifiedInbox() {
     fetchConversations();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // WebSocket Connection
+  useEffect(() => {
+    // Only connect if we know the account ID from conversations
+    const accountId = conversations[0]?.account_id;
+    if (!accountId) return;
+
+    const wsUrl = `${getWsUrl()}/inbox/ws?account_id=${accountId}`;
+    const ws = new WebSocket(wsUrl);
+
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === "NEW_MESSAGE") {
+          const newMsg = data.payload as InboxMessage;
+          // Update messages if the new message belongs to the active conversation
+          setMessages((prev) => {
+            // Check if we are currently looking at this conversation
+            if (selectedConvo?.id === newMsg.conversation_id) {
+              // Ensure we don't duplicate if we just sent it ourselves
+              if (!prev.find(m => m.id === newMsg.id)) {
+                return [...prev, newMsg];
+              }
+            }
+            return prev;
+          });
+          
+          // Re-sort or bump the conversation in the list
+          setConversations((prev) => {
+            const updated = prev.map(c => {
+              if (c.id === newMsg.conversation_id) {
+                return { ...c, updated_at: newMsg.created_at };
+              }
+              return c;
+            });
+            return updated.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
+          });
+        }
+      } catch (err) {
+        console.error("WS parse error", err);
+      }
+    };
+
+    return () => {
+      ws.close();
+    };
+  }, [conversations, selectedConvo?.id]);
 
   const fetchConversations = async () => {
     try {
