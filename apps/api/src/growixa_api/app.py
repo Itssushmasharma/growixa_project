@@ -9,16 +9,16 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from growixa_api import __version__
 from growixa_api.accounts import models as accounts_models  # noqa: F401
-from growixa_api.seo import api as seo
-from growixa_api.smm import api as smm
-from growixa_api.inbox import router as inbox
 from growixa_api.accounts.api import router as accounts_router
 from growixa_api.agency.api import router as agency_router
 from growixa_api.ai.api import router as ai_router
 from growixa_api.ai.chat import router as chat_router
 from growixa_api.analytics.api import router as analytics_router
+from growixa_api.analytics_engine.router import router as analytics_engine_router
+from growixa_api.approvals.api import router as approvals_router
 from growixa_api.audit.api import router as audit_router
 from growixa_api.auth.api import router as auth_router
+from growixa_api.automations.api import router as automations_router
 from growixa_api.billing.api import public_router as billing_public_router
 from growixa_api.billing.api import router as billing_router
 from growixa_api.billing.scheduler import run_downgrade_loop as run_billing_downgrade_loop
@@ -26,12 +26,6 @@ from growixa_api.brand.api import router as brand_router
 from growixa_api.calendar.router import router as calendar_router
 from growixa_api.campaigns.api import router as campaigns_router
 from growixa_api.campaigns.scheduler import run_scheduler_loop
-from growixa_api.automations.api import router as automations_router
-from growixa_api.whatsapp.router import router as whatsapp_router, webhook_router as whatsapp_webhook_router
-from growixa_api.sms.router import router as sms_router, webhook_router as sms_webhook_router
-from growixa_api.analytics_engine.router import router as analytics_engine_router
-from growixa_api.reports.api import router as reports_router
-from growixa_api.approvals.api import router as approvals_router
 from growixa_api.company.api import router as company_router
 from growixa_api.config import get_settings
 from growixa_api.contacts.api import router as contacts_router
@@ -40,6 +34,7 @@ from growixa_api.email_delivery.api import public_router as email_delivery_publi
 from growixa_api.email_delivery.api import router as email_delivery_router
 from growixa_api.email_validation.api import router as email_validation_router
 from growixa_api.health import router as health_router
+from growixa_api.inbox import router as inbox
 from growixa_api.integrations.api import router as integrations_router
 from growixa_api.jobs.api import router as jobs_router
 from growixa_api.media.api import router as media_router
@@ -63,13 +58,20 @@ from growixa_api.platform_admin.api import (
 )
 from growixa_api.platform_admin.api import usage_router as platform_admin_usage_router
 from growixa_api.platform_auth.api import router as platform_auth_router
+from growixa_api.reports.api import router as reports_router
 from growixa_api.roles.api import router as roles_router
+from growixa_api.seo import api as seo
+from growixa_api.smm import api as smm
+from growixa_api.sms.router import router as sms_router
+from growixa_api.sms.router import webhook_router as sms_webhook_router
 from growixa_api.social.api import channel_oauth_router
 from growixa_api.social.api import oauth_router as social_oauth_router
 from growixa_api.social.api import router as social_router
 from growixa_api.social.scheduler import run_scheduler_loop as run_social_scheduler_loop
 from growixa_api.templates.api import router as templates_router
 from growixa_api.users.api import router as users_router
+from growixa_api.whatsapp.router import router as whatsapp_router
+from growixa_api.whatsapp.router import webhook_router as whatsapp_webhook_router
 
 
 @asynccontextmanager
@@ -110,7 +112,6 @@ def create_app() -> FastAPI:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=origins,
-        allow_origin_regex=r"https?://.*",
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],

@@ -1196,3 +1196,92 @@ async def test_coupon_redemption_uniqueness_is_scoped_per_account_not_global(
         assert response_b.status_code == 201
     finally:
         await _clear_billing_fixtures(coupon_ids=[coupon_id])
+
+
+async def test_agency_service_rejects_other_owner_before_reading_clients() -> None:
+    from unittest.mock import AsyncMock
+
+    from fastapi import HTTPException
+
+    from growixa_api.agency.models import Agency
+    from growixa_api.agency.services import get_agency_clients
+
+    session = AsyncMock()
+    session.get.return_value = Agency(id=uuid.uuid4(), owner_id=uuid.uuid4(), name="Other tenant")
+    with pytest.raises(HTTPException) as caught:
+        await get_agency_clients(session, session.get.return_value.id, uuid.uuid4())
+    assert caught.value.status_code == 404
+    session.execute.assert_not_awaited()
+    session.commit.assert_not_awaited()
+
+
+async def test_agency_rejects_unverified_existing_account_link() -> None:
+    from unittest.mock import AsyncMock
+
+    from fastapi import HTTPException
+
+    from growixa_api.agency.models import Agency
+    from growixa_api.agency.schemas import AgencyClientCreate
+    from growixa_api.agency.services import create_agency_client
+
+    user_id = uuid.uuid4()
+    agency = Agency(id=uuid.uuid4(), owner_id=user_id, name="Owned agency")
+    session = AsyncMock()
+    session.get.return_value = agency
+    with pytest.raises(HTTPException) as caught:
+        await create_agency_client(
+            session,
+            agency.id,
+            AgencyClientCreate(client_name="Unverified", account_id=uuid.uuid4()),
+            user_id,
+        )
+    assert caught.value.status_code == 409
+    session.add.assert_not_called()
+    session.commit.assert_not_awaited()
+
+
+async def test_inbox_websocket_rejects_missing_authentication() -> None:
+    from unittest.mock import AsyncMock
+
+    from fastapi import WebSocketException
+    from starlette.websockets import WebSocket
+
+    from growixa_api.inbox.router import websocket_endpoint
+
+    websocket = WebSocket(
+        {
+            "type": "websocket",
+            "headers": [(b"origin", b"http://localhost:3000")],
+            "query_string": b"account_id=untrusted",
+        }
+    )
+    session = AsyncMock()
+    with pytest.raises(WebSocketException) as caught:
+        await websocket_endpoint(websocket, session)
+    assert caught.value.code == 1008
+    session.execute.assert_not_awaited()
+
+
+async def test_inbox_websocket_rejects_different_tenant(monkeypatch: pytest.MonkeyPatch) -> None:
+    from unittest.mock import AsyncMock
+
+    from fastapi import WebSocketException
+    from starlette.websockets import WebSocket
+
+    from growixa_api.inbox import router as inbox_router
+
+    account_id = uuid.uuid4()
+    monkeypatch.setattr(inbox_router, "get_current_user_id", AsyncMock(return_value=uuid.uuid4()))
+    monkeypatch.setattr(inbox_router, "get_account_id_for_user", AsyncMock(return_value=account_id))
+    connect = AsyncMock()
+    monkeypatch.setattr(inbox_router.manager, "connect", connect)
+    websocket = WebSocket(
+        {
+            "type": "websocket",
+            "headers": [(b"origin", b"http://localhost:3000")],
+            "query_string": f"account_id={uuid.uuid4()}".encode(),
+        }
+    )
+    with pytest.raises(WebSocketException):
+        await inbox_router.websocket_endpoint(websocket, AsyncMock())
+    connect.assert_not_awaited()

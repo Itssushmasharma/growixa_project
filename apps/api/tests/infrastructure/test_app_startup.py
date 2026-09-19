@@ -21,6 +21,11 @@ import os
 import subprocess
 import sys
 
+import pytest
+from httpx import ASGITransport, AsyncClient
+
+from growixa_api.app import create_app
+
 
 def test_create_app_registers_the_accounts_table_every_account_id_fk_points_to() -> None:
     src_dir = os.path.abspath("src")
@@ -45,3 +50,45 @@ def test_create_app_registers_the_accounts_table_every_account_id_fk_points_to()
         env=env,
     )
     assert result.returncode == 0, result.stderr
+
+
+@pytest.mark.parametrize(
+    "origin,allowed", [("http://localhost:3000", True), ("https://untrusted.example", False)]
+)
+async def test_cors_only_allows_configured_origins(origin: str, allowed: bool) -> None:
+    async with AsyncClient(
+        transport=ASGITransport(app=create_app()), base_url="http://test"
+    ) as client:
+        response = await client.options(
+            "/auth/login",
+            headers={"Origin": origin, "Access-Control-Request-Method": "POST"},
+        )
+    assert response.status_code == (200 if allowed else 400)
+    assert response.headers.get("access-control-allow-origin") == (origin if allowed else None)
+
+
+@pytest.mark.parametrize(
+    "path,payload",
+    [
+        ("/seo/analyze", {"url": "http://127.0.0.1/internal"}),
+        ("/ai/chat", {"message": "pricing"}),
+    ],
+)
+async def test_unavailable_public_features_never_report_success(
+    path: str,
+    payload: dict[str, str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def forbidden_request(*args: object, **kwargs: object) -> None:
+        raise AssertionError("Pending features must not make outbound requests")
+
+    # Patching the transport used by httpx leaves the in-process ASGI client intact.
+    import httpx
+
+    monkeypatch.setattr(httpx.AsyncHTTPTransport, "handle_async_request", forbidden_request)
+    async with AsyncClient(
+        transport=ASGITransport(app=create_app()), base_url="http://test"
+    ) as client:
+        response = await client.post(path, json=payload)
+    assert response.status_code == 503
+    assert response.json()["detail"]["code"] == "FEATURE_PENDING"

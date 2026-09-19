@@ -33,17 +33,23 @@ async def get_agencies_for_user(session: AsyncSession, user_id: uuid.UUID) -> Se
     return result.scalars().all()
 
 
-async def get_agency(session: AsyncSession, agency_id: uuid.UUID) -> Agency:
+async def get_agency(session: AsyncSession, agency_id: uuid.UUID, user_id: uuid.UUID) -> Agency:
     agency = await session.get(Agency, agency_id)
-    if not agency:
+    if not agency or agency.owner_id != user_id:
         raise HTTPException(status_code=404, detail="Agency not found")
     return agency
 
 
 async def create_agency_client(
-    session: AsyncSession, agency_id: uuid.UUID, data: AgencyClientCreate
+    session: AsyncSession, agency_id: uuid.UUID, data: AgencyClientCreate, user_id: uuid.UUID
 ) -> AgencyClient:
-    agency = await get_agency(session, agency_id)
+    agency = await get_agency(session, agency_id, user_id)
+
+    # Existing accounts require a verified invitation/acceptance flow before linking.
+    if data.account_id is not None or data.account_manager_id is not None:
+        raise HTTPException(
+            409, "Existing account linking and manager assignment are pending verification"
+        )
 
     # Create the isolated account for this client if not provided
     account_id = data.account_id
@@ -65,14 +71,18 @@ async def create_agency_client(
     return client
 
 
-async def get_agency_clients(session: AsyncSession, agency_id: uuid.UUID) -> Sequence[AgencyClient]:
+async def get_agency_clients(
+    session: AsyncSession, agency_id: uuid.UUID, user_id: uuid.UUID
+) -> Sequence[AgencyClient]:
+    await get_agency(session, agency_id, user_id)
     result = await session.execute(select(AgencyClient).where(AgencyClient.agency_id == agency_id))
     return result.scalars().all()
 
 
 async def update_white_label_config(
-    session: AsyncSession, agency_id: uuid.UUID, data: WhiteLabelConfigUpdate
+    session: AsyncSession, agency_id: uuid.UUID, data: WhiteLabelConfigUpdate, user_id: uuid.UUID
 ) -> WhiteLabelConfig:
+    await get_agency(session, agency_id, user_id)
     result = await session.execute(
         select(WhiteLabelConfig).where(WhiteLabelConfig.agency_id == agency_id)
     )
@@ -97,7 +107,10 @@ async def update_white_label_config(
     return config
 
 
-async def get_white_label_config(session: AsyncSession, agency_id: uuid.UUID) -> WhiteLabelConfig:
+async def get_white_label_config(
+    session: AsyncSession, agency_id: uuid.UUID, user_id: uuid.UUID
+) -> WhiteLabelConfig:
+    await get_agency(session, agency_id, user_id)
     result = await session.execute(
         select(WhiteLabelConfig).where(WhiteLabelConfig.agency_id == agency_id)
     )

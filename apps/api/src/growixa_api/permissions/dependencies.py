@@ -1,8 +1,9 @@
 import uuid
 
 import jwt
-from fastapi import Depends, HTTPException, Request, status
+from fastapi import Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.requests import HTTPConnection
 
 from growixa_api.accounts.repositories import get_account_id_for_user
 from growixa_api.config import get_settings
@@ -12,7 +13,7 @@ from growixa_api.permissions.repositories import user_has_permission
 _JWT_ALGORITHM = "HS256"
 
 
-async def get_current_user_id(request: Request) -> uuid.UUID:
+async def get_current_user_id(request: HTTPConnection) -> uuid.UUID:
     """Resolve the identity behind the access-token cookie.
 
     This is the verify-only half of token handling: it proves a presented token is valid

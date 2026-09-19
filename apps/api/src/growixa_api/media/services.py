@@ -73,6 +73,11 @@ async def upload_asset_service(
     media_type = _detect_media_type(clean_mime)
     _validate_file_size(media_type, len(content))
 
+    if folder_id is not None:
+        folder = await repositories.get_folder_by_id_repo(session, account_id, folder_id)
+        if folder is None:
+            raise MediaValidationError("Media folder not found")
+
     asset_id = uuid.uuid4()
     ext = mimetypes.guess_extension(clean_mime) or ".bin"
     if ext == ".jpe":
@@ -94,8 +99,7 @@ async def upload_asset_service(
         except StorageError as exc:
             raise MediaValidationError(f"Storage upload failed: {exc}") from exc
     else:
-        # Development / test storage mock URL
-        public_url = f"https://mock-storage.growixa.local/{storage_path}"
+        raise MediaValidationError("Media storage is not configured. No file was uploaded.")
 
     asset = await repositories.create_media_asset_repo(
         session,

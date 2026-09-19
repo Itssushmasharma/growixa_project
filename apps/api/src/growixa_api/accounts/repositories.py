@@ -9,7 +9,11 @@ from growixa_api.users.models import User
 
 
 async def get_account_id_for_user(session: AsyncSession, user_id: uuid.UUID) -> uuid.UUID | None:
-    result = await session.execute(select(User.account_id).where(User.id == user_id))
+    result = await session.execute(
+        select(User.account_id)
+        .join(Account, Account.id == User.account_id)
+        .where(User.id == user_id, User.status == "ACTIVE", Account.status == "ACTIVE")
+    )
     return result.scalar_one_or_none()
 
 

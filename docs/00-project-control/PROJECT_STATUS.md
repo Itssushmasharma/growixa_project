@@ -7,6 +7,12 @@
 - Owner: Coding agent (on behalf of product owner)
 - Related documents: [MASTER_TASK_TRACKER](MASTER_TASK_TRACKER.md), [WORKTREE_TRACKER](WORKTREE_TRACKER.md), [DECISIONS](DECISIONS.md), [DEVELOPMENT_READINESS](DEVELOPMENT_READINESS.md), [FEATURE_STATUS_MATRIX](FEATURE_STATUS_MATRIX.md)
 
+## Production readiness programme — 2026-09-20
+
+The product owner approved sequential foundation-to-launch work for the full Growixa
+scope. Implementation is IN_PROGRESS, not production-ready or deployed. See
+[PRODUCTION_READINESS_PLAN](PRODUCTION_READINESS_PLAN.md) for checkpoints and evidence.
+
 ## Product identity (confirmed)
 
 - Product name: **Growixa**

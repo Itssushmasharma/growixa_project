@@ -45,17 +45,12 @@ from growixa_api.redis import get_redis
 router = APIRouter(prefix="/billing", tags=["billing"])
 public_router = APIRouter(tags=["billing-public"])
 
+
 @public_router.post("/billing/stripe/webhook")
-async def stripe_webhook(request: Request):
-    """Handle incoming Stripe webhooks (e.g., invoice.payment_succeeded)."""
-    payload = await request.body()
-    sig_header = request.headers.get("Stripe-Signature")
-    
-    if not sig_header:
-        raise HTTPException(status_code=400, detail="Missing Stripe-Signature header")
-        
-    # TODO: Verify signature and process event (e.g. customer.subscription.updated)
-    return {"status": "success"}
+async def stripe_webhook(request: Request) -> None:
+    """Razorpay is supported; Stripe ingestion is not yet implemented."""
+    raise HTTPException(503, detail="Stripe webhook ingestion is pending integration")
+
 
 _require_manage = require_permission("billing.manage")
 _require_view = require_permission("billing.view")
