@@ -2,6 +2,18 @@
 
 ---
 
+## 🟢 [v0.7.1] — 2026-09-19
+
+> **Release Tag**: `v0.7.1`
+> **Release Date**: September 19, 2026
+> **Platform Status**: 🟢 Promoted to Production
+
+### 🚀 Added & Enhanced
+- **Pricing Grid Update**: Added a new Free Plan card and expanded the grid to perfectly display 4 cards in a single row on desktop views.
+- **Copyright Attribution**: Updated footer text to "© 2026 Growixa Inc. All rights reserved. A product by IITDEVELOPER."
+
+---
+
 ## 🟢 [v0.7.0] — 2026-09-19
 
 > **Release Tag**: `v0.7.0`

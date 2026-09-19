@@ -2,13 +2,17 @@
 
 - Document ID: DOC-CHANGELOG
 - Status: ACTIVE
-- Version: 0.7.0
+- Version: 0.7.1
 - Last updated: 2026-09-19
 - Owner: Coding agent
 - Related documents: [PROJECT_STATUS](PROJECT_STATUS.md), [DECISIONS](DECISIONS.md), [MASTER_TASK_TRACKER](MASTER_TASK_TRACKER.md)
 
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
+
+## 2026-09-19 — v0.7.1 production release
+
+- **`feat(website)`** — **Pricing Grid & Footer**: Added Free plan card and expanded grid layout for a seamless 4-column pricing layout. Updated footer copyright attribution to IITDEVELOPER.
 
 ## 2026-09-19 — v0.7.0 production release
 
