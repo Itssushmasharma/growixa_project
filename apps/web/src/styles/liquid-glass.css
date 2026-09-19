@@ -141,29 +141,29 @@
   transform: translateY(-1px) scale(1.04);
 }
 
-.tactileBadgeCyan {
-  background: linear-gradient(180deg, #38bdf8 0%, #0284c7 100%);
-  box-shadow: 0 6px 14px rgba(2, 132, 199, 0.45), inset 0 2px 2px rgba(255, 255, 255, 0.6), inset 0 -2px 3px rgba(0, 0, 0, 0.25);
+.tactileBadgeCyan, .glass-icon.blue {
+  background: linear-gradient(180deg, #1C352D 0%, #152822 100%);
+  box-shadow: 0 4px 12px rgba(28, 53, 45, 0.4), inset 0 1px 1px rgba(248, 240, 229, 0.2), inset 0 -2px 3px rgba(0, 0, 0, 0.25);
 }
 
-.tactileBadgePurple {
-  background: linear-gradient(180deg, #c084fc 0%, #9333ea 100%);
-  box-shadow: 0 6px 14px rgba(147, 51, 234, 0.45), inset 0 2px 2px rgba(255, 255, 255, 0.6), inset 0 -2px 3px rgba(0, 0, 0, 0.25);
+.tactileBadgePurple, .glass-icon.purple {
+  background: linear-gradient(180deg, #F8F0E5 0%, #1C352D 100%);
+  box-shadow: 0 4px 12px rgba(28, 53, 45, 0.4), inset 0 1px 1px rgba(248, 240, 229, 0.2), inset 0 -2px 3px rgba(0, 0, 0, 0.25);
 }
 
-.tactileBadgeAmber {
-  background: linear-gradient(180deg, #fbbf24 0%, #d97706 100%);
-  box-shadow: 0 6px 14px rgba(217, 119, 6, 0.45), inset 0 2px 2px rgba(255, 255, 255, 0.6), inset 0 -2px 3px rgba(0, 0, 0, 0.25);
+.tactileBadgeAmber, .glass-icon.yellow {
+  background: linear-gradient(180deg, #1C352D 0%, #11211c 100%);
+  box-shadow: 0 4px 12px rgba(28, 53, 45, 0.4), inset 0 1px 1px rgba(248, 240, 229, 0.2), inset 0 -2px 3px rgba(0, 0, 0, 0.25);
 }
 
-.tactileBadgePink {
-  background: linear-gradient(180deg, #f472b6 0%, #db2777 100%);
-  box-shadow: 0 6px 14px rgba(219, 39, 119, 0.45), inset 0 2px 2px rgba(255, 255, 255, 0.6), inset 0 -2px 3px rgba(0, 0, 0, 0.25);
+.tactileBadgePink, .glass-icon.pink {
+  background: linear-gradient(180deg, #1C352D 0%, #0f1c18 100%);
+  box-shadow: 0 4px 12px rgba(28, 53, 45, 0.4), inset 0 1px 1px rgba(248, 240, 229, 0.2), inset 0 -2px 3px rgba(0, 0, 0, 0.25);
 }
 
-.tactileBadgeEmerald {
-  background: linear-gradient(180deg, #34d399 0%, #059669 100%);
-  box-shadow: 0 6px 14px rgba(5, 150, 105, 0.45), inset 0 2px 2px rgba(255, 255, 255, 0.6), inset 0 -2px 3px rgba(0, 0, 0, 0.25);
+.tactileBadgeEmerald, .glass-icon.green {
+  background: linear-gradient(180deg, #264a39 0%, #1C352D 100%);
+  box-shadow: 0 4px 12px rgba(28, 53, 45, 0.4), inset 0 1px 1px rgba(248, 240, 229, 0.2), inset 0 -2px 3px rgba(0, 0, 0, 0.25);
 }
 
 /* --------------------------------------------------------------------------
@@ -220,6 +220,12 @@
   border-radius: 999px;
   background: linear-gradient(90deg, #38bdf8 0%, #818cf8 100%);
   box-shadow: 0 0 10px rgba(56, 189, 248, 0.6);
+}
+
+.text-gradient {
+  background: linear-gradient(90deg, #F8F0E5 0%, #1C352D 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .tactileKnob {

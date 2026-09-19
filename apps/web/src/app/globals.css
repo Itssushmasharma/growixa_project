@@ -5,15 +5,15 @@
 @import "@/styles/liquid-glass.css";
 
 :root {
-  /* Leegality-inspired color palette */
-  --color-primary-blue: #0052cc;
-  --color-primary-light: #e6f0ff;
-  --color-teal: #00a3bf;
-  --color-mint: #00c7a5;
+  /* Dark Green / Light Beige palette */
+  --color-primary-blue: #1C352D;
+  --color-primary-light: #F8F0E5;
+  --color-teal: #1C352D;
+  --color-mint: #152822;
   --color-success: #00c7a5;
   --color-error: #ff5630;
   --color-warning: #ffab00;
-  --color-purple: #6554c0;
+  --color-purple: #1C352D;
   
   --color-slate: #5e6c84;
   --color-slate-light: #97a0af;
@@ -25,10 +25,10 @@
   --bg-surface-hover: #fafbfc;
   --border-color: #dfe1e6;
 
-  --gradient-primary: linear-gradient(135deg, #0052cc 0%, #00a3bf 100%);
-  --gradient-sidebar: #ffffff;
+  --gradient-primary: linear-gradient(135deg, #1C352D 0%, #152822 100%);
+  --gradient-sidebar: #F8F0E5;
   --gradient-login-bg: #f4f5f7;
-  --gradient-hero-card: linear-gradient(135deg, #172b4d, #091e42);
+  --gradient-hero-card: linear-gradient(135deg, #1C352D, #11211c);
 
   --card-radius: 12px;
   --card-shadow: 0 4px 12px rgba(9, 30, 66, 0.05), 0 1px 3px rgba(9, 30, 66, 0.1);

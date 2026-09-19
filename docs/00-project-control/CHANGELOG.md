@@ -10,6 +10,14 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
+## 2026-09-19 — v0.7.3 production release
+
+- **`feat(website)`** — **Theme Overhaul (Dark Green/Beige)**: Applied a new 2-color premium theme requested by the user, replacing the previous colors with Deep Green (`#1C352D`) and Light Beige (`#F8F0E5`) across the website's tokens, globals, and glass-icon utilities.
+
+## 2026-09-19 — v0.7.2 production release
+
+- **`feat(website)`** — **Ecosystem Section & Pricing Grid Fixes**: Injected the "Connects With Your Tech Stack" Ecosystem section to the premium home and fixed the 4-column pricing layout for `Simple Plans That Scale With Your Growth`.
+
 ## 2026-09-19 — v0.7.1 production release
 
 - **`feat(website)`** — **Pricing Grid & Footer**: Added Free plan card and expanded grid layout for a seamless 4-column pricing layout. Updated footer copyright attribution to IITDEVELOPER.

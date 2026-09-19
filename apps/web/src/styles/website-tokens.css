@@ -17,23 +17,23 @@
   --manage-d: #007d5a;
 
   /* signature brand atmosphere */
-  --brand-night: #05050d;
-  --brand-blue: #3548ff;
-  --brand-red: #ef294d;
-  --brand-gold: #d9b66f;
+  --brand-night: #1C352D;
+  --brand-blue: #152822;
+  --brand-red: #152822;
+  --brand-gold: #F8F0E5;
 
   /* ground */
-  --ink: #ffffff;
-  --paper: #05050d;
-  --paper-2: #0b0c16;
-  --paper-3: #13141f;
-  --line: #22223a;
-  --mut: #9096b0;
-  --faint: #444760;
+  --ink: #F8F0E5;
+  --paper: #1C352D;
+  --paper-2: #152822;
+  --paper-3: #11211c;
+  --line: #1C352D;
+  --mut: #688f7b;
+  --faint: #264a39;
 
   /* dark bands */
-  --stage: #08080f;
-  --stage-fg: #f2f2f8;
+  --stage: #0f1c18;
+  --stage-fg: #F8F0E5;
   --stage-mut: #9096b0;
   --stage-line: #22223a;
 
