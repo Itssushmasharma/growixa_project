@@ -12,9 +12,9 @@ export default function PricingPage() {
     <main className={styles.page}>
       <header className={styles.header}>
         <span className={styles.eyebrow}>Pricing</span>
-        <h1 className={styles.title}>Simple Pricing for Complex Growth</h1>
+        <h1 className={styles.title}>Simple Plans That Scale With Your Growth</h1>
         <p className={styles.subtitle}>
-          No hidden fees, no complicated tiers. Just the powerful tools you need to automate and scale your marketing.
+          Start free with no credit card required. Upgrade or top-up with one-time credit packs anytime.
         </p>
       </header>
 
@@ -32,6 +32,25 @@ export default function PricingPage() {
       </div>
 
       <div className={styles.grid}>
+        {/* Free Plan */}
+        <div className={styles.card}>
+          <h2 className={styles.planName}>Free</h2>
+          <p className={styles.planDesc}>Perfect for exploring the platform and testing tools.</p>
+          <div className={styles.priceBlock}>
+            <span className={styles.price}>$0</span>
+            <span className={styles.period}>/mo</span>
+          </div>
+          <Link href="/register?plan=free" className={`${styles.btn} ${styles.secondaryBtn}`}>
+            Start Free
+          </Link>
+          <ul className={styles.featuresList}>
+            <li className={styles.featureItem}><Check size={20} className={styles.featureIcon} /> 1 Team Member</li>
+            <li className={styles.featureItem}><Check size={20} className={styles.featureIcon} /> 2 Social Accounts</li>
+            <li className={styles.featureItem}><Check size={20} className={styles.featureIcon} /> Community Support</li>
+            <li className={styles.featureItem}><Check size={20} className={styles.featureIcon} /> Basic Templates</li>
+          </ul>
+        </div>
+
         {/* Starter Plan */}
         <div className={styles.card}>
           <h2 className={styles.planName}>Starter</h2>

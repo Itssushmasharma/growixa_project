@@ -84,7 +84,7 @@ export default function Footer() {
         </div>
 
         <div className={styles.base}>
-          <span>&copy; 2026 Growixa. Built by a small team in public.</span>
+          <span>&copy; 2026 Growixa Inc. All rights reserved. A product by IITDEVELOPER.</span>
           <span>
             Campaigns and contacts are live. Find and Create are in beta. Qualify ships Q4.
           </span>
