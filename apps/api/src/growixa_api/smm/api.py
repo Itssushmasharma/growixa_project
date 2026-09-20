@@ -7,11 +7,16 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from growixa_api.db import get_session
-from growixa_api.permissions.dependencies import get_current_account_id
+from growixa_api.permissions.dependencies import RequirePermission, get_current_account_id
 from growixa_api.smm.models import SMMOrder
 from growixa_api.smm.provider import smm_provider
 
-router = APIRouter(prefix="/smm", tags=["smm"])
+router = APIRouter(
+    prefix="/smm",
+    tags=["smm"],
+    dependencies=[Depends(RequirePermission("social:read"))],
+)
+
 
 
 class SMMServiceOut(BaseModel):

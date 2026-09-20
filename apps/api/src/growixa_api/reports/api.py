@@ -6,10 +6,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel
 
 from growixa_api.db import get_session
-from growixa_api.permissions.dependencies import get_current_account_id
+from growixa_api.permissions.dependencies import RequirePermission, get_current_account_id
 from growixa_api.reports.models import ScheduledReport
 
-router = APIRouter(prefix="/reports", tags=["White-label Reports"])
+router = APIRouter(
+    prefix="/reports",
+    tags=["White-label Reports"],
+    dependencies=[Depends(RequirePermission("analytics:read"))],
+)
+
 
 class CreateReportReq(BaseModel):
     name: str

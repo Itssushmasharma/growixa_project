@@ -13,6 +13,8 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import delete
 
+pytestmark = pytest.mark.integration
+
 from growixa_api.app import create_app
 from growixa_api.auth.encryption import encrypt_secret
 from growixa_api.config import get_settings
@@ -80,7 +82,7 @@ async def social_account_id(
     yield await account_factory()
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture
 async def cleanup_db() -> AsyncGenerator[None, None]:
     yield
     async with async_session_factory() as session:

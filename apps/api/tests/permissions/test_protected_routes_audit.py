@@ -77,10 +77,17 @@ PUBLIC_ROUTE_PATHS = {
     "/accounts/verify-email",
     "/accounts/support-session-status",
     "/billing/razorpay",
+    "/billing/stripe/webhook",
     "/dashboard/overview",
+
     "/auth/oauth/{provider}",
     "/auth/oauth/{provider}/callback",
+    "/webhooks/whatsapp",
+    "/webhooks/twilio",
+    "/seo/analyze",
+    "/ai/chat",
 }
+
 
 
 def _iter_api_routes(routes: list[BaseRoute]) -> Iterator[APIRoute]:

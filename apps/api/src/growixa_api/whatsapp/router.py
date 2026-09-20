@@ -6,11 +6,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from growixa_api.auth.encryption import encrypt_secret
 from growixa_api.db import get_session
-from growixa_api.permissions.dependencies import get_current_account_id
+from growixa_api.permissions.dependencies import RequirePermission, get_current_account_id
 from growixa_api.whatsapp.models import WhatsAppConnection
 from growixa_api.whatsapp.schemas import WhatsAppConnectionIn, WhatsAppConnectionOut
 
-router = APIRouter(prefix="/whatsapp", tags=["WhatsApp"])
+router = APIRouter(
+    prefix="/whatsapp",
+    tags=["WhatsApp"],
+    dependencies=[Depends(RequirePermission("integrations:manage"))],
+)
 
 
 @router.post(

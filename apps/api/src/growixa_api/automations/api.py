@@ -6,9 +6,13 @@ from sqlalchemy import select
 from growixa_api.automations.models import Workflow
 from growixa_api.automations.schemas import WorkflowIn, WorkflowOut
 from growixa_api.db import get_session
-from growixa_api.permissions.dependencies import get_current_account_id
+from growixa_api.permissions.dependencies import RequirePermission, get_current_account_id
 
-router = APIRouter(prefix="/automations", tags=["automations"])
+router = APIRouter(
+    prefix="/automations",
+    tags=["automations"],
+    dependencies=[Depends(RequirePermission("campaigns:read"))],
+)
 
 @router.get("", response_model=list[WorkflowOut])
 async def list_workflows_route(

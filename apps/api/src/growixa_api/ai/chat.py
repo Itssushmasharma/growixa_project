@@ -1,9 +1,15 @@
 """Public assistant availability; metered tenant AI remains in ai.api."""
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
-router = APIRouter(prefix="/ai", tags=["ai-chat"])
+from growixa_api.permissions.dependencies import RequirePermission
+
+router = APIRouter(
+    prefix="/ai",
+    tags=["ai-chat"],
+)
+
 
 
 class ChatMessageIn(BaseModel):

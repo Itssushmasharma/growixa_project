@@ -18,7 +18,11 @@ from growixa_api.config import get_settings
 from growixa_api.db import get_session
 from growixa_api.inbox.models import InboxConversation, InboxMessage
 from growixa_api.inbox.ws import manager
-from growixa_api.permissions.dependencies import get_current_account_id, get_current_user_id
+from growixa_api.permissions.dependencies import (
+    RequirePermission,
+    get_current_account_id,
+    get_current_user_id,
+)
 
 
 class SendMessageReq(BaseModel):
@@ -26,10 +30,16 @@ class SendMessageReq(BaseModel):
     media_urls: list[str] | None = None
 
 
-router = APIRouter(prefix="/inbox", tags=["Unified Inbox"])
+router = APIRouter(
+    prefix="/inbox",
+    tags=["Unified Inbox"],
+)
 
 
-@router.get("/conversations")
+@router.get(
+    "/conversations",
+    dependencies=[Depends(RequirePermission("inbox:read"))],
+)
 async def get_conversations(
     account_id: Annotated[uuid.UUID, Depends(get_current_account_id)],
     session: Annotated[AsyncSession, Depends(get_session)],
@@ -45,7 +55,10 @@ async def get_conversations(
     return result.scalars().all()
 
 
-@router.post("/conversations/{conversation_id}/messages")
+@router.post(
+    "/conversations/{conversation_id}/messages",
+    dependencies=[Depends(RequirePermission("inbox:write"))],
+)
 async def send_message(
     conversation_id: uuid.UUID,
     payload: SendMessageReq,
@@ -69,7 +82,10 @@ async def send_message(
     )
 
 
-@router.get("/conversations/{conversation_id}/messages")
+@router.get(
+    "/conversations/{conversation_id}/messages",
+    dependencies=[Depends(RequirePermission("inbox:read"))],
+)
 async def get_messages(
     conversation_id: uuid.UUID,
     account_id: Annotated[uuid.UUID, Depends(get_current_account_id)],

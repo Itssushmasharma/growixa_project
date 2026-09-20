@@ -5,14 +5,18 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from growixa_api.db import get_session
-from growixa_api.permissions.dependencies import get_current_account_id
+from growixa_api.permissions.dependencies import RequirePermission, get_current_account_id
 from growixa_api.campaigns.models import Campaign
 from growixa_api.social.models import SocialPost
 from growixa_api.whatsapp.models import WhatsAppCampaign
 from growixa_api.sms.models import SMSCampaign
 from .schemas import CalendarEvent
 
-router = APIRouter(prefix="/calendar", tags=["Calendar"])
+router = APIRouter(
+    prefix="/calendar",
+    tags=["Calendar"],
+    dependencies=[Depends(RequirePermission("campaigns:read"))],
+)
 
 @router.get("/events", response_model=list[CalendarEvent])
 async def get_calendar_events(

@@ -1,9 +1,14 @@
 """SEO audit availability while the isolated crawler is pending."""
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
-router = APIRouter(prefix="/seo", tags=["seo"])
+from growixa_api.permissions.dependencies import RequirePermission
+
+router = APIRouter(
+    prefix="/seo",
+    tags=["seo"],
+)
 
 
 class SEOAnalyzeIn(BaseModel):

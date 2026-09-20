@@ -1253,7 +1253,9 @@ async def test_inbox_websocket_rejects_missing_authentication() -> None:
             "type": "websocket",
             "headers": [(b"origin", b"http://localhost:3000")],
             "query_string": b"account_id=untrusted",
-        }
+        },
+        receive=AsyncMock(),
+        send=AsyncMock(),
     )
     session = AsyncMock()
     with pytest.raises(WebSocketException) as caught:
@@ -1280,7 +1282,9 @@ async def test_inbox_websocket_rejects_different_tenant(monkeypatch: pytest.Monk
             "type": "websocket",
             "headers": [(b"origin", b"http://localhost:3000")],
             "query_string": f"account_id={uuid.uuid4()}".encode(),
-        }
+        },
+        receive=AsyncMock(),
+        send=AsyncMock(),
     )
     with pytest.raises(WebSocketException):
         await inbox_router.websocket_endpoint(websocket, AsyncMock())

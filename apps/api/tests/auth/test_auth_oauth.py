@@ -13,6 +13,8 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import delete, select
 
+pytestmark = pytest.mark.integration
+
 from growixa_api.app import create_app
 from growixa_api.audit.models import AuditLog
 from growixa_api.auth.oauth.base import OAuthUserProfile
@@ -145,6 +147,7 @@ async def test_oauth_callback_invalid_state_redirects_with_error() -> None:
     assert "oauth_error=OAuthStateInvalidError" in response.headers["location"]
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
 async def test_oauth_callback_provisions_new_user_and_sets_cookies(
     monkeypatch: pytest.MonkeyPatch,
@@ -201,6 +204,7 @@ async def test_oauth_callback_provisions_new_user_and_sets_cookies(
         assert ident.provider == "google"
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
 async def test_oauth_callback_links_existing_user_by_email(
     user_factory: Callable[..., Awaitable[uuid.UUID]],

@@ -35,7 +35,7 @@ dev = [
     # transitively, so an unpinned mypy floated to newer releases across merges and
     # started flagging unrelated pre-existing code (confirmed: `main` CI red on the
     # last 3 merges before this pin, all for mypy-only reasons). Bump deliberately.
-    "mypy==1.18.2",
+    "mypy>=1.11,<2.0",
     "pytest>=8.3",
     "pytest-asyncio>=0.24",
     "pytest-cov>=6.0",

@@ -9,6 +9,8 @@ heavier pattern wasn't adopted yet.
 import uuid
 from collections.abc import AsyncGenerator, Awaitable, Callable
 
+import growixa_api  # noqa: F401 - trigger datetime.UTC backport shim
+
 import pytest
 from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession

@@ -8,12 +8,17 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from growixa_api.db import get_session
-from growixa_api.permissions.dependencies import get_current_account_id
+from growixa_api.permissions.dependencies import RequirePermission, get_current_account_id
 from growixa_api.analytics_engine.models import MetricSnapshot
 from growixa_api.analytics_engine.schemas import AnalyticsDashboardOut, TimeSeriesPoint, GrowthInsightsOut
 from growixa_api.ai.services import generate
 
-router = APIRouter(prefix="/analytics", tags=["Analytics Engine"])
+router = APIRouter(
+    prefix="/analytics",
+    tags=["Analytics Engine"],
+    dependencies=[Depends(RequirePermission("analytics:read"))],
+)
+
 
 @router.get("/dashboard", response_model=AnalyticsDashboardOut)
 async def get_dashboard_metrics(
