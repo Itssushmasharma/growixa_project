@@ -1,71 +1,73 @@
-# 🚀 Growixa — AI-Powered Growth & Marketing Operating System 🌟
+# 🚀 Growixa — AI-Powered Growth & Digital Agency Operating System 🌟
 
 [![Production Deployment](https://img.shields.io/badge/Production-v0.8.0-emerald.svg?style=for-the-badge&logo=rocket)](https://growixa.iitdeveloper.com)
-[![UAT Staging](https://img.shields.io/badge/UAT_Staging-v0.8.0--rc1-blue.svg?style=for-the-badge&logo=server)](https://uat.growixa.iitdeveloper.com)
+[![UAT Staging](https://img.shields.io/badge/UAT_Staging-v0.9.0--rc1-blue.svg?style=for-the-badge&logo=server)](https://uat.growixa.iitdeveloper.com)
 [![Next.js 14](https://img.shields.io/badge/Next.js-14_App_Router-black.style?style=for-the-badge&logo=nextdotjs)](https://nextjs.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.111-009688.svg?style=for-the-badge&logo=fastapi)](https://fastapi.tiangolo.com)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1.svg?style=for-the-badge&logo=postgresql)](https://www.postgresql.org)
 [![License](https://img.shields.io/badge/License-Proprietary-purple.svg?style=for-the-badge)](#-license)
 
-**Growixa** is an end-to-end, AI-powered Growth & Marketing Operating System designed for modern businesses, growth teams, and marketing agencies. It unifies Audience CRM, Multichannel Campaigns, Social Media Publishing, Email Deliverability, AI Copy Generation, Real-Time Growth Telemetry, and SaaS Subscription Billing into **one unified command hub**.
+**Growixa** is an enterprise-grade, AI-powered Growth & Digital Agency Operating System designed for modern businesses, growth teams, and marketing agencies. It unifies Audience CRM, Creative Studio, PPC Ads Hub, Omnichannel SMS & WhatsApp, SEO Audit & Intelligence, AI Marketing Planner, Landing Page Builder, Social Media Publishing, Email Deliverability, Real-Time Telemetry, and SaaS Billing into **one cohesive command hub**.
 
 > 🌐 **Live Production App**: [https://growixa.iitdeveloper.com](https://growixa.iitdeveloper.com)  
 > 🧪 **Live UAT / Staging App**: [https://uat.growixa.iitdeveloper.com](https://uat.growixa.iitdeveloper.com)
 
 ---
 
-## 🔁 The Core Business Engine Loop 🔄
+## 🔁 The Ecosystem OS Architecture Loop 🔄
 
 ```mermaid
 flowchart LR
-    A[👥 Audience] --> B[✍️ Content & AI]
-    B --> C[🎯 Campaigns]
-    C --> D[📅 Schedule & Send]
-    D --> E[💬 Engage & Inbox]
-    E --> F[🧲 Leads & CRM]
-    F --> G[⚡ Automate & Follow-Up]
-    G --> H[📊 Analyze & Telemetry]
-    H --> I[🧠 AI Insight & Optimize]
+    A[👥 Audience & Leads] --> B[🎨 AI Creative Studio]
+    B --> C[🧠 AI Strategy Planner]
+    C --> D[🎯 Ads & Campaigns]
+    D --> E[💬 WhatsApp, SMS & Email]
+    E --> F[📥 Inbox & Conversion]
+    F --> G[🌐 Presence & SEO]
+    G --> H[📊 Growth Telemetry]
+    H --> I[⚡ Automation Engine]
     I --> A
 ```
 
 ---
 
-## 🌟 15 Core Modules (A-to-Z Platform Scope) 💎
+## 🌟 21 Core Modules (A-to-Z Platform Scope) 💎
 
-| # | Module | Key Features & Implementation Status | Status |
+| # | Module | Key Capabilities & Implementation Scope | Status |
 |---|---|---|---|
-| **1** | 🔐 **Foundation & Multi-Tenancy** | Account isolation on every table/API, Keycloak/Google OAuth 2.0, JWT session cookies, Argon2id hashing, Fernet encrypted credentials. | 🟢 **100% Live** |
-| **2** | 📇 **CRM, Contacts & Leads** | Email deduplication, dynamic custom fields, tag management, segment query engine, insert-only consent audit logs, and wildcard domain suppression lists. | 🟢 **100% Live** |
-| **3** | ✉️ **Email, SMTP & Postmark** | Dual-relay transport (Postmark & Custom SMTP TLS/STARTTLS), template builder, Postmark webhooks (`/webhooks/postmark`), RFC 8058 `List-Unsubscribe`. | 🟢 **100% Live** |
-| **4** | 📱 **Social, Composer & Calendar** | Omnichannel composer, Instagram Business OAuth 2.0, media upload grid, social calendar view, and RabbitMQ async worker publisher. | 🟢 **100% Live** |
-| **5** | 🎨 **Creative Studio & Media Assets** | Supabase Storage asset manager, tag filters, pre-built email/social templates, and instant preview card gallery. | 🟢 **100% Live** |
-| **6** | 🤖 **AI Assistant & Brand Guardrails** | OpenAI (GPT-4o), Azure OpenAI, Anthropic (Claude 3.5 Sonnet), Ollama, Brand Guardrail rule lists, tone sliders, and credit metering. | 🟢 **100% Live** |
-| **7** | 🎯 **Campaign Manager** | Audience segment targeting, test send, immediate queue dispatch, scheduled background ticker, and execution history. | 🟢 **100% Live** |
-| **8** | ⚡ **Automation & Workflows** | Trigger-action model definitions (`automations/models.py`), schemas, event handlers, and execution logs. | 🟢 **100% Live** |
-| **9** | 💬 **WhatsApp & SMS** | Router handlers (`whatsapp/router.py`, `sms/router.py`), webhook receivers (`/webhooks/whatsapp`, `/webhooks/twilio`), and schema specs. | 🟢 **100% Live** |
-| **10** | 📥 **Unified Inbox** | Real-time WebSockets (`/inbox/ws`) with cookie auth & tenant isolation, plus conversation & message HTTP API handlers. | 🟢 **100% Live** |
-| **11** | 📊 **Analytics & Telemetry** | Zero-dependency SVG Candlestick (OHLC) & Area Spline chart terminal with multi-timeframe toggles (1H to 1Y) and live event stream. | 🟢 **100% Live** |
-| **12** | 🌐 **Website & SEO Intelligence** | Public SEO feature stub (`POST /seo/analyze`) returning HTTP 503 (`FEATURE_PENDING`) until isolated crawler service is deployed. | 🟡 **Pending Crawler** |
-| **13** | 🏢 **Agency & Client Portal** | Agency multi-client account switcher, client portal RBAC scoping, and multi-tenant client management services. | 🟢 **100% Live** |
-| **14** | 💳 **SaaS Billing & Quotas** | Razorpay Subscriptions (INR/USD), Checkout modal, signature-verified webhooks (`/billing/razorpay`), period-resetting quotas, & coupon engine. | 🟢 **100% Live** |
-| **15** | 🛡️ **Admin, Security & Hardening** | Platform control plane (`/platform`), tenant overrides, credit grants, insert-only audit log viewer (`/dashboard/audit`), and Redis rate limiting. | 🟢 **100% Live** |
+| **1** | 🔐 **Foundation & Multi-Tenancy** | Strict account isolation per tenant, Keycloak/Google OAuth 2.0, JWT session cookies, Argon2id hashing, Fernet credential encryption. | 🟢 **100% Live** |
+| **2** | 📇 **CRM, Contacts & Leads** | Dynamic custom fields, tag management, multi-segment query engine, insert-only consent audit logs, and wildcard domain suppression. | 🟢 **100% Live** |
+| **3** | 🎨 **Creative Studio & Brand Kit** | AI social creatives, banners, flyers, posters, ad stories, digital business cards, multi-preset resizer, and brand kit manager (`/creative`). | 🟢 **100% Live** |
+| **4** | 📊 **Ads Hub (Google & Meta)** | Multi-channel PPC campaign planner, target audience presets, real-time ROAS budget calculator & UTM URL Builder (`/ads`). | 🟢 **100% Live** |
+| **5** | 🧲 **Lead Gen & Capture Forms** | Custom embeddable lead capture forms, lead routing rules, real-time notification hooks & conversion score table (`/lead-gen`). | 🟢 **100% Live** |
+| **6** | 💬 **Omnichannel Communications** | WhatsApp API & SMS connection manager, template studio, broadcast sender & instant OTP verification service (`/communications`). | 🟢 **100% Live** |
+| **7** | 🧠 **AI Marketing Strategy Planner** | Automated 30-day marketing strategy generator, campaign task breakdowns, content calendar matrix & channel budget allocator (`/planner`). | 🟢 **100% Live** |
+| **8** | 🌐 **Website & Business Presence** | Micro-landing page builder, customizable link-in-bio hub, CTA click analytics & social profile optimizer (`/business-presence`). | 🟢 **100% Live** |
+| **9** | 🔍 **SEO Audit & Intelligence** | Live BeautifulSoup web page analyzer (`GET /seo/analyze`), on-page meta check, heading hierarchy breakdown, and keyword planner (`/seo`). | 🟢 **100% Live** |
+| **10** | ✉️ **Email, SMTP & Postmark** | Dual-relay transport (Postmark & Custom SMTP TLS), visual template builder, Postmark webhooks (`/webhooks/postal`), List-Unsubscribe headers. | 🟢 **100% Live** |
+| **11** | 📱 **Social Composer & Calendar** | Multi-account publisher, Instagram Business OAuth 2.0, interactive calendar view, drag-and-drop scheduling & async RabbitMQ queue. | 🟢 **100% Live** |
+| **12** | 🖼️ **Media Assets Manager** | Supabase Storage integration, tag-based filtering, drag-and-drop file upload grid, and image asset transform preview. | 🟢 **100% Live** |
+| **13** | 🤖 **AI Assistant & Guardrails** | OpenAI GPT-4o, Anthropic Claude 3.5, Ollama fallback, custom brand guardrails, safety rules, and credit usage metering. | 🟢 **100% Live** |
+| **14** | 🎯 **Campaign Manager** | Segment-targeted campaign execution, test send mode, scheduled ticker background dispatch, and delivery analytics. | 🟢 **100% Live** |
+| **15** | ⚡ **Workflow Automation** | Event-driven trigger-action workflow builder (`automations/models.py`), conditional branches, and execution logs. | 🟢 **100% Live** |
+| **16** | 📥 **Unified Inbox** | Real-time WebSockets (`/inbox/ws`) with tenant cookie auth, live conversation streams, and message status sync. | 🟢 **100% Live** |
+| **17** | 📈 **Analytics & Telemetry** | SVG Candlestick (OHLC) & Area Spline terminal with multi-timeframe toggles (1H to 1Y) and real-time revenue telemetry. | 🟢 **100% Live** |
+| **18** | 🏢 **Agency & Client Portal** | Multi-client tenant switcher, white-label branding controls, and client account isolation. | 🟢 **100% Live** |
+| **19** | 💳 **SaaS Billing & Subscriptions** | Razorpay & Stripe integration, automatic tier management, add-on credit top-ups, period-resetting quotas & coupon engine. | 🟢 **100% Live** |
+| **20** | 🛡️ **Security Control Plane** | Insert-only audit logging (`/dashboard/audit`), platform control plane (`/platform`), Redis rate limiting, and RBAC policy enforcement. | 🟢 **100% Live** |
+| **21** | 🗺️ **Website Shell & Roadmap** | Rotated `GROWIXA` background watermark, connected Ecosystem OS architecture, and multi-level service header top bar. | 🟢 **100% Live** |
 
 ---
 
-## 🎨 Integrated Landing Page Design Concepts 🌌
+## 🎨 Visual Design System & Aesthetics 🌌
 
-The landing page (`/`) incorporates **all 5 reference visual concepts**:
-
-1. 🏆 **Hero AI Agent Platform**: `#1 Product of the Day` eyebrow pill, *"The Ultimate All-In-One AI Growth Engine"* headline, interactive hero cards (Voice Assistant, Gartner 2025 AI Agents badge, Automation Engine), and 4.9⭐ rating badge.
-2. ⚡ **"Chaotic Work" Problem Section**: Notification app icon chaos grid (`Slack 1M+`, `Calendar 99+`, `Drive Offline`, `Messages 420`) with SVG connecting lines and 3 impact stats.
-3. 🔮 **Central Glowing 3D Integration Hub**: Glowing purple orb surrounded by floating ribbon app badges (Postmark, OpenAI, Razorpay, Google, Slack, Zapier) and a live search input card with *"Book Demo"* CTA.
-4. 🌈 **Omnichannel Social Deep Link Arch**: Rainbow arch of social platform icons converging into an Instagram & LinkedIn direct deep-link preview card.
-5. 🛡️ **Enterprise Security & Tech Stack Bento**: Tech stack integration cards and bank-grade security cards (SOC2 Ready Architecture, GDPR & Opt-Out Handling, Fernet & Argon2id Encryption).
+- **Palette**: Signature Pantone Cherry (`#6D0626`), Warm Cream/Ivory (`#F7F1EA`), Crimson Accent (`#A01B42`), and Dark Slate Navy.
+- **Top Utility Header**: Phone (`+91-9205067380`), Email (`info@growixa.com`), Quick links, WhatsApp CTA button, `Growixa®` brand logo, and 4 multi-level service dropdowns (`SMS & WhatsApp`, `Digital Services`, `Website & SEO`, `Enterprise`).
+- **Product Roadmap (`/roadmap`)**: Rotated `GROWIXA` background watermark, interactive stage filters, ecosystem architecture diagram, and 4-pillar benefit strip.
 
 ---
 
-## 🏗️ System Architecture & Technology Stack 🛠️
+## 🏗️ System Architecture & Deployment Stack 🛠️
 
 ```mermaid
 graph TD
@@ -81,15 +83,10 @@ graph TD
     RMQ --> Worker[👷 Background Async Worker]
     Worker --> DB
     
-    API --> ExtMail[📧 Postmark / SMTP Relay]
+    API --> ExtMail[📧 Postmark / Custom SMTP Relay]
     API --> ExtAI[🤖 OpenAI / Anthropic / Ollama]
-    API --> ExtPay[💳 Razorpay Billing Webhooks]
+    API --> ExtPay[💳 Razorpay & Stripe Billing Webhooks]
 ```
-
-### 🧰 Tech Stack Summary:
-- **Frontend**: Next.js 14 (App Router, React 18, TypeScript, Vanilla CSS Modules, Lucide Icons, Vitest)
-- **Backend**: Python 3.10+, FastAPI, Async SQLAlchemy 2.0 (`asyncpg`), Pydantic V2, Alembic
-- **Storage & Infrastructure**: PostgreSQL 16, Redis 7, RabbitMQ 3, Supabase Storage, Docker Compose, Caddy
 
 ---
 
@@ -111,49 +108,47 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 ### 3️⃣ Backend Setup (`apps/api`) ⚙️
 ```bash
 cd apps/api
-# Setup virtual environment
 python -m venv .venv
 .\.venv\Scripts\activate  # On Windows
 
 # Install dependencies and start FastAPI server
 pip install -e .
-python -m uvicorn growixa_api.app:app --host 0.0.0.0 --port 8000 --reload
+$env:PYTHONPATH="src"
+python -m uvicorn growixa_api.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 Interactive API documentation: [http://localhost:8000/docs](http://localhost:8000/docs).
 
 ---
 
-## 🛡️ Verification, Testing & Build Status 🧪
+## 🛡️ Quality Assurance & Automated Pipeline Checks 🧪
 
-Before any code merge, all automated pipeline checks are executed and verified:
+All quality and security checks must pass cleanly prior to release tagging:
 
 ```bash
-# 🖥️ Frontend Quality Checks (apps/web)
+# 🖥️ Frontend Checks (apps/web)
 npm run lint          # 🟢 0 errors, 0 warnings
-npm run typecheck     # 🟢 0 TypeScript errors (82 routes)
-npm run test          # 🟢 5/5 Vitest tests passing
-npm run build         # 🟢 Next.js production build cleanly compiled
+npm run typecheck     # 🟢 0 TypeScript errors across 80+ routes
+npm run test          # 🟢 Vitest suite passing cleanly
+npm run build         # 🟢 Next.js production build verified
 
-# ⚙️ Backend Quality Checks (apps/api)
-.\.venv\Scripts\python.exe -m pytest -m "not integration"  # 🟢 111/111 unit tests PASSED (100%)
-.\.venv\Scripts\python.exe -m pytest tests/permissions/test_protected_routes_audit.py  # 🟢 3/3 PASSED
-alembic check         # 🟢 Clean (0 schema drift)
+# ⚙️ Backend Checks (apps/api)
+.\.venv\Scripts\python.exe -m pytest -m "not integration"  # 🟢 100% unit tests PASSED
+.\.venv\Scripts\python.exe -m pytest tests/permissions/test_cross_tenant_isolation.py  # 🟢 100% PASSED
+alembic check         # 🟢 Clean schema state
 ```
 
 ---
 
-## 🚀 OVH VPS Production Deployment Notes 📦
+## 🚀 OVH VPS Deployment & Release Notes 📦
 
 - **Target VPS Server**: `149.56.101.2` (OVHcloud, 6 vCores, 12GB RAM)
-- **Git Branch**: `feature/BACKEND/GRX-PRODUCTION-FOUNDATION` (Commit `97f181f`)
+- **Git Branch**: `feature/BACKEND/GRX-A2Z-AUDIT-UPGRADE` (Commit `186186e`)
 - **Git Remotes**: `origin` (`iitdeveloper-git/growixa`) & `upstream` (`Itssushmasharma/growixa_project`)
-- **Release Tags**: `v0.8.0` (Production Tag) and `v0.8.0-rc1` (UAT Tag)
-- **Deployment Script**: `/opt/growixa/scripts/deploy_vps.sh`
-- **Nightly Database Backup**: `/opt/growixa/scripts/backup_db.sh` (Cron 02:00 UTC, 14-day retention)
+- **Active Release Tag**: `v0.9.0-rc1` (UAT Staging Tag)
 
 ---
 
 ## 📄 License & Ownership 📜
 
 Proprietary Software — All rights reserved by **Growixa Growth Platform** & **IIT Developer Team**.  
-Made with ❤️ and ☕ for Growth Engineers worldwide! 🌍🚀
+Made with ❤️ and ☕ for Growth Engineers & Marketing Agencies worldwide! 🌍🚀
