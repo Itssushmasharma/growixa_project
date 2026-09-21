@@ -131,15 +131,15 @@ export default function CreativeStudioPage() {
           <div className={styles.canvasHeader}>
             <div className={styles.canvasTitleRow}>
               <ImageIcon className="w-4 h-4 text-rose-700" />
-              <span>Canvas Preview — <strong>{currentPresetObj.name}</strong></span>
+              <span>Canvas Preview — <strong>{currentPresetObj?.name ?? "Preset"}</strong></span>
             </div>
             <button type="button" className={styles.exportBtn}>
-              <Download className="w-4 h-4" /> Export Preset ({currentPresetObj.size})
+              <Download className="w-4 h-4" /> Export Preset ({currentPresetObj?.size ?? "1080x1080"})
             </button>
           </div>
 
           {/* Interactive Visual Canvas Box */}
-          <div className={styles.canvasBox} style={{ aspectRatio: currentPresetObj.aspect === "1:1" ? "1/1" : currentPresetObj.aspect === "9:16" ? "9/16" : "1.91/1" }}>
+          <div className={styles.canvasBox} style={{ aspectRatio: currentPresetObj?.aspect === "1:1" ? "1/1" : currentPresetObj?.aspect === "9:16" ? "9/16" : "1.91/1" }}>
             <div className={styles.canvasGlow} aria-hidden="true" />
             <span className={styles.canvasBadge}>GROWIXA AI CANVAS</span>
 
