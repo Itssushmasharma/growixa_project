@@ -2,13 +2,26 @@
 
 - Document ID: DOC-CHANGELOG
 - Status: ACTIVE
-- Version: 0.8.0
-- Last updated: 2026-09-20
+- Version: 0.9.0-rc1
+- Last updated: 2026-09-21
 - Owner: Coding agent
 - Related documents: [PROJECT_STATUS](PROJECT_STATUS.md), [DECISIONS](DECISIONS.md), [MASTER_TASK_TRACKER](MASTER_TASK_TRACKER.md)
 
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
+
+## 2026-09-21 — v0.9.0-rc1 UAT release candidate
+
+- **`feat(ecosystem)`** — **Digital Marketing, Creative & Business Presence Ecosystem**:
+  - **Creative Studio (`/dashboard/creative-studio`)**: AI social creatives, banners, flyers, posters, ad stories/reels, business cards, brand kit customization (`#6D0626` Pantone Cherry), and platform-size export presets.
+  - **Website & Business Presence (`/dashboard/business-presence`)**: Landing page builder, live views/conversions telemetry, and smart CTA bio link manager (`growixa.link/slug`).
+  - **SEO Hub (`/dashboard/seo`)**: BeautifulSoup live URL crawler audit for title tags, meta descriptions, H1 counts, missing alt attributes, SSL, and keyword research explorer.
+  - **PPC Ads Hub (`/dashboard/ads-hub`)**: Unified Google Ads & Meta Ads campaign workspace, budget manager, ROAS tracking, and UTM campaign link builder.
+  - **AI Marketing Planner (`/dashboard/planner`)**: Multi-channel GTM strategy planner, channel recommendations, and team task execution Kanban board.
+  - **Lead Generation Engine (`/dashboard/lead-gen`)**: Form builder, iFrame embed snippet generator, and public `/api/v1/leads/capture` endpoint with UTM attribution and CRM routing.
+  - **Omnichannel Communications (`/dashboard/communications`)**: DLT-approved Transactional SMS, WhatsApp API catalogs, 2FA OTP codes, and sub-second OTP sandbox tester.
+  - **Header Navigation Overhaul**: Top utility bar (phone `+91-9205067380`, email `info@growixa.com`, WhatsApp Us button), clear `Growixa®` logo, and 4 multi-level service dropdowns (`SMS & WhatsApp`, `Digital Services`, `Website & SEO`, `Enterprise`).
+  - **Product Roadmap Page (`/roadmap`)**: Angle-rotated `GROWIXA` background watermark, connected Ecosystem OS diagram, 4-pillar benefit strip, and status filters.
 
 ## 2026-09-20 — v0.8.0 production release
 

@@ -1,58 +1,148 @@
-.hdr {
+/* ==========================================================================
+   Growixa Header Component - Top Utility Bar & Main Navbar
+   ========================================================================== */
+
+.hdrWrapper {
   position: sticky;
   top: 0;
   z-index: 200;
-  background: rgba(255, 255, 255, 0.82);
+  width: 100%;
+}
+
+/* Top Utility Bar */
+.topBar {
+  background: #1E0B12;
+  color: #F7F1EA;
+  padding: 6px 0;
+  font-size: 0.78rem;
+  border-bottom: 1px solid rgba(226, 215, 203, 0.15);
+}
+
+.topBarWrap {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.topBarLeft, .topBarRight {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.topContactItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #F7EBEF;
+  text-decoration: none;
+  font-weight: 600;
+  transition: color 0.2s;
+}
+
+.topContactItem:hover {
+  color: #FFFFFF;
+}
+
+.topDivider {
+  color: rgba(226, 215, 203, 0.3);
+  font-size: 0.7rem;
+}
+
+.topLink {
+  color: #E2D7CB;
+  text-decoration: none;
+  font-weight: 600;
+  transition: color 0.2s;
+}
+
+.topLink:hover {
+  color: #FFFFFF;
+}
+
+.topWhatsappBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #25D366;
+  color: #FFFFFF;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  font-weight: 800;
+  font-size: 0.72rem;
+  text-decoration: none;
+  transition: transform 0.2s;
+  margin-left: 4px;
+}
+
+.topWhatsappBtn:hover {
+  transform: scale(1.04);
+}
+
+/* Main Navigation Header Bar */
+.mainHdr {
+  background: rgba(247, 241, 234, 0.95);
   backdrop-filter: blur(20px) saturate(1.5);
   -webkit-backdrop-filter: blur(20px) saturate(1.5);
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--line, #E2D7CB);
 }
 
 .nav {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 24px;
-  padding: 14px 0;
+  gap: 20px;
+  padding: 12px 0;
 }
 
 .brand {
   display: flex;
   align-items: center;
-  gap: 11px;
-  font-weight: 700;
-  font-size: 1.3125rem;
-  letter-spacing: -0.035em;
-  color: var(--ink);
+  gap: 10px;
   text-decoration: none;
 }
 
-/* The conic gradient is the one place all five hues appear at once — the mark is the engine. */
 .mark {
-  width: 34px;
-  height: 34px;
-  border-radius: 11px;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
   flex: none;
   display: grid;
   place-items: center;
-  background: conic-gradient(
-    from 210deg,
-    var(--find),
-    var(--create),
-    var(--send),
-    var(--qualify),
-    var(--manage),
-    var(--find)
-  );
-  box-shadow: 0 5px 16px -5px rgba(123, 77, 255, 0.55);
+  background: #FFFFFF;
+  border: 2px solid #6D0626;
+  box-shadow: 0 4px 14px rgba(109, 6, 38, 0.15);
 }
 
-.mark svg {
-  background: #fff;
-  border-radius: 8px;
-  padding: 5px;
-  width: 24px;
-  height: 24px;
+.brandTextGroup {
+  display: flex;
+  flex-direction: column;
+}
+
+.brandName {
+  font-family: var(--font-display, inherit);
+  font-size: 1.45rem;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  color: #6D0626;
+  line-height: 1;
+}
+
+.brandName sup {
+  font-size: 0.65rem;
+  font-weight: 700;
+  top: -0.6em;
+  color: #1E0B12;
+}
+
+.brandTagline {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  color: #8A767C;
+  text-transform: uppercase;
+  margin-top: 2px;
 }
 
 .links {
@@ -62,48 +152,43 @@
 }
 
 .link {
-  padding: 9px 15px;
-  border-radius: 999px;
-  font-size: 0.9063rem;
-  font-weight: 500;
-  color: var(--mut);
+  padding: 8px 14px;
+  border-radius: 9999px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #1E0B12;
   text-decoration: none;
-  transition:
-    background var(--t-fast) ease,
-    color var(--t-fast) ease;
+  transition: background 0.2s ease, color 0.2s ease;
 }
+
 .link:hover {
-  background: var(--paper-2);
-  color: var(--ink);
+  background: #F7EBEF;
+  color: #6D0626;
 }
 
 .cta {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
 }
 
 .login {
-  font-size: 0.9063rem;
-  font-weight: 500;
-  color: var(--mut);
-  padding: 8px 6px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #1E0B12;
+  padding: 8px 10px;
   text-decoration: none;
+  transition: color 0.2s;
 }
 
 .login:hover {
-  color: var(--ink);
+  color: #6D0626;
 }
 
-.note {
-  font-family: var(--font-mono);
-  font-size: 0.6875rem;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--faint);
-}
-
-@media (max-width: 900px) {
+@media (max-width: 1024px) {
+  .topBarLeft {
+    display: none;
+  }
   .links {
     display: none;
   }

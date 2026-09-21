@@ -1,51 +1,51 @@
 :root {
-  /* stage hues — base for fills, -l for tints, -d for text on light */
-  --find: #00a9e0;
-  --find-l: #e4f6fd;
-  --find-d: #00688a;
-  --qualify: #ff9500;
-  --qualify-l: #fff2e0;
-  --qualify-d: #a15f00;
-  --create: #7b4dff;
-  --create-l: #eee9ff;
-  --create-d: #5b2cff;
-  --send: #ff3f73;
-  --send-l: #ffe7ee;
-  --send-d: #c81e4c;
-  --manage: #00b884;
-  --manage-l: #dff7ef;
-  --manage-d: #007d5a;
+  /* stage hues — Royal Cherry & Warm Ivory */
+  --find: #6D0626;
+  --find-l: #F7EBEF;
+  --find-d: #4A0319;
+  --qualify: #8C1C3D;
+  --qualify-l: #FBF0F3;
+  --qualify-d: #5B0F25;
+  --create: #6D0626;
+  --create-l: #F7EBEF;
+  --create-d: #4A0319;
+  --send: #A01B42;
+  --send-l: #FCE8EE;
+  --send-d: #6D0626;
+  --manage: #5A0A21;
+  --manage-l: #F5E6EA;
+  --manage-d: #3D0414;
 
-  /* signature brand atmosphere */
-  --brand-night: #1C352D;
-  --brand-blue: #152822;
-  --brand-red: #152822;
-  --brand-gold: #F8F0E5;
+  /* signature brand atmosphere — Royal Cherry & Warm Ivory (User Pantone Choice) */
+  --brand-night: #1E0B12;
+  --brand-blue: #2B0813;
+  --brand-red: #6D0626;
+  --brand-gold: #D4AF37;
 
-  /* ground */
-  --ink: #F8F0E5;
-  --paper: #1C352D;
-  --paper-2: #152822;
-  --paper-3: #11211c;
-  --line: #1C352D;
-  --mut: #688f7b;
-  --faint: #264a39;
+  /* ground — Pantone Warm Ivory (#F7F1EA) & Royal Cherry Ink */
+  --ink: #1E0B12;
+  --paper: #F7F1EA;
+  --paper-2: #FAF6F0;
+  --paper-3: #EFE6DC;
+  --line: #E2D7CB;
+  --mut: #5C4A50;
+  --faint: #8A767C;
 
   /* dark bands */
-  --stage: #0f1c18;
-  --stage-fg: #F8F0E5;
-  --stage-mut: #9096b0;
-  --stage-line: #22223a;
+  --stage: #1C050D;
+  --stage-fg: #F7F1EA;
+  --stage-mut: #C4B5B9;
+  --stage-line: #3D0B1C;
 
   /* radius */
-  --r-m: 16px;
-  --r-l: 24px;
-  --r-xl: 34px;
+  --r-m: 12px;
+  --r-l: 20px;
+  --r-xl: 32px;
 
-  /* elevation: sh-1 resting, sh-2 hover, sh-3 hero surfaces only */
-  --sh-1: 0 1px 2px rgba(11, 12, 22, 0.06), 0 4px 12px -4px rgba(11, 12, 22, 0.08);
-  --sh-2: 0 2px 4px rgba(11, 12, 22, 0.05), 0 18px 40px -12px rgba(11, 12, 22, 0.16);
-  --sh-3: 0 4px 10px rgba(11, 12, 22, 0.06), 0 44px 90px -22px rgba(11, 12, 22, 0.3);
+  /* elevation: luxury soft shadows */
+  --sh-1: 0 2px 6px rgba(45, 8, 20, 0.04), 0 6px 16px -4px rgba(45, 8, 20, 0.06);
+  --sh-2: 0 8px 24px rgba(45, 8, 20, 0.08), 0 16px 40px -8px rgba(45, 8, 20, 0.12);
+  --sh-3: 0 12px 36px rgba(45, 8, 20, 0.1), 0 32px 70px -16px rgba(45, 8, 20, 0.2);
 
   /* layout */
   --gut: clamp(20px, 3.6vw, 60px);
@@ -60,7 +60,4 @@
   --ease-out: cubic-bezier(0.2, 0.8, 0.3, 1);
   --t-fast: 180ms;
   --t-base: 220ms;
-
-  /* grain overlay for gradients and dark bands */
-  /* --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='.4'/%3E%3C/svg%3E"); */
 }

@@ -26,17 +26,17 @@
   font-size: 0.8438rem;
 }
 
-/* Primary is always ink, never a hue — see Global Constraints. */
 .primary {
-  background: var(--ink);
-  color: #fff !important;
+  background: #6D0626;
+  color: #F7F1EA !important;
   box-shadow:
-    0 1px 2px rgba(11, 12, 22, 0.2),
-    0 12px 26px -10px rgba(11, 12, 22, 0.5);
+    0 2px 6px rgba(109, 6, 38, 0.25),
+    0 12px 26px -8px rgba(109, 6, 38, 0.45);
 }
 .primary:hover {
   transform: translateY(-2px);
-  color: #fff !important;
+  background: #4A0319;
+  color: #F7F1EA !important;
 }
 
 .glass {

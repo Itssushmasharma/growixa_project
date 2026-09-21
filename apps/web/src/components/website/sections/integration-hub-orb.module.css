@@ -1,8 +1,8 @@
 .section {
   width: 100%;
-  padding: 100px 24px;
-  background: var(--paper, #0b0f19);
-  color: var(--ink, #f8fafc);
+  padding: 80px 24px 100px;
+  background: var(--paper, #F7F1EA);
+  color: var(--ink, #1E0B12);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -12,8 +12,8 @@
 
 .header {
   text-align: center;
-  max-width: 760px;
-  margin-bottom: 60px;
+  max-width: 780px;
+  margin-bottom: 50px;
   position: relative;
   z-index: 2;
 }
@@ -22,158 +22,247 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 14px;
+  padding: 6px 16px;
   border-radius: 9999px;
-  background: rgba(168, 85, 247, 0.12);
-  border: 1px solid rgba(168, 85, 247, 0.3);
-  color: #c084fc;
+  background: #F7EBEF;
+  border: 1px solid #E2D7CB;
+  color: #6D0626;
   font-size: 0.85rem;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
   margin-bottom: 16px;
 }
 
 .title {
-  font-size: clamp(2.25rem, 5vw, 3.25rem);
+  font-size: clamp(2.25rem, 4.5vw, 3.25rem);
   font-weight: 800;
   line-height: 1.15;
   letter-spacing: -0.02em;
-  color: #ffffff;
+  color: #1E0B12;
   margin-bottom: 16px;
 }
 
 .title span {
-  background: linear-gradient(135deg, #a855f7 0%, #ec4899 100%);
+  background: linear-gradient(135deg, #6D0626 0%, #A01B42 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
 .subtitle {
-  font-size: 1.15rem;
+  font-size: 1.125rem;
   line-height: 1.6;
-  color: #94a3b8;
+  color: #5C4A50;
 }
 
-/* Glowing Purple Central Orb (Image 2 style) */
-.orbContainer {
-  position: relative;
-  width: 100%;
-  max-width: 1000px;
-  height: 420px;
+/* Category Header Bar (Reference Image Top Left & Right Labels) */
+.categoryHeaderBar {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: space-between;
+  width: 100%;
+  max-width: 1100px;
+  margin-bottom: 40px;
+  position: relative;
+  z-index: 2;
+}
+
+.catCol {
+  flex: 1;
+}
+
+.catColRight {
+  text-align: right;
+}
+
+.catTitle {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #1E0B12;
+  letter-spacing: -0.01em;
+}
+
+.catSub {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #8A767C;
+}
+
+.connectorLineBar {
+  flex: 1;
+  height: 4px;
+  margin: 0 32px;
+  background: linear-gradient(90deg, #6D0626 0%, rgba(109, 6, 38, 0.2) 50%, #6D0626 100%);
+  border-radius: 999px;
+  position: relative;
+}
+
+.connectorLineBar::before {
+  content: "";
+  position: absolute;
+  top: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 16px;
+  height: 12px;
+  background: #6D0626;
+  border-radius: 4px;
+  box-shadow: 0 0 12px rgba(109, 6, 38, 0.5);
+}
+
+/* Arc Stage Container */
+.arcStage {
+  position: relative;
+  width: 100%;
+  max-width: 1100px;
+  height: 480px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
   margin-bottom: 40px;
 }
 
-.centerOrb {
-  width: 200px;
-  height: 200px;
-  border-radius: 50%;
-  background: radial-gradient(circle at 30% 30%, #c084fc 0%, #7e22ce 50%, #3b0764 100%);
-  box-shadow: 0 0 80px rgba(168, 85, 247, 0.6), inset 0 0 30px rgba(255, 255, 255, 0.3);
+/* Curved Arch SVG Guide */
+.archGuideSvg {
+  position: absolute;
+  top: 40px;
+  left: 0;
+  width: 100%;
+  height: 380px;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.archPath {
+  fill: none;
+  stroke: rgba(109, 6, 38, 0.18);
+  stroke-width: 2;
+  stroke-dasharray: 6 6;
+}
+
+/* Arch App Icons Grid / Positioned Items */
+.appArchList {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+}
+
+.appCardPill {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  background: #FFFFFF;
+  border: 1px solid #E2D7CB;
+  border-radius: 16px;
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 10px 24px rgba(45, 8, 20, 0.08);
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.3s ease, box-shadow 0.3s ease;
+  cursor: pointer;
+  min-width: 90px;
+}
+
+.appCardPill:hover {
+  transform: translate(-50%, -58%) scale(1.08);
+  border-color: #6D0626;
+  box-shadow: 0 16px 36px rgba(109, 6, 38, 0.18);
+}
+
+.appIconBox {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: #F7EBEF;
   display: flex;
   align-items: center;
   justify-content: center;
+  color: #6D0626;
+  font-size: 1.25rem;
+}
+
+.appLabel {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #1E0B12;
+  white-space: nowrap;
+}
+
+/* Bottom Semi-Circular Dome (Reference Image Central Dome) */
+.centralDome {
   position: relative;
   z-index: 2;
-  animation: floatOrb 6s ease-in-out infinite;
+  width: 680px;
+  height: 220px;
+  background: radial-gradient(ellipse at 50% 100%, #8C1C3D 0%, #6D0626 50%, #3D0414 100%);
+  border-radius: 340px 340px 0 0;
+  box-shadow: 0 -10px 50px rgba(109, 6, 38, 0.35), inset 0 2px 20px rgba(255, 255, 255, 0.2);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding-top: 30px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-bottom: none;
 }
 
-@keyframes floatOrb {
-  0%, 100% { transform: translateY(0) scale(1); }
-  50% { transform: translateY(-10px) scale(1.03); }
-}
-
-.orbInnerLogo {
-  font-size: 1.5rem;
+.domeTitle {
+  font-size: 2rem;
   font-weight: 900;
-  color: #ffffff;
+  color: #FFFFFF;
   letter-spacing: -0.02em;
-  text-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  text-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  margin: 0;
 }
 
-.orbInnerLogo span {
-  color: #f59e0b;
-}
-
-/* Horizontal Curved Ribbon of App Badges (Image 2 style) */
-.ribbon {
-  position: absolute;
-  top: 50%;
-  left: 0;
-  width: 100%;
-  transform: translateY(-50%);
-  display: flex;
-  align-items: center;
-  justify-content: space-around;
-  z-index: 1;
-}
-
-.ribbonItem {
-  background: rgba(30, 41, 59, 0.7);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 16px;
-  padding: 12px 18px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
-  transition: transform 0.3s ease, border-color 0.3s ease;
-}
-
-.ribbonItem:hover {
-  transform: translateY(-6px);
-  border-color: rgba(168, 85, 247, 0.5);
-}
-
-.ribbonIcon {
-  width: 24px;
-  height: 24px;
-}
-
-.ribbonText {
+.domeSubtitle {
   font-size: 0.85rem;
-  font-weight: 700;
-  color: #f8fafc;
+  font-weight: 600;
+  color: #F7EBEF;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-top: 4px;
 }
 
-/* Search Bar Mockup Card (Image 5 style) */
+/* Search Bar Card Below */
 .searchMockCard {
   width: 100%;
   max-width: 720px;
-  background: rgba(15, 23, 42, 0.8);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: #FFFFFF;
+  border: 1px solid #E2D7CB;
   border-radius: 9999px;
   padding: 8px 12px 8px 24px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 16px 40px rgba(45, 8, 20, 0.08);
+  position: relative;
+  z-index: 4;
 }
 
 .searchInputText {
   font-size: 0.95rem;
-  color: #94a3b8;
+  color: #5C4A50;
   display: flex;
   align-items: center;
   gap: 12px;
 }
 
 .bookDemoBtn {
-  background: linear-gradient(135deg, #a855f7 0%, #7e22ce 100%);
-  color: #ffffff !important;
+  background: #6D0626;
+  color: #FFFFFF !important;
   font-size: 0.9rem;
   font-weight: 700;
   padding: 10px 24px;
   border-radius: 9999px;
   text-decoration: none;
-  box-shadow: 0 6px 18px rgba(168, 85, 247, 0.4);
-  transition: transform 0.2s ease;
+  box-shadow: 0 6px 18px rgba(109, 6, 38, 0.3);
+  transition: transform 0.2s ease, background 0.2s ease;
 }
 
 .bookDemoBtn:hover {
   transform: scale(1.03);
+  background: #4A0319;
 }

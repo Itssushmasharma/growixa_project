@@ -3,93 +3,74 @@ import styles from "./ecosystem.module.css";
 import { 
   Mail, 
   Cpu, 
-  Bot, 
   CreditCard, 
-  Globe, 
   Share2, 
-  MessageSquare, 
+  Globe, 
   Zap, 
-  ShieldCheck 
+  ZapIcon 
 } from "lucide-react";
 
-interface IntegrationItem {
-  name: string;
+interface StepNode {
+  step: string;
   category: string;
+  name: string;
   desc: string;
   icon: React.ReactNode;
-  badge: string;
+  pos: { left: string; top: string };
+  isRightSide?: boolean;
 }
 
-const INTEGRATIONS: IntegrationItem[] = [
+const NODES: StepNode[] = [
   {
-    name: "Postmark",
+    step: "01",
     category: "Email Relay",
-    desc: "Transactional email delivery with real-time open, click, and bounce webhooks.",
-    icon: <Mail className="w-6 h-6" />,
-    badge: "Native Relay",
+    name: "Postmark Relay",
+    desc: "Transactional SMTP delivery with real-time open & bounce webhooks.",
+    icon: <Mail className="w-5 h-5 text-rose-700" />,
+    pos: { left: "18%", top: "20%" },
   },
   {
-    name: "OpenAI",
+    step: "02",
     category: "LLM Provider",
-    desc: "GPT-4o & Reasoning AI models for multi-channel copy generation and optimization.",
-    icon: <Cpu className="w-6 h-6" />,
-    badge: "BYO & Platform Default",
+    name: "OpenAI & Claude",
+    desc: "GPT-4o & Claude Sonnet models for AI copy generation.",
+    icon: <Cpu className="w-5 h-5 text-rose-700" />,
+    pos: { left: "14%", top: "50%" },
   },
   {
-    name: "Claude AI",
-    category: "LLM Provider",
-    desc: "Anthropic Claude 3.5 Sonnet for long-form brand content and audience insights.",
-    icon: <Bot className="w-6 h-6" />,
-    badge: "Native Adapter",
-  },
-  {
-    name: "Stripe",
+    step: "03",
     category: "Payment Gateway",
-    desc: "Global subscription billing, automated invoicing, and credit top-up orders.",
-    icon: <CreditCard className="w-6 h-6" />,
-    badge: "Global Checkout",
+    name: "Razorpay & Stripe",
+    desc: "Global INR & USD subscription checkout & credit orders.",
+    icon: <CreditCard className="w-5 h-5 text-rose-700" />,
+    pos: { left: "18%", top: "80%" },
   },
   {
-    name: "Razorpay",
-    category: "Payment Gateway",
-    desc: "Dual-currency INR & international subscription checkout with webhook signatures.",
-    icon: <ShieldCheck className="w-6 h-6" />,
-    badge: "Instant Top-Up",
+    step: "04",
+    category: "Social Media",
+    name: "Meta Ads & Instagram",
+    desc: "Direct post publishing, scheduling & engagement analytics.",
+    icon: <Share2 className="w-5 h-5 text-rose-700" />,
+    pos: { left: "82%", top: "20%" },
+    isRightSide: true,
   },
   {
-    name: "Google Workspace",
-    category: "Identity & Email",
-    desc: "OAuth 2.0 authentication, domain verification, and team directory sync.",
-    icon: <Globe className="w-6 h-6" />,
-    badge: "SSO Ready",
+    step: "05",
+    category: "Identity & Alerts",
+    name: "Google & Slack",
+    desc: "OAuth 2.0 SSO ready & instant channel lead notifications.",
+    icon: <Globe className="w-5 h-5 text-rose-700" />,
+    pos: { left: "86%", top: "50%" },
+    isRightSide: true,
   },
   {
-    name: "Meta Ads",
-    category: "Social & Ads",
-    desc: "Instagram & Facebook direct media publishing, campaign metrics, and audience sync.",
-    icon: <Share2 className="w-6 h-6" />,
-    badge: "Direct Connect",
-  },
-  {
-    name: "LinkedIn",
-    category: "Professional Social",
-    desc: "Scheduled post publishing, engagement telemetry, and corporate brand pages.",
-    icon: <Share2 className="w-6 h-6" />,
-    badge: "OAuth 2.0",
-  },
-  {
-    name: "Slack",
-    category: "Team Alerts",
-    desc: "Instant channel alerts for campaign dispatches, audit logs, and lead notifications.",
-    icon: <MessageSquare className="w-6 h-6" />,
-    badge: "Real-Time",
-  },
-  {
-    name: "Zapier",
-    category: "Workflow Automation",
-    desc: "2,000+ app triggers to sync contacts, trigger campaigns, and pass conversion events.",
-    icon: <Zap className="w-6 h-6" />,
-    badge: "Webhook Ready",
+    step: "06",
+    category: "Automation",
+    name: "Zapier & Webhooks",
+    desc: "2,000+ app triggers to sync contacts & trigger workflows.",
+    icon: <Zap className="w-5 h-5 text-rose-700" />,
+    pos: { left: "82%", top: "80%" },
+    isRightSide: true,
   },
 ];
 
@@ -98,7 +79,7 @@ export function EcosystemSection() {
     <section className={styles.section} id="ecosystem">
       <div className={styles.header}>
         <div className={styles.eyebrow}>
-          <Zap className="w-4 h-4" /> Native Integrations
+          <ZapIcon className="w-4 h-4" /> Native Integrations
         </div>
         <h2 className={styles.title}>
           Ecosystem — Connects With Your <span>Tech Stack</span>
@@ -108,17 +89,61 @@ export function EcosystemSection() {
         </p>
       </div>
 
-      <div className={styles.grid}>
-        {INTEGRATIONS.map((item, idx) => (
-          <div key={idx} className={styles.card}>
-            <div>
-              <div className={styles.cardTop}>
-                <div className={styles.iconWrapper}>{item.icon}</div>
-                <span className={styles.badge}>{item.badge}</span>
-              </div>
-              <div className={styles.category}>{item.category}</div>
-              <h3 className={styles.name}>{item.name}</h3>
-              <p className={styles.desc}>{item.desc}</p>
+      {/* Radial Sunburst Orbit Infographic Stage (Reference Image Layout) */}
+      <div className={styles.orbitStage}>
+        {/* SVG Concentric Orbit Rings & Radial Connector Spokes */}
+        <svg className={styles.orbitSvg} viewBox="0 0 1100 650">
+          {/* Inner Orbit Circle */}
+          <circle cx="550" cy="325" r="220" className={styles.orbitRingPath1} />
+          {/* Outer Orbit Circle */}
+          <circle cx="550" cy="325" r="340" className={styles.orbitRingPath2} />
+
+          {/* Spoke Lines from Center Hub to 6 Radial Nodes */}
+          <line x1="550" y1="325" x2="200" y2="130" className={styles.spokeLine} />
+          <line x1="550" y1="325" x2="160" y2="325" className={styles.spokeLine} />
+          <line x1="550" y1="325" x2="200" y2="520" className={styles.spokeLine} />
+
+          <line x1="550" y1="325" x2="900" y2="130" className={styles.spokeLine} />
+          <line x1="550" y1="325" x2="940" y2="325" className={styles.spokeLine} />
+          <line x1="550" y1="325" x2="900" y2="520" className={styles.spokeLine} />
+
+          {/* Dot Pins at Ends */}
+          <circle cx="200" cy="130" r="5" className={styles.spokeDot} />
+          <circle cx="160" cy="325" r="5" className={styles.spokeDot} />
+          <circle cx="200" cy="520" r="5" className={styles.spokeDot} />
+
+          <circle cx="900" cy="130" r="5" className={styles.spokeDot} />
+          <circle cx="940" cy="325" r="5" className={styles.spokeDot} />
+          <circle cx="900" cy="520" r="5" className={styles.spokeDot} />
+        </svg>
+
+        {/* Central Multi-Ring Orbit Hub */}
+        <div className={styles.centerOrbitHub}>
+          <span className={styles.hubTag}>GROWIXA CORE</span>
+          <h3 className={styles.hubTitle}>NATIVE ENGINE</h3>
+          <span className={styles.hubSub}>Unified Tech Stack</span>
+        </div>
+
+        {/* 6 Radial Step Node Badges & Info Blocks */}
+        {NODES.map((n) => (
+          <div
+            key={n.step}
+            className={styles.radialNodeWrapper}
+            style={{
+              left: n.pos.left,
+              top: n.pos.top,
+              flexDirection: n.isRightSide ? "row-reverse" : "row",
+            }}
+          >
+            <div className={styles.stepCircleNode}>
+              <span className={styles.stepNum}>STEP</span>
+              <span className={styles.stepVal}>{n.step}</span>
+            </div>
+
+            <div className={styles.infoBlock}>
+              <div className={styles.infoCategory}>{n.category}</div>
+              <h4 className={styles.infoTitle}>{n.name}</h4>
+              <p className={styles.infoDesc}>{n.desc}</p>
             </div>
           </div>
         ))}

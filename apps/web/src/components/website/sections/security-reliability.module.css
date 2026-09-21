@@ -1,129 +1,197 @@
 .section {
   width: 100%;
-  padding: 80px 24px;
-  background: var(--paper, #0b0f19);
-  color: var(--ink, #f8fafc);
+  padding: 90px 24px 110px;
+  background: var(--paper, #F7F1EA);
+  color: var(--ink, #1E0B12);
   display: flex;
   flex-direction: column;
   align-items: center;
   position: relative;
+  overflow: hidden;
 }
 
 .header {
   text-align: center;
-  max-width: 760px;
-  margin-bottom: 56px;
+  max-width: 820px;
+  margin-bottom: 64px;
+  position: relative;
+  z-index: 2;
 }
 
 .eyebrow {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 14px;
+  padding: 6px 16px;
   border-radius: 9999px;
-  background: rgba(16, 185, 129, 0.12);
-  border: 1px solid rgba(16, 185, 129, 0.3);
-  color: #10b981;
+  background: #F7EBEF;
+  border: 1px solid #E2D7CB;
+  color: #6D0626;
   font-size: 0.85rem;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
   margin-bottom: 16px;
 }
 
 .title {
-  font-size: clamp(2rem, 4vw, 2.75rem);
+  font-size: clamp(2.25rem, 4.5vw, 3.25rem);
   font-weight: 800;
-  line-height: 1.2;
+  line-height: 1.15;
   letter-spacing: -0.02em;
-  color: var(--ink, #ffffff);
+  color: #1E0B12;
   margin-bottom: 16px;
 }
 
 .title span {
-  background: linear-gradient(135deg, #10b981 0%, #34d399 100%);
+  background: linear-gradient(135deg, #6D0626 0%, #A01B42 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
 .subtitle {
-  font-size: 1.1rem;
+  font-size: 1.125rem;
   line-height: 1.6;
-  color: var(--mut, #94a3b8);
+  color: #5C4A50;
 }
 
-.grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: 24px;
+/* 3D Rectangular Process Container (Reference Image 2 Layout) */
+.processContainer {
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  gap: 0;
   width: 100%;
-  max-width: 1200px;
+  max-width: 1100px;
+  position: relative;
+  z-index: 2;
 }
 
-.card {
-  background: linear-gradient(180deg, rgba(30, 41, 59, 0.5) 0%, rgba(15, 23, 42, 0.6) 100%);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 20px;
-  padding: 32px;
+/* 3D Rectangular Card */
+.processCard {
+  flex: 1;
+  background: #FFFFFF;
+  border: 1px solid #E2D7CB;
+  border-radius: 24px;
+  padding: 36px 28px;
+  box-shadow: 0 20px 48px rgba(45, 8, 20, 0.08), 0 4px 12px rgba(45, 8, 20, 0.03);
   display: flex;
   flex-direction: column;
-  transition: all 0.25s ease;
+  align-items: center;
+  text-align: center;
   position: relative;
-  overflow: hidden;
+  z-index: 1;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s ease;
 }
 
-.card:hover {
-  transform: translateY(-4px);
-  border-color: rgba(16, 185, 129, 0.4);
-  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.4), 0 0 24px rgba(16, 185, 129, 0.15);
+.processCard:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 28px 60px rgba(109, 6, 38, 0.16);
+  border-color: #6D0626;
+  z-index: 3;
 }
 
-.iconShield {
-  width: 56px;
-  height: 56px;
-  border-radius: 14px;
-  background: rgba(16, 185, 129, 0.15);
-  border: 1px solid rgba(16, 185, 129, 0.3);
+/* Top Step Number Badge */
+.numBadge {
+  font-family: var(--font-mono, monospace);
+  font-size: 1.5rem;
+  font-weight: 900;
+  color: #6D0626;
+  margin-bottom: 16px;
+  letter-spacing: -0.02em;
+}
+
+/* Icon Container */
+.iconBox {
+  width: 64px;
+  height: 64px;
+  border-radius: 18px;
+  background: #F7EBEF;
+  border: 1px solid #E2D7CB;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #10b981;
   margin-bottom: 20px;
+  box-shadow: 0 6px 16px rgba(109, 6, 38, 0.08);
+}
+
+.cardSubtitle {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: #8A767C;
+  text-transform: uppercase;
+  margin-bottom: 6px;
 }
 
 .cardTitle {
-  font-size: 1.35rem;
-  font-weight: 700;
-  color: #f8fafc;
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #1E0B12;
   margin-bottom: 12px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
+  line-height: 1.25;
 }
 
 .cardDesc {
-  font-size: 0.95rem;
-  line-height: 1.6;
-  color: #94a3b8;
-  margin-bottom: 20px;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: #5C4A50;
+  margin-bottom: 24px;
 }
 
+/* Bullet Items */
 .bulletList {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  width: 100%;
+  text-align: left;
+  margin-top: auto;
+  padding-top: 18px;
+  border-top: 1px dashed #E2D7CB;
 }
 
 .bulletItem {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 10px;
-  font-size: 0.875rem;
-  color: #cbd5e1;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  color: #1E0B12;
+  font-weight: 600;
 }
 
-.bulletIcon {
-  color: #10b981;
-  flex-shrink: 0;
+/* Overlapping 3D Interlocking Connector Tab */
+.tabConnector {
+  width: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+  margin-left: -24px;
+  margin-right: -24px;
+}
+
+.tabInner {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #6D0626 0%, #A01B42 100%);
+  border: 3px solid #F7F1EA;
+  box-shadow: 0 8px 20px rgba(109, 6, 38, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (max-width: 900px) {
+  .processContainer {
+    flex-direction: column;
+    gap: 32px;
+  }
+  .tabConnector {
+    margin: -16px auto;
+    transform: rotate(90deg);
+  }
 }

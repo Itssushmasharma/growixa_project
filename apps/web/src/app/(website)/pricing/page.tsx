@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { Check } from "lucide-react";
+import { Check, X, Star } from "lucide-react";
 import styles from "./pricing.module.css";
 
 export default function PricingPage() {
@@ -11,123 +11,235 @@ export default function PricingPage() {
   return (
     <main className={styles.page}>
       <header className={styles.header}>
-        <span className={styles.eyebrow}>Pricing</span>
-        <h1 className={styles.title}>Simple Plans That Scale With Your Growth</h1>
+        <span className={styles.eyebrow}>PREMIUM PRICING</span>
+        <h1 className={styles.title}>Plans that start free and grow with you</h1>
         <p className={styles.subtitle}>
-          Start free with no credit card required. Upgrade or top-up with one-time credit packs anytime.
+          Transparent pricing designed for founders, scaling growth teams, and enterprise operations.
         </p>
       </header>
 
+      {/* Monthly / Annually Toggle Switch */}
       <div className={styles.toggleContainer}>
-        <span className={`${styles.toggleLabel} ${!isAnnual ? styles.active : ""}`} onClick={() => setIsAnnual(false)}>
+        <span
+          className={`${styles.toggleLabel} ${!isAnnual ? styles.active : ""}`}
+          onClick={() => setIsAnnual(false)}
+        >
           Monthly
         </span>
-        <div className={`${styles.toggleSwitch} ${isAnnual ? styles.active : ""}`} onClick={() => setIsAnnual(!isAnnual)}>
+        <div
+          className={`${styles.toggleSwitch} ${isAnnual ? styles.active : ""}`}
+          onClick={() => setIsAnnual(!isAnnual)}
+          role="button"
+          tabIndex={0}
+          aria-label="Toggle Annual Billing"
+        >
           <div className={styles.toggleKnob}></div>
         </div>
-        <span className={`${styles.toggleLabel} ${isAnnual ? styles.active : ""}`} onClick={() => setIsAnnual(true)}>
+        <span
+          className={`${styles.toggleLabel} ${isAnnual ? styles.active : ""}`}
+          onClick={() => setIsAnnual(true)}
+        >
           Annually
         </span>
-        <span className={styles.badge}>Save 20%</span>
+        <span className={styles.discountBadge}>Save 20%</span>
       </div>
 
-      <div className={styles.grid}>
-        {/* Free Plan */}
-        <div className={styles.card}>
-          <h2 className={styles.planName}>Free</h2>
-          <p className={styles.planDesc}>Perfect for exploring the platform and testing tools.</p>
-          <div className={styles.priceBlock}>
-            <span className={styles.price}>$0</span>
-            <span className={styles.period}>/mo</span>
+      {/* 4-Column Comparison Table (Matching Reference Image 5 Layout) */}
+      <div className={styles.pricingGrid}>
+        {/* Standard / Free Plan */}
+        <div className={styles.pricingCard}>
+          <h2 className={styles.planTitle}>Standard</h2>
+          <p className={styles.planDesc}>
+            Ideal for low-volume testing where basic social publishing & email relays are needed.
+          </p>
+
+          <div className={styles.priceRow}>
+            <span className={styles.priceVal}>$0</span>
+            <span className={styles.pricePeriod}>/ per month</span>
           </div>
-          <Link href="/register?plan=free" className={`${styles.btn} ${styles.secondaryBtn}`}>
-            Start Free
+
+          <Link href="/register?plan=standard" className={styles.cardBtnOutline}>
+            Test 30 days for free
           </Link>
-          <ul className={styles.featuresList}>
-            <li className={styles.featureItem}><Check size={20} className={styles.featureIcon} /> 1 Team Member</li>
-            <li className={styles.featureItem}><Check size={20} className={styles.featureIcon} /> 2 Social Accounts</li>
-            <li className={styles.featureItem}><Check size={20} className={styles.featureIcon} /> Community Support</li>
-            <li className={styles.featureItem}><Check size={20} className={styles.featureIcon} /> Basic Templates</li>
+
+          <div className={styles.featureDivider} />
+
+          <ul className={styles.featureList}>
+            <li className={styles.featureRow}>
+              <span>Limit of contacts &amp; emails</span>
+              <strong className={styles.limitVal}>1,000 / mo</strong>
+            </li>
+            <li className={styles.featureRow}>
+              <span>Advanced campaign configuration</span>
+              <Check className={styles.checkIcon} />
+            </li>
+            <li className={styles.featureRow}>
+              <span>Insightful analytics &amp; reporting</span>
+              <X className={styles.xIcon} />
+            </li>
+            <li className={styles.featureRow}>
+              <span>Sending domain certificates</span>
+              <X className={styles.xIcon} />
+            </li>
+            <li className={styles.featureRow}>
+              <span>Additional user accounts &amp; collaboration</span>
+              <X className={styles.xIcon} />
+            </li>
+            <li className={styles.featureRow}>
+              <span>Customization &amp; premium support</span>
+              <X className={styles.xIcon} />
+            </li>
           </ul>
         </div>
 
-        {/* Starter Plan */}
-        <div className={styles.card}>
-          <h2 className={styles.planName}>Starter</h2>
-          <p className={styles.planDesc}>Perfect for small teams and early-stage startups.</p>
-          <div className={styles.priceBlock}>
-            <span className={styles.price}>${isAnnual ? "49" : "59"}</span>
-            <span className={styles.period}>/mo</span>
+        {/* Pro Plan (Highlighted Recommended Card) */}
+        <div className={`${styles.pricingCard} ${styles.recommendedCard}`}>
+          <div className={styles.recommendedTag}>
+            <Star className="w-3.5 h-3.5 fill-current" /> Recommended
           </div>
-          <Link href="/register?plan=starter" className={`${styles.btn} ${styles.secondaryBtn}`}>
-            Get Started
+
+          <h2 className={styles.planTitle}>Pro</h2>
+          <p className={styles.planDesc}>
+            Fits most use cases with active social posting, automated sequences, and AI copy.
+          </p>
+
+          <div className={styles.priceRow}>
+            <span className={styles.priceVal}>${isAnnual ? "49" : "59"}</span>
+            <span className={styles.pricePeriod}>/ per month</span>
+          </div>
+
+          <Link href="/register?plan=pro" className={styles.cardBtnPrimary}>
+            Start Pro for free
           </Link>
-          <ul className={styles.featuresList}>
-            <li className={styles.featureItem}><Check size={20} className={styles.featureIcon} /> 2 Team Members</li>
-            <li className={styles.featureItem}><Check size={20} className={styles.featureIcon} /> 5 Social Accounts</li>
-            <li className={styles.featureItem}><Check size={20} className={styles.featureIcon} /> Unified Inbox (Basic)</li>
-            <li className={styles.featureItem}><Check size={20} className={styles.featureIcon} /> Basic Analytics</li>
+
+          <div className={styles.featureDivider} />
+
+          <ul className={styles.featureList}>
+            <li className={styles.featureRow}>
+              <span>Limit of contacts &amp; emails</span>
+              <strong className={styles.limitVal}>25,000 / mo</strong>
+            </li>
+            <li className={styles.featureRow}>
+              <span>Advanced campaign configuration</span>
+              <Check className={styles.checkIcon} />
+            </li>
+            <li className={styles.featureRow}>
+              <span>Insightful analytics &amp; reporting</span>
+              <Check className={styles.checkIcon} />
+            </li>
+            <li className={styles.featureRow}>
+              <span>Sending domain certificates</span>
+              <X className={styles.xIcon} />
+            </li>
+            <li className={styles.featureRow}>
+              <span>Additional user accounts &amp; collaboration</span>
+              <X className={styles.xIcon} />
+            </li>
+            <li className={styles.featureRow}>
+              <span>Customization &amp; premium support</span>
+              <X className={styles.xIcon} />
+            </li>
           </ul>
         </div>
 
-        {/* Professional Plan */}
-        <div className={`${styles.card} ${styles.popularCard}`}>
-          <div className={styles.popularBadge}>Most Popular</div>
-          <h2 className={styles.planName}>Professional</h2>
-          <p className={styles.planDesc}>Everything you need to run scaling marketing operations.</p>
-          <div className={styles.priceBlock}>
-            <span className={styles.price}>${isAnnual ? "99" : "119"}</span>
-            <span className={styles.period}>/mo</span>
+        {/* Max Plan */}
+        <div className={styles.pricingCard}>
+          <h2 className={styles.planTitle}>Max</h2>
+          <p className={styles.planDesc}>
+            High-volume campaigns, unlimited AI assistant generation, and chart telemetry.
+          </p>
+
+          <div className={styles.priceRow}>
+            <span className={styles.priceVal}>${isAnnual ? "119" : "149"}</span>
+            <span className={styles.pricePeriod}>/ per month</span>
           </div>
-          <Link href="/register?plan=pro" className={`${styles.btn} ${styles.primaryBtn}`}>
-            Start Free Trial
+
+          <Link href="/register?plan=max" className={styles.cardBtnOutline}>
+            Test 30 days for free
           </Link>
-          <ul className={styles.featuresList}>
-            <li className={styles.featureItem}><Check size={20} className={styles.featureIcon} /> Unlimited Team Members</li>
-            <li className={styles.featureItem}><Check size={20} className={styles.featureIcon} /> 15 Social Accounts</li>
-            <li className={styles.featureItem}><Check size={20} className={styles.featureIcon} /> Advanced AI Automations</li>
-            <li className={styles.featureItem}><Check size={20} className={styles.featureIcon} /> CRM & Audience Segmentation</li>
-            <li className={styles.featureItem}><Check size={20} className={styles.featureIcon} /> Predictive Analytics</li>
+
+          <div className={styles.featureDivider} />
+
+          <ul className={styles.featureList}>
+            <li className={styles.featureRow}>
+              <span>Limit of contacts &amp; emails</span>
+              <strong className={styles.limitVal}>Unlimited</strong>
+            </li>
+            <li className={styles.featureRow}>
+              <span>Advanced campaign configuration</span>
+              <Check className={styles.checkIcon} />
+            </li>
+            <li className={styles.featureRow}>
+              <span>Insightful analytics &amp; reporting</span>
+              <Check className={styles.checkIcon} />
+            </li>
+            <li className={styles.featureRow}>
+              <span>Sending domain certificates</span>
+              <Check className={styles.checkIcon} />
+            </li>
+            <li className={styles.featureRow}>
+              <span>Additional user accounts &amp; collaboration</span>
+              <X className={styles.xIcon} />
+            </li>
+            <li className={styles.featureRow}>
+              <span>Customization &amp; premium support</span>
+              <X className={styles.xIcon} />
+            </li>
           </ul>
         </div>
 
-        {/* Enterprise Plan */}
-        <div className={styles.card}>
-          <h2 className={styles.planName}>Enterprise</h2>
-          <p className={styles.planDesc}>Custom setups, dedicated support, and SLA guarantees.</p>
-          <div className={styles.priceBlock}>
-            <span className={styles.price}>$299</span>
-            <span className={styles.period}>/mo</span>
+        {/* Max Enterprise Plan */}
+        <div className={styles.pricingCard}>
+          <h2 className={styles.planTitle}>Max Enterprise</h2>
+          <p className={styles.planDesc}>
+            Full multi-tenant team collaboration, dedicated IP pools, custom SLAs, and custom limits.
+          </p>
+
+          <div className={styles.priceRow}>
+            <span className={styles.priceValQuote}>Custom quote</span>
           </div>
-          <Link href="/contact" className={`${styles.btn} ${styles.secondaryBtn}`}>
-            Contact Sales
+
+          <Link href="/contact" className={styles.cardBtnOutline}>
+            Contact Us
           </Link>
-          <ul className={styles.featuresList}>
-            <li className={styles.featureItem}><Check size={20} className={styles.featureIcon} /> Unlimited Everything</li>
-            <li className={styles.featureItem}><Check size={20} className={styles.featureIcon} /> Dedicated Success Manager</li>
-            <li className={styles.featureItem}><Check size={20} className={styles.featureIcon} /> Custom API & Integrations</li>
-            <li className={styles.featureItem}><Check size={20} className={styles.featureIcon} /> SLA & Priority Support</li>
+
+          <div className={styles.featureDivider} />
+
+          <ul className={styles.featureList}>
+            <li className={styles.featureRow}>
+              <span>Limit of contacts &amp; emails</span>
+              <strong className={styles.limitVal}>Unlimited</strong>
+            </li>
+            <li className={styles.featureRow}>
+              <span>Advanced campaign configuration</span>
+              <Check className={styles.checkIcon} />
+            </li>
+            <li className={styles.featureRow}>
+              <span>Insightful analytics &amp; reporting</span>
+              <Check className={styles.checkIcon} />
+            </li>
+            <li className={styles.featureRow}>
+              <span>Sending domain certificates</span>
+              <Check className={styles.checkIcon} />
+            </li>
+            <li className={styles.featureRow}>
+              <span>Additional user accounts &amp; collaboration</span>
+              <Check className={styles.checkIcon} />
+            </li>
+            <li className={styles.featureRow}>
+              <span>Customization &amp; premium support</span>
+              <Check className={styles.checkIcon} />
+            </li>
           </ul>
         </div>
       </div>
 
-      <section className={styles.faqSection}>
-        <h2 className={styles.faqTitle}>Frequently Asked Questions</h2>
-        <div className={styles.faqGrid}>
-          <div className={styles.faqItem}>
-            <h3 className={styles.faqQ}>Can I change my plan later?</h3>
-            <p className={styles.faqA}>Yes, you can upgrade or downgrade your plan at any time. Prorated charges or credits will automatically be applied to your account.</p>
-          </div>
-          <div className={styles.faqItem}>
-            <h3 className={styles.faqQ}>What payment methods do you accept?</h3>
-            <p className={styles.faqA}>We accept all major credit cards including Visa, Mastercard, and American Express. For Enterprise plans, we also support invoicing and wire transfers.</p>
-          </div>
-          <div className={styles.faqItem}>
-            <h3 className={styles.faqQ}>Is there a free trial?</h3>
-            <p className={styles.faqA}>Yes! Our Professional plan comes with a 14-day free trial. No credit card required to start.</p>
-          </div>
-        </div>
-      </section>
+      {/* Bottom CTA Button */}
+      <div className={styles.bottomCtaBox}>
+        <Link href="/register" className={styles.tryFreeBtn}>
+          Try it out for free
+        </Link>
+      </div>
     </main>
   );
 }

@@ -1,0 +1,162 @@
+.container {
+  padding: 32px 24px 60px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 32px;
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #6D0626;
+  background: #F7EBEF;
+  border: 1px solid #E2D7CB;
+  padding: 4px 12px;
+  border-radius: 9999px;
+  margin-bottom: 8px;
+}
+
+.title {
+  font-size: 2rem;
+  font-weight: 900;
+  color: #1E0B12;
+  letter-spacing: -0.02em;
+  margin-bottom: 6px;
+}
+
+.subtitle {
+  font-size: 1rem;
+  color: #5C4A50;
+  max-width: 680px;
+}
+
+.primaryBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #6D0626 0%, #A01B42 100%);
+  color: #FFFFFF;
+  font-size: 0.9rem;
+  font-weight: 800;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 8px 20px rgba(109, 6, 38, 0.25);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 28px;
+}
+
+.card {
+  background: #FFFFFF;
+  border: 1px solid #E2D7CB;
+  border-radius: 20px;
+  padding: 24px;
+  box-shadow: 0 8px 24px rgba(45, 8, 20, 0.04);
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #E2D7CB;
+}
+
+.cardHeader h2 {
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: #1E0B12;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.listItem {
+  background: #FFFDF9;
+  border: 1px solid #E2D7CB;
+  border-radius: 14px;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.itemTitle {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #1E0B12;
+  margin-bottom: 4px;
+}
+
+.itemUrl {
+  font-size: 0.82rem;
+  color: #6D0626;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.slugBadge {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #6D0626;
+  background: #F7EBEF;
+  padding: 2px 8px;
+  border-radius: 6px;
+  border: 1px solid #E2D7CB;
+}
+
+.statRow {
+  display: flex;
+  gap: 12px;
+}
+
+.statBadge {
+  background: #F7F1EA;
+  border: 1px solid #E2D7CB;
+  padding: 6px 12px;
+  border-radius: 10px;
+  text-align: center;
+}
+
+.statBadge span {
+  display: block;
+  font-size: 0.68rem;
+  color: #8A767C;
+  text-transform: uppercase;
+}
+
+.statBadge strong {
+  display: block;
+  font-size: 0.95rem;
+  color: #1E0B12;
+}
+
+@media (max-width: 900px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}

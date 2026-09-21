@@ -72,6 +72,12 @@ from growixa_api.templates.api import router as templates_router
 from growixa_api.users.api import router as users_router
 from growixa_api.whatsapp.router import router as whatsapp_router
 from growixa_api.whatsapp.router import webhook_router as whatsapp_webhook_router
+from growixa_api.creative.api import router as creative_router
+from growixa_api.ads.api import router as ads_router
+from growixa_api.lead_gen.api import router as lead_gen_router
+from growixa_api.communications.api import router as communications_router
+from growixa_api.planner.api import router as planner_router
+from growixa_api.business_presence.api import router as business_presence_router
 
 
 @asynccontextmanager
@@ -165,4 +171,10 @@ def create_app() -> FastAPI:
     app.include_router(seo.router)
     app.include_router(smm.router)
     app.include_router(inbox.router)
+    app.include_router(creative_router)
+    app.include_router(ads_router)
+    app.include_router(lead_gen_router)
+    app.include_router(communications_router)
+    app.include_router(planner_router)
+    app.include_router(business_presence_router)
     return app

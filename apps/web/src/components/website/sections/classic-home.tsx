@@ -7,6 +7,7 @@ import styles from "./classic-home.module.css";
 import { GrowthChartTerminal } from "@/components/chart-terminal";
 
 import { FEATURES, FAQS } from "./classic-home-data";
+import { WhyChooseGrowixaSection } from "./why-choose-growixa";
 
 export function ClassicHome() {
   const [splitPreview, setSplitPreview] = useState<"automation" | "calendar">("automation");
@@ -109,6 +110,8 @@ export function ClassicHome() {
           </div>
         </div>
       </section>
+
+      <WhyChooseGrowixaSection />
 
       <section className={styles.features} id="features">
         <div className={styles.wrap}>

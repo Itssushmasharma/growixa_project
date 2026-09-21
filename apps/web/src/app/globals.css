@@ -5,34 +5,34 @@
 @import "@/styles/liquid-glass.css";
 
 :root {
-  /* Dark Green / Light Beige palette */
-  --color-primary-blue: #1C352D;
-  --color-primary-light: #F8F0E5;
-  --color-teal: #1C352D;
-  --color-mint: #152822;
-  --color-success: #00c7a5;
-  --color-error: #ff5630;
-  --color-warning: #ffab00;
-  --color-purple: #1C352D;
+  /* Royal Pantone Cherry #6D0626 & Warm Ivory #F7F1EA Theme */
+  --color-primary-blue: #6D0626;
+  --color-primary-light: #F7F1EA;
+  --color-teal: #6D0626;
+  --color-mint: #8C1C3D;
+  --color-success: #15803d;
+  --color-error: #6D0626;
+  --color-warning: #b45309;
+  --color-purple: #6D0626;
   
-  --color-slate: #5e6c84;
-  --color-slate-light: #97a0af;
-  --color-dark-text: #172b4d;
-  --color-nav-inactive: #5e6c84;
+  --color-slate: #5C4A50;
+  --color-slate-light: #8A767C;
+  --color-dark-text: #1E0B12;
+  --color-nav-inactive: #5C4A50;
   
-  --bg-page: #f4f5f7;
-  --bg-surface: #ffffff;
-  --bg-surface-hover: #fafbfc;
-  --border-color: #dfe1e6;
+  --bg-page: #F7F1EA;
+  --bg-surface: #FFFFFF;
+  --bg-surface-hover: #FAF6F0;
+  --border-color: #E2D7CB;
 
-  --gradient-primary: linear-gradient(135deg, #1C352D 0%, #152822 100%);
-  --gradient-sidebar: #F8F0E5;
-  --gradient-login-bg: #f4f5f7;
-  --gradient-hero-card: linear-gradient(135deg, #1C352D, #11211c);
+  --gradient-primary: linear-gradient(135deg, #6D0626 0%, #4A0319 100%);
+  --gradient-sidebar: #FAF6F0;
+  --gradient-login-bg: #F7F1EA;
+  --gradient-hero-card: linear-gradient(135deg, #6D0626, #3D0414);
 
-  --card-radius: 12px;
-  --card-shadow: 0 4px 12px rgba(9, 30, 66, 0.05), 0 1px 3px rgba(9, 30, 66, 0.1);
-  --card-shadow-hover: 0 8px 24px rgba(9, 30, 66, 0.08), 0 2px 4px rgba(9, 30, 66, 0.12);
+  --card-radius: 14px;
+  --card-shadow: 0 4px 14px rgba(45, 8, 20, 0.05), 0 1px 3px rgba(45, 8, 20, 0.08);
+  --card-shadow-hover: 0 10px 28px rgba(45, 8, 20, 0.1), 0 2px 6px rgba(45, 8, 20, 0.12);
   --pill-radius: 999px;
 
   --font-sans: 'Instrument Sans Variable', system-ui, -apple-system, sans-serif;

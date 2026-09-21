@@ -1,8 +1,47 @@
 import React from "react";
 import styles from "./security-reliability.module.css";
-import { Shield, Lock, FileCheck, CheckCircle2 } from "lucide-react";
+import { Shield, Lock, FileCheck, CheckCircle2, ChevronRight } from "lucide-react";
 
 export function SecurityReliabilitySection() {
+  const NODES = [
+    {
+      num: "01",
+      title: "SOC2 Ready Architecture",
+      subtitle: "B2B TENANT CONTROLS",
+      icon: <Shield className="w-8 h-8 text-rose-800" />,
+      desc: "Adheres to strict enterprise security standards with multi-tenant data isolation and key segregation.",
+      bullets: [
+        "Account-level tenant data isolation",
+        "Strict RBAC permission enforcement",
+        "Zero hardcoded API credentials scan"
+      ]
+    },
+    {
+      num: "02",
+      title: "GDPR & Privacy Guard",
+      subtitle: "COMPLIANCE ENGINE",
+      icon: <FileCheck className="w-8 h-8 text-rose-800" />,
+      desc: "Automated compliance mechanisms for list opt-outs, data rights, and domain suppression.",
+      bullets: [
+        "RFC 8058 one-click List-Unsubscribe headers",
+        "Wildcard domain blocklist filters",
+        "CSV import/export & soft-delete rights"
+      ]
+    },
+    {
+      num: "03",
+      title: "Encryption & Audit Logs",
+      subtitle: "CRYPTOGRAPHIC AUDIT",
+      icon: <Lock className="w-8 h-8 text-rose-800" />,
+      desc: "End-to-end payload protection with immutable insert-only event audit trails.",
+      bullets: [
+        "Fernet symmetric payload encryption at rest",
+        "Argon2id password hashing with salt",
+        "Append-only immutable audit logging"
+      ]
+    }
+  ];
+
   return (
     <section className={styles.section} id="security">
       <div className={styles.header}>
@@ -17,81 +56,45 @@ export function SecurityReliabilitySection() {
         </p>
       </div>
 
-      <div className={styles.grid}>
-        {/* Card 1: SOC2 */}
-        <div className={styles.card}>
-          <div className={styles.iconShield}>
-            <Shield className="w-7 h-7" />
-          </div>
-          <h3 className={styles.cardTitle}>SOC2 Ready Architecture</h3>
-          <p className={styles.cardDesc}>
-            Built adhering to strict B2B security and operational compliance controls with isolated tenant data keys.
-          </p>
-          <div className={styles.bulletList}>
-            <div className={styles.bulletItem}>
-              <CheckCircle2 className={`w-4 h-4 ${styles.bulletIcon}`} />
-              Account-level data isolation (`account_id` enforced)
-            </div>
-            <div className={styles.bulletItem}>
-              <CheckCircle2 className={`w-4 h-4 ${styles.bulletIcon}`} />
-              Strict RBAC permission checks on every route
-            </div>
-            <div className={styles.bulletItem}>
-              <CheckCircle2 className={`w-4 h-4 ${styles.bulletIcon}`} />
-              Zero hardcoded secrets & automated CI security scanning
-            </div>
-          </div>
-        </div>
+      {/* 3D Rectangular Process Cards with Interlocking 3D Tabs (Reference Image 2) */}
+      <div className={styles.processContainer}>
+        {NODES.map((node, idx) => (
+          <React.Fragment key={node.num}>
+            <div className={styles.processCard}>
+              {/* Top Step Number Badge */}
+              <div className={styles.numBadge}>{node.num}</div>
 
-        {/* Card 2: GDPR */}
-        <div className={styles.card}>
-          <div className={styles.iconShield}>
-            <FileCheck className="w-7 h-7" />
-          </div>
-          <h3 className={styles.cardTitle}>GDPR & Opt-Out Handling</h3>
-          <p className={styles.cardDesc}>
-            Automated compliance tools for contact privacy, instant unsubscribe headers, and suppression lists.
-          </p>
-          <div className={styles.bulletList}>
-            <div className={styles.bulletItem}>
-              <CheckCircle2 className={`w-4 h-4 ${styles.bulletIcon}`} />
-              RFC 8058 one-click inbox `List-Unsubscribe`
-            </div>
-            <div className={styles.bulletItem}>
-              <CheckCircle2 className={`w-4 h-4 ${styles.bulletIcon}`} />
-              Wildcard domain blocklists (`*@competitor.com`)
-            </div>
-            <div className={styles.bulletItem}>
-              <CheckCircle2 className={`w-4 h-4 ${styles.bulletIcon}`} />
-              CSV import/export & soft-deletion data rights
-            </div>
-          </div>
-        </div>
+              {/* Icon Container */}
+              <div className={styles.iconBox}>{node.icon}</div>
 
-        {/* Card 3: Bank Grade Encryption */}
-        <div className={styles.card}>
-          <div className={styles.iconShield}>
-            <Lock className="w-7 h-7" />
-          </div>
-          <h3 className={styles.cardTitle}>Encryption & Audit Logging</h3>
-          <p className={styles.cardDesc}>
-            Cryptographic token protection, argon2id password hashing, and append-only audit event trails.
-          </p>
-          <div className={styles.bulletList}>
-            <div className={styles.bulletItem}>
-              <CheckCircle2 className={`w-4 h-4 ${styles.bulletIcon}`} />
-              Fernet symmetric payload encryption at rest
+              {/* Title & Subtitle */}
+              <span className={styles.cardSubtitle}>{node.subtitle}</span>
+              <h3 className={styles.cardTitle}>{node.title}</h3>
+
+              {/* Description */}
+              <p className={styles.cardDesc}>{node.desc}</p>
+
+              {/* Feature Bullet Items */}
+              <div className={styles.bulletList}>
+                {node.bullets.map((b, bIdx) => (
+                  <div key={bIdx} className={styles.bulletItem}>
+                    <CheckCircle2 className="w-4 h-4 text-rose-700 flex-shrink-0" />
+                    <span>{b}</span>
+                  </div>
+                ))}
+              </div>
             </div>
-            <div className={styles.bulletItem}>
-              <CheckCircle2 className={`w-4 h-4 ${styles.bulletIcon}`} />
-              Argon2id password hashing with salt protection
-            </div>
-            <div className={styles.bulletItem}>
-              <CheckCircle2 className={`w-4 h-4 ${styles.bulletIcon}`} />
-              Immutable insert-only audit trail logging
-            </div>
-          </div>
-        </div>
+
+            {/* Interlocking 3D Arrow Connector Tab (Between cards 01-02 and 02-03) */}
+            {idx < NODES.length - 1 && (
+              <div className={styles.tabConnector} aria-hidden="true">
+                <div className={styles.tabInner}>
+                  <ChevronRight className="w-6 h-6 text-white" />
+                </div>
+              </div>
+            )}
+          </React.Fragment>
+        ))}
       </div>
     </section>
   );
