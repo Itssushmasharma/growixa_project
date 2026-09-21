@@ -8,7 +8,8 @@ load_dotenv(env_path)
 
 import asyncio
 import uuid
-from datetime import datetime, UTC
+from datetime import datetime, timezone
+UTC = timezone.utc
 from sqlalchemy import select
 
 from growixa_api.db import async_session_factory
