@@ -10,6 +10,11 @@
 Reverse-chronological log of material changes to the Growixa repository (documentation and,
 from Sprint 1 onward, code). Each entry names what changed and the commit(s) it landed in.
 
+## 2026-09-21 — v0.9.0-rc3 UAT release candidate
+
+- **`feat(auth)`**: Added graceful mock authentication fallback for local UI testing (`admin@growixa.local` / `SmokeTest123!`), allowing instant login to all dashboard modules when PostgreSQL database is unconfigured.
+- **`feat(dashboard)`**: Overhauled Dashboard UI layout matching reference Lector UI design in Growixa Pantone Cherry (`#6D0626`), Rich Crimson (`#A01B42`), and Warm Ivory theme with SVG Wave Spline charts, metric sparklines, timeline feed, and dark navy data tables.
+
 ## 2026-09-21 — v0.9.0-rc1 UAT release candidate
 
 - **`feat(ecosystem)`** — **Digital Marketing, Creative & Business Presence Ecosystem**:
