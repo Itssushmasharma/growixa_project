@@ -18,7 +18,7 @@ const ROLES: RoleCard[] = [
     icon: <Briefcase className="w-5 h-5" />,
     desc: "Oversee multi-channel social and email campaigns, approve AI copy proposals, and align brand voice.",
     tags: ["Campaign Approvals", "Brand Voice", "Multi-Channel"],
-    styleClass: styles.q1,
+    styleClass: styles.q1 ?? "",
   },
   {
     letter: "C",
@@ -26,7 +26,7 @@ const ROLES: RoleCard[] = [
     icon: <PenTool className="w-5 h-5" />,
     desc: "Generate social media copy, schedule Instagram/LinkedIn posts, and manage media upload assets.",
     tags: ["AI Assistant", "Post Scheduler", "Media Manager"],
-    styleClass: styles.q2,
+    styleClass: styles.q2 ?? "",
   },
   {
     letter: "G",
@@ -34,7 +34,7 @@ const ROLES: RoleCard[] = [
     icon: <TrendingUp className="w-5 h-5" />,
     desc: "Scale audience list segments, configure Postmark email relays, and optimize conversion funnels.",
     tags: ["Segment Targeting", "Email Relays", "Funnel Scale"],
-    styleClass: styles.q3,
+    styleClass: styles.q3 ?? "",
   },
   {
     letter: "A",
@@ -42,7 +42,7 @@ const ROLES: RoleCard[] = [
     icon: <BarChart3 className="w-5 h-5" />,
     desc: "Track real-time open/click delivery webhooks, monitor quota usages, and measure ROI.",
     tags: ["Webhook Telemetry", "Candlestick Charts", "Quota Gauges"],
-    styleClass: styles.q4,
+    styleClass: styles.q4 ?? "",
   },
 ];
 

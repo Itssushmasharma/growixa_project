@@ -40,7 +40,10 @@ export function PostFormPage({ mode, postId }: PostFormPageProps) {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [canManage, setCanManage] = useState(false);
+  const [canPublish, setCanPublish] = useState(false);
   const [canGenerateAI, setCanGenerateAI] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [removingMediaId, setRemovingMediaId] = useState<string | null>(null);
 
   const [connections, setConnections] = useState<SocialConnection[]>([]);
   const [post, setPost] = useState<SocialPost | null>(null);
